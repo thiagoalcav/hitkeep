@@ -1,0 +1,12 @@
+{
+  "name": "@hitkeep/tracker",
+  "license": "MIT",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "rolldown -c"
+  },
+  "devDependencies": {
+    "rolldown": "^1.0.0-beta.47"
+  }
+}

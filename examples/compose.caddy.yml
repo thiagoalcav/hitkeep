@@ -1,0 +1,43 @@
+services:
+  caddy:
+    image: lucaslorentz/caddy-docker-proxy:ci-alpine
+    container_name: caddy-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - caddy_data:/data
+    networks:
+      - caddy
+    labels:
+      # change to your email
+      caddy.email: mail@example.org
+
+  hitkeep:
+    image: ghcr.io/pascalebeier/hitkeep:snapshot
+    container_name: hitkeep
+    restart: unless-stopped
+    networks:
+      - caddy
+    volumes:
+      - hitkeep_data:/var/lib/hitkeep/data
+    command:
+      - "-name=leader"
+      - "-db=/var/lib/hitkeep/data/hitkeep.db"
+      # Change 'https://analytics.example.org' to your server / loadbalancer domain.
+      - "-public-url=https://analytics.example.org"
+      - "-jwt-secret=change-this-to-a-very-long-and-random-secret-key"
+    labels:
+      # Change 'analytics.example.org' to your server / loadbalancer domain.
+      caddy: analytics.example.org
+      caddy.reverse_proxy: "{{upstreams 8080}}"
+
+volumes:
+  caddy_data: {}
+  hitkeep_data: {}
+networks:
+  caddy:
+    external: true

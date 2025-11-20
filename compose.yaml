@@ -1,0 +1,17 @@
+services:
+  hitkeep:
+    build: .
+    container_name: hitkeep
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - hitkeep-data:/var/lib/hitkeep/data
+    command:
+      - "-db=/var/lib/hitkeep/data/hitkeep.db"
+      # Change 'http://localhost:8080' to your server / loadbalancer domain.
+      - "-public-url=http://localhost:8080"
+      - "-jwt-secret=change-this-to-a-very-long-and-random-secret-key"
+
+volumes:
+  hitkeep-data: {}

@@ -1,0 +1,18 @@
+name: Build Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  call-build:
+    uses: ./.github/workflows/build.yml
+    with:
+      version_string: ${{ github.ref_name }}
+      meta_config: |
+        type=raw,value=latest
+        type=semver,pattern={{version}}
+        type=semver,pattern={{major}}.{{minor}}
+        type=semver,pattern={{major}}
+    secrets:
+      token: ${{ secrets.GHT }}

@@ -1,0 +1,63 @@
+version: "2"
+run:
+  issues-exit-code: 1
+  tests: false
+linters:
+  default: none
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - copyloopvar
+    - decorder
+    - dogsled
+    - dupl
+    - dupword
+    - durationcheck
+    - errcheck
+    - errname
+    - exhaustive
+    - gosec
+    - govet
+    - importas
+    - ineffassign
+    - misspell
+    - prealloc
+    - promlinter
+    - staticcheck
+    - testableexamples
+    - tparallel
+    - unconvert
+    - unused
+    - usetesting
+    - wastedassign
+    - whitespace
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - frontend$
+      - examples$
+      - public$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - goimports
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(hitkeep)
+      custom-order: true
+  exclusions:
+    generated: lax
+    paths:
+      - frontend$
+      - public$

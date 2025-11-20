@@ -1,0 +1,78 @@
+<!-- Main Container: Centered with theme background -->
+<div class="min-h-screen flex items-center justify-center bg-[var(--p-surface-ground)] p-4 transition-colors duration-200">
+<div class="w-full max-w-md">
+
+<!-- Logo / Brand Header -->
+
+
+<div class="bg-[var(--p-surface-card)] border border-[var(--p-surface-border)] rounded-xl shadow-lg p-6 md:p-8">
+  <div class="mb-6 text-center">
+    <h2 class="text-xl font-semibold text-[var(--p-text-color)]">Welcome Back</h2>
+    <p class="text-sm text-[var(--p-text-muted-color)] mt-1">Sign in to your dashboard</p>
+  </div>
+
+  <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
+    
+    <!-- Error Alert -->
+    @if (errorMessage) {
+      <div class="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-center gap-3 mb-2">
+        <i class="pi pi-exclamation-circle text-red-500"></i>
+        <span class="text-sm text-red-500 font-medium">{{ errorMessage }}</span>
+      </div>
+    }
+
+    <!-- Email Field -->
+    <div class="flex flex-col gap-2">
+      <label for="email" class="text-sm font-medium text-[var(--p-text-color)]">Email Address</label>
+      <input 
+        pInputText 
+        id="email" 
+        formControlName="email" 
+        class="w-full" 
+        [ngClass]="{'ng-invalid ng-dirty': loginForm.get('email')?.touched && loginForm.get('email')?.invalid}"
+        placeholder="you@example.com" 
+      />
+      @if (loginForm.get('email')?.touched && loginForm.get('email')?.invalid) {
+        <small class="text-red-500 text-xs">Please enter a valid email address.</small>
+      }
+    </div>
+
+    <!-- Password Field -->
+    <div class="flex flex-col gap-2">
+      <div class="flex items-center justify-between">
+         <label for="password" class="text-sm font-medium text-[var(--p-text-color)]">Password</label>
+      </div>
+      <p-password 
+        id="password" 
+        formControlName="password" 
+        [toggleMask]="true" 
+        [feedback]="false"
+        styleClass="w-full"
+        inputStyleClass="w-full"
+        placeholder="••••••••"
+        [ngClass]="{'ng-invalid ng-dirty': loginForm.get('password')?.touched && loginForm.get('password')?.invalid}"
+      ></p-password>
+      @if (loginForm.get('password')?.touched && loginForm.get('password')?.invalid) {
+        <small class="text-red-500 text-xs">Password is required.</small>
+      }
+    </div>
+
+    <!-- Submit Button -->
+    <p-button 
+      label="Sign In" 
+      type="submit" 
+      [loading]="isLoading" 
+      styleClass="w-full" 
+      [disabled]="loginForm.invalid && loginForm.touched">
+    </p-button>
+  </form>
+</div>
+
+<!-- Footer -->
+<div class="mt-8 text-center">
+   <p class="text-xs text-[var(--p-text-muted-color)]">
+     &copy; {{ currentYear }} HitKeep. All rights reserved.
+   </p>
+</div>
+</div>
+</div>

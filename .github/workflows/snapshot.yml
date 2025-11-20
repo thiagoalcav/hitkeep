@@ -1,0 +1,28 @@
+name: Build Snapshot
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      short_sha: ${{ steps.sha.outputs.short_sha }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Get short Git SHA
+        id: sha
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+  call-build:
+    needs: prepare
+    uses: ./.github/workflows/build.yml
+    with:
+      version_string: ${{ needs.prepare.outputs.short_sha }}
+      meta_config: |
+        type=raw,value=snapshot
+        type=sha,prefix=sha-,format=short
+    secrets:
+      token: ${{ secrets.GHT }}

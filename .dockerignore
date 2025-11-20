@@ -1,0 +1,7 @@
+.git
+.vscode
+.idea
+.github
+hitkeep
+hitkeep.d*
+examples

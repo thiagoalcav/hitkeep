@@ -1,0 +1,5 @@
+node_modules
+hitkeep
+hitkeep.db
+public
+!public/embed.go

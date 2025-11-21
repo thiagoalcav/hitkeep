@@ -9,7 +9,7 @@ jobs:
     if: "${{ !startsWith(github.event.head_commit.message, 'chore(main): release') }}"
     uses: ./.github/workflows/pipeline.yml
     permissions:
-      contents: read
+      contents: write
       packages: write
       id-token: write
       attestations: write

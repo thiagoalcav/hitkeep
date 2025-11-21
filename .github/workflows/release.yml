@@ -1,18 +1,37 @@
-name: Build Release
+name: Release
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
 
 jobs:
-  call-build:
-    uses: ./.github/workflows/build.yml
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: google-github-actions/release-please-action@v4
+        id: release
+        with:
+          token: ${{ secrets.GHT }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  build-release:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    uses: ./.github/workflows/pipeline.yml
     with:
-      version_string: ${{ github.ref_name }}
-      meta_config: |
-        type=raw,value=latest
-        type=semver,pattern={{version}}
-        type=semver,pattern={{major}}.{{minor}}
-        type=semver,pattern={{major}}
-    secrets:
-      token: ${{ secrets.GHT }}
+      version: ${{ needs.release-please.outputs.tag_name }}
+      docker_tags: |
+        ghcr.io/${{ github.repository }}:latest
+        ghcr.io/${{ github.repository }}:${{ needs.release-please.outputs.tag_name }}
+      upload_to_release: true
+      release_tag_name: ${{ needs.release-please.outputs.tag_name }}

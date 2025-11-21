@@ -30,10 +30,11 @@ This is currently a PoC - it is already being used in production but lacks vital
 - [ ] endpoint rate limiting through nsq
 - [ ] Raw hit pruning 
 - [ ] better OLAP integration - no more Adhoc buckets
-- [ ] Allow users to opt out of 
+- [ ] Allow users to opt out of sendBeacon
 - [ ] User management
 - [ ] Settings management
 - [ ] More Metrics - currently it only shows the last 30 days
+- [ ] Helm chart
 - [ ] Takeout
 - [ ] Events integration
 

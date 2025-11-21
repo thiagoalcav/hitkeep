@@ -1,0 +1,127 @@
+name: Build Pipeline
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+        description: "Version string to embed in the binary (e.g., v1.0.0 or snapshot-abc)"
+      docker_tags:
+        required: true
+        type: string
+        description: "Newline-separated list of docker tags"
+      upload_to_release:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether to upload binaries to a GitHub Release"
+      release_tag_name:
+        required: false
+        type: string
+        description: "The tag name of the release to upload to (required if upload_to_release is true)"
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+      
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Install ARM64 Cross Compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHT }}
+
+      - name: Build Tracker
+        working-directory: frontend/tracker
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build Dashboard
+        working-directory: frontend/dashboard
+        run: |
+          npm ci
+          npm run build:prod
+      
+      - name: Prepare Public Assets
+        run: |
+          mkdir -p public
+          cp -r frontend/dashboard/dist/dashboard/browser/* public/
+
+      - name: Build Linux AMD64
+        run: |
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+            -ldflags="-w -s -X 'hitkeep/cmd.Version=${{ inputs.version }}'" \
+            -o hitkeep-linux-amd64 \
+            ./cmd/hitkeep/main.go
+
+      - name: Build Linux ARM64
+        run: |
+          CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ \
+          CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build \
+            -ldflags="-w -s -X 'hitkeep/cmd.Version=${{ inputs.version }}'" \
+            -o hitkeep-linux-arm64 \
+            ./cmd/hitkeep/main.go
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: hitkeep-binaries-${{ inputs.version }}
+          path: |
+            hitkeep-linux-amd64
+            hitkeep-linux-arm64
+          retention-days: 5
+
+      - name: Upload Release Binaries
+        if: ${{ inputs.upload_to_release }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload ${{ inputs.release_tag_name }} \
+            hitkeep-linux-amd64 \
+            hitkeep-linux-arm64
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v5
+        id: push
+        with:
+          context: .
+          provenance: mode=max
+          sbom: true
+          file: Dockerfile.ci
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          push: true
+          tags: ${{ inputs.docker_tags }}
+
+      - uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true

@@ -1,0 +1,30 @@
+FROM gcr.io/distroless/cc-debian13:nonroot
+
+LABEL org.opencontainers.image.title="HitKeep" \
+    org.opencontainers.image.description="A self-hostable, privacy-first web analytics service in a single Go binary." \
+    org.opencontainers.image.url="https://hitkeep.com" \
+    org.opencontainers.image.source="https://github.com/pascalebeier/hitkeep.git" \
+    org.opencontainers.image.version="${HITKEEP_VERSION}" \
+    org.opencontainers.image.authors="Pascale Beier (@PascaleBeier)" \
+    org.opencontainers.image.licenses="MIT"
+
+WORKDIR /app
+
+ARG TARGETARCH
+
+COPY public /public
+
+COPY hitkeep-linux-${TARGETARCH} /usr/local/bin/hitkeep
+
+USER root
+RUN mkdir -p /var/lib/hitkeep/data && chown -R nonroot:nonroot /var/lib/hitkeep/data
+USER nonroot
+
+VOLUME /var/lib/hitkeep/data
+
+HEALTHCHECK --start-period=60s --start-interval=3s --interval=10s --timeout=3s --retries=3 \
+  CMD ["hitkeep", "-healthcheck"]
+
+EXPOSE 8080 7946
+
+ENTRYPOINT ["hitkeep"]

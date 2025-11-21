@@ -109,6 +109,13 @@ jobs:
             hitkeep-linux-amd64 \
             hitkeep-linux-arm64
 
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: ${{ inputs.release_tag_name }}
+
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         id: push

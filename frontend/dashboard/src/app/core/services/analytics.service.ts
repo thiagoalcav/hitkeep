@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 export interface Site {
@@ -34,6 +34,8 @@ export interface SiteStats {
   total_pageviews: number;
   unique_sessions: number;
   bounce_rate: number;
+  avg_session_duration: number; // New field (Seconds)
+  pages_per_session: number;    // New field
   chart_data: ChartDataPoint[];
 }
 
@@ -59,10 +61,15 @@ export class AnalyticsService {
 
   /**
    * Fetches aggregated statistics and chart data.
+   * Supports optional date range filtering.
    */
-  getSiteStats(siteId: string): Observable<SiteStats> {
-    console.debug(`Fetching stats for site ID: ${siteId}`);
-    return this.http.get<SiteStats>(`/api/sites/${siteId}/stats`);
+  getSiteStats(siteId: string, from?: string, to?: string): Observable<SiteStats> {
+    let params = new HttpParams();
+    if (from) params = params.set('from', from);
+    if (to) params = params.set('to', to);
+
+    console.debug(`Fetching stats for site ID: ${siteId}`, { from, to });
+    return this.http.get<SiteStats>(`/api/sites/${siteId}/stats`, { params });
   }
 
   /**

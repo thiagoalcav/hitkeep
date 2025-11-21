@@ -8,7 +8,7 @@
       <p class="text-sm text-[var(--p-text-muted-color)] mt-1">Overview of your website performance</p>
     </div>
 
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-3 flex-wrap">
       <!-- Site Selector -->
       @if (isLoadingSites()) {
         <p-skeleton width="200px" height="40px" styleClass="rounded-md"></p-skeleton>
@@ -19,7 +19,16 @@
           optionLabel="domain" 
           placeholder="Select a Website"
           (onChange)="onSiteChange($event)"
-          styleClass="w-full md:w-64">
+          styleClass="w-full md:w-56">
+        </p-select>
+
+        <!-- Time Range Selector -->
+        <p-select 
+            [options]="timeRanges" 
+            [(ngModel)]="selectedRange" 
+            optionLabel="label"
+            (onChange)="onRangeChange($event)"
+            styleClass="w-full md:w-40">
         </p-select>
 
         <!-- Snippet Button -->
@@ -52,7 +61,7 @@
       <p-button 
         icon="pi pi-refresh" 
         [loading]="isLoadingData()" 
-        (onClick)="selectedSite() && loadDashboardData(selectedSite()!.id)" 
+        (onClick)="selectedSite() && loadDashboardData(selectedSite()!.id, selectedRange().value)" 
         styleClass="p-button-text p-button-rounded p-button-secondary"
         [disabled]="!selectedSite()"
         pTooltip="Refresh Data"
@@ -63,15 +72,15 @@
 
   <!-- Main Content -->
   @if (selectedSite()) {
-    <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
       
-      <!-- KPI Cards -->
+      <!-- KPI: Total Pageviews -->
       <p-card styleClass="shadow-sm h-full border-0 surface-card">
         <div class="flex flex-col gap-2">
           <span class="text-sm font-medium text-[var(--p-text-muted-color)]">Total Pageviews</span>
           <div class="flex items-baseline gap-2">
              @if (stats()) {
-                <span class="text-4xl font-bold text-[var(--p-primary-color)]">{{ stats()!.total_pageviews | number }}</span>
+                <span class="text-2xl xl:text-3xl font-bold text-[var(--p-primary-color)]">{{ stats()!.total_pageviews | number }}</span>
              } @else {
                 <p-skeleton width="50%" height="2rem"></p-skeleton>
              }
@@ -79,12 +88,13 @@
         </div>
       </p-card>
 
+      <!-- KPI: Unique Sessions -->
       <p-card styleClass="shadow-sm h-full border-0 surface-card">
         <div class="flex flex-col gap-2">
           <span class="text-sm font-medium text-[var(--p-text-muted-color)]">Unique Sessions</span>
           <div class="flex items-baseline gap-2">
             @if (stats()) {
-                <span class="text-4xl font-bold text-[var(--p-text-color)]">{{ stats()!.unique_sessions | number }}</span>
+                <span class="text-2xl xl:text-3xl font-bold text-[var(--p-text-color)]">{{ stats()!.unique_sessions | number }}</span>
             } @else {
                 <p-skeleton width="50%" height="2rem"></p-skeleton>
             }
@@ -92,12 +102,41 @@
         </div>
       </p-card>
 
+      <!-- KPI: Bounce Rate -->
       <p-card styleClass="shadow-sm h-full border-0 surface-card">
         <div class="flex flex-col gap-2">
           <span class="text-sm font-medium text-[var(--p-text-muted-color)]">Bounce Rate</span>
           <div class="flex items-baseline gap-2">
             @if (stats()) {
-                <span class="text-4xl font-bold text-[var(--p-text-color)]">{{ stats()!.bounce_rate | number:'1.0-1' }}%</span>
+                <span class="text-2xl xl:text-3xl font-bold text-[var(--p-text-color)]">{{ stats()!.bounce_rate | number:'1.0-1' }}%</span>
+            } @else {
+                <p-skeleton width="50%" height="2rem"></p-skeleton>
+            }
+          </div>
+        </div>
+      </p-card>
+
+      <!-- KPI: Avg Session Duration (NEW) -->
+      <p-card styleClass="shadow-sm h-full border-0 surface-card">
+        <div class="flex flex-col gap-2">
+          <span class="text-sm font-medium text-[var(--p-text-muted-color)]">Avg. Session Time</span>
+          <div class="flex items-baseline gap-2">
+            @if (stats()) {
+                <span class="text-2xl xl:text-3xl font-bold text-[var(--p-text-color)]">{{ formatDuration(stats()!.avg_session_duration) }}</span>
+            } @else {
+                <p-skeleton width="50%" height="2rem"></p-skeleton>
+            }
+          </div>
+        </div>
+      </p-card>
+
+      <!-- KPI: Pages per Session (NEW) -->
+      <p-card styleClass="shadow-sm h-full border-0 surface-card">
+        <div class="flex flex-col gap-2">
+          <span class="text-sm font-medium text-[var(--p-text-muted-color)]">Pages / Session</span>
+          <div class="flex items-baseline gap-2">
+            @if (stats()) {
+                <span class="text-2xl xl:text-3xl font-bold text-[var(--p-text-color)]">{{ stats()!.pages_per_session | number:'1.1-2' }}</span>
             } @else {
                 <p-skeleton width="50%" height="2rem"></p-skeleton>
             }
@@ -106,10 +145,10 @@
       </p-card>
 
       <!-- Chart Section -->
-      <div class="md:col-span-3 lg:col-span-3">
+      <div class="md:col-span-2 xl:col-span-5">
         <p-card styleClass="shadow-sm border-0 surface-card">
           <div class="mb-6 flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-[var(--p-text-color)]">Traffic Over Time (30 Days)</h3>
+            <h3 class="text-lg font-semibold text-[var(--p-text-color)]">Traffic Overview ({{ selectedRange().label }})</h3>
           </div>
           <div class="h-80 w-full relative">
             @if (chartData()) {
@@ -129,7 +168,7 @@
       </div>
 
       <!-- Recent Activity Table -->
-      <div class="md:col-span-3 lg:col-span-3">
+      <div class="md:col-span-2 xl:col-span-5">
         <p-card styleClass="shadow-sm border-0 surface-card">
           <div class="mb-4">
             <h3 class="text-lg font-semibold text-[var(--p-text-color)]">Recent Hits</h3>

@@ -1,5 +1,5 @@
-import { Component, OnInit, effect, inject, signal } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
+import { Component, OnInit, effect, inject, signal, computed } from '@angular/core';
+import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, finalize } from 'rxjs';
 
@@ -24,6 +24,7 @@ import { AnalyticsService, Hit, Site, SiteStats } from '../core/services/analyti
     CommonModule,
     FormsModule,
     DatePipe,
+    DecimalPipe,
     SelectModule,
     CardModule,
     TableModule,
@@ -50,6 +51,14 @@ export class Dashboard implements OnInit {
   
   protected isLoadingSites = signal<boolean>(true);
   protected isLoadingData = signal<boolean>(false);
+
+  // --- Time Range State ---
+  protected timeRanges = [
+    { label: 'Last 24 Hours', value: '24h' },
+    { label: 'Last 7 Days', value: '7d' },
+    { label: 'Last 30 Days', value: '30d' }
+  ];
+  protected selectedRange = signal(this.timeRanges[2]); // Default 30d
 
   // --- Dialog State ---
   protected isAddSiteVisible = signal<boolean>(false);
@@ -105,10 +114,13 @@ export class Dashboard implements OnInit {
   };
 
   constructor() {
+    // Trigger data load when Site OR Time Range changes
     effect(() => {
       const site = this.selectedSite();
-      if (site) {
-        this.loadDashboardData(site.id);
+      const range = this.selectedRange();
+
+      if (site && range) {
+        this.loadDashboardData(site.id, range.value);
       } else {
         this.stats.set(null);
         this.chartData.set(null);
@@ -139,12 +151,14 @@ export class Dashboard implements OnInit {
     });
   }
 
-  public loadDashboardData(siteId: string): void {
+  public loadDashboardData(siteId: string, rangeValue: string): void {
     this.isLoadingData.set(true);
     
+    const { from, to } = this.calculateDateRange(rangeValue);
+
     // Load both Stats (Aggregated) and Recent Hits (Raw) in parallel
     forkJoin({
-      stats: this.analyticsService.getSiteStats(siteId),
+      stats: this.analyticsService.getSiteStats(siteId, from, to),
       hits: this.analyticsService.getHits(siteId)
     }).pipe(
       finalize(() => this.isLoadingData.set(false))
@@ -160,9 +174,47 @@ export class Dashboard implements OnInit {
     });
   }
 
+  private calculateDateRange(range: string): { from: string, to: string } {
+    const end = new Date();
+    const start = new Date();
+
+    switch (range) {
+      case '24h':
+        start.setHours(end.getHours() - 24);
+        break;
+      case '7d':
+        start.setDate(end.getDate() - 7);
+        break;
+      case '30d':
+      default:
+        start.setDate(end.getDate() - 30);
+        break;
+    }
+
+    return {
+      from: start.toISOString(),
+      to: end.toISOString()
+    };
+  }
+
+  // Helper to format seconds into "1m 30s"
+  protected formatDuration(seconds: number): string {
+    if (!seconds) return '0s';
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+  }
+
   private updateChart(stats: SiteStats): void {
+    // Determine if we should show hours or days based on the selected range
+    const is24h = this.selectedRange().value === '24h';
+
     const labels = stats.chart_data.map(d => {
       const date = new Date(d.time);
+      if (is24h) {
+         return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      }
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     });
 
@@ -216,6 +268,10 @@ export class Dashboard implements OnInit {
 
   protected onSiteChange(event: any): void {
     // The effect will handle the data fetching
+  }
+
+  protected onRangeChange(event: any): void {
+     // The effect will handle the data fetching
   }
 
   protected openAddSiteDialog(): void {

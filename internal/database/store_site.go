@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"hitkeep/internal/api"
-
 	"github.com/google/uuid"
+
+	"hitkeep/internal/api"
 )
 
 func (s *Store) FindSiteByDomain(ctx context.Context, domain string) (*api.Site, error) {

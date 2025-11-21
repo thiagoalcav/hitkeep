@@ -1,5 +1,5 @@
 node_modules
 hitkeep
 hitkeep.db
-public
-!public/embed.go
+/public
+!/public/embed.go

@@ -4,12 +4,12 @@
 
 <!-- Logo / Brand Header -->
 
-
-<div class="bg-[var(--p-surface-card)] border border-[var(--p-surface-border)] rounded-xl shadow-lg p-6 md:p-8">
-  <div class="mb-6 text-center">
-    <h2 class="text-xl font-semibold text-[var(--p-text-color)]">Welcome Back</h2>
-    <p class="text-sm text-[var(--p-text-muted-color)] mt-1">Sign in to your dashboard</p>
-  </div>
+<!-- CHANGED: Border colors are now softer (surface-200/700) -->
+<div class="bg-[var(--p-surface-card)] border border-surface-200 dark:border-surface-700 rounded-xl shadow-sm p-6 md:p-8">
+<div class="mb-8 flex flex-col items-center justify-center gap-2">
+  <app-brand size="large"></app-brand>
+  <p class="text-sm text-[var(--p-text-muted-color)] mt-1">Sign in to your dashboard</p>
+</div>
 
   <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
     
@@ -47,8 +47,8 @@
         formControlName="password" 
         [toggleMask]="true" 
         [feedback]="false"
-        styleClass="w-full"
-        inputStyleClass="w-full"
+        class="w-full"
+        inputclass="w-full"
         placeholder="••••••••"
         [ngClass]="{'ng-invalid ng-dirty': loginForm.get('password')?.touched && loginForm.get('password')?.invalid}"
       ></p-password>
@@ -62,7 +62,7 @@
       label="Sign In" 
       type="submit" 
       [loading]="isLoading" 
-      styleClass="w-full" 
+      class="w-full" 
       [disabled]="loginForm.invalid && loginForm.touched">
     </p-button>
   </form>

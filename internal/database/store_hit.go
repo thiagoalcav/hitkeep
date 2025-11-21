@@ -3,11 +3,10 @@ package database
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"hitkeep/internal/api"
-
-	"github.com/google/uuid"
 )
 
 func (s *Store) CreateHit(ctx context.Context, hit *api.Hit) error {
@@ -31,22 +30,61 @@ func (s *Store) CreateHit(ctx context.Context, hit *api.Hit) error {
 	return nil
 }
 
-// GetHits returns raw hits.
-// Note: In high-volume production, this query should be restricted or paginated heavily.
-func (s *Store) GetHits(ctx context.Context, siteID uuid.UUID, userID uuid.UUID) ([]api.Hit, error) {
-	query := `
-        SELECT
+// GetHits returns paginated, sorted, and filtered hits.
+func (s *Store) GetHits(ctx context.Context, params api.HitQueryParams) (*api.PaginatedHits, error) {
+	baseQuery := `
+		FROM hits h
+		JOIN sites s ON h.site_id = s.id
+		WHERE h.site_id = ? 
+		  AND s.user_id = ? 
+		  AND h.timestamp >= ? 
+		  AND h.timestamp <= ?
+	`
+	args := []any{params.SiteID, params.UserID, params.Start, params.End}
+
+	if params.Query != "" {
+		baseQuery += ` AND (h.path ILIKE ? OR h.referrer ILIKE ? OR h.user_agent ILIKE ?)`
+		wildcard := "%" + params.Query + "%"
+		args = append(args, wildcard, wildcard, wildcard)
+	}
+
+	var total int
+	countQuery := "SELECT COUNT(*) " + baseQuery
+	if err := s.db.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, fmt.Errorf("failed to count hits: %w", err)
+	}
+
+	// Whitelist
+	orderBy := "h.timestamp" // default
+	switch params.SortField {
+	case "path":
+		orderBy = "h.path"
+	case "referrer":
+		orderBy = "h.referrer"
+	case "timestamp":
+		orderBy = "h.timestamp"
+	}
+
+	orderDir := "DESC"
+	if strings.ToLower(params.SortOrder) == "asc" {
+		orderDir = "ASC"
+	}
+
+	baseQuery += fmt.Sprintf(" ORDER BY %s %s", orderBy, orderDir)
+
+	baseQuery += " LIMIT ? OFFSET ?"
+	args = append(args, params.Limit, params.Offset)
+
+	//nolint:gosec
+	selectQuery := `
+		SELECT
             h.id, h.site_id, h.session_id, h.page_id, h.timestamp, h.path, h.referrer, h.user_agent,
             h.viewport_width, h.viewport_height, h.screen_width, h.screen_height, h.language, h.is_unique
-        FROM hits h
-        JOIN sites s ON h.site_id = s.id
-        WHERE h.site_id = ? AND s.user_id = ?
-        ORDER BY h.timestamp DESC
-        LIMIT 100`
+	` + baseQuery // whitelisted
 
-	rows, err := s.db.QueryContext(ctx, query, siteID, userID)
+	rows, err := s.db.QueryContext(ctx, selectQuery, args...)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query hits: %w", err)
 	}
 	defer rows.Close()
 
@@ -62,5 +100,9 @@ func (s *Store) GetHits(ctx context.Context, siteID uuid.UUID, userID uuid.UUID)
 		}
 		hits = append(hits, hit)
 	}
-	return hits, nil
+
+	return &api.PaginatedHits{
+		Data:  hits,
+		Total: total,
+	}, nil
 }

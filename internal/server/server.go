@@ -71,21 +71,22 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 	// System
-	mux.HandleFunc("/healthz", s.handleHealthz())
-	mux.HandleFunc("/api/status", s.handleGetStatus())
+	mux.HandleFunc("GET /healthz", s.handleHealthz())
+	mux.HandleFunc("GET /api/status", s.handleGetStatus())
 
 	// Ingest
-	mux.HandleFunc("/ingest", s.withRateLimit(s.ingestLimiter, s.handleIngest()))
+	mux.HandleFunc("POST /ingest", s.withRateLimit(s.ingestLimiter, s.handleIngest()))
+	mux.HandleFunc("OPTIONS /ingest", s.withRateLimit(s.ingestLimiter, s.handleIngest()))
 
 	// Auth
-	mux.HandleFunc("/api/initial-user", s.withRateLimit(s.authLimiter, s.handleCreateInitialUser()))
-	mux.HandleFunc("/api/login", s.withRateLimit(s.authLimiter, s.handleLogin()))
+	mux.HandleFunc("POST /api/initial-user", s.withRateLimit(s.authLimiter, s.handleCreateInitialUser()))
+	mux.HandleFunc("POST /api/login", s.withRateLimit(s.authLimiter, s.handleLogin()))
 
 	// API
 	mux.HandleFunc("GET /api/sites", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleGetSites())))
 	mux.HandleFunc("POST /api/sites", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleCreateSite())))
 	mux.HandleFunc("GET /api/sites/{id}/stats", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleGetSiteStats())))
-	mux.HandleFunc("/api/hits", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleGetHits())))
+	mux.HandleFunc("GET /api/sites/{id}/hits", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleGetSiteHits())))
 
 	// Static
 	mux.Handle("/", s.spaHandler(publicFS))

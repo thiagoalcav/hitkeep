@@ -1,12 +1,13 @@
-import { Component, OnInit, effect, inject, signal } from '@angular/core';
-import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
+import { Component, OnInit, effect, inject, signal, PLATFORM_ID } from '@angular/core';
+import { CommonModule, DatePipe, DecimalPipe, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, finalize } from 'rxjs';
+import { forkJoin, finalize, Subject, debounceTime, distinctUntilChanged } from 'rxjs';
+import { Router } from '@angular/router';
 
 // PrimeNG Imports
 import { SelectModule } from 'primeng/select';
 import { CardModule } from 'primeng/card';
-import { TableModule } from 'primeng/table';
+import { TableModule, TableLazyLoadEvent } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { ChartModule } from 'primeng/chart';
 import { SkeletonModule } from 'primeng/skeleton';
@@ -15,13 +16,22 @@ import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
 import { TooltipModule } from 'primeng/tooltip';
 import { DatePickerModule } from 'primeng/datepicker';
+import { IconFieldModule } from 'primeng/iconfield';
+import { InputIconModule } from 'primeng/inputicon';
+import { AvatarModule } from 'primeng/avatar';
+import { MenuModule } from 'primeng/menu';
+import { MenuItem } from 'primeng/api';
+import { DrawerModule } from 'primeng/drawer';
+import { RippleModule } from 'primeng/ripple';
 
 import { AnalyticsService, Hit, Site, SiteStats } from '../core/services/analytics.service';
+import { Brand } from '../core/components/brand/brand';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
   imports: [
+    Brand,
     CommonModule,
     FormsModule,
     DatePipe,
@@ -36,23 +46,46 @@ import { AnalyticsService, Hit, Site, SiteStats } from '../core/services/analyti
     InputTextModule,
     MessageModule,
     TooltipModule,
-    DatePickerModule
+    DatePickerModule,
+    IconFieldModule,
+    InputIconModule,
+    AvatarModule,
+    MenuModule,
+    DrawerModule,
+    RippleModule
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
 export class Dashboard implements OnInit {
   private analyticsService = inject(AnalyticsService);
+  private router = inject(Router);
+  private platformId = inject(PLATFORM_ID);
+
+  protected isDrawerVisible = signal<boolean>(false);
+  protected isDarkMode = signal<boolean>(false);
+  protected systemVersion = signal<string>('');
+
+  protected userMenuItems: MenuItem[] = [
+    {
+        label: 'Sign Out',
+        icon: 'pi pi-sign-out',
+        command: () => {
+            document.cookie = 'hk_token=; Max-Age=0; path=/;';
+            this.router.navigate(['/login']);
+        }
+    }
+  ];
 
   // --- State Signals ---
   protected sites = signal<Site[]>([]);
   protected selectedSite = signal<Site | null>(null);
-  
   protected stats = signal<SiteStats | null>(null);
   protected recentHits = signal<Hit[]>([]);
-  
+  protected totalHits = signal<number>(0); 
   protected isLoadingSites = signal<boolean>(true);
-  protected isLoadingData = signal<boolean>(false);
+  protected isLoadingData = signal<boolean>(false); 
+  protected isLoadingHits = signal<boolean>(false); 
 
   protected timeRanges = [
     { label: 'Last 24 Hours', value: '24h' },
@@ -61,7 +94,11 @@ export class Dashboard implements OnInit {
     { label: 'Last Year', value: '1y' },
     { label: 'Custom Range', value: 'custom' }
   ];
-  protected selectedRange = signal(this.timeRanges[2]); // Default 30d
+  protected selectedRange = signal(this.timeRanges[2]);
+
+  // --- Search State ---
+  protected searchQuery = signal<string>('');
+  private searchSubject = new Subject<string>();
 
   // --- Custom Range Dialog State ---
   protected isCustomRangeVisible = signal<boolean>(false);
@@ -84,76 +121,192 @@ export class Dashboard implements OnInit {
     maintainAspectRatio: false,
     aspectRatio: 0.5,
     responsive: true,
-    interaction: {
-        mode: 'index',
-        intersect: false,
-    },
+    interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: {
-        labels: { color: '#94a3b8', usePointStyle: true, boxWidth: 8 },
-        position: 'bottom'
-      },
-      tooltip: {
-        mode: 'index',
-        intersect: false,
-        backgroundColor: 'rgba(15, 23, 42, 0.9)',
-        titleColor: '#f8fafc',
-        bodyColor: '#f8fafc',
-        borderColor: '#334155',
-        borderWidth: 1,
-        padding: 10,
-        cornerRadius: 8,
-        displayColors: true
-      }
+      legend: { labels: { color: '#94a3b8', usePointStyle: true, boxWidth: 8 }, position: 'bottom' },
+      tooltip: { mode: 'index', intersect: false, backgroundColor: 'rgba(15, 23, 42, 0.9)', titleColor: '#f8fafc', bodyColor: '#f8fafc', borderColor: '#334155', borderWidth: 1, padding: 10, cornerRadius: 8, displayColors: true }
     },
     scales: {
-      x: {
-        ticks: { color: '#64748b', maxTicksLimit: 8 },
-        grid: { color: '#334155', drawBorder: false, tickLength: 0 },
-        border: { display: false }
-      },
-      y: {
-        ticks: { color: '#64748b', stepSize: 1 },
-        grid: { color: '#334155', drawBorder: false, tickLength: 0 },
-        border: { display: false },
-        beginAtZero: true
-      }
+      x: { ticks: { color: '#64748b', maxTicksLimit: 8 }, grid: { color: '#334155', drawBorder: false, tickLength: 0 }, border: { display: false } },
+      y: { ticks: { color: '#64748b', stepSize: 1 }, grid: { color: '#334155', drawBorder: false, tickLength: 0 }, border: { display: false }, beginAtZero: true }
     }
   };
 
+  private lastTableEvent: TableLazyLoadEvent | null = null;
+
   constructor() {
-    // Trigger data load when Site OR Time Range changes
+    if (isPlatformBrowser(this.platformId)) {
+        const savedTheme = localStorage.getItem('hk_theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        
+        if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+            this.setDarkMode(true);
+        } else {
+            this.setDarkMode(false);
+        }
+    }
+
+    this.searchSubject.pipe(debounceTime(400), distinctUntilChanged()).subscribe(query => {
+      this.searchQuery.set(query);
+      if (this.lastTableEvent) {
+        this.lastTableEvent.first = 0;
+        this.loadHits(this.lastTableEvent);
+      }
+    });
+
     effect(() => {
       const site = this.selectedSite();
       const range = this.selectedRange();
       const customApplied = this.customRangeApplied(); 
 
       if (site && range) {
+        let dates: {from: string, to: string} | null = null;
+
         if (range.value === 'custom') {
            if (customApplied) {
-             const dates = this.customRangeDates();
-             if (dates && dates.length === 2 && dates[0] && dates[1]) {
-               this.loadDashboardData(site.id, dates[0].toISOString(), dates[1].toISOString());
+             const d = this.customRangeDates();
+             if (d && d.length === 2 && d[0] && d[1]) {
+               dates = { from: d[0].toISOString(), to: d[1].toISOString() };
              }
            }
         } else {
            this.customRangeApplied.set(false); 
-           // Todo: weird ux
            this.resetCustomLabel(); 
-           
-           const dates = this.getDatesFromPreset(range.value);
-           this.loadDashboardData(site.id, dates.from, dates.to);
+           dates = this.getDatesFromPreset(range.value);
+        }
+
+        if (dates) {
+          this.loadDashboardStats(site.id, dates.from, dates.to);
+          if (this.lastTableEvent) {
+            this.lastTableEvent.first = 0; 
+            this.loadHits(this.lastTableEvent);
+          }
         }
       } else {
         this.stats.set(null);
         this.chartData.set(null);
         this.recentHits.set([]);
+        this.totalHits.set(0);
       }
     });
   }
 
   ngOnInit(): void {
     this.loadSites();
+
+    this.analyticsService.getSystemStatus().subscribe({
+        next: (status) => this.systemVersion.set(status.version),
+        error: () => this.systemVersion.set('unknown')
+    });
+  }
+
+  protected toggleDarkMode(): void {
+    this.setDarkMode(!this.isDarkMode());
+  }
+
+  private setDarkMode(isDark: boolean): void {
+    this.isDarkMode.set(isDark);
+    const html = document.querySelector('html');
+    if (isDark) {
+        html?.classList.add('p-dark');
+        localStorage.setItem('hk_theme', 'dark');
+    } else {
+        html?.classList.remove('p-dark');
+        localStorage.setItem('hk_theme', 'light');
+    }
+    this.updateChartTheme(isDark);
+  }
+
+    private updateChartTheme(isDark: boolean): void {
+    const textColor = isDark ? '#94a3b8' : '#64748b';
+    const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+    const tooltipBg = isDark ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.9)';
+    const tooltipText = isDark ? '#f8fafc' : '#0f172a';
+    const tooltipBorder = isDark ? '#334155' : '#e2e8f0';
+
+    this.chartOptions = {
+        maintainAspectRatio: false,
+        aspectRatio: 0.5,
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+            legend: { labels: { color: textColor, usePointStyle: true, boxWidth: 8 }, position: 'bottom' },
+            tooltip: { 
+                mode: 'index', 
+                intersect: false, 
+                backgroundColor: tooltipBg, 
+                titleColor: tooltipText, 
+                bodyColor: tooltipText, 
+                borderColor: tooltipBorder, 
+                borderWidth: 1, 
+                padding: 10, 
+                cornerRadius: 8, 
+                displayColors: true 
+            }
+        },
+        scales: {
+            x: { 
+                ticks: { color: textColor, maxTicksLimit: 8 }, 
+                grid: { color: gridColor, drawBorder: false, tickLength: 0 }, 
+                border: { display: false } 
+            },
+            y: { 
+                ticks: { color: textColor, stepSize: 1 }, 
+                grid: { color: gridColor, drawBorder: false, tickLength: 0 }, 
+                border: { display: false }, 
+                beginAtZero: true 
+            }
+        }
+    };
+  }
+
+
+  onSearch(event: Event): void {
+    const val = (event.target as HTMLInputElement).value;
+    this.searchSubject.next(val);
+  }
+
+  loadHits(event: TableLazyLoadEvent): void {
+    this.lastTableEvent = event;
+    const site = this.selectedSite();
+    if (!site) return;
+
+    let dates: {from: string, to: string};
+    if (this.selectedRange().value === 'custom' && this.customRangeDates()) {
+       const d = this.customRangeDates()!;
+       if (d.length === 2 && d[0] && d[1]) {
+         dates = { from: d[0].toISOString(), to: d[1].toISOString() };
+       } else {
+         dates = this.getDatesFromPreset('30d');
+       }
+    } else {
+       dates = this.getDatesFromPreset(this.selectedRange().value);
+    }
+
+    this.isLoadingHits.set(true);
+
+    const rows = event.rows ?? 10;
+    const first = event.first ?? 0;
+    const page = (first / rows) + 1;
+    const sortField = event.sortField as string | undefined;
+    const sortOrder = event.sortOrder === 1 ? 'asc' : 'desc';
+
+    this.analyticsService.getHits(
+      site.id, 
+      dates.from, 
+      dates.to, 
+      page, 
+      rows, 
+      sortField, 
+      sortOrder,
+      this.searchQuery()
+    ).pipe(finalize(() => this.isLoadingHits.set(false))).subscribe({
+      next: (res) => {
+        this.recentHits.set(res.data);
+        this.totalHits.set(res.total);
+      },
+      error: (err) => console.error('Failed to load hits', err)
+    });
   }
 
   public loadSites(): void {
@@ -162,113 +315,61 @@ export class Dashboard implements OnInit {
       next: (sites) => {
         this.sites.set(sites);
         this.isLoadingSites.set(false);
-        
         if (sites.length > 0 && !this.selectedSite()) {
           this.selectedSite.set(sites[0]);
         }
       },
-      error: (err) => {
-        console.error('Failed to load sites', err);
-        this.isLoadingSites.set(false);
-      }
+      error: (err) => { console.error(err); this.isLoadingSites.set(false); }
     });
   }
 
-  public loadDashboardData(siteId: string, from: string, to: string): void {
+  public loadDashboardStats(siteId: string, from: string, to: string): void {
     this.isLoadingData.set(true);
-    // TODO: revisit at some point
-    forkJoin({
-      stats: this.analyticsService.getSiteStats(siteId, from, to),
-      hits: this.analyticsService.getHits(siteId)
-    }).pipe(
-      finalize(() => this.isLoadingData.set(false))
-    ).subscribe({
-      next: (result) => {
-        this.stats.set(result.stats);
-        this.updateChart(result.stats);
-        this.recentHits.set(result.hits);
+    this.analyticsService.getSiteStats(siteId, from, to)
+    .pipe(finalize(() => this.isLoadingData.set(false))).subscribe({
+      next: (stats) => {
+        this.stats.set(stats);
+        this.updateChart(stats);
       },
-      error: (err) => {
-        console.error('Failed to load dashboard data', err);
-      }
+      error: (err) => console.error(err)
     });
   }
 
   public getDatesFromPreset(rangeValue: string): { from: string, to: string } {
     const end = new Date();
     const start = new Date();
-
     switch (rangeValue) {
-      case '24h':
-        start.setHours(end.getHours() - 24);
-        break;
-      case '7d':
-        start.setDate(end.getDate() - 7);
-        break;
-      case '30d':
-        start.setDate(end.getDate() - 30);
-        break;
-      case '1y':
-        start.setFullYear(end.getFullYear() - 1);
-        break;
-      default:
-        start.setDate(end.getDate() - 30);
-        break;
+      case '24h': start.setHours(end.getHours() - 24); break;
+      case '7d': start.setDate(end.getDate() - 7); break;
+      case '30d': start.setDate(end.getDate() - 30); break;
+      case '1y': start.setFullYear(end.getFullYear() - 1); break;
+      default: start.setDate(end.getDate() - 30); break;
     }
-
-    return {
-      from: start.toISOString(),
-      to: end.toISOString()
-    };
+    return { from: start.toISOString(), to: end.toISOString() };
   }
 
   protected onRangeChange(event: any): void {
-    if (event.value.value === 'custom') {
-      this.isCustomRangeVisible.set(true);
-    }
+    if (event.value.value === 'custom') this.isCustomRangeVisible.set(true);
   }
 
   protected applyCustomRange(): void {
     const dates = this.customRangeDates();
     if (dates && dates[0] && dates[1]) {
       this.isCustomRangeVisible.set(false);
-      
-      // Format label: "Nov 20 - Nov 21"
       const startStr = dates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const endStr = dates[1].toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       const label = `${startStr} - ${endStr}`;
-
-      // Update the 'custom' entry in timeRanges
-      this.timeRanges = this.timeRanges.map(r => {
-        if (r.value === 'custom') {
-            return { ...r, label: label };
-        }
-        return r;
-      });
-
-      // Re-set the selectedRange to point to the updated object
-      // This ensures the Dropdown UI updates to show the dates
+      this.timeRanges = this.timeRanges.map(r => r.value === 'custom' ? { ...r, label: label } : r);
       const updatedCustom = this.timeRanges.find(r => r.value === 'custom');
-      if (updatedCustom) {
-          this.selectedRange.set(updatedCustom);
-      }
-
+      if (updatedCustom) this.selectedRange.set(updatedCustom);
       this.customRangeApplied.set(true); 
     }
   }
 
   private resetCustomLabel(): void {
-    // If we switch back to a preset, reset the custom label to "Custom Range"
-    // so it looks clean if they open it again later.
-    this.timeRanges = this.timeRanges.map(r => {
-        if (r.value === 'custom') {
-            return { ...r, label: 'Custom Range' };
-        }
-        return r;
-    });
+    this.timeRanges = this.timeRanges.map(r => r.value === 'custom' ? { ...r, label: 'Custom Range' } : r);
   }
 
-  // Helper to format seconds into "1m 30s"
   protected formatDuration(seconds: number): string {
     if (!seconds) return '0s';
     const m = Math.floor(seconds / 60);
@@ -280,7 +381,6 @@ export class Dashboard implements OnInit {
   private updateChart(stats: SiteStats): void {
     const is24h = this.selectedRange().value === '24h';
     let isShortRange = is24h;
-    
     if (this.selectedRange().value === 'custom' && this.customRangeDates()) {
         const dates = this.customRangeDates()!;
         if (dates[0] && dates[1]) {
@@ -288,18 +388,13 @@ export class Dashboard implements OnInit {
             if (diffHours < 48) isShortRange = true;
         }
     }
-
     const labels = stats.chart_data.map(d => {
       const date = new Date(d.time);
-      if (isShortRange) {
-         return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-      }
+      if (isShortRange) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     });
-
     const pageviews = stats.chart_data.map(d => d.pageviews);
     const visitors = stats.chart_data.map(d => d.visitors);
-
     this.chartData.set({
       labels: labels,
       datasets: [
@@ -345,52 +440,35 @@ export class Dashboard implements OnInit {
     });
   }
 
-  protected onSiteChange(event: any): void {
-    // The effect will handle the data fetching
-  }
-
+  protected onSiteChange(event: any): void {}
   protected openAddSiteDialog(): void {
     this.newSiteDomain.set('');
     this.createSiteError.set(null);
     this.isAddSiteVisible.set(true);
   }
-
   protected saveNewSite(): void {
     const domain = this.newSiteDomain().trim();
-    if (!domain) {
-      this.createSiteError.set('Domain is required');
-      return;
-    }
-
+    if (!domain) { this.createSiteError.set('Domain is required'); return; }
     this.isCreatingSite.set(true);
     this.analyticsService.createSite(domain).subscribe({
       next: (site) => {
         this.isCreatingSite.set(false);
         this.isAddSiteVisible.set(false);
-        
-        // Update sites list and select the new one
         this.sites.update(sites => [site, ...sites]);
         this.selectedSite.set(site);
       },
       error: (err) => {
         this.isCreatingSite.set(false);
-        if (err.status === 409) {
-          this.createSiteError.set('This domain is already registered.');
-        } else {
-          this.createSiteError.set('Failed to create site. Please try again.');
-        }
+        if (err.status === 409) this.createSiteError.set('This domain is already registered.');
+        else this.createSiteError.set('Failed to create site. Please try again.');
       }
     });
   }
-
   protected showSnippet(): void {
     const origin = window.location.origin;
     const code = `<script src="${origin}/hk.js" async defer></script>`;
     this.snippetCode.set(code);
     this.isSnippetVisible.set(true);
   }
-  
-  protected copySnippet(): void {
-    navigator.clipboard.writeText(this.snippetCode());
-  }
+  protected copySnippet(): void { navigator.clipboard.writeText(this.snippetCode()); }
 }

@@ -13,10 +13,12 @@ import { finalize } from 'rxjs/operators';
 import { PasswordModule } from 'primeng/password';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
+import { Brand } from '../core/components/brand/brand';
 @Component({
   selector: 'app-login',
   standalone: true,
   imports: [
+    Brand,
     CommonModule,
     ReactiveFormsModule,
     PasswordModule,

@@ -34,13 +34,11 @@ func check(err error) {
 }
 
 func Run() {
-	// 1. Load Config first to determine Log Level and Addresses
 	conf := config.Load()
+	conf.Version = Version
 
-	// 2. Setup Logger
 	logLevel, err := hklog.ParseLevel(conf.LogLevel)
 	if err != nil {
-		// Fallback to safe default if invalid level provided
 		fmt.Fprintf(os.Stderr, "Invalid log level '%s', defaulting to INFO: %v\n", conf.LogLevel, err)
 		logLevel = slog.LevelInfo
 	}

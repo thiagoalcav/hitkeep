@@ -58,3 +58,20 @@ type SiteStats struct {
 	PagesPerSession    float64          `json:"pages_per_session"`
 	ChartData          []ChartDataPoint `json:"chart_data"`
 }
+
+type HitQueryParams struct {
+	SiteID    uuid.UUID
+	UserID    uuid.UUID
+	Start     time.Time
+	End       time.Time
+	Query     string
+	SortField string
+	SortOrder string
+	Limit     int
+	Offset    int
+}
+
+type PaginatedHits struct {
+	Data  []Hit `json:"data"`
+	Total int   `json:"total"`
+}

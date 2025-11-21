@@ -82,6 +82,7 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		return nil, fmt.Errorf("failed to calc KPIs: %w", err)
 	}
 
+	//nolint:gosec // not user input
 	chartQuery := fmt.Sprintf(`
 	WITH time_range AS (
 		SELECT unnest(generate_series(?::TIMESTAMP, ?::TIMESTAMP, INTERVAL %s)) as bucket

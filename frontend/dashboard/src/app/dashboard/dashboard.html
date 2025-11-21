@@ -1,309 +1,395 @@
-<!-- Main Container: Uses theme background color -->
-<div class="min-h-screen w-full bg-[var(--p-surface-ground)] p-4 md:p-8 transition-colors duration-200">
-  
-  <!-- Header Section -->
-  <header class="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-    <div>
-      <h1 class="text-3xl font-bold text-[var(--p-text-color)]">Dashboard</h1>
-      <p class="text-sm text-[var(--p-text-muted-color)] mt-1">Overview of your website performance</p>
+<div class="flex h-screen w-full bg-[var(--p-surface-ground)] transition-colors duration-200">
+
+  <!-- Desktop Sidebar -->
+  <aside
+    class="hidden md:flex w-64 flex-col bg-[var(--p-surface-card)] border-r border-surface-200 dark:border-surface-700 p-4 gap-6">
+
+    <!-- Brand -->
+    <div class="px-2">
+      <app-brand size="small"></app-brand>
     </div>
 
-    <div class="flex items-center gap-3 flex-wrap">
-      <!-- Site Selector -->
+    <!-- Site Selector (Pinned Top) -->
+    <div class="flex flex-col gap-2">
+      <label class="text-xs font-semibold text-[var(--p-text-muted-color)] uppercase px-2">Website</label>
       @if (isLoadingSites()) {
-        <p-skeleton width="200px" height="40px" styleClass="rounded-md"></p-skeleton>
+      <p-skeleton height="40px" class="rounded-md"></p-skeleton>
       } @else if (sites().length > 0) {
-        <p-select 
-          [options]="sites()" 
-          [(ngModel)]="selectedSite" 
-          optionLabel="domain" 
-          placeholder="Select a Website"
-          (onChange)="onSiteChange($event)"
-          styleClass="w-full md:w-56">
-        </p-select>
-
-        <!-- Time Range Selector -->
-        <p-select 
-            [options]="timeRanges" 
-            [(ngModel)]="selectedRange" 
-            optionLabel="label"
-            (onChange)="onRangeChange($event)"
-            styleClass="w-full md:w-40">
-        </p-select>
-
-        <!-- Snippet Button -->
-        <p-button 
-          icon="pi pi-code" 
-          (onClick)="showSnippet()" 
-          styleClass="p-button-rounded p-button-text" 
-          pTooltip="Get Tracking Code"
-          tooltipPosition="bottom">
-        </p-button>
-
-        <!-- Add Site Button -->
-        <p-button 
-          icon="pi pi-plus" 
-          (onClick)="openAddSiteDialog()" 
-          styleClass="p-button-rounded p-button-text" 
-          pTooltip="Add new website"
-          tooltipPosition="bottom">
-        </p-button>
+      <p-select [options]="sites()" [(ngModel)]="selectedSite" optionLabel="domain" placeholder="Select Site"
+        (onChange)="onSiteChange($event)" class="w-full">
+      </p-select>
+      <p-button label="New Site" icon="pi pi-plus" size="small" variant="outlined"
+        (onClick)="openAddSiteDialog()"></p-button>
       } @else {
-        <p-button 
-          label="Add Website" 
-          icon="pi pi-plus" 
-          (onClick)="openAddSiteDialog()"
-          severity="primary">
-        </p-button>
+      <p-button label="Create Website" icon="pi pi-plus" (onClick)="openAddSiteDialog()"></p-button>
       }
-      
-      <!-- Refresh Button -->
-      <p-button 
-        icon="pi pi-refresh" 
-        [loading]="isLoadingData()" 
-        (onClick)="selectedSite() && loadDashboardData(selectedSite()!.id, getDatesFromPreset(selectedRange().value).from, getDatesFromPreset(selectedRange().value).to)" 
-        styleClass="p-button-text p-button-rounded p-button-secondary"
-        [disabled]="!selectedSite()"
-        pTooltip="Refresh Data"
-        tooltipPosition="bottom">
-      </p-button>
     </div>
-  </header>
+
+    <!-- Navigation Links -->
+    <nav class="flex-1 flex flex-col gap-1">
+      <label class="text-xs font-semibold text-[var(--p-text-muted-color)] uppercase px-2 mb-1">Analytics</label>
+
+      <a
+        class="flex items-center gap-3 px-3 py-2 rounded-md bg-[var(--p-primary-50)] text-[var(--p-primary-700)] dark:bg-[var(--p-primary-900)]/30 dark:text-[var(--p-primary-400)] font-medium cursor-pointer">
+        <i class="pi pi-chart-bar"></i>
+        <span>Dashboard</span>
+      </a>
+    </nav>
+
+    <!-- User & System (Pinned Bottom) -->
+    <div class="border-t border-surface-200 dark:border-surface-700 pt-4 flex flex-col gap-2">
+      <div class="flex items-center justify-between p-2 rounded-md hover:bg-[var(--p-surface-hover)] transition-colors">
+        <div class="flex items-center gap-2">
+          <p-avatar icon="pi pi-user" shape="circle"
+            class="bg-[var(--p-surface-200)] text-[var(--p-text-color)]"></p-avatar>
+          <div class="flex flex-col">
+            <span class="text-sm font-medium text-[var(--p-text-color)]">Admin</span>
+            <span class="text-xs text-[var(--p-text-muted-color)]">Account</span>
+          </div>
+        </div>
+        <div class="flex items-center">
+          <button (click)="toggleDarkMode()"
+            class="p-2 rounded-full hover:bg-[var(--p-surface-200)] text-[var(--p-text-muted-color)] transition-colors"
+            [title]="isDarkMode() ? 'Switch to Light' : 'Switch to Dark'">
+            <i class="pi" [class]="isDarkMode() ? 'pi-moon' : 'pi-sun'"></i>
+          </button>
+          <button (click)="userMenu.toggle($event)"
+            class="p-2 rounded-full hover:bg-[var(--p-surface-200)] text-[var(--p-text-muted-color)] transition-colors">
+            <i class="pi pi-ellipsis-v"></i>
+          </button>
+          <p-menu #userMenu [model]="userMenuItems" [popup]="true"></p-menu>
+        </div>
+      </div>
+    </div>
+    <div class="px-2 text-[10px] text-[var(--p-text-muted-color)] text-center opacity-60 font-mono">
+      {{ systemVersion() }}
+    </div>
+  </aside>
 
   <!-- Main Content -->
-  @if (selectedSite()) {
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-      
-      <!-- KPI: Total Pageviews -->
-      <p-card styleClass="shadow-sm h-full border-0 surface-card">
+  <main class="flex-1 flex flex-col h-full overflow-hidden relative">
+
+    <!-- Mobile Top Bar -->
+    <div
+      class="md:hidden flex items-center justify-between p-4 bg-[var(--p-surface-card)] border-b border-surface-200 dark:border-surface-700">
+      <app-brand size="small"></app-brand>
+      <button (click)="isDrawerVisible.set(true)" class="p-2 rounded-md hover:bg-[var(--p-surface-hover)]">
+        <i class="pi pi-bars text-xl"></i>
+      </button>
+    </div>
+
+    <!-- Mobile Drawer (Formerly Sidebar) -->
+    <p-drawer [(visible)]="isDrawerVisible" class="w-64">
+      <div class="flex flex-col h-full gap-6">
+        <div class="px-2">
+          <app-brand size="small"></app-brand>
+        </div>
+
         <div class="flex flex-col gap-2">
-          <span class="text-sm font-medium text-[var(--p-text-muted-color)]">Total Pageviews</span>
-          <div class="flex items-baseline gap-2">
-             @if (stats()) {
-                <span class="text-2xl xl:text-3xl font-bold text-[var(--p-primary-color)]">{{ stats()!.total_pageviews | number }}</span>
-             } @else {
-                <p-skeleton width="50%" height="2rem"></p-skeleton>
-             }
+          <label class="text-xs font-semibold uppercase px-2">Website</label>
+          @if (sites().length > 0) {
+          <p-select [options]="sites()" [(ngModel)]="selectedSite" optionLabel="domain"
+            (onChange)="onSiteChange($event)" class="w-full">
+          </p-select>
+          }
+        </div>
+
+        <nav class="flex-1 flex flex-col gap-1">
+          <a
+            class="flex items-center gap-3 px-3 py-2 rounded-md bg-[var(--p-primary-50)] text-[var(--p-primary-700)] font-medium">
+            <i class="pi pi-chart-bar"></i>
+            <span>Dashboard</span>
+          </a>
+        </nav>
+
+        <div class="mt-auto pt-4 flex justify-between items-center">
+          <div class="flex items-center gap-2">
+            <p-avatar icon="pi pi-user" shape="circle"></p-avatar>
+            <span>Admin</span>
+          </div>
+          <div class="flex gap-2">
+            <button (click)="toggleDarkMode()" class="p-2 rounded-full border"><i class="pi"
+                [class]="isDarkMode() ? 'pi-moon' : 'pi-sun'"></i></button>
+            <button (click)="userMenuMobile.toggle($event)" class="p-2 rounded-full border"><i
+                class="pi pi-sign-out"></i></button>
+            <p-menu #userMenuMobile [model]="userMenuItems" [popup]="true"></p-menu>
           </div>
         </div>
-      </p-card>
+      </div>
+    </p-drawer>
 
-      <!-- KPI: Unique Sessions -->
-      <p-card styleClass="shadow-sm h-full border-0 surface-card">
-        <div class="flex flex-col gap-2">
-          <span class="text-sm font-medium text-[var(--p-text-muted-color)]">Unique Sessions</span>
-          <div class="flex items-baseline gap-2">
-            @if (stats()) {
-                <span class="text-2xl xl:text-3xl font-bold text-[var(--p-text-color)]">{{ stats()!.unique_sessions | number }}</span>
-            } @else {
-                <p-skeleton width="50%" height="2rem"></p-skeleton>
-            }
-          </div>
+    <!-- Scrollable Dashboard Area -->
+    <div class="flex-1 overflow-y-auto p-4 md:p-8">
+
+      <!-- Page Header / Actions -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 class="text-2xl md:text-3xl font-bold text-[var(--p-text-color)]">Overview</h1>
+          <p class="text-sm text-[var(--p-text-muted-color)]">
+            {{ selectedSite()?.domain }}
+          </p>
         </div>
-      </p-card>
 
-      <!-- KPI: Bounce Rate -->
-      <p-card styleClass="shadow-sm h-full border-0 surface-card">
-        <div class="flex flex-col gap-2">
-          <span class="text-sm font-medium text-[var(--p-text-muted-color)]">Bounce Rate</span>
-          <div class="flex items-baseline gap-2">
-            @if (stats()) {
-                <span class="text-2xl xl:text-3xl font-bold text-[var(--p-text-color)]">{{ stats()!.bounce_rate | number:'1.0-1' }}%</span>
-            } @else {
-                <p-skeleton width="50%" height="2rem"></p-skeleton>
-            }
-          </div>
+        <div class="flex items-center gap-3">
+          <p-select [options]="timeRanges" [(ngModel)]="selectedRange" optionLabel="label"
+            (onChange)="onRangeChange($event)" class="w-40 md:w-48">
+          </p-select>
+
+          <p-button icon="pi pi-code" (onClick)="showSnippet()"
+            class="p-button-rounded p-button-text p-button-secondary" pTooltip="Get Code" tooltipPosition="bottom">
+          </p-button>
+
+          <p-button icon="pi pi-refresh" [loading]="isLoadingData()"
+            (onClick)="selectedSite() && loadDashboardStats(selectedSite()!.id, getDatesFromPreset(selectedRange().value).from, getDatesFromPreset(selectedRange().value).to)"
+            class="p-button-rounded p-button-text p-button-secondary" [disabled]="!selectedSite()" pTooltip="Refresh"
+            tooltipPosition="bottom">
+          </p-button>
         </div>
-      </p-card>
+      </div>
 
-      <!-- KPI: Avg Session Duration (NEW) -->
-      <p-card styleClass="shadow-sm h-full border-0 surface-card">
-        <div class="flex flex-col gap-2">
-          <span class="text-sm font-medium text-[var(--p-text-muted-color)]">Avg. Session Time</span>
-          <div class="flex items-baseline gap-2">
-            @if (stats()) {
-                <span class="text-2xl xl:text-3xl font-bold text-[var(--p-text-color)]">{{ formatDuration(stats()!.avg_session_duration) }}</span>
-            } @else {
-                <p-skeleton width="50%" height="2rem"></p-skeleton>
-            }
-          </div>
-        </div>
-      </p-card>
+      <!-- Content Grid -->
+      @if (selectedSite()) {
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5 mb-6">
 
-      <!-- KPI: Pages per Session (NEW) -->
-      <p-card styleClass="shadow-sm h-full border-0 surface-card">
-        <div class="flex flex-col gap-2">
-          <span class="text-sm font-medium text-[var(--p-text-muted-color)]">Pages / Session</span>
-          <div class="flex items-baseline gap-2">
-            @if (stats()) {
-                <span class="text-2xl xl:text-3xl font-bold text-[var(--p-text-color)]">{{ stats()!.pages_per_session | number:'1.1-2' }}</span>
-            } @else {
-                <p-skeleton width="50%" height="2rem"></p-skeleton>
-            }
+        <p-card class="shadow-sm h-full border border-surface-200 dark:border-surface-700 surface-card">
+          <div class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-[var(--p-text-muted-color)]">Total Pageviews</span>
+            <div class="flex items-baseline gap-2">
+              @if (stats()) {
+              <span class="text-2xl xl:text-3xl font-bold text-[var(--p-primary-color)]">{{ stats()!.total_pageviews |
+                number }}</span>
+              } @else {
+              <p-skeleton width="50%" height="2rem"></p-skeleton>
+              }
+            </div>
           </div>
-        </div>
-      </p-card>
+        </p-card>
 
-      <!-- Chart Section -->
-      <div class="md:col-span-2 xl:col-span-5">
-        <p-card styleClass="shadow-sm border-0 surface-card">
-          <div class="mb-6 flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-[var(--p-text-color)]">Traffic Overview ({{ selectedRange().label }})</h3>
+        <p-card class="shadow-sm h-full border border-surface-200 dark:border-surface-700 surface-card">
+          <div class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-[var(--p-text-muted-color)]">Unique Sessions</span>
+            <div class="flex items-baseline gap-2">
+              @if (stats()) {
+              <span class="text-2xl xl:text-3xl font-bold text-[var(--p-text-color)]">{{ stats()!.unique_sessions |
+                number }}</span>
+              } @else {
+              <p-skeleton width="50%" height="2rem"></p-skeleton>
+              }
+            </div>
           </div>
-          <div class="h-80 w-full relative">
-            @if (chartData()) {
+        </p-card>
+
+        <p-card class="shadow-sm h-full border border-surface-200 dark:border-surface-700 surface-card">
+          <div class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-[var(--p-text-muted-color)]">Bounce Rate</span>
+            <div class="flex items-baseline gap-2">
+              @if (stats()) {
+              <span class="text-2xl xl:text-3xl font-bold text-[var(--p-text-color)]">{{ stats()!.bounce_rate |
+                number:'1.0-1' }}%</span>
+              } @else {
+              <p-skeleton width="50%" height="2rem"></p-skeleton>
+              }
+            </div>
+          </div>
+        </p-card>
+
+        <p-card class="shadow-sm h-full border border-surface-200 dark:border-surface-700 surface-card">
+          <div class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-[var(--p-text-muted-color)]">Avg. Duration</span>
+            <div class="flex items-baseline gap-2">
+              @if (stats()) {
+              <span class="text-2xl xl:text-3xl font-bold text-[var(--p-text-color)]">{{
+                formatDuration(stats()!.avg_session_duration) }}</span>
+              } @else {
+              <p-skeleton width="50%" height="2rem"></p-skeleton>
+              }
+            </div>
+          </div>
+        </p-card>
+
+        <p-card class="shadow-sm h-full border border-surface-200 dark:border-surface-700 surface-card">
+          <div class="flex flex-col gap-2">
+            <span class="text-sm font-medium text-[var(--p-text-muted-color)]">Pages / Session</span>
+            <div class="flex items-baseline gap-2">
+              @if (stats()) {
+              <span class="text-2xl xl:text-3xl font-bold text-[var(--p-text-color)]">{{ stats()!.pages_per_session |
+                number:'1.1-2' }}</span>
+              } @else {
+              <p-skeleton width="50%" height="2rem"></p-skeleton>
+              }
+            </div>
+          </div>
+        </p-card>
+
+        <!-- Chart -->
+        <div class="md:col-span-2 xl:col-span-5">
+          <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card">
+            <div class="mb-6 flex items-center justify-between">
+              <h3 class="text-lg font-semibold text-[var(--p-text-color)]">Traffic Overview</h3>
+            </div>
+            <div class="h-80 w-full relative">
+              @if (chartData()) {
               <p-chart type="line" [data]="chartData()" [options]="chartOptions" height="100%"></p-chart>
-            } @else if(isLoadingData()) {
-                 <div class="w-full h-full flex items-center justify-center">
-                    <i class="pi pi-spin pi-spinner text-4xl text-[var(--p-primary-color)]"></i>
-                 </div>
-            } @else {
-              <div class="absolute inset-0 flex flex-col items-center justify-center text-[var(--p-text-muted-color)] bg-[var(--p-surface-ground)]/50 rounded-lg border-2 border-dashed border-[var(--p-surface-border)]">
-                <i class="pi pi-chart-line text-4xl mb-2 opacity-50"></i>
-                <span>No traffic data available for this period.</span>
+              } @else if(isLoadingData()) {
+              <div class="w-full h-full flex items-center justify-center">
+                <i class="pi pi-spin pi-spinner text-4xl text-[var(--p-primary-color)]"></i>
               </div>
-            }
-          </div>
-        </p-card>
+              } @else {
+              <div
+                class="absolute inset-0 flex flex-col items-center justify-center text-[var(--p-text-muted-color)] bg-[var(--p-surface-ground)]/50 rounded-lg border-2 border-dashed border-[var(--p-surface-border)]">
+                <i class="pi pi-chart-line text-4xl mb-2 opacity-50"></i>
+                <span>No traffic data available.</span>
+              </div>
+              }
+            </div>
+          </p-card>
+        </div>
+
+        <!-- Hits Table -->
+        <div class="md:col-span-2 xl:col-span-5">
+          <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card">
+            <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <h3 class="text-lg font-semibold text-[var(--p-text-color)]">Raw Hits</h3>
+              <p-iconfield>
+                <p-inputicon class="pi pi-search" />
+                <input pInputText type="text" (input)="onSearch($event)" placeholder="Search path, ref, or UA..."
+                  class="w-full sm:w-64" />
+              </p-iconfield>
+            </div>
+
+            <p-table [value]="recentHits()" [lazy]="true" (onLazyLoad)="loadHits($event)" [totalRecords]="totalHits()"
+              [loading]="isLoadingHits()" [rows]="10" [rowsPerPageOptions]="[10, 25, 50]" [paginator]="true"
+              [showCurrentPageReport]="true" currentPageReportTemplate="{first} - {last} of {totalRecords}"
+              class="p-datatable-sm" responsiveLayout="scroll">
+
+              <ng-template pTemplate="header">
+                <tr>
+                  <th pSortableColumn="path"
+                    class="text-xs uppercase font-semibold text-[var(--p-text-muted-color)] cursor-pointer hover:bg-[var(--p-surface-hover)]">
+                    Path <p-sortIcon field="path"></p-sortIcon>
+                  </th>
+                  <th pSortableColumn="timestamp"
+                    class="text-xs uppercase font-semibold text-[var(--p-text-muted-color)] cursor-pointer hover:bg-[var(--p-surface-hover)]">
+                    Time <p-sortIcon field="timestamp"></p-sortIcon>
+                  </th>
+                  <th pSortableColumn="referrer"
+                    class="text-xs uppercase font-semibold text-[var(--p-text-muted-color)] cursor-pointer hover:bg-[var(--p-surface-hover)]">
+                    Referrer <p-sortIcon field="referrer"></p-sortIcon>
+                  </th>
+                  <th class="text-xs uppercase font-semibold text-[var(--p-text-muted-color)]">Device</th>
+                </tr>
+              </ng-template>
+
+              <ng-template pTemplate="body" let-hit>
+                <tr class="text-sm transition-colors hover:bg-[var(--p-surface-hover)]">
+                  <td class="font-medium truncate max-w-[200px] text-[var(--p-text-color)]" title="{{hit.path}}">
+                    {{ hit.path }}
+                  </td>
+                  <td class="whitespace-nowrap text-[var(--p-text-muted-color)]">
+                    {{ hit.timestamp | date:'MMM d, h:mm a' }}
+                  </td>
+                  <td class="truncate max-w-[200px] text-[var(--p-text-muted-color)]" title="{{hit.referrer}}">
+                    {{ hit.referrer || 'Direct' }}
+                  </td>
+                  <td>
+                    <div class="flex items-center gap-2">
+                      <span
+                        class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-[var(--p-surface-ground)] border border-[var(--p-surface-border)] text-[var(--p-text-color)]">
+                        {{ hit.viewport_width > 768 ? 'Desktop' : 'Mobile' }}
+                      </span>
+                      @if(hit.language && hit.language?.length > 0) {
+                      <span class="text-xs uppercase text-[var(--p-text-muted-color)]">{{ hit.language.split('-')[0]
+                        }}</span>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              </ng-template>
+
+              <ng-template pTemplate="emptymessage">
+                <tr>
+                  <td colspan="4" class="text-center p-12 text-[var(--p-text-muted-color)]">
+                    <div class="flex flex-col items-center gap-2">
+                      <i class="pi pi-inbox text-4xl opacity-50"></i>
+                      <p>No hits found matching your criteria.</p>
+                    </div>
+                  </td>
+                </tr>
+              </ng-template>
+
+            </p-table>
+          </p-card>
+        </div>
       </div>
-
-      <!-- Recent Activity Table -->
-      <div class="md:col-span-2 xl:col-span-5">
-        <p-card styleClass="shadow-sm border-0 surface-card">
-          <div class="mb-4">
-            <h3 class="text-lg font-semibold text-[var(--p-text-color)]">Recent Hits</h3>
-          </div>
-          
-          <p-table 
-            [value]="recentHits()" 
-            [rows]="10" 
-            [paginator]="true" 
-            [loading]="isLoadingData()"
-            styleClass="p-datatable-sm"
-            responsiveLayout="scroll">
-            
-            <ng-template pTemplate="header">
-              <tr>
-                <th class="uppercase text-xs font-semibold text-[var(--p-text-muted-color)]">Path</th>
-                <th class="uppercase text-xs font-semibold text-[var(--p-text-muted-color)]">Time</th>
-                <th class="uppercase text-xs font-semibold text-[var(--p-text-muted-color)]">Referrer</th>
-                <th class="uppercase text-xs font-semibold text-[var(--p-text-muted-color)]">Device</th>
-              </tr>
-            </ng-template>
-
-            <ng-template pTemplate="body" let-hit>
-              <tr class="text-sm transition-colors hover:bg-[var(--p-surface-hover)]">
-                <td class="font-medium truncate max-w-[200px] text-[var(--p-text-color)]" title="{{hit.path}}">
-                  {{ hit.path }}
-                </td>
-                <td class="whitespace-nowrap text-[var(--p-text-muted-color)]">
-                  {{ hit.timestamp | date:'MMM d, h:mm a' }}
-                </td>
-                <td class="truncate max-w-[200px] text-[var(--p-text-muted-color)]" title="{{hit.referrer}}">
-                  {{ hit.referrer || 'Direct' }}
-                </td>
-                <td>
-                   <div class="flex items-center gap-2">
-                     <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-[var(--p-surface-ground)] border border-[var(--p-surface-border)] text-[var(--p-text-color)]">
-                       {{ hit.viewport_width > 768 ? 'Desktop' : 'Mobile' }}
-                     </span>
-                     @if(hit.language && hit.language?.length > 0) {
-                       <span class="text-xs uppercase text-[var(--p-text-muted-color)]">{{ hit.language.split('-')[0] }}</span>
-                     }
-                   </div>
-                </td>
-              </tr>
-            </ng-template>
-
-            <ng-template pTemplate="emptymessage">
-              <tr>
-                <td colspan="4" class="text-center p-12 text-[var(--p-text-muted-color)]">
-                  <div class="flex flex-col items-center gap-2">
-                    <i class="pi pi-inbox text-4xl opacity-50"></i>
-                    <p>No hits recorded yet.</p>
-                    <p class="text-xs opacity-75">Visit your site to generate data.</p>
-                  </div>
-                </td>
-              </tr>
-            </ng-template>
-
-          </p-table>
-        </p-card>
+      } @else if (!isLoadingSites() && sites().length === 0) {
+      <div class="flex h-full w-full flex-col items-center justify-center gap-6">
+        <div class="rounded-full bg-[var(--p-surface-card)] p-8 shadow-sm border border-[var(--p-surface-border)]">
+          <i class="pi pi-globe text-6xl text-[var(--p-primary-color)]"></i>
+        </div>
+        <div class="text-center max-w-md space-y-2">
+          <h2 class="text-2xl font-semibold text-[var(--p-text-color)]">No websites found</h2>
+          <p class="text-[var(--p-text-muted-color)]">
+            Create your first site to start tracking analytics.
+          </p>
+        </div>
+        <p-button label="Create Website" icon="pi pi-plus" size="large" (onClick)="openAddSiteDialog()"></p-button>
       </div>
-
+      }
     </div>
-  } @else if (!isLoadingSites() && sites().length === 0) {
-    <!-- Empty State -->
-    <div class="flex h-[60vh] w-full flex-col items-center justify-center gap-6">
-      <div class="rounded-full bg-[var(--p-surface-card)] p-8 shadow-sm border border-[var(--p-surface-border)]">
-        <i class="pi pi-globe text-6xl text-[var(--p-primary-color)]"></i>
-      </div>
-      <div class="text-center max-w-md space-y-2">
-        <h2 class="text-2xl font-semibold text-[var(--p-text-color)]">No websites found</h2>
-        <p class="text-[var(--p-text-muted-color)]">
-          It looks like you haven't set up any websites yet. 
-          Create your first site to start tracking analytics.
-        </p>
-      </div>
-      <p-button label="Create Website" icon="pi pi-plus" size="large" (onClick)="openAddSiteDialog()"></p-button>
-    </div>
-  }
+  </main>
 
-  <!-- Add Site Dialog -->
-  <p-dialog header="Add Website" [(visible)]="isAddSiteVisible" [modal]="true" [style]="{ width: '400px' }" [draggable]="false" [resizable]="false">
+  <!-- Dialogs (Add Site, Custom Range, Snippet) -->
+  <p-dialog header="Add Website" [(visible)]="isAddSiteVisible" [modal]="true" [style]="{ width: '400px' }"
+    [draggable]="false" [resizable]="false">
     <div class="flex flex-col gap-4 pt-2">
-      <p class="text-sm text-[var(--p-text-muted-color)]">Enter the domain name of the website you want to track (e.g., example.com).</p>
-      
+      <p class="text-sm text-[var(--p-text-muted-color)]">Enter the domain name (e.g., example.com).</p>
       <div class="flex flex-col gap-2">
         <label for="domain" class="font-semibold text-sm text-[var(--p-text-color)]">Domain</label>
         <input pInputText id="domain" [(ngModel)]="newSiteDomain" placeholder="example.com" class="w-full" />
         @if (createSiteError()) {
-            <p-message severity="error" [text]="createSiteError()!" variant="simple"></p-message>
+        <p-message severity="error" [text]="createSiteError()!" variant="simple"></p-message>
         }
       </div>
     </div>
     <ng-template pTemplate="footer">
-      <p-button label="Cancel" (onClick)="isAddSiteVisible.set(false)" styleClass="p-button-text"></p-button>
+      <p-button label="Cancel" (onClick)="isAddSiteVisible.set(false)" class="p-button-text"></p-button>
       <p-button label="Add Website" (onClick)="saveNewSite()" [loading]="isCreatingSite()"></p-button>
     </ng-template>
   </p-dialog>
 
-  <!-- Custom Range Dialog -->
-  <p-dialog header="Select Date Range" [(visible)]="isCustomRangeVisible" [modal]="true" [style]="{ width: '450px' }" [draggable]="false" [resizable]="false">
-      <div class="pt-2 pb-4">
-          <p-datepicker 
-              [(ngModel)]="customRangeDates" 
-              selectionMode="range" 
-              [readonlyInput]="true" 
-              class="w-full" 
-              [inline]="true"
-              [showWeek]="false">
-          </p-datepicker>
-      </div>
-      <ng-template pTemplate="footer">
-          <p-button label="Cancel" (onClick)="isCustomRangeVisible.set(false)" styleClass="p-button-text"></p-button>
-          <p-button label="Apply Range" (onClick)="applyCustomRange()" [disabled]="!customRangeDates() || customRangeDates()!.length !== 2 || !customRangeDates()![1]"></p-button>
-      </ng-template>
-  </p-dialog>
-
-  <!-- Snippet Dialog -->
-  <p-dialog header="Tracking Code" [(visible)]="isSnippetVisible" [modal]="true" [style]="{ width: '500px' }" [draggable]="false" [resizable]="false">
-    <div class="flex flex-col gap-4 pt-2">
-        <p class="text-sm text-[var(--p-text-muted-color)]">
-            Copy and paste this snippet into the <code>&lt;head&gt;</code> of your website.
-        </p>
-        <div class="relative">
-            <pre class="p-4 rounded bg-[var(--p-surface-hover)] text-[var(--p-text-color)] font-mono text-sm overflow-x-auto border border-[var(--p-surface-border)]">{{ snippetCode() }}</pre>
-            <button 
-                class="absolute top-2 right-2 p-2 rounded hover:bg-[var(--p-surface-200)] text-[var(--p-text-muted-color)] transition-colors"
-                (click)="copySnippet()"
-                title="Copy to clipboard">
-                <i class="pi pi-copy"></i>
-            </button>
-        </div>
+  <p-dialog header="Select Date Range" [(visible)]="isCustomRangeVisible" [modal]="true" [style]="{ width: '450px' }"
+    [draggable]="false" [resizable]="false">
+    <div class="pt-2 pb-4">
+      <p-datepicker [(ngModel)]="customRangeDates" selectionMode="range" [readonlyInput]="true" class="w-full"
+        [inline]="true" [showWeek]="false">
+      </p-datepicker>
     </div>
-     <ng-template pTemplate="footer">
-      <p-button label="Close" (onClick)="isSnippetVisible.set(false)" styleClass="p-button-text"></p-button>
+    <ng-template pTemplate="footer">
+      <p-button label="Cancel" (onClick)="isCustomRangeVisible.set(false)" class="p-button-text"></p-button>
+      <p-button label="Apply Range" (onClick)="applyCustomRange()"
+        [disabled]="!customRangeDates() || customRangeDates()!.length !== 2 || !customRangeDates()![1]"></p-button>
     </ng-template>
   </p-dialog>
+
+  <p-dialog header="Tracking Code" [(visible)]="isSnippetVisible" [modal]="true" [style]="{ width: '500px' }"
+    [draggable]="false" [resizable]="false">
+    <div class="flex flex-col gap-4 pt-2">
+      <p class="text-sm text-[var(--p-text-muted-color)]">
+        Paste into <code>&lt;head&gt;</code>.
+      </p>
+      <div class="relative">
+        <pre
+          class="p-4 rounded bg-[var(--p-surface-hover)] text-[var(--p-text-color)] font-mono text-sm overflow-x-auto border border-[var(--p-surface-border)]">{{ snippetCode() }}</pre>
+        <button
+          class="absolute top-2 right-2 p-2 rounded hover:bg-[var(--p-surface-200)] text-[var(--p-text-muted-color)] transition-colors"
+          (click)="copySnippet()" title="Copy">
+          <i class="pi pi-copy"></i>
+        </button>
+      </div>
+    </div>
+    <ng-template pTemplate="footer">
+      <p-button label="Close" (onClick)="isSnippetVisible.set(false)" class="p-button-text"></p-button>
+    </ng-template>
+  </p-dialog>
+
 </div>

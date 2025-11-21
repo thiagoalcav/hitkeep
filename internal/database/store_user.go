@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"hitkeep/internal/api"
-
 	"github.com/google/uuid"
+
+	"hitkeep/internal/api"
 )
 
 func (s *Store) GetUserCount(ctx context.Context) (int, error) {

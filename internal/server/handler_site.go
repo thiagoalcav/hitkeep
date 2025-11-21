@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
-	"hitkeep/internal/api"
-
 	"github.com/google/uuid"
+
+	"hitkeep/internal/api"
 )
 
 func (s *Server) handleGetSites() http.HandlerFunc {
@@ -82,7 +83,9 @@ func (s *Server) handleCreateSite() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleGetHits() http.HandlerFunc {
+// handleGetSiteHits retrieves raw hits for a specific site.
+// Path: GET /api/sites/{id}/hits
+func (s *Server) handleGetSiteHits() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserIDFromContext(r)
 		if userID == uuid.Nil {
@@ -94,21 +97,70 @@ func (s *Server) handleGetHits() http.HandlerFunc {
 			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
 			return
 		}
-		siteIDStr := r.URL.Query().Get("site_id")
+
+		siteIDStr := r.PathValue("id")
 		siteID, err := uuid.Parse(siteIDStr)
 		if err != nil {
 			http.Error(w, "Invalid site_id", http.StatusBadRequest)
 			return
 		}
 
-		hits, err := s.store.GetHits(r.Context(), siteID, userID)
+		q := r.URL.Query()
+
+		now := time.Now().UTC()
+		start := now.Add(-24 * time.Hour)
+		end := now
+
+		if fromStr := q.Get("from"); fromStr != "" {
+			if parsed, err := time.Parse(time.RFC3339, fromStr); err == nil {
+				start = parsed
+			}
+		}
+		if toStr := q.Get("to"); toStr != "" {
+			if parsed, err := time.Parse(time.RFC3339, toStr); err == nil {
+				end = parsed
+			}
+		}
+
+		limit := 10
+		offset := 0
+		if l := q.Get("limit"); l != "" {
+			if val, err := strconv.Atoi(l); err == nil {
+				limit = val
+			}
+		}
+		if o := q.Get("offset"); o != "" {
+			if val, err := strconv.Atoi(o); err == nil {
+				offset = val
+			}
+		}
+		if limit > 100 {
+			limit = 100
+		}
+		if limit < 1 {
+			limit = 10
+		}
+
+		params := api.HitQueryParams{
+			SiteID:    siteID,
+			UserID:    userID,
+			Start:     start,
+			End:       end,
+			Query:     q.Get("q"),
+			SortField: q.Get("sort"),
+			SortOrder: q.Get("order"), // asc/desc
+			Limit:     limit,
+			Offset:    offset,
+		}
+
+		result, err := s.store.GetHits(r.Context(), params)
 		if err != nil {
 			slog.Error("Failed to get hits", "error", err, "site_id", siteID, "user_id", userID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(hits); err != nil {
+		if err := json.NewEncoder(w).Encode(result); err != nil {
 			slog.Error("Failed to encode response", "error", err)
 		}
 	}

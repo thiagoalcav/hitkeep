@@ -27,6 +27,7 @@ type Config struct {
 	ApiBurst        int
 	AuthRateLimit   float64
 	AuthBurst       int
+	Version         string
 }
 
 func Load() *Config {

@@ -38,8 +38,9 @@ func (s *Server) handleGetStatus() http.HandlerFunc {
 			return
 		}
 
-		response := map[string]bool{
+		response := map[string]any{
 			"needs_setup": userCount == 0,
+			"version":     s.conf.Version,
 		}
 
 		w.Header().Set("Content-Type", "application/json")

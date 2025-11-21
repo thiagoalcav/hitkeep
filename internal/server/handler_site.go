@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"hitkeep/internal/api"
+
 	"github.com/google/uuid"
 )
 
@@ -132,10 +134,33 @@ func (s *Server) handleGetSiteStats() http.HandlerFunc {
 			return
 		}
 
-		end := time.Now().AddDate(0, 0, 1).UTC()
+		// Default to last 30 days
+		now := time.Now().UTC()
+		end := now.AddDate(0, 0, 1) // Tomorrow (to cover full today)
 		start := end.AddDate(0, 0, -30)
 
-		stats, err := s.store.GetSiteStats(r.Context(), siteID, userID, start, end)
+		// Allow overriding via query params (RFC3339)
+		// Example: ?from=2023-10-01T00:00:00Z&to=2023-10-05T00:00:00Z
+		q := r.URL.Query()
+		if fromStr := q.Get("from"); fromStr != "" {
+			if parsed, err := time.Parse(time.RFC3339, fromStr); err == nil {
+				start = parsed
+			}
+		}
+		if toStr := q.Get("to"); toStr != "" {
+			if parsed, err := time.Parse(time.RFC3339, toStr); err == nil {
+				end = parsed
+			}
+		}
+
+		params := api.AnalyticsParams{
+			SiteID: siteID,
+			UserID: userID,
+			Start:  start,
+			End:    end,
+		}
+
+		stats, err := s.store.GetSiteStats(r.Context(), params)
 		if err != nil {
 			slog.Error("Failed to get site stats", "error", err, "site_id", siteID)
 			if strings.Contains(err.Error(), "not found") {

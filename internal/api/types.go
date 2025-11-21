@@ -37,7 +37,12 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-// --- Analytics Types ---
+type AnalyticsParams struct {
+	SiteID uuid.UUID
+	UserID uuid.UUID
+	Start  time.Time
+	End    time.Time
+}
 
 type ChartDataPoint struct {
 	Time      time.Time `json:"time"`
@@ -46,8 +51,10 @@ type ChartDataPoint struct {
 }
 
 type SiteStats struct {
-	TotalPageviews int              `json:"total_pageviews"`
-	UniqueSessions int              `json:"unique_sessions"`
-	BounceRate     float64          `json:"bounce_rate"`
-	ChartData      []ChartDataPoint `json:"chart_data"`
+	TotalPageviews     int              `json:"total_pageviews"`
+	UniqueSessions     int              `json:"unique_sessions"`
+	BounceRate         float64          `json:"bounce_rate"`
+	AvgSessionDuration float64          `json:"avg_session_duration"` // Seconds
+	PagesPerSession    float64          `json:"pages_per_session"`
+	ChartData          []ChartDataPoint `json:"chart_data"`
 }

@@ -36,3 +36,5 @@ jobs:
         ghcr.io/${{ github.repository }}:${{ needs.release-please.outputs.tag_name }}
       upload_to_release: true
       release_tag_name: ${{ needs.release-please.outputs.tag_name }}
+      secrets:
+        token: ${{ secrets.GHT }}

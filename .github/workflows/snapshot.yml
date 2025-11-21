@@ -19,3 +19,5 @@ jobs:
         ghcr.io/${{ github.repository }}:snapshot
         ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
       upload_to_release: false
+      secrets:
+        token: ${{ secrets.GHT }}

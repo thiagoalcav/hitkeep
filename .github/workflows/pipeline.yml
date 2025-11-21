@@ -20,6 +20,9 @@ on:
         required: false
         type: string
         description: "The tag name of the release to upload to (required if upload_to_release is true)"
+    secrets:
+      token:
+        required: true
 
 jobs:
   build-and-push:
@@ -55,8 +58,8 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GHT }}
-
+          password: ${{ secrets.token }}
+          
       - name: Build Tracker
         working-directory: frontend/tracker
         run: |

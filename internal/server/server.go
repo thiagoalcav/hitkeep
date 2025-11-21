@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/nsqio/go-nsq"
+	"golang.org/x/time/rate"
 
 	"hitkeep/internal/cluster"
 	"hitkeep/internal/config"
@@ -17,19 +18,29 @@ import (
 )
 
 type Server struct {
-	httpServer *http.Server
-	store      *database.Store
-	cluster    *cluster.Manager
-	producer   *nsq.Producer
-	conf       *config.Config
+	httpServer    *http.Server
+	store         *database.Store
+	cluster       *cluster.Manager
+	producer      *nsq.Producer
+	conf          *config.Config
+	ingestLimiter *IPRateLimiter
+	apiLimiter    *IPRateLimiter
+	authLimiter   *IPRateLimiter
 }
 
 func New(conf *config.Config, publicFS fs.FS, store *database.Store, cluster *cluster.Manager, producer *nsq.Producer) *Server {
+	ingestLim := NewIPRateLimiter(rate.Limit(conf.IngestRateLimit), conf.IngestBurst)
+	apiLim := NewIPRateLimiter(rate.Limit(conf.ApiRateLimit), conf.ApiBurst)
+	authLim := NewIPRateLimiter(rate.Limit(conf.AuthRateLimit), conf.AuthBurst)
+
 	s := &Server{
-		store:    store,
-		cluster:  cluster,
-		producer: producer,
-		conf:     conf,
+		store:         store,
+		cluster:       cluster,
+		producer:      producer,
+		conf:          conf,
+		ingestLimiter: ingestLim,
+		apiLimiter:    apiLim,
+		authLimiter:   authLim,
 	}
 
 	mux := http.NewServeMux()
@@ -50,6 +61,11 @@ func (s *Server) ListenAndServe() error {
 
 func (s *Server) Shutdown(ctx context.Context) error {
 	slog.Info("HTTP server shutting down.")
+
+	s.ingestLimiter.Stop()
+	s.apiLimiter.Stop()
+	s.authLimiter.Stop()
+
 	return s.httpServer.Shutdown(ctx)
 }
 
@@ -59,23 +75,22 @@ func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 	mux.HandleFunc("/api/status", s.handleGetStatus())
 
 	// Ingest
-	mux.HandleFunc("/ingest", s.handleIngest())
+	mux.HandleFunc("/ingest", s.withRateLimit(s.ingestLimiter, s.handleIngest()))
 
 	// Auth
-	mux.HandleFunc("/api/initial-user", s.handleCreateInitialUser())
-	mux.HandleFunc("/api/login", s.handleLogin())
+	mux.HandleFunc("/api/initial-user", s.withRateLimit(s.authLimiter, s.handleCreateInitialUser()))
+	mux.HandleFunc("/api/login", s.withRateLimit(s.authLimiter, s.handleLogin()))
 
-	// Sites & Analytics
-	mux.HandleFunc("GET /api/sites", s.requireAuth(s.handleGetSites()))
-	mux.HandleFunc("POST /api/sites", s.requireAuth(s.handleCreateSite()))
-	mux.HandleFunc("GET /api/sites/{id}/stats", s.requireAuth(s.handleGetSiteStats()))
-	mux.HandleFunc("/api/hits", s.requireAuth(s.handleGetHits()))
+	// API
+	mux.HandleFunc("GET /api/sites", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleGetSites())))
+	mux.HandleFunc("POST /api/sites", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleCreateSite())))
+	mux.HandleFunc("GET /api/sites/{id}/stats", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleGetSiteStats())))
+	mux.HandleFunc("/api/hits", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleGetHits())))
 
-	// SPA / Static
+	// Static
 	mux.Handle("/", s.spaHandler(publicFS))
 }
 
-// spaHandler wraps the file server to support Single Page Application routing.
 func (s *Server) spaHandler(publicFS fs.FS) http.HandlerFunc {
 	fileServer := http.FileServer(http.FS(publicFS))
 
@@ -89,7 +104,6 @@ func (s *Server) spaHandler(publicFS fs.FS) http.HandlerFunc {
 
 		f, err := publicFS.Open(path)
 		if os.IsNotExist(err) {
-			// explicitly ignore healthz here so it falls through to 404 if not matched above
 			if strings.HasPrefix(path, "api/") || strings.HasPrefix(path, "ingest") {
 				http.NotFound(w, r)
 				return

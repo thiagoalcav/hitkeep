@@ -1,23 +1,18 @@
+ARG GOLANG_VERSION=1.25.4-bookworm
+
+FROM golang:$GOLANG_VERSION AS builder
+
+RUN mkdir -p /var/lib/hitkeep/data
+
 FROM gcr.io/distroless/cc-debian13:nonroot
 
-LABEL org.opencontainers.image.title="HitKeep" \
-    org.opencontainers.image.description="A self-hostable, privacy-first web analytics service in a single Go binary." \
-    org.opencontainers.image.url="https://hitkeep.com" \
-    org.opencontainers.image.source="https://github.com/pascalebeier/hitkeep.git" \
-    org.opencontainers.image.authors="Pascale Beier (@PascaleBeier)" \
-    org.opencontainers.image.licenses="MIT"
+COPY --from=builder --chown=nonroot:nonroot /var/lib/hitkeep/data /var/lib/hitkeep/data
 
 WORKDIR /app
 
 ARG TARGETARCH
 
-COPY public /public
-
 COPY hitkeep-linux-${TARGETARCH} /usr/local/bin/hitkeep
-
-USER root
-RUN mkdir -p /var/lib/hitkeep/data && chown -R nonroot:nonroot /var/lib/hitkeep/data
-USER nonroot
 
 VOLUME /var/lib/hitkeep/data
 

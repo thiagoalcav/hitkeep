@@ -7,10 +7,10 @@ on:
         required: true
         type: string
         description: "Version string to embed in the binary (e.g., v1.0.0 or snapshot-abc)"
-      docker_tags:
+      meta_config:
         required: true
         type: string
-        description: "Newline-separated list of docker tags"
+        description: "Configuration for docker/metadata-action tags"
       upload_to_release:
         required: false
         type: boolean
@@ -114,7 +114,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
-          tags: ${{ inputs.release_tag_name }}
+          tags: ${{ inputs.meta_config }}
 
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5

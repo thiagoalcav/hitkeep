@@ -15,9 +15,9 @@ jobs:
       attestations: write
     with:
       version: snapshot-${{ github.sha }}
-      docker_tags: |
-        ghcr.io/${{ github.repository }}:snapshot
-        ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+      meta_config: |
+          type=raw,value=snapshot
+          type=sha,prefix=sha-,format=short
       upload_to_release: false
     secrets:
       token: ${{ secrets.GHT }}

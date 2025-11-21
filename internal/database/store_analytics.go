@@ -11,7 +11,6 @@ import (
 
 // GetSiteStats returns aggregated KPIs and time-series data using the AnalyticsParams struct.
 func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*api.SiteStats, error) {
-	// 1. Validation & Ownership Check
 	var exists int
 	err := s.db.QueryRowContext(ctx, "SELECT 1 FROM sites WHERE id = ? AND user_id = ?", params.SiteID, params.UserID).Scan(&exists)
 	if err == sql.ErrNoRows {
@@ -24,16 +23,32 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		ChartData: []api.ChartDataPoint{},
 	}
 
-	// 2. Determine Interval for Chart (Dynamic Bucketing)
-	// If range < 48 hours, use hour buckets. Otherwise, use day buckets.
 	duration := params.End.Sub(params.Start)
 	interval := "1 DAY"
+	truncUnit := "day"
+
+	var gridStart, gridEnd time.Time
+
 	if duration < 48*time.Hour {
 		interval = "1 HOUR"
+		truncUnit = "hour"
+		gridStart = params.Start.Truncate(time.Hour)
+		gridEnd = params.End.Truncate(time.Hour)
+		// Add one buffer hour to ensure we cover th last partial hour
+		if !gridEnd.After(params.End) {
+			gridEnd = gridEnd.Add(time.Hour)
+		}
+	} else {
+		y, m, d := params.Start.Date()
+		gridStart = time.Date(y, m, d, 0, 0, 0, 0, params.Start.Location())
+
+		y, m, d = params.End.Date()
+		gridEnd = time.Date(y, m, d, 0, 0, 0, 0, params.End.Location())
+		if !gridEnd.After(params.End) {
+			gridEnd = gridEnd.AddDate(0, 0, 1)
+		}
 	}
 
-	// 3. Complex CTE for KPIs (Totals, Bounce Rate, Duration, Pages/Session)
-	// We use DuckDB's power to calculate session-level metrics on the fly.
 	kpiQuery := `
 	WITH session_metrics AS (
 		SELECT 
@@ -67,10 +82,6 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		return nil, fmt.Errorf("failed to calc KPIs: %w", err)
 	}
 
-	// 4. Time Series Data (Gap Filled)
-	// We inject the determined 'interval' directly into the generate_series and date_trunc functions.
-	// Note: DuckDB parameter substitution (?) works for values, not keywords like INTERVAL '1 DAY'.
-	// So we use Sprintf for the interval string, which is safe because we control the variable 'interval' internally above.
 	chartQuery := fmt.Sprintf(`
 	WITH time_range AS (
 		SELECT unnest(generate_series(?::TIMESTAMP, ?::TIMESTAMP, INTERVAL %s)) as bucket
@@ -91,20 +102,9 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 	FROM time_range tr
 	LEFT JOIN daily_hits dh ON tr.bucket = dh.bucket
 	ORDER BY tr.bucket ASC;
-	`, interval, (func() string {
-		if interval == "1 HOUR" {
-			return "hour"
-		} else {
-			return "day"
-		}
-	})())
+	`, interval, truncUnit)
 
-	// Normalize start/end for the generate_series bounds
-	// For charts, we usually want to align to the bucket start
-	startBucket := params.Start
-	endBucket := params.End
-
-	rows, err := s.db.QueryContext(ctx, chartQuery, startBucket, endBucket, params.SiteID, params.Start, params.End)
+	rows, err := s.db.QueryContext(ctx, chartQuery, gridStart, gridEnd, params.SiteID, params.Start, params.End)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query chart data: %w", err)
 	}

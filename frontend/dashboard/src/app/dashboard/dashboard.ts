@@ -1,4 +1,4 @@
-import { Component, OnInit, effect, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, effect, inject, signal } from '@angular/core';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, finalize } from 'rxjs';
@@ -14,6 +14,7 @@ import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
 import { TooltipModule } from 'primeng/tooltip';
+import { DatePickerModule } from 'primeng/datepicker';
 
 import { AnalyticsService, Hit, Site, SiteStats } from '../core/services/analytics.service';
 
@@ -34,7 +35,8 @@ import { AnalyticsService, Hit, Site, SiteStats } from '../core/services/analyti
     DialogModule,
     InputTextModule,
     MessageModule,
-    TooltipModule
+    TooltipModule,
+    DatePickerModule
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
@@ -52,15 +54,21 @@ export class Dashboard implements OnInit {
   protected isLoadingSites = signal<boolean>(true);
   protected isLoadingData = signal<boolean>(false);
 
-  // --- Time Range State ---
   protected timeRanges = [
     { label: 'Last 24 Hours', value: '24h' },
     { label: 'Last 7 Days', value: '7d' },
-    { label: 'Last 30 Days', value: '30d' }
+    { label: 'Last 30 Days', value: '30d' },
+    { label: 'Last Year', value: '1y' },
+    { label: 'Custom Range', value: 'custom' }
   ];
   protected selectedRange = signal(this.timeRanges[2]); // Default 30d
 
-  // --- Dialog State ---
+  // --- Custom Range Dialog State ---
+  protected isCustomRangeVisible = signal<boolean>(false);
+  protected customRangeDates = signal<Date[] | null>(null);
+  protected customRangeApplied = signal<boolean>(false);
+
+  // --- Add Site Dialog State ---
   protected isAddSiteVisible = signal<boolean>(false);
   protected newSiteDomain = signal<string>('');
   protected isCreatingSite = signal<boolean>(false);
@@ -118,9 +126,24 @@ export class Dashboard implements OnInit {
     effect(() => {
       const site = this.selectedSite();
       const range = this.selectedRange();
+      const customApplied = this.customRangeApplied(); 
 
       if (site && range) {
-        this.loadDashboardData(site.id, range.value);
+        if (range.value === 'custom') {
+           if (customApplied) {
+             const dates = this.customRangeDates();
+             if (dates && dates.length === 2 && dates[0] && dates[1]) {
+               this.loadDashboardData(site.id, dates[0].toISOString(), dates[1].toISOString());
+             }
+           }
+        } else {
+           this.customRangeApplied.set(false); 
+           // Todo: weird ux
+           this.resetCustomLabel(); 
+           
+           const dates = this.getDatesFromPreset(range.value);
+           this.loadDashboardData(site.id, dates.from, dates.to);
+        }
       } else {
         this.stats.set(null);
         this.chartData.set(null);
@@ -151,12 +174,9 @@ export class Dashboard implements OnInit {
     });
   }
 
-  public loadDashboardData(siteId: string, rangeValue: string): void {
+  public loadDashboardData(siteId: string, from: string, to: string): void {
     this.isLoadingData.set(true);
-    
-    const { from, to } = this.calculateDateRange(rangeValue);
-
-    // Load both Stats (Aggregated) and Recent Hits (Raw) in parallel
+    // TODO: revisit at some point
     forkJoin({
       stats: this.analyticsService.getSiteStats(siteId, from, to),
       hits: this.analyticsService.getHits(siteId)
@@ -174,11 +194,11 @@ export class Dashboard implements OnInit {
     });
   }
 
-  private calculateDateRange(range: string): { from: string, to: string } {
+  public getDatesFromPreset(rangeValue: string): { from: string, to: string } {
     const end = new Date();
     const start = new Date();
 
-    switch (range) {
+    switch (rangeValue) {
       case '24h':
         start.setHours(end.getHours() - 24);
         break;
@@ -186,6 +206,11 @@ export class Dashboard implements OnInit {
         start.setDate(end.getDate() - 7);
         break;
       case '30d':
+        start.setDate(end.getDate() - 30);
+        break;
+      case '1y':
+        start.setFullYear(end.getFullYear() - 1);
+        break;
       default:
         start.setDate(end.getDate() - 30);
         break;
@@ -195,6 +220,52 @@ export class Dashboard implements OnInit {
       from: start.toISOString(),
       to: end.toISOString()
     };
+  }
+
+  protected onRangeChange(event: any): void {
+    if (event.value.value === 'custom') {
+      this.isCustomRangeVisible.set(true);
+    }
+  }
+
+  protected applyCustomRange(): void {
+    const dates = this.customRangeDates();
+    if (dates && dates[0] && dates[1]) {
+      this.isCustomRangeVisible.set(false);
+      
+      // Format label: "Nov 20 - Nov 21"
+      const startStr = dates[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const endStr = dates[1].toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const label = `${startStr} - ${endStr}`;
+
+      // Update the 'custom' entry in timeRanges
+      this.timeRanges = this.timeRanges.map(r => {
+        if (r.value === 'custom') {
+            return { ...r, label: label };
+        }
+        return r;
+      });
+
+      // Re-set the selectedRange to point to the updated object
+      // This ensures the Dropdown UI updates to show the dates
+      const updatedCustom = this.timeRanges.find(r => r.value === 'custom');
+      if (updatedCustom) {
+          this.selectedRange.set(updatedCustom);
+      }
+
+      this.customRangeApplied.set(true); 
+    }
+  }
+
+  private resetCustomLabel(): void {
+    // If we switch back to a preset, reset the custom label to "Custom Range"
+    // so it looks clean if they open it again later.
+    this.timeRanges = this.timeRanges.map(r => {
+        if (r.value === 'custom') {
+            return { ...r, label: 'Custom Range' };
+        }
+        return r;
+    });
   }
 
   // Helper to format seconds into "1m 30s"
@@ -207,12 +278,20 @@ export class Dashboard implements OnInit {
   }
 
   private updateChart(stats: SiteStats): void {
-    // Determine if we should show hours or days based on the selected range
     const is24h = this.selectedRange().value === '24h';
+    let isShortRange = is24h;
+    
+    if (this.selectedRange().value === 'custom' && this.customRangeDates()) {
+        const dates = this.customRangeDates()!;
+        if (dates[0] && dates[1]) {
+            const diffHours = (dates[1].getTime() - dates[0].getTime()) / (1000 * 60 * 60);
+            if (diffHours < 48) isShortRange = true;
+        }
+    }
 
     const labels = stats.chart_data.map(d => {
       const date = new Date(d.time);
-      if (is24h) {
+      if (isShortRange) {
          return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
       }
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -268,10 +347,6 @@ export class Dashboard implements OnInit {
 
   protected onSiteChange(event: any): void {
     // The effect will handle the data fetching
-  }
-
-  protected onRangeChange(event: any): void {
-     // The effect will handle the data fetching
   }
 
   protected openAddSiteDialog(): void {

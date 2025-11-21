@@ -61,7 +61,7 @@
       <p-button 
         icon="pi pi-refresh" 
         [loading]="isLoadingData()" 
-        (onClick)="selectedSite() && loadDashboardData(selectedSite()!.id, selectedRange().value)" 
+        (onClick)="selectedSite() && loadDashboardData(selectedSite()!.id, getDatesFromPreset(selectedRange().value).from, getDatesFromPreset(selectedRange().value).to)" 
         styleClass="p-button-text p-button-rounded p-button-secondary"
         [disabled]="!selectedSite()"
         pTooltip="Refresh Data"
@@ -266,6 +266,24 @@
       <p-button label="Cancel" (onClick)="isAddSiteVisible.set(false)" styleClass="p-button-text"></p-button>
       <p-button label="Add Website" (onClick)="saveNewSite()" [loading]="isCreatingSite()"></p-button>
     </ng-template>
+  </p-dialog>
+
+  <!-- Custom Range Dialog -->
+  <p-dialog header="Select Date Range" [(visible)]="isCustomRangeVisible" [modal]="true" [style]="{ width: '450px' }" [draggable]="false" [resizable]="false">
+      <div class="pt-2 pb-4">
+          <p-datepicker 
+              [(ngModel)]="customRangeDates" 
+              selectionMode="range" 
+              [readonlyInput]="true" 
+              class="w-full" 
+              [inline]="true"
+              [showWeek]="false">
+          </p-datepicker>
+      </div>
+      <ng-template pTemplate="footer">
+          <p-button label="Cancel" (onClick)="isCustomRangeVisible.set(false)" styleClass="p-button-text"></p-button>
+          <p-button label="Apply Range" (onClick)="applyCustomRange()" [disabled]="!customRangeDates() || customRangeDates()!.length !== 2 || !customRangeDates()![1]"></p-button>
+      </ng-template>
   </p-dialog>
 
   <!-- Snippet Dialog -->

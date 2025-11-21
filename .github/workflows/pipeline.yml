@@ -59,7 +59,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.token }}
-          
+
       - name: Build Tracker
         working-directory: frontend/tracker
         run: |

@@ -18,6 +18,10 @@ frontend-dashboard-build:
 	@echo "Copying dashboard to public directory..."
 	@cp -r frontend/dashboard/dist/dashboard/browser/* public/
 
+frontend-dev:
+	@echo "Starting Angular development server..."
+	@cd frontend/dashboard && npm install && npm start
+
 run: build
 	@./hitkeep
 

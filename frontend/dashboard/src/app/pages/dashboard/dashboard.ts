@@ -1,50 +1,51 @@
-import {Component, effect, inject, signal, computed} from '@angular/core';
-import {CommonModule, DecimalPipe} from '@angular/common';
-import {FormsModule} from '@angular/forms';
-import {debounceTime, distinctUntilChanged, Subject} from 'rxjs';
+import { Component, effect, inject, signal, computed } from '@angular/core';
+import {CommonModule, DecimalPipe, DatePipe, NgOptimizedImage} from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 // PrimeNG
-import {CardModule} from 'primeng/card';
-import {TableModule, TableLazyLoadEvent} from 'primeng/table';
-import {SelectModule} from 'primeng/select';
-import {ButtonModule} from 'primeng/button';
-import {IconFieldModule} from 'primeng/iconfield';
-import {InputIconModule} from 'primeng/inputicon';
-import {InputTextModule} from 'primeng/inputtext';
-import {SkeletonModule} from 'primeng/skeleton';
-import {DialogModule} from 'primeng/dialog';
-import {DatePickerModule} from 'primeng/datepicker';
-import {TooltipModule} from 'primeng/tooltip';
+import { CardModule } from 'primeng/card';
+import { TableModule, TableLazyLoadEvent } from 'primeng/table';
+import { SelectModule } from 'primeng/select';
+import { ButtonModule } from 'primeng/button';
+import { IconFieldModule } from 'primeng/iconfield';
+import { InputIconModule } from 'primeng/inputicon';
+import { InputTextModule } from 'primeng/inputtext';
+import { SkeletonModule } from 'primeng/skeleton';
+import { DialogModule } from 'primeng/dialog';
+import { DatePickerModule } from 'primeng/datepicker';
+import { TooltipModule } from 'primeng/tooltip';
 // Features
-import {SiteService} from '../../features/sites/services/site.service';
-import {StatsService} from '../../features/analytics/services/stats.service';
-import {HitService} from '../../features/hits/services/hit.service';
-import {TrafficChart} from '../../features/analytics/components/traffic-chart';
-import {TrackingCode} from '../../features/sites/components/tracking-code';
-
+import { SiteService } from '../../features/sites/services/site.service';
+import { StatsService } from '../../features/analytics/services/stats.service';
+import { HitService } from '../../features/hits/services/hit.service';
+import { TrafficChart } from '../../features/analytics/components/traffic-chart';
+import { TrackingCode } from '../../features/sites/components/tracking-code';
+import {SiteFavicon} from '../../features/sites/components/site-favicon';
 interface RangeSelectEvent {
   value: {
     label: string;
     value: string;
   };
 }
-
 @Component({
   selector: 'app-dashboard',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, DecimalPipe,
+    CommonModule, FormsModule, DecimalPipe, DatePipe,
     CardModule, TableModule, SelectModule, ButtonModule,
     IconFieldModule, InputIconModule, InputTextModule,
     SkeletonModule, DialogModule, DatePickerModule, TooltipModule,
-    TrafficChart, TrackingCode
+    TrafficChart, TrackingCode, SiteFavicon
   ],
   templateUrl: './dashboard.html',
-  styleUrl: './dashboard.css'
+  styleUrl: './dashboard.css',
+  providers: [DatePipe]
 })
 export class Dashboard {
   protected siteService = inject(SiteService);
   protected statsService = inject(StatsService);
   protected hitService = inject(HitService);
+  private datePipe = inject(DatePipe);
   protected timeRanges = [
     {label: 'Last 24 Hours', value: '24h'},
     {label: 'Last 7 Days', value: '7d'},
@@ -70,7 +71,22 @@ export class Dashboard {
     }
     return false;
   });
+  protected chartTitle = computed(() => {
+    const range = this.selectedRange();
 
+    if (range.value !== 'custom') {
+      return `Traffic: ${range.label}`;
+    }
+
+    const dates = this.customRangeDates();
+    if (dates && dates.length === 2 && dates[0] && dates[1]) {
+      const start = this.datePipe.transform(dates[0], 'MMM d');
+      const end = this.datePipe.transform(dates[1], 'MMM d, y');
+      return `Traffic: ${start} - ${end}`;
+    }
+
+    return 'Traffic Overview';
+  });
   constructor() {
     this.searchSubject.pipe(debounceTime(400), distinctUntilChanged())
       .subscribe(q => {

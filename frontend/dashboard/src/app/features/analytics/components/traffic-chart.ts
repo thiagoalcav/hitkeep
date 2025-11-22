@@ -26,9 +26,7 @@ interface ChartContext {
         <p-chart type="line" [data]="chartPayload()" [options]="chartOptions()" height="100%" />
       } @else {
         <div class="absolute inset-0 flex flex-col items-center justify-center text-[var(--p-text-muted-color)] bg-[var(--p-surface-ground)]/50 rounded-lg border-2 border-dashed border-[var(--p-surface-border)] p-6 text-center">
-          <div class="bg-[var(--p-surface-card)] p-4 rounded-full mb-3 shadow-sm border border-[var(--p-surface-border)]">
-            <i class="pi pi-chart-line text-2xl text-[var(--p-primary-color)]" aria-hidden="true"></i>
-          </div>
+
           <h3 class="font-semibold text-[var(--p-text-color)] text-lg mb-1">No traffic recorded yet</h3>
           <p class="text-sm mb-4 max-w-xs">Install the tracking snippet on your website to start collecting analytics data.</p>
           <p-button label="Get Tracking Code" icon="pi pi-code" size="small" (onClick)="snippetClicked.emit()"></p-button>

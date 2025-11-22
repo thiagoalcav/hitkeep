@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/PascaleBeier/hitkeep/compare/v1.1.0...v1.1.1) (2025-11-22)
+
+
+### Bug Fixes
+
+* **deps:** Bump gomod ([70ae350](https://github.com/PascaleBeier/hitkeep/commit/70ae350128b5614ebec5b2e04b56d752a526c193))
+
 ## [1.1.0](https://github.com/PascaleBeier/hitkeep/compare/v1.0.0...v1.1.0) (2025-11-21)
 
 

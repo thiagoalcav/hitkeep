@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -15,6 +16,17 @@ func (s *Store) FindSiteByDomain(ctx context.Context, domain string) (*api.Site,
 	var site api.Site
 	err := s.db.QueryRowContext(ctx, "SELECT id, user_id, domain, created_at FROM sites WHERE domain = ?", domain).Scan(&site.ID, &site.UserID, &site.Domain, &site.CreatedAt)
 	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("could not query for site: %w", err)
+	}
+	return &site, nil
+}
+
+func (s *Store) GetSite(ctx context.Context, siteID uuid.UUID, userID uuid.UUID) (*api.Site, error) {
+	var site api.Site
+	err := s.db.QueryRowContext(ctx, "SELECT id, user_id, domain, created_at FROM sites WHERE id = ? AND user_id = ?", siteID, userID).Scan(&site.ID, &site.UserID, &site.Domain, &site.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	} else if err != nil {
 		return nil, fmt.Errorf("could not query for site: %w", err)

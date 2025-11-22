@@ -2,8 +2,11 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -12,6 +15,8 @@ import (
 
 	"hitkeep/internal/api"
 )
+
+var domainRegex = regexp.MustCompile(`^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$`)
 
 func (s *Server) handleGetSites() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -62,9 +67,24 @@ func (s *Server) handleCreateSite() http.HandlerFunc {
 			return
 		}
 
-		domain := strings.TrimSpace(req.Domain)
+		domain := strings.ToLower(strings.TrimSpace(req.Domain))
 		if domain == "" {
 			http.Error(w, "Domain is required", http.StatusBadRequest)
+			return
+		}
+
+		if strings.Contains(domain, "://") {
+			http.Error(w, "Domain must not contain protocol (http:// or https://)", http.StatusBadRequest)
+			return
+		}
+
+		if strings.HasPrefix(domain, "www.") {
+			http.Error(w, "Domain must not start with 'www.' (we track subdomains automatically)", http.StatusBadRequest)
+			return
+		}
+
+		if len(domain) > 253 || !domainRegex.MatchString(domain) {
+			http.Error(w, "Invalid domain format (e.g. example.com)", http.StatusBadRequest)
 			return
 		}
 
@@ -241,4 +261,60 @@ func getUserIDFromContext(r *http.Request) uuid.UUID {
 		return uuid.Nil
 	}
 	return id
+}
+
+// handleGetSiteFavicon proxies the favicon request to DuckDuckGo to avoid CORS and privacy leaks.
+// GET /api/sites/{id}/favicon
+func (s *Server) handleGetSiteFavicon() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := getUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		siteIDStr := r.PathValue("id")
+		siteID, err := uuid.Parse(siteIDStr)
+		if err != nil {
+			http.Error(w, "Invalid site_id", http.StatusBadRequest)
+			return
+		}
+
+		site, err := s.store.GetSite(r.Context(), siteID, userID)
+		if err != nil {
+			slog.Error("Failed to get site for favicon", "error", err)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			return
+		}
+		if site == nil {
+			http.Error(w, "Site not found", http.StatusNotFound)
+			return
+		}
+
+		// Use DuckDuckGo's favicon service
+		ddgURL := fmt.Sprintf("https://icons.duckduckgo.com/ip3/www.%s.ico", site.Domain)
+
+		client := &http.Client{Timeout: 5 * time.Second}
+		resp, err := client.Get(ddgURL)
+		if err != nil {
+			slog.Warn("Failed to fetch favicon upstream", "domain", site.Domain, "error", err)
+			http.Error(w, "Upstream error", http.StatusBadGateway)
+			return
+		}
+		defer func(Body io.ReadCloser) {
+			err := Body.Close()
+			if err != nil {
+
+			}
+		}(resp.Body)
+
+		// Cache for 24 hours in the browser to reduce load
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
+		w.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
+
+		if _, err := io.Copy(w, resp.Body); err != nil {
+			slog.Warn("Failed to write favicon response", "error", err)
+		}
+	}
 }

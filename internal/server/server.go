@@ -87,6 +87,7 @@ func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 	mux.HandleFunc("POST /api/sites", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleCreateSite())))
 	mux.HandleFunc("GET /api/sites/{id}/stats", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleGetSiteStats())))
 	mux.HandleFunc("GET /api/sites/{id}/hits", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleGetSiteHits())))
+	mux.HandleFunc("GET /api/sites/{id}/favicon", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleGetSiteFavicon())))
 
 	// Static
 	mux.Handle("/", s.spaHandler(publicFS))

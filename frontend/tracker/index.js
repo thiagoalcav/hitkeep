@@ -2,12 +2,12 @@
   try {
     const { document, location, navigator, screen, history, sessionStorage, crypto } = window;
 
-    // 1. Filter Out Unwanted Traffic Early
-    // We do this before any logic to ensure we don't write to storage if DNT is active.
     const scriptEl = document.currentScript || document.querySelector('script[src*="hk.js"]');
     if (!scriptEl) return;
 
     const collectDnt = scriptEl.getAttribute('data-collect-dnt') === 'true';
+    const disableBeacon = scriptEl.getAttribute('data-disable-beacon') === 'true';
+
     const isBot = /bot|spider|crawl|slurp|ia_archiver/i.test(navigator.userAgent);
     const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
     const dntEnabled = navigator.doNotTrack === '1';
@@ -16,11 +16,9 @@
       return;
     }
 
-    // 2. Configuration & Endpoint
     const scriptUrl = new URL(scriptEl.src);
     const endpoint = `${scriptUrl.origin}/ingest`;
 
-    // 3. Helper: Generate UUID (v4)
     const generateUUID = () => {
       if (crypto?.randomUUID) return crypto.randomUUID();
       return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, c =>
@@ -28,9 +26,8 @@
       );
     };
 
-    // 4. Session Management (Persist across reloads)
     const SESSION_KEY = 'hk_session';
-    const SESSION_EXPIRY = 30 * 60 * 1000; // 30 minutes in milliseconds
+    const SESSION_EXPIRY = 30 * 60 * 1000; // 30 minutes
 
     const getSessionId = () => {
       const now = Date.now();
@@ -40,20 +37,16 @@
         const stored = sessionStorage.getItem(SESSION_KEY);
         if (stored) {
           const [id, lastActive] = stored.split('|');
-          // If the session was active within the last 30 minutes, keep it.
           if (now - parseInt(lastActive, 10) < SESSION_EXPIRY) {
             sessionId = id;
           }
         }
-      } catch (e) {
-        // Storage might be blocked
-      }
+      } catch (e) {}
 
       if (!sessionId) {
         sessionId = generateUUID();
       }
 
-      // Update the timestamp to keep the session alive
       try {
         sessionStorage.setItem(SESSION_KEY, `${sessionId}|${now}`);
       } catch (e) {}
@@ -66,26 +59,18 @@
     const initialHost = location.hostname;
     let lastPath = location.pathname;
 
-    // 5. Send Data
     const sendPageView = () => {
       const currentPath = location.pathname;
-      
-      // Update session timestamp on activity
+
       try {
         sessionStorage.setItem(SESSION_KEY, `${sessionId}|${Date.now()}`);
       } catch (e) {}
 
-      // Calculate Referrer:
-      // If we just navigated inside the SPA (currentPath !== lastPath), the referrer is the *previous* path on this site.
-      // If it's the first load, the referrer is document.referrer (external or empty).
       let referrer = initialReferrer;
       if (lastPath !== currentPath) {
         referrer = `${location.origin}${lastPath}`;
       }
 
-      // Unique Visit Check:
-      // Strictly true only if coming from a different hostname and this is the first hit of the session state.
-      // (Refined logic: Only the entry point of the session should be marked unique=true)
       const isUnique = lastPath === currentPath && referrer && new URL(referrer).hostname !== initialHost;
 
       const payload = {
@@ -105,7 +90,8 @@
       const body = JSON.stringify(payload);
       const headers = { 'Content-Type': 'application/json' };
 
-      if (navigator.sendBeacon) {
+      // Use Beacon unless explicitly disabled via attribute
+      if (navigator.sendBeacon && !disableBeacon) {
         const blob = new Blob([body], { type: 'application/json' });
         navigator.sendBeacon(endpoint, blob);
       } else {
@@ -115,13 +101,12 @@
           headers,
           keepalive: true,
           credentials: 'omit',
-        }).catch(() => {}); // Silent fail
+        }).catch(() => {});
       }
 
       lastPath = currentPath;
     };
 
-    // 6. SPA Navigation Patches
     const patchHistory = (method) => {
       const original = history[method];
       return function (...args) {
@@ -136,7 +121,6 @@
     window.addEventListener('popstate', sendPageView);
     window.addEventListener('hashchange', sendPageView);
 
-    // 7. Initial Trigger
     if (document.visibilityState === 'prerender') {
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') sendPageView();
@@ -144,7 +128,6 @@
     } else {
       sendPageView();
     }
-
   } catch (e) {
     if (console?.debug) console.debug('[HitKeep]', e);
   }

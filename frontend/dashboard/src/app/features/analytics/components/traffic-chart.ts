@@ -1,6 +1,7 @@
-import { Component, input, computed, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, computed, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChartModule } from 'primeng/chart';
+import { ButtonModule } from 'primeng/button';
 import { ChartDataPoint } from '../../../core/models/analytics.types';
 import { PreferencesService } from '../../../core/services/preferences.service';
 
@@ -13,7 +14,7 @@ interface ChartContext {
 @Component({
   selector: 'app-traffic-chart',
   standalone: true,
-  imports: [CommonModule, ChartModule],
+  imports: [CommonModule, ChartModule, ButtonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="h-80 w-full relative" role="img" [attr.aria-label]="accessibilityLabel()">
@@ -21,12 +22,16 @@ interface ChartContext {
         <div class="flex items-center justify-center h-full" aria-live="polite">
           <i class="pi pi-spin pi-spinner text-4xl text-[var(--p-primary-color)]" aria-hidden="true"></i>
         </div>
-      } @else if (data() && data()!.length > 0) {
+      } @else if (hasTraffic()) {
         <p-chart type="line" [data]="chartPayload()" [options]="chartOptions()" height="100%" />
       } @else {
-        <div class="absolute inset-0 flex flex-col items-center justify-center text-[var(--p-text-muted-color)] bg-[var(--p-surface-ground)]/50 rounded-lg border-2 border-dashed border-[var(--p-surface-border)]">
-          <i class="pi pi-chart-line text-4xl mb-2 opacity-50" aria-hidden="true"></i>
-          <span>No traffic data available</span>
+        <div class="absolute inset-0 flex flex-col items-center justify-center text-[var(--p-text-muted-color)] bg-[var(--p-surface-ground)]/50 rounded-lg border-2 border-dashed border-[var(--p-surface-border)] p-6 text-center">
+          <div class="bg-[var(--p-surface-card)] p-4 rounded-full mb-3 shadow-sm border border-[var(--p-surface-border)]">
+            <i class="pi pi-chart-line text-2xl text-[var(--p-primary-color)]" aria-hidden="true"></i>
+          </div>
+          <h3 class="font-semibold text-[var(--p-text-color)] text-lg mb-1">No traffic recorded yet</h3>
+          <p class="text-sm mb-4 max-w-xs">Install the tracking snippet on your website to start collecting analytics data.</p>
+          <p-button label="Get Tracking Code" icon="pi pi-code" size="small" (onClick)="snippetClicked.emit()"></p-button>
         </div>
       }
     </div>
@@ -35,10 +40,17 @@ interface ChartContext {
 export class TrafficChart {
   data = input.required<ChartDataPoint[]>();
   isLoading = input<boolean>(false);
-  // Optional: Pass this in if we want to format x-axis differently based on duration
   isShortRange = input<boolean>(false);
 
+  snippetClicked = output<void>();
+
   private prefs = inject(PreferencesService);
+
+  protected hasTraffic = computed(() => {
+    const d = this.data();
+    // It has traffic if data exists AND at least one bucket has > 0 pageviews
+    return d && d.length > 0 && d.some(p => p.pageviews > 0);
+  });
 
   protected accessibilityLabel = computed(() => {
     const count = this.data()?.length || 0;

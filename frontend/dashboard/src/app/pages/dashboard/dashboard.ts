@@ -1,26 +1,25 @@
-import { Component, effect, inject, signal, computed } from '@angular/core';
-import { CommonModule, DecimalPipe } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
-
+import {Component, effect, inject, signal, computed} from '@angular/core';
+import {CommonModule, DecimalPipe} from '@angular/common';
+import {FormsModule} from '@angular/forms';
+import {debounceTime, distinctUntilChanged, Subject} from 'rxjs';
 // PrimeNG
-import { CardModule } from 'primeng/card';
-import { TableModule, TableLazyLoadEvent } from 'primeng/table';
-import { SelectModule } from 'primeng/select';
-import { ButtonModule } from 'primeng/button';
-import { IconFieldModule } from 'primeng/iconfield';
-import { InputIconModule } from 'primeng/inputicon';
-import { InputTextModule } from 'primeng/inputtext';
-import { SkeletonModule } from 'primeng/skeleton';
-import { DialogModule } from 'primeng/dialog';
-import { DatePickerModule } from 'primeng/datepicker';
-import { TooltipModule } from 'primeng/tooltip';
-
+import {CardModule} from 'primeng/card';
+import {TableModule, TableLazyLoadEvent} from 'primeng/table';
+import {SelectModule} from 'primeng/select';
+import {ButtonModule} from 'primeng/button';
+import {IconFieldModule} from 'primeng/iconfield';
+import {InputIconModule} from 'primeng/inputicon';
+import {InputTextModule} from 'primeng/inputtext';
+import {SkeletonModule} from 'primeng/skeleton';
+import {DialogModule} from 'primeng/dialog';
+import {DatePickerModule} from 'primeng/datepicker';
+import {TooltipModule} from 'primeng/tooltip';
 // Features
-import { SiteService } from '../../features/sites/services/site.service';
-import { StatsService } from '../../features/analytics/services/stats.service';
-import { HitService } from '../../features/hits/services/hit.service';
-import { TrafficChart } from '../../features/analytics/components/traffic-chart';
+import {SiteService} from '../../features/sites/services/site.service';
+import {StatsService} from '../../features/analytics/services/stats.service';
+import {HitService} from '../../features/hits/services/hit.service';
+import {TrafficChart} from '../../features/analytics/components/traffic-chart';
+import {TrackingCode} from '../../features/sites/components/tracking-code';
 
 interface RangeSelectEvent {
   value: {
@@ -37,7 +36,7 @@ interface RangeSelectEvent {
     CardModule, TableModule, SelectModule, ButtonModule,
     IconFieldModule, InputIconModule, InputTextModule,
     SkeletonModule, DialogModule, DatePickerModule, TooltipModule,
-    TrafficChart
+    TrafficChart, TrackingCode
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css'
@@ -46,25 +45,20 @@ export class Dashboard {
   protected siteService = inject(SiteService);
   protected statsService = inject(StatsService);
   protected hitService = inject(HitService);
-
   protected timeRanges = [
-    { label: 'Last 24 Hours', value: '24h' },
-    { label: 'Last 7 Days', value: '7d' },
-    { label: 'Last 30 Days', value: '30d' },
-    { label: 'Last Year', value: '1y' },
-    { label: 'Custom Range', value: 'custom' }
+    {label: 'Last 24 Hours', value: '24h'},
+    {label: 'Last 7 Days', value: '7d'},
+    {label: 'Last 30 Days', value: '30d'},
+    {label: 'Last Year', value: '1y'},
+    {label: 'Custom Range', value: 'custom'}
   ];
   protected selectedRange = signal(this.timeRanges[2]);
-
   protected isCustomRangeVisible = signal(false);
   protected customRangeDates = signal<Date[] | null>(null);
   protected isSnippetVisible = signal(false);
-  protected snippetCode = signal('');
-
   private searchSubject = new Subject<string>();
   protected searchQuery = signal('');
   private lastTableEvent: TableLazyLoadEvent | null = null;
-
   protected isShortRange = computed(() => {
     if (this.selectedRange().value === '24h') return true;
     if (this.selectedRange().value === 'custom' && this.customRangeDates()) {
@@ -142,16 +136,12 @@ export class Dashboard {
 
   applyCustomRange() {
     this.isCustomRangeVisible.set(false);
-    this.selectedRange.set({ ...this.selectedRange() });
+    this.selectedRange.set({...this.selectedRange()});
   }
 
-  showSnippet() {
-    const origin = window.location.origin;
-    this.snippetCode.set(`<script src="${origin}/hk.js" async defer></script>`);
+  openSnippetModal() {
     this.isSnippetVisible.set(true);
   }
-
-  copySnippet() { navigator.clipboard.writeText(this.snippetCode()); }
 
   private getCurrentDateRange() {
     const range = this.selectedRange();
@@ -161,18 +151,26 @@ export class Dashboard {
     if (range.value === 'custom') {
       const d = this.customRangeDates();
       if (d && d.length === 2 && d[0] && d[1]) {
-        return { from: d[0].toISOString(), to: d[1].toISOString() };
+        return {from: d[0].toISOString(), to: d[1].toISOString()};
       }
       return null;
     }
 
     switch (range.value) {
-      case '24h': start.setHours(end.getHours() - 24); break;
-      case '7d': start.setDate(end.getDate() - 7); break;
-      case '30d': start.setDate(end.getDate() - 30); break;
-      case '1y': start.setFullYear(end.getFullYear() - 1); break;
+      case '24h':
+        start.setHours(end.getHours() - 24);
+        break;
+      case '7d':
+        start.setDate(end.getDate() - 7);
+        break;
+      case '30d':
+        start.setDate(end.getDate() - 30);
+        break;
+      case '1y':
+        start.setFullYear(end.getFullYear() - 1);
+        break;
     }
-    return { from: start.toISOString(), to: end.toISOString() };
+    return {from: start.toISOString(), to: end.toISOString()};
   }
 
   protected formatDuration(seconds: number): string {

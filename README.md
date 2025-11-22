@@ -10,7 +10,7 @@ HitKeep is a self-hostable, privacy-first web analytics platform designed for **
 
 Unlike other solutions that require you to manage a complex stack (PostgreSQL, Redis, ClickHouse, Nginx), HitKeep runs as a **single, self-contained executable**. It embeds a high-performance OLAP database (DuckDB) and a distributed message queue (NSQ) directly into the binary.
 
-![dashboard](./.github/assets/dashboard.png)
+![dashboard](./.github/assets/dashboard.jpeg)
 
 ## Features
 
@@ -23,24 +23,44 @@ Unlike other solutions that require you to manage a complex stack (PostgreSQL, R
 
 ## Library State
 
-This is currently a PoC - it is already being used in production but lacks vital features.
+This is a heavy WIP, just past PoC and MVP - it is already being used in production but lacks vital features.
 
 ### Roadmap
 
-- [ ] endpoint rate limiting through nsq
+- [x] endpoint rate limiting through nsq
 - [ ] Raw hit pruning 
-- [ ] better OLAP integration - no more Adhoc buckets
-- [ ] Allow users to opt out of sendBeacon
+- [x] better OLAP integration - no more Adhoc buckets
+- [x] Allow users to opt out of sendBeacon
 - [ ] User management
 - [ ] Settings management
-- [ ] More Metrics - currently it only shows the last 30 days
+- [x] More Metrics - currently it only shows the last 30 days
 - [ ] Helm chart
-- [ ] Takeout
+- [ ] Data retention and archival with parquets
+- [ ] Takeout - also with parquets to csv with duckdb
 - [ ] Events integration
+
 
 ## Quick Start
 
-### Method 1: Docker (Recommended)
+### Binary
+
+Head over to [Releases](https://github.com/PascaleBeier/hitkeep/releases) and download the Binary for your system, for example:
+
+```bash
+$ wget https://github.com/PascaleBeier/hitkeep/releases/download/v1.2.0/hitkeep-linux-arm64
+$ chmod +x hitkeep-linux-arm64
+```
+
+#### Running
+
+```bash
+# assuming you run this behind a proxy / lb pointing to localhost:8080 
+$ ./hitkeep-linux-arm64 -public-url="https://analytics.example.org" 
+# to use your public ip 
+$ ./hitkeep-linux-arm64 -public-url="http://1.2.3.4:8080"
+```
+
+### Docker
 
 Also see [examples](./examples/).
 
@@ -77,11 +97,23 @@ volumes:
 Once your instance is running and you have created a website in the dashboard, add this script to the `<head>` of your website:
 
 ```html
-<script 
-  src="https://your-hitkeep-instance.com/hk.js" 
-  async 
-  defer>
-</script>
+<script async src="https://your-hitkeep-instance.com/hk.js"></script>
+```
+
+### Do-Not-Track
+
+To ignore DNT:
+
+```html
+<script async src="https://your-hitkeep-instance.com/hk.js" data-collect-dnt="true"></script>
+```
+
+### fetch over sendBeacon
+
+To use fetch over navigator.sendBeacon:
+
+```html
+<script async src="https://your-hitkeep-instance.com/hk.js" data-collect-dnt="true" data-disable-beacon="true"></script>
 ```
 
 ## Configuration
@@ -98,6 +130,12 @@ HitKeep is configured via command-line flags.
 | `-name` | `hostname-timestamp` | Unique node name for clustering. |
 | `-bind` | `0.0.0.0:7946` | Bind address for cluster gossip (Memberlist). |
 | `-join` | `""` | Address of a peer node to join (if running a cluster). |
+
+## FAQ
+
+### How much data storage will I need?
+
+As of 1.2.0, without any parqueting, you can expect to store 1 Million Raw Hits per ~120MB.
 
 ## Architecture
 
@@ -128,6 +166,12 @@ make build
 # Run the binary
 ./hitkeep
 ```
+
+## Changelog
+
+We use SemVer and Conventional Commits.
+
+See [CHANGELOG.md](./CHANGELOG.md).
 
 ## License
 

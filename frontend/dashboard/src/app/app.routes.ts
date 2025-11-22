@@ -1,25 +1,29 @@
-// frontend/dashboard/src/app/app.routes.ts
 import { Routes } from '@angular/router';
-import { Setup } from './setup/setup';
-import {setupGuard} from './core/guards/setup-guard';
-import {Dashboard} from './dashboard/dashboard';
-import {Login} from './login/login';
+import { setupGuard } from './core/guards/setup-guard';
+import { MainLayout } from './core/layout/main-layout';
 
 export const routes: Routes = [
   {
     path: 'setup',
-    component: Setup,
+    loadComponent: () => import('./pages/setup/setup').then(m => m.Setup),
     canActivate: [setupGuard]
   },
   {
     path: 'login',
-    component: Login,
+    loadComponent: () => import('./pages/login/login').then(m => m.Login),
     canActivate: [setupGuard]
   },
   {
-    path: 'dashboard',
-    component: Dashboard,
-    canActivate: [setupGuard]
+    path: '',
+    component: MainLayout,
+    canActivate: [setupGuard],
+    children: [
+      {
+        path: 'dashboard',
+        loadComponent: () => import('./pages/dashboard/dashboard').then(m => m.Dashboard)
+      },
+      { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
+    ]
   },
-  { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
+  { path: '**', redirectTo: '/dashboard' }
 ];

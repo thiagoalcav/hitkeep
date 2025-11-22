@@ -9,11 +9,15 @@ import {
   ReactiveFormsModule
 } from '@angular/forms';
 import { finalize } from 'rxjs/operators';
+
 // PrimeNG Imports
 import { PasswordModule } from 'primeng/password';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
-import { Brand } from '../core/components/brand/brand';
+
+// Corrected path to Core
+import { Brand } from '../../core/components/brand/brand';
+
 @Component({
   selector: 'app-login',
   standalone: true,
@@ -32,13 +36,16 @@ export class Login {
   private fb = inject(FormBuilder);
   private http = inject(HttpClient);
   private router = inject(Router);
+
   protected isLoading = false;
   protected errorMessage: string | null = null;
   protected currentYear = new Date().getFullYear();
+
   protected loginForm: FormGroup = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required]]
   });
+
   onSubmit(): void {
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
@@ -56,7 +63,6 @@ export class Login {
       )
       .subscribe({
         next: () => {
-          // On success, navigate to dashboard
           this.router.navigate(['/dashboard']);
         },
         error: (err) => {

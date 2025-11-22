@@ -92,8 +92,8 @@ export class AnalyticsService {
     siteId: string, 
     from: string, 
     to: string,
-    page: number = 1, 
-    pageSize: number = 10,
+    page = 1, 
+    pageSize = 10,
     sortField?: string,
     sortOrder?: string,
     query?: string

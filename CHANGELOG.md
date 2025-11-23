@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.2.0](https://github.com/PascaleBeier/hitkeep/compare/v1.1.1...v1.2.0) (2025-11-23)
+
+
+### Features
+
+* **api:** Add Live visitors metric ([42268ec](https://github.com/PascaleBeier/hitkeep/commit/42268ec405d33653092b65eb8d0e6d52741078ba))
+* **api:** add top pages, referrers, and device breakdown to analytics stats ([50deb0b](https://github.com/PascaleBeier/hitkeep/commit/50deb0bc4b6101d87213e728e144de9254b46b0a))
+* **frontend:** Add Live visitors metric ([a3c6003](https://github.com/PascaleBeier/hitkeep/commit/a3c6003709fd2e7bc316f8a897a1ca2eefceeb5f))
+* **frontend:** add top pages, referrers, and device breakdown to analytics stats ([1df264c](https://github.com/PascaleBeier/hitkeep/commit/1df264c437cc762ebd10ba52568b307b4153edad))
+
+
+### Bug Fixes
+
+* **api:** Don't prepend www when resolving favicons so sites not listening on www can resolve ([748960f](https://github.com/PascaleBeier/hitkeep/commit/748960fa03be0dc006cfddd869c1c77a7e72a840))
+* **api:** Properly close upstream favicon response ([552b114](https://github.com/PascaleBeier/hitkeep/commit/552b1149401aa95e0b80372ef0900d1f5c4b5fef))
+* **dx:** Set default DB path to default docker volume for better DX without requiring a breaking change ([8458ddd](https://github.com/PascaleBeier/hitkeep/commit/8458ddd1ea1d285ea32532dd36687de8fd7abe26))
+* **dx:** UPDATE README and docker-compose example for new db default path ([2537d62](https://github.com/PascaleBeier/hitkeep/commit/2537d626fb9dd1ab5646a5249147af7de222b71d))
+
 ## [1.1.1](https://github.com/PascaleBeier/hitkeep/compare/v1.1.0...v1.1.1) (2025-11-22)
 
 

@@ -296,17 +296,16 @@ func (s *Server) handleGetSiteFavicon() http.HandlerFunc {
 
 		client := &http.Client{Timeout: 5 * time.Second}
 		resp, err := client.Get(ddgURL)
+		defer func() {
+			if err := resp.Body.Close(); err != nil {
+				slog.Warn("Failed to close response body", "error", err)
+			}
+		}()
 		if err != nil {
 			slog.Warn("Failed to fetch favicon upstream", "domain", site.Domain, "error", err)
 			http.Error(w, "Upstream error", http.StatusBadGateway)
 			return
 		}
-		defer func(Body io.ReadCloser) {
-			err := Body.Close()
-			if err != nil {
-
-			}
-		}(resp.Body)
 
 		// Cache for 24 hours in the browser to reduce load
 		w.Header().Set("Cache-Control", "public, max-age=86400")

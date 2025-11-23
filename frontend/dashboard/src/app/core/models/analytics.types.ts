@@ -31,6 +31,11 @@ export interface ChartDataPoint {
   visitors: number;
 }
 
+export interface MetricStat {
+  name: string;
+  value: number;
+}
+
 export interface SiteStats {
   total_pageviews: number;
   unique_sessions: number;
@@ -38,6 +43,9 @@ export interface SiteStats {
   avg_session_duration: number;
   pages_per_session: number;
   chart_data: ChartDataPoint[];
+  top_pages: MetricStat[];
+  top_referrers: MetricStat[];
+  top_devices: MetricStat[];
 }
 
 export interface SystemStatus {

@@ -50,6 +50,11 @@ type ChartDataPoint struct {
 	Visitors  int       `json:"visitors"`
 }
 
+type MetricStat struct {
+	Name  string `json:"name"`
+	Value int    `json:"value"`
+}
+
 type SiteStats struct {
 	TotalPageviews     int              `json:"total_pageviews"`
 	UniqueSessions     int              `json:"unique_sessions"`
@@ -57,6 +62,9 @@ type SiteStats struct {
 	AvgSessionDuration float64          `json:"avg_session_duration"` // Seconds
 	PagesPerSession    float64          `json:"pages_per_session"`
 	ChartData          []ChartDataPoint `json:"chart_data"`
+	TopPages           []MetricStat     `json:"top_pages"`
+	TopReferrers       []MetricStat     `json:"top_referrers"`
+	TopDevices         []MetricStat     `json:"top_devices"`
 }
 
 type HitQueryParams struct {

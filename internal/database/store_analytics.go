@@ -20,7 +20,10 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 	}
 
 	stats := &api.SiteStats{
-		ChartData: []api.ChartDataPoint{},
+		ChartData:    []api.ChartDataPoint{},
+		TopPages:     []api.MetricStat{},
+		TopReferrers: []api.MetricStat{},
+		TopDevices:   []api.MetricStat{},
 	}
 
 	duration := params.End.Sub(params.Start)
@@ -34,7 +37,6 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		truncUnit = "hour"
 		gridStart = params.Start.Truncate(time.Hour)
 		gridEnd = params.End.Truncate(time.Hour)
-		// Add one buffer hour to ensure we cover th last partial hour
 		if !gridEnd.After(params.End) {
 			gridEnd = gridEnd.Add(time.Hour)
 		}
@@ -117,6 +119,81 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 			return nil, err
 		}
 		stats.ChartData = append(stats.ChartData, p)
+	}
+
+	// 3. Top Pages
+	pagesQuery := `
+		SELECT path, COUNT(*) as val 
+		FROM hits 
+		WHERE site_id = ? AND timestamp >= ? AND timestamp <= ?
+		GROUP BY path 
+		ORDER BY val DESC 
+		LIMIT 10
+	`
+	pRows, err := s.db.QueryContext(ctx, pagesQuery, params.SiteID, params.Start, params.End)
+	if err != nil {
+		return nil, err
+	}
+	defer pRows.Close()
+	for pRows.Next() {
+		var m api.MetricStat
+		if err := pRows.Scan(&m.Name, &m.Value); err == nil {
+			stats.TopPages = append(stats.TopPages, m)
+		}
+	}
+
+	// TODO: Refactor once we tackle Events
+	refQuery := `
+		SELECT 
+			CASE 
+				WHEN referrer IS NULL OR referrer = '' THEN '(Direct)'
+				-- Simple hack to extract domain-ish part for now, relies on 'http' prefix
+				WHEN referrer LIKE 'http%' THEN regexp_extract(referrer, 'https?://([^/]+)', 1)
+				ELSE referrer 
+			END as source, 
+			COUNT(*) as val 
+		FROM hits 
+		WHERE site_id = ? AND timestamp >= ? AND timestamp <= ?
+		GROUP BY source 
+		ORDER BY val DESC 
+		LIMIT 10
+	`
+	rRows, err := s.db.QueryContext(ctx, refQuery, params.SiteID, params.Start, params.End)
+	if err != nil {
+		return nil, err
+	}
+	defer rRows.Close()
+	for rRows.Next() {
+		var m api.MetricStat
+		if err := rRows.Scan(&m.Name, &m.Value); err == nil {
+			stats.TopReferrers = append(stats.TopReferrers, m)
+		}
+	}
+
+	// TODO: Good enough for now
+	devQuery := `
+		SELECT 
+			CASE 
+				WHEN viewport_width < 576 THEN 'Mobile'
+				WHEN viewport_width < 992 THEN 'Tablet'
+				ELSE 'Desktop' 
+			END as device,
+			COUNT(*) as val 
+		FROM hits 
+		WHERE site_id = ? AND timestamp >= ? AND timestamp <= ?
+		GROUP BY device 
+		ORDER BY val DESC 
+	`
+	dRows, err := s.db.QueryContext(ctx, devQuery, params.SiteID, params.Start, params.End)
+	if err != nil {
+		return nil, err
+	}
+	defer dRows.Close()
+	for dRows.Next() {
+		var m api.MetricStat
+		if err := dRows.Scan(&m.Name, &m.Value); err == nil {
+			stats.TopDevices = append(stats.TopDevices, m)
+		}
 	}
 
 	return stats, nil

@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
+import {Router, RouterLink} from '@angular/router';
 import {
   FormBuilder,
   FormGroup,
@@ -27,7 +27,8 @@ import { Brand } from '../../core/components/brand/brand';
     ReactiveFormsModule,
     PasswordModule,
     ButtonModule,
-    InputTextModule
+    InputTextModule,
+    RouterLink
   ],
   templateUrl: './login.html',
   styleUrl: './login.css',

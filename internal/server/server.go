@@ -15,6 +15,7 @@ import (
 	"hitkeep/internal/cluster"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
+	"hitkeep/internal/mailer"
 )
 
 type Server struct {
@@ -22,6 +23,7 @@ type Server struct {
 	store         *database.Store
 	cluster       *cluster.Manager
 	producer      *nsq.Producer
+	mailer        *mailer.Mailer
 	conf          *config.Config
 	ingestLimiter *IPRateLimiter
 	apiLimiter    *IPRateLimiter
@@ -32,11 +34,16 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, cluster *cl
 	ingestLim := NewIPRateLimiter(rate.Limit(conf.IngestRateLimit), conf.IngestBurst)
 	apiLim := NewIPRateLimiter(rate.Limit(conf.ApiRateLimit), conf.ApiBurst)
 	authLim := NewIPRateLimiter(rate.Limit(conf.AuthRateLimit), conf.AuthBurst)
+	mailService, err := mailer.New(conf)
+	if err != nil {
+		slog.Warn("Failed to initialize mailer. Email features will not work.", "error", err)
+	}
 
 	s := &Server{
 		store:         store,
 		cluster:       cluster,
 		producer:      producer,
+		mailer:        mailService,
 		conf:          conf,
 		ingestLimiter: ingestLim,
 		apiLimiter:    apiLim,
@@ -81,6 +88,8 @@ func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 	// Auth
 	mux.HandleFunc("POST /api/initial-user", s.withRateLimit(s.authLimiter, s.handleCreateInitialUser()))
 	mux.HandleFunc("POST /api/login", s.withRateLimit(s.authLimiter, s.handleLogin()))
+	mux.HandleFunc("POST /api/auth/forgot-password", s.withRateLimit(s.authLimiter, s.handleForgotPassword()))
+	mux.HandleFunc("POST /api/auth/reset-password", s.withRateLimit(s.authLimiter, s.handleResetPassword()))
 
 	// API
 	mux.HandleFunc("GET /api/sites", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleGetSites())))

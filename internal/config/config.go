@@ -5,68 +5,157 @@ import (
 	"encoding/hex"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
+	"strconv"
 	"time"
 )
 
 type Config struct {
-	HTTPAddr        string
-	DBPath          string
-	BindAddr        string
-	JoinAddr        string
-	NodeName        string
-	LogLevel        string
-	NSQTCPAddress   string
-	NSQHTTPAddress  string
-	JWTSecret       string
-	PublicURL       string
-	Healthcheck     bool
-	IngestRateLimit float64
-	IngestBurst     int
-	ApiRateLimit    float64
-	ApiBurst        int
-	AuthRateLimit   float64
-	AuthBurst       int
-	Version         string
+	ApiBurst               int
+	ApiRateLimit           float64
+	AuthBurst              int
+	AuthRateLimit          float64
+	BindAddr               string
+	DBPath                 string
+	Healthcheck            bool
+	HTTPAddr               string
+	IngestBurst            int
+	IngestRateLimit        float64
+	JoinAddr               string
+	JWTSecret              string
+	LogLevel               string
+	MailDriver             string
+	MailEncryption         string
+	MailInsecureSkipVerify bool
+	MailFromAddress        string
+	MailFromName           string
+	MailHost               string
+	MailPassword           string
+	MailPort               int
+	MailUsername           string
+	NodeName               string
+	NSQHTTPAddress         string
+	NSQTCPAddress          string
+	PublicURL              string
+	Version                string
 }
 
 func Load() *Config {
+	return load(os.Args[1:], func(key, fallback string) string {
+		if val := os.Getenv(key); val != "" {
+			return val
+		}
+		return fallback
+	})
+}
+
+// load internal
+func load(args []string, getEnv func(string, string) string) *Config {
 	var conf Config
 
-	defaultDB := "hitkeep.db"
-	if envDB := os.Getenv("HITKEEP_DB_PATH"); envDB != "" {
-		defaultDB = envDB
+	fs := flag.NewFlagSet("hitkeep", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
+
+	getInt := func(key string, fallback int) int {
+		val := getEnv(key, "")
+		if val != "" {
+			if i, err := strconv.Atoi(val); err == nil {
+				return i
+			}
+			slog.Warn("Invalid integer in env var, using default", "key", key, "val", val, "default", fallback)
+		}
+		return fallback
 	}
 
-	// Public / Cluster Settings
-	flag.StringVar(&conf.HTTPAddr, "http", ":8080", "HTTP listen address")
-	flag.StringVar(&conf.BindAddr, "bind", "0.0.0.0:7946", "Address for cluster gossip")
-	flag.StringVar(&conf.JoinAddr, "join", "", "Address of a peer to join")
-	flag.StringVar(&conf.PublicURL, "public-url", "http://localhost:8080", "Public URL (used for JWT issuer)")
+	getFloat := func(key string, fallback float64) float64 {
+		val := getEnv(key, "")
+		if val != "" {
+			if f, err := strconv.ParseFloat(val, 64); err == nil {
+				return f
+			}
+			slog.Warn("Invalid float in env var, using default", "key", key, "val", val, "default", fallback)
+		}
+		return fallback
+	}
 
-	// Data / Logging
-	flag.StringVar(&conf.DBPath, "db", defaultDB, "Database file path")
-	flag.StringVar(&conf.LogLevel, "log-level", "info", "Log level (debug, info, warn, error)")
-	flag.StringVar(&conf.JWTSecret, "jwt-secret", "", "Secret key for JWT signing")
+	getBool := func(key string, fallback bool) bool {
+		val := getEnv(key, "")
+		if val != "" {
+			if b, err := strconv.ParseBool(val); err == nil {
+				return b
+			}
+			slog.Warn("Invalid boolean in env var, using default", "key", key, "val", val, "default", fallback)
+		}
+		return fallback
+	}
 
-	// NSQ
-	flag.StringVar(&conf.NSQTCPAddress, "nsq-tcp-address", "127.0.0.1:4150", "Internal NSQ TCP address")
-	flag.StringVar(&conf.NSQHTTPAddress, "nsq-http-address", "127.0.0.1:4151", "Internal NSQ HTTP address")
+	defDB := getEnv("HITKEEP_DB_PATH", "hitkeep.db")
+	defHTTP := getEnv("HITKEEP_HTTP_ADDR", ":8080")
+	defBind := getEnv("HITKEEP_BIND_ADDR", "0.0.0.0:7946")
+	defJoin := getEnv("HITKEEP_JOIN_ADDR", "")
+	defPublicURL := getEnv("HITKEEP_PUBLIC_URL", "http://localhost:8080")
+	defLogLevel := getEnv("HITKEEP_LOG_LEVEL", "info")
+	defJWT := getEnv("HITKEEP_JWT_SECRET", "")
 
-	// Healthcheck
-	flag.BoolVar(&conf.Healthcheck, "healthcheck", false, "Run as healthcheck client")
+	defNSQTCP := getEnv("HITKEEP_NSQ_TCP_ADDRESS", "127.0.0.1:4150")
+	defNSQHTTP := getEnv("HITKEEP_NSQ_HTTP_ADDRESS", "127.0.0.1:4151")
 
-	// Rate Limits
-	flag.Float64Var(&conf.IngestRateLimit, "ingest-rate", 20.0, "Ingest endpoint rate limit (req/sec/ip)")
-	flag.IntVar(&conf.IngestBurst, "ingest-burst", 40, "Ingest endpoint burst size")
-	flag.Float64Var(&conf.ApiRateLimit, "api-rate", 10.0, "General API rate limit (req/sec/ip)")
-	flag.IntVar(&conf.ApiBurst, "api-burst", 20, "General API burst size")
-	flag.Float64Var(&conf.AuthRateLimit, "auth-rate", 2.0, "Auth endpoint rate limit (req/sec/ip)")
-	flag.IntVar(&conf.AuthBurst, "auth-burst", 5, "Auth endpoint burst size")
+	defIngestRate := getFloat("HITKEEP_INGEST_RATE_LIMIT", 20.0)
+	defIngestBurst := getInt("HITKEEP_INGEST_BURST", 40)
+	defApiRate := getFloat("HITKEEP_API_RATE_LIMIT", 10.0)
+	defApiBurst := getInt("HITKEEP_API_BURST", 20)
+	defAuthRate := getFloat("HITKEEP_AUTH_RATE_LIMIT", 2.0)
+	defAuthBurst := getInt("HITKEEP_AUTH_BURST", 5)
+
+	defMailDriver := getEnv("HITKEEP_MAIL_DRIVER", "smtp")
+	defMailEnc := getEnv("HITKEEP_MAIL_ENCRYPTION", "tls")
+	defMailSkipVerify := getBool("HITKEEP_MAIL_INSECURE_SKIP_VERIFY", false)
+	defMailHost := getEnv("HITKEEP_MAIL_HOST", "")
+	defMailPort := getInt("HITKEEP_MAIL_PORT", 587)
+	defMailUser := getEnv("HITKEEP_MAIL_USERNAME", "")
+	defMailPass := getEnv("HITKEEP_MAIL_PASSWORD", "")
+	defMailFrom := getEnv("HITKEEP_MAIL_FROM_ADDRESS", "hitkeep@localhost")
+	defMailName := getEnv("HITKEEP_MAIL_FROM_NAME", "HitKeep")
 
 	hostname, _ := os.Hostname()
-	flag.StringVar(&conf.NodeName, "name", fmt.Sprintf("%s-%d", hostname, time.Now().UnixNano()), "Unique node name")
-	flag.Parse()
+	defNodeName := getEnv("HITKEEP_NODE_NAME", fmt.Sprintf("%s-%d", hostname, time.Now().UnixNano()))
+
+	fs.StringVar(&conf.HTTPAddr, "http", defHTTP, "HTTP listen address")
+	fs.StringVar(&conf.BindAddr, "bind", defBind, "Address for cluster gossip")
+	fs.StringVar(&conf.JoinAddr, "join", defJoin, "Address of a peer to join")
+	fs.StringVar(&conf.PublicURL, "public-url", defPublicURL, "Public URL")
+
+	fs.StringVar(&conf.DBPath, "db", defDB, "Database file path")
+	fs.StringVar(&conf.LogLevel, "log-level", defLogLevel, "Log level")
+	fs.StringVar(&conf.JWTSecret, "jwt-secret", defJWT, "Secret key for JWT")
+
+	fs.StringVar(&conf.NSQTCPAddress, "nsq-tcp-address", defNSQTCP, "Internal NSQ TCP")
+	fs.StringVar(&conf.NSQHTTPAddress, "nsq-http-address", defNSQHTTP, "Internal NSQ HTTP")
+
+	fs.BoolVar(&conf.Healthcheck, "healthcheck", false, "Run as healthcheck client")
+
+	fs.Float64Var(&conf.IngestRateLimit, "ingest-rate", defIngestRate, "Ingest rate limit")
+	fs.IntVar(&conf.IngestBurst, "ingest-burst", defIngestBurst, "Ingest burst")
+	fs.Float64Var(&conf.ApiRateLimit, "api-rate", defApiRate, "API rate limit")
+	fs.IntVar(&conf.ApiBurst, "api-burst", defApiBurst, "API burst")
+	fs.Float64Var(&conf.AuthRateLimit, "auth-rate", defAuthRate, "Auth rate limit")
+	fs.IntVar(&conf.AuthBurst, "auth-burst", defAuthBurst, "Auth burst")
+
+	fs.StringVar(&conf.MailDriver, "mail-driver", defMailDriver, "Mail driver")
+	fs.StringVar(&conf.MailEncryption, "mail-encryption", defMailEnc, "Mail encryption")
+	fs.BoolVar(&conf.MailInsecureSkipVerify, "mail-insecure-skip-verify", defMailSkipVerify, "Disable Cert validation")
+	fs.StringVar(&conf.MailHost, "mail-host", defMailHost, "SMTP Host")
+	fs.IntVar(&conf.MailPort, "mail-port", defMailPort, "SMTP Port")
+	fs.StringVar(&conf.MailUsername, "mail-username", defMailUser, "SMTP Username")
+	fs.StringVar(&conf.MailPassword, "mail-password", defMailPass, "SMTP Password")
+	fs.StringVar(&conf.MailFromAddress, "mail-from-address", defMailFrom, "From Email")
+	fs.StringVar(&conf.MailFromName, "mail-from-name", defMailName, "From Name")
+
+	fs.StringVar(&conf.NodeName, "name", defNodeName, "Unique node name")
+
+	// Tester
+	_ = fs.Parse(args)
 
 	if conf.JWTSecret == "" {
 		bytes := make([]byte, 32)

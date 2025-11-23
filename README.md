@@ -118,18 +118,52 @@ To use fetch over navigator.sendBeacon:
 
 ## Configuration
 
-HitKeep is configured via command-line flags.
+HitKeep is configured via command-line flags or environment variables. Flags take precedence.
 
-| Flag | Default | Description |
-| :--- | :--- | :--- |
-| `-http` | `:8080` | Address to bind the HTTP server to. |
-| `-db` | `hitkeep.db` | Path to the database. Defaults to `$HITKEEP_DB_PATH` if set. |
-| `-public-url` | `http://localhost:8080` | **Required.** The public URL of your instance. Used for JWT claims and CORS. |
-| `-jwt-secret` | *(random)* | **Required.** Secret key for signing auth tokens. |
-| `-log-level` | `info` | Logging level (`debug`, `info`, `warn`, `error`). |
-| `-name` | `hostname-timestamp` | Unique node name for clustering. |
-| `-bind` | `0.0.0.0:7946` | Bind address for cluster gossip (Memberlist). |
-| `-join` | `""` | Address of a peer node to join (if running a cluster). |
+### General Settings
+
+| Flag          | Environment Variable | Default                 | Description                                                                  |
+|:--------------|:---------------------|:------------------------|:-----------------------------------------------------------------------------|
+| `-public-url` | `HITKEEP_PUBLIC_URL` | `http://localhost:8080` | **Required.** The public URL of your instance. Used for JWT issuer and CORS. |
+| `-jwt-secret` | `HITKEEP_JWT_SECRET` | *(random)*              | **Required.** Secret key for signing auth tokens.                            |
+| `-http`       | `HITKEEP_HTTP_ADDR`  | `:8080`                 | Address to bind the HTTP server to.                                          |
+| `-db`         | `HITKEEP_DB_PATH`    | `hitkeep.db`            | Path to the DuckDB database file.                                            |
+| `-log-level`  | `HITKEEP_LOG_LEVEL`  | `info`                  | Logging verbosity (`debug`, `info`, `warn`, `error`).                        |
+
+### Mailer (SMTP)
+
+| Flag                         | Environment Variable                | Default             | Description                                                     |
+|:-----------------------------|:------------------------------------|:--------------------|:----------------------------------------------------------------|
+| `-mail-driver`               | `HITKEEP_MAIL_DRIVER`               | `smtp`              | Mail driver to use (`smtp` or `log`).                           |
+| `-mail-host`                 | `HITKEEP_MAIL_HOST`                 |                     | SMTP Server Hostname (e.g., `smtp.postmarkapp.com`).            |
+| `-mail-port`                 | `HITKEEP_MAIL_PORT`                 | `587`               | SMTP Server Port.                                               |
+| `-mail-username`             | `HITKEEP_MAIL_USERNAME`             |                     | SMTP Username.                                                  |
+| `-mail-password`             | `HITKEEP_MAIL_PASSWORD`             |                     | SMTP Password.                                                  |
+| `-mail-encryption`           | `HITKEEP_MAIL_ENCRYPTION`           | `tls`               | Encryption mode: `tls` (STARTTLS), `ssl` (Implicit), or `none`. |
+| `-mail-insecure-skip-verify` | `HITKEEP_MAIL_INSECURE_SKIP_VERIFY` | `false`             | Skip TLS certificate validation (useful for self-signed certs). |
+| `-mail-from-address`         | `HITKEEP_MAIL_FROM_ADDRESS`         | `hitkeep@localhost` | The email address messages are sent from.                       |
+| `-mail-from-name`            | `HITKEEP_MAIL_FROM_NAME`            | `HitKeep`           | The name displayed to the recipient.                            |
+
+### Rate Limiting
+
+| Flag            | Environment Variable        | Default | Description                                        |
+|:----------------|:----------------------------|:--------|:---------------------------------------------------|
+| `-ingest-rate`  | `HITKEEP_INGEST_RATE_LIMIT` | `20.0`  | Rate limit for `/ingest` (req/sec/ip).             |
+| `-ingest-burst` | `HITKEEP_INGEST_BURST`      | `40`    | Burst size for `/ingest`.                          |
+| `-api-rate`     | `HITKEEP_API_RATE_LIMIT`    | `10.0`  | Rate limit for general API endpoints (req/sec/ip). |
+| `-api-burst`    | `HITKEEP_API_BURST`         | `20`    | Burst size for general API.                        |
+| `-auth-rate`    | `HITKEEP_AUTH_RATE_LIMIT`   | `2.0`   | Rate limit for login/signup (req/sec/ip).          |
+| `-auth-burst`   | `HITKEEP_AUTH_BURST`        | `5`     | Burst size for login/signup.                       |
+
+### Clustering & Internals
+
+| Flag                | Environment Variable       | Default              | Description                                   |
+|:--------------------|:---------------------------|:---------------------|:----------------------------------------------|
+| `-name`             | `HITKEEP_NODE_NAME`        | `hostname-timestamp` | Unique name for this node in the cluster.     |
+| `-bind`             | `HITKEEP_BIND_ADDR`        | `0.0.0.0:7946`       | Bind address for cluster gossip (Memberlist). |
+| `-join`             | `HITKEEP_JOIN_ADDR`        | `""`                 | Address of a peer node to join.               |
+| `-nsq-tcp-address`  | `HITKEEP_NSQ_TCP_ADDRESS`  | `127.0.0.1:4150`     | Address of the internal embedded NSQ TCP.     |
+| `-nsq-http-address` | `HITKEEP_NSQ_HTTP_ADDRESS` | `127.0.0.1:4151`     | Address of the internal embedded NSQ HTTP.    |
 
 ## FAQ
 

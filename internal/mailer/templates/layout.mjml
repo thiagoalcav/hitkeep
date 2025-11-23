@@ -1,0 +1,56 @@
+<mjml>
+  <mj-head>
+    <mj-title>{{ .Meta.Subject }}</mj-title>
+    <mj-font name="Lexend" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;700&display=swap" />
+    <mj-attributes>
+      <mj-all font-family="Lexend, sans-serif" font-size="16px" line-height="1.6" />
+      <mj-text color="#334155" />
+      <mj-button background-color="#33d399" color="#18181a" border-radius="8px" font-weight="700" font-size="14px" inner-padding="12px 24px" />
+      <mj-divider border-color="#e2e8f0" border-width="1px" />
+    </mj-attributes>
+    <mj-style>
+      .body-bg { background-color: #f1f5f9; }
+      .card-bg { background-color: #ffffff; }
+      .brand-text { color: #18181a; }
+      .footer-text { color: #94a3b8; }
+
+      @media (prefers-color-scheme: dark) {
+        .body-wrapper > div { background-color: #000000 !important; }
+        .card-bg > table { background-color: #18181a !important; background: #18181a !important; }
+        .brand-text div { color: #ffffff !important; }
+        .footer-text div { color: #64748b !important; }
+      }
+    </mj-style>
+  </mj-head>
+  <mj-body css-class="body-wrapper" background-color="#f1f5f9">
+
+    <!-- Header -->
+    <mj-section padding-bottom="20px" padding-top="40px">
+      <mj-column>
+        <mj-text align="center" font-size="24px" font-weight="700" css-class="brand-text">
+          HitKeep
+        </mj-text>
+      </mj-column>
+    </mj-section>
+
+    <!-- Content Card -->
+    <mj-wrapper css-class="card-bg" background-color="#ffffff" padding="0px">
+      <mj-section padding="40px 40px 20px 40px">
+        <mj-column>
+           <!-- DYNAMIC CONTENT INJECTION -->
+           {{ template "content" .Data }}
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+
+    <!-- Footer -->
+    <mj-section padding-top="20px" padding-bottom="40px">
+      <mj-column>
+        <mj-text align="center" css-class="footer-text" font-size="12px">
+          Powered by <a href="https://hitkeep.com" style="color:#33d399; text-decoration:none; font-weight:600;">HitKeep</a>
+          <br/> The privacy-first, single-binary analytics platform.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

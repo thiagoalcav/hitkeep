@@ -135,7 +135,7 @@ HitKeep is configured via command-line flags.
 
 ### How much data storage will I need?
 
-As of 1.2.0, without any parqueting, you can expect to store 1 Million Raw Hits per ~120MB.
+As of now, without any parqueting, you can expect to store 1 Million Raw Hits per ~120MB.
 
 ## Architecture
 

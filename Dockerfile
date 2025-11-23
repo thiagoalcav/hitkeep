@@ -30,6 +30,7 @@ COPY --from=builder --chown=nonroot:nonroot /var/lib/hitkeep/data /var/lib/hitke
 
 COPY --from=builder /dist/hitkeep /usr/local/bin/hitkeep
 
+ENV HITKEEP_DB_PATH="/var/lib/hitkeep/data/hitkeep.db"
 VOLUME /var/lib/hitkeep/data
 
 HEALTHCHECK --start-period=60s --start-interval=3s --interval=10s --timeout=3s --retries=3 \

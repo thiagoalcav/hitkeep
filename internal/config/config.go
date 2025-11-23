@@ -33,6 +33,11 @@ type Config struct {
 func Load() *Config {
 	var conf Config
 
+	defaultDB := "hitkeep.db"
+	if envDB := os.Getenv("HITKEEP_DB_PATH"); envDB != "" {
+		defaultDB = envDB
+	}
+
 	// Public / Cluster Settings
 	flag.StringVar(&conf.HTTPAddr, "http", ":8080", "HTTP listen address")
 	flag.StringVar(&conf.BindAddr, "bind", "0.0.0.0:7946", "Address for cluster gossip")
@@ -40,7 +45,7 @@ func Load() *Config {
 	flag.StringVar(&conf.PublicURL, "public-url", "http://localhost:8080", "Public URL (used for JWT issuer)")
 
 	// Data / Logging
-	flag.StringVar(&conf.DBPath, "db", "hitkeep.db", "Database file path")
+	flag.StringVar(&conf.DBPath, "db", defaultDB, "Database file path")
 	flag.StringVar(&conf.LogLevel, "log-level", "info", "Log level (debug, info, warn, error)")
 	flag.StringVar(&conf.JWTSecret, "jwt-secret", "", "Secret key for JWT signing")
 

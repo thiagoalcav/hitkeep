@@ -56,6 +56,8 @@ type MetricStat struct {
 }
 
 type SiteStats struct {
+	LiveVisitors int `json:"live_visitors"`
+
 	TotalPageviews     int              `json:"total_pageviews"`
 	UniqueSessions     int              `json:"unique_sessions"`
 	BounceRate         float64          `json:"bounce_rate"`

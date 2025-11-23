@@ -26,6 +26,15 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		TopDevices:   []api.MetricStat{},
 	}
 
+	liveThreshold := time.Now().Add(-5 * time.Minute)
+	err = s.db.QueryRowContext(ctx,
+		"SELECT COUNT(DISTINCT session_id) FROM hits WHERE site_id = ? AND timestamp >= ?",
+		params.SiteID, liveThreshold,
+	).Scan(&stats.LiveVisitors)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calc live visitors: %w", err)
+	}
+
 	duration := params.End.Sub(params.Start)
 	interval := "1 DAY"
 	truncUnit := "day"

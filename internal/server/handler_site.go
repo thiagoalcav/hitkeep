@@ -292,7 +292,7 @@ func (s *Server) handleGetSiteFavicon() http.HandlerFunc {
 		}
 
 		// Use DuckDuckGo's favicon service
-		ddgURL := fmt.Sprintf("https://icons.duckduckgo.com/ip3/www.%s.ico", site.Domain)
+		ddgURL := fmt.Sprintf("https://icons.duckduckgo.com/ip3/%s.ico", site.Domain)
 
 		client := &http.Client{Timeout: 5 * time.Second}
 		resp, err := client.Get(ddgURL)

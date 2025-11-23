@@ -21,6 +21,7 @@ import { HitService } from '../../features/hits/services/hit.service';
 import { TrafficChart } from '../../features/analytics/components/traffic-chart';
 import { TrackingCode } from '../../features/sites/components/tracking-code';
 import {SiteFavicon} from '../../features/sites/components/site-favicon';
+import {MetricList} from '../../features/analytics/components/metric-list';
 interface RangeSelectEvent {
   value: {
     label: string;
@@ -35,7 +36,7 @@ interface RangeSelectEvent {
     CardModule, TableModule, SelectModule, ButtonModule,
     IconFieldModule, InputIconModule, InputTextModule,
     SkeletonModule, DialogModule, DatePickerModule, TooltipModule,
-    TrafficChart, TrackingCode, SiteFavicon
+    TrafficChart, TrackingCode, SiteFavicon, MetricList,
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',

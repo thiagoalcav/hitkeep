@@ -119,7 +119,6 @@ To use fetch over navigator.sendBeacon:
 ## Configuration
 
 HitKeep is configured via command-line flags or environment variables. Flags take precedence.
-Here is the comprehensive configuration reference for your `README.md`.
 
 ### General Settings
 

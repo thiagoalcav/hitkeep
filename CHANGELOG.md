@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.3.0](https://github.com/PascaleBeier/hitkeep/compare/v1.2.0...v1.3.0) (2025-11-23)
+
+
+### Features
+
+* **api:** Add Password Reset ([76a2b09](https://github.com/PascaleBeier/hitkeep/commit/76a2b09e027de508b5c8bd9ea884668bbd774ce4))
+* **api:** Introduce Mailer integration ([73339b8](https://github.com/PascaleBeier/hitkeep/commit/73339b87bf19221e0138aa4373b8746165dc9b5b))
+* **frontend:** Add Password Reset ([0f1e092](https://github.com/PascaleBeier/hitkeep/commit/0f1e092f78bb5cb7825cac8e79e48cf809265ee1))
+
 ## [1.2.0](https://github.com/PascaleBeier/hitkeep/compare/v1.1.1...v1.2.0) (2025-11-23)
 
 

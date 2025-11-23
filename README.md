@@ -123,7 +123,7 @@ HitKeep is configured via command-line flags.
 | Flag | Default | Description |
 | :--- | :--- | :--- |
 | `-http` | `:8080` | Address to bind the HTTP server to. |
-| `-db` | `hitkeep.db` | Path to the DuckDB database file. |
+| `-db` | `hitkeep.db` | Path to the database. Defaults to `$HITKEEP_DB_PATH` if set. |
 | `-public-url` | `http://localhost:8080` | **Required.** The public URL of your instance. Used for JWT claims and CORS. |
 | `-jwt-secret` | *(random)* | **Required.** Secret key for signing auth tokens. |
 | `-log-level` | `info` | Logging level (`debug`, `info`, `warn`, `error`). |

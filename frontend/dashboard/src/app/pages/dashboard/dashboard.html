@@ -31,9 +31,16 @@
   </div>
   @if (siteService.activeSite()) {
     <!-- KPI Cards -->
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5 mb-6">
+    <!-- TODO: Refactor for mobile, weird UX -->
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-6 mb-6">
+      <ng-container *ngTemplateOutlet="kpiCard; context: {
+        label: 'Live Visitors',
+        value: statsService.stats()?.live_visitors || 0,
+        loading: statsService.isLoading(),
+        valueClass: (statsService.stats()?.live_visitors || 0) > 0 ? 'text-green-600 dark:text-green-400 animate-pulse' : ''
+      }"></ng-container>
       <ng-container
-        *ngTemplateOutlet="kpiCard; context: {label: 'Total Pageviews', value: statsService.stats()?.total_pageviews, loading: statsService.isLoading()}"></ng-container>
+        *ngTemplateOutlet="kpiCard; context: {label: 'Pageviews', value: statsService.stats()?.total_pageviews, loading: statsService.isLoading()}"></ng-container>
       <ng-container
         *ngTemplateOutlet="kpiCard; context: {label: 'Unique Sessions', value: statsService.stats()?.unique_sessions, loading: statsService.isLoading()}"></ng-container>
       <ng-container
@@ -62,19 +69,19 @@
         title="Top Pages"
         icon="pi-file"
         [data]="statsService.stats()?.top_pages || []"
-        [isLoading]="statsService.isLoading()" />
+        [isLoading]="statsService.isLoading()"/>
 
       <app-metric-list
         title="Top Sources"
         icon="pi-link"
         [data]="statsService.stats()?.top_referrers || []"
-        [isLoading]="statsService.isLoading()" />
+        [isLoading]="statsService.isLoading()"/>
 
       <app-metric-list
         title="Devices"
         icon="pi-mobile"
         [data]="statsService.stats()?.top_devices || []"
-        [isLoading]="statsService.isLoading()" />
+        [isLoading]="statsService.isLoading()"/>
     </div>
 
     <!-- Hits Table -->

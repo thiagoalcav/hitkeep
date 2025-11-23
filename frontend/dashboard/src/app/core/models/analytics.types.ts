@@ -37,6 +37,7 @@ export interface MetricStat {
 }
 
 export interface SiteStats {
+  live_visitors: number;
   total_pageviews: number;
   unique_sessions: number;
   bounce_rate: number;

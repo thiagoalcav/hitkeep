@@ -14,6 +14,14 @@ export const routes: Routes = [
     canActivate: [setupGuard]
   },
   {
+    path: 'forgot-password',
+    loadComponent: () => import('./pages/password/forgot-password').then(m => m.ForgotPassword)
+  },
+  {
+    path: 'reset-password',
+    loadComponent: () => import('./pages/password/reset-password').then(m => m.ResetPassword)
+  },
+  {
     path: '',
     component: MainLayout,
     canActivate: [setupGuard],

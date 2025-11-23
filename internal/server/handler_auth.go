@@ -15,6 +15,7 @@ import (
 	"golang.org/x/crypto/argon2"
 
 	"hitkeep/internal/auth"
+	"hitkeep/internal/mailables"
 )
 
 func (s *Server) handleCreateInitialUser() http.HandlerFunc {
@@ -206,4 +207,110 @@ func verifyPassword(password, encodedHash string) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+func (s *Server) handleForgotPassword() http.HandlerFunc {
+	type request struct {
+		Email string `json:"email"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		user, err := s.store.GetUserByEmail(r.Context(), req.Email)
+		if err != nil {
+			slog.Error("Database error checking user", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		// fake to prevenet enumeration
+		if user == nil {
+			w.WriteHeader(http.StatusOK)
+			if err := json.NewEncoder(w).Encode(map[string]string{"message": "If an account exists, a reset link has been sent."}); err != nil {
+				slog.Error("Failed to encode response", "error", err)
+			}
+			return
+		}
+
+		token, err := s.store.CreatePasswordResetToken(r.Context(), user.Email)
+		if err != nil {
+			slog.Error("Failed to create reset token", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		resetLink := fmt.Sprintf("%s/reset-password?token=%s", s.conf.PublicURL, token)
+
+		err = s.mailer.Send(user.Email, mailables.NewPasswordReset(resetLink))
+		if err != nil {
+			slog.Error("Failed to send password reset email", "error", err, "email", user.Email)
+			// Here we actually return an error because if the mailer fails, the user is stuck.
+			http.Error(w, "Failed to send email. Check server logs.", http.StatusBadGateway)
+			return
+		}
+
+		slog.Info("Password reset requested", "email", user.Email)
+
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(map[string]string{"message": "If an account exists, a reset link has been sent."}); err != nil {
+			slog.Error("Failed to encode response", "error", err)
+		}
+	}
+}
+
+func (s *Server) handleResetPassword() http.HandlerFunc {
+	type request struct {
+		Token    string `json:"token"`
+		Password string `json:"password"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if req.Token == "" || len(req.Password) < 8 {
+			http.Error(w, "Invalid token or password too short", http.StatusBadRequest)
+			return
+		}
+
+		// 1. Hash the new password (Reusing existing logic)
+		hashedPassword, err := hashPassword(req.Password)
+		if err != nil {
+			slog.Error("Failed to hash password", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		// 2. Perform the reset in the store
+		err = s.store.CompletePasswordReset(r.Context(), req.Token, hashedPassword)
+		if err != nil {
+			// Don't leak exact DB errors to client, but "invalid token" is safe enough
+			if err.Error() == "invalid or expired token" || err.Error() == "token expired" {
+				http.Error(w, "Invalid or expired link", http.StatusBadRequest)
+				return
+			}
+
+			slog.Error("Failed to complete password reset", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		slog.Info("Password reset successful", "token_mask", req.Token[:4]+"...")
+
+		w.WriteHeader(http.StatusOK)
+		err = json.NewEncoder(w).Encode(map[string]string{"status": "ok", "message": "Password updated successfully"})
+		if err != nil {
+			slog.Error("Failed to complete password reset", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
 }

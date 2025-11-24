@@ -314,3 +314,70 @@ func (s *Server) handleResetPassword() http.HandlerFunc {
 		}
 	}
 }
+
+func (s *Server) handleChangePassword() http.HandlerFunc {
+	type request struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := getUserIDFromContext(r)
+		if s.store == nil {
+			http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+
+		if len(req.NewPassword) < 8 {
+			http.Error(w, "New password must be at least 8 characters", http.StatusBadRequest)
+			return
+		}
+
+		user, err := s.store.GetUserByID(r.Context(), userID)
+		if err != nil {
+			slog.Error("Failed to fetch user", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if user == nil {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+
+		// Verify old password
+		match, err := verifyPassword(req.CurrentPassword, user.Password)
+		if err != nil {
+			slog.Error("Error verifying password", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if !match {
+			http.Error(w, "Current password is incorrect", http.StatusForbidden)
+			return
+		}
+
+		// Hash new password
+		newHash, err := hashPassword(req.NewPassword)
+		if err != nil {
+			slog.Error("Failed to hash new password", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		if err := s.store.UpdatePasswordByID(r.Context(), userID.String(), newHash); err != nil {
+			slog.Error("Failed to update password", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		slog.Info("User changed password", "user_id", userID)
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	}
+}

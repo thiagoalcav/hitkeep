@@ -5,12 +5,23 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/Go-1.25.4-00ADD8?logo=go)](https://go.dev/)
 [![Docker Image](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://github.com/pascalebeier/hitkeep/pkgs/container/hitkeep)
+[![Documentation](https://img.shields.io/badge/📖_Documentation-hitkeep.com-33d399)](https://hitkeep.com)
 
 HitKeep is a self-hostable, privacy-first web analytics platform designed for **radical simplicity** without sacrificing performance.
 
 Unlike other solutions that require you to manage a complex stack (PostgreSQL, Redis, ClickHouse, Nginx), HitKeep runs as a **single, self-contained executable**. It embeds a high-performance OLAP database (DuckDB) and a distributed message queue (NSQ) directly into the binary.
 
 ![dashboard](./.github/assets/dashboard.jpeg)
+
+##  Documentation
+
+Visit **[hitkeep.com](https://hitkeep.com)** for the complete documentation, including:
+
+*   [Installation Guides (Docker, K8s, Systemd)](https://hitkeep.com/guides/installation/)
+*   [Configuration Reference](https://hitkeep.com/reference/configuration/)
+*   [REST API Reference](https://hitkeep.com/api/)
+
+---
 
 ## Features
 
@@ -28,7 +39,7 @@ This is a heavy WIP, just past PoC and MVP - it is already being used in product
 ### Roadmap
 
 - [x] endpoint rate limiting through nsq
-- [ ] Raw hit pruning 
+- [ ] Raw hit pruning
 - [x] better OLAP integration - no more Adhoc buckets
 - [x] Allow users to opt out of sendBeacon
 - [ ] User management
@@ -53,8 +64,11 @@ $ chmod +x hitkeep-linux-arm64
 
 #### Running
 
+> **Security Tip:** Avoid passing secrets (like `JWT_SECRET`) via flags in production, as they appear in process lists. Use the `HITKEEP_JWT_SECRET` environment variable instead.
+
 ```bash
-# assuming you run this behind a proxy / lb pointing to localhost:8080 
+# Set secret via ENV, config via flags
+$ export HITKEEP_JWT_SECRET="your-secure-random-string"
 $ ./hitkeep-linux-arm64 -public-url="https://analytics.example.org" 
 # to use your public ip 
 $ ./hitkeep-linux-arm64 -public-url="http://1.2.3.4:8080"
@@ -76,10 +90,12 @@ services:
       - "8080:8080"
     volumes:
       - hitkeep_data:/var/lib/hitkeep/data
+    environment:
+      # Securely pass secrets via ENV
+      - HITKEEP_JWT_SECRET=replace-this-with-a-long-random-string
     command:
       # IMPORTANT: Set this to your actual public domain in production
       - "-public-url=http://localhost:8080"
-      - "-jwt-secret=replace-this-with-a-long-random-string"
 
 volumes:
   hitkeep_data: {}

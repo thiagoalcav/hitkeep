@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0](https://github.com/PascaleBeier/hitkeep/compare/v1.3.0...v1.4.0) (2025-11-24)
+
+
+### Features
+
+* **api:** Introduce Change Password Route ([2af6260](https://github.com/PascaleBeier/hitkeep/commit/2af6260eb48fc8c776fa592746f9001741ac77ab))
+* **frontend:** Introduce Settings Route with  Change Password Components ([702c82e](https://github.com/PascaleBeier/hitkeep/commit/702c82e71a43e32f3f1c97b9f76a6363af8f26ce))
+
+
+### Bug Fixes
+
+* **frontend:** Add settings component and fix mobile drawer issues ([c40a3c8](https://github.com/PascaleBeier/hitkeep/commit/c40a3c8bd2a4c9abcc0228a62b59d825cfe2daa4))
+
 ## [1.3.0](https://github.com/PascaleBeier/hitkeep/compare/v1.2.0...v1.3.0) (2025-11-23)
 
 

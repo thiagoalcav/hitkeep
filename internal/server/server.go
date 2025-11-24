@@ -90,6 +90,7 @@ func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 	mux.HandleFunc("POST /api/login", s.withRateLimit(s.authLimiter, s.handleLogin()))
 	mux.HandleFunc("POST /api/auth/forgot-password", s.withRateLimit(s.authLimiter, s.handleForgotPassword()))
 	mux.HandleFunc("POST /api/auth/reset-password", s.withRateLimit(s.authLimiter, s.handleResetPassword()))
+	mux.HandleFunc("POST /api/user/password", s.withRateLimit(s.authLimiter, s.requireAuth(s.handleChangePassword())))
 
 	// API
 	mux.HandleFunc("GET /api/sites", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleGetSites())))

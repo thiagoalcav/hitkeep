@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -46,4 +47,20 @@ func (s *Store) CreateUser(ctx context.Context, email string, hashedPassword str
 		return uuid.Nil, fmt.Errorf("could not create user: %w", err)
 	}
 	return id, nil
+}
+
+func (s *Store) GetUserByID(ctx context.Context, id uuid.UUID) (*api.User, error) {
+	var user api.User
+	err := s.db.QueryRowContext(ctx,
+		"SELECT id, email, password, created_at FROM users WHERE id = ?",
+		id,
+	).Scan(&user.ID, &user.Email, &user.Password, &user.CreatedAt)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("could not query user by id: %w", err)
+	}
+	return &user, nil
 }

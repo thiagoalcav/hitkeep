@@ -13,6 +13,12 @@ Unlike other solutions that require you to manage a complex stack (PostgreSQL, R
 
 ![dashboard](./.github/assets/dashboard.jpeg)
 
+> **HitKeep Cloud is coming!**
+>
+> Prefer a managed solution and funding Open Source? Join the **Early Access Waitlist** for fully managed, data-sovereign and privacy-first analytics in the EU or US.
+>
+> [**Join the Waitlist →**](https://hitkeep.com/cloud)
+
 ##  Documentation
 
 Visit **[hitkeep.com](https://hitkeep.com)** for the complete documentation, including:

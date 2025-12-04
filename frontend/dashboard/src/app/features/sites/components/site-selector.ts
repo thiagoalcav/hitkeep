@@ -51,6 +51,26 @@ import {SiteFavicon} from './site-favicon';
             </p-select>
           }
 
+          @if (sites().length > 0) {
+            <div class="flex items-center gap-1 px-1">
+              <button
+                (click)="settingsClicked.emit()"
+                class="flex-1 flex items-center justify-center gap-2 p-1.5 text-xs font-medium text-muted-color hover:text-color hover:bg-surface-100 dark:hover:bg-surface-800 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+                aria-label="Open Site Settings">
+                <i class="pi pi-cog"></i>
+                <span>Settings</span>
+              </button>
+              <div class="w-px h-4 bg-surface-200 dark:bg-surface-700"></div>
+              <button
+                (click)="trackingClicked.emit()"
+                class="flex-1 flex items-center justify-center gap-2 p-1.5 text-xs font-medium text-muted-color hover:text-color hover:bg-surface-100 dark:hover:bg-surface-800 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+                aria-label="Get Tracking Code">
+                <i class="pi pi-code"></i>
+                <span>Code</span>
+              </button>
+            </div>
+          }
+
           <p-button
             [label]="sites().length > 0 ? 'New Site' : 'Create Site'"
             [icon]="sites().length > 0 ? 'pi pi-plus' : 'pi pi-plus-circle'"
@@ -69,4 +89,6 @@ export class SiteSelector {
   loading = input<boolean>(false);
   siteSelected = output<Site>();
   addClicked = output<void>();
+  settingsClicked = output<void>();
+  trackingClicked = output<void>();
 }

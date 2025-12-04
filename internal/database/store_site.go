@@ -38,12 +38,31 @@ func (s *Store) CreateSite(ctx context.Context, userID uuid.UUID, domain string)
 	id := uuid.New()
 	now := time.Now()
 
-	_, err := s.db.ExecContext(ctx,
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("could not begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	_, err = tx.ExecContext(ctx,
 		"INSERT INTO sites (id, user_id, domain, created_at) VALUES (?, ?, ?, ?)",
 		id, userID, domain, now,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not create site: %w", err)
+	}
+
+	// Add creator as site owner
+	_, err = tx.ExecContext(ctx,
+		"INSERT INTO site_members (site_id, user_id, role, added_by) VALUES (?, ?, 'owner', ?)",
+		id, userID, userID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("could not add site owner: %w", err)
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, fmt.Errorf("could not commit transaction: %w", err)
 	}
 
 	return &api.Site{
@@ -73,4 +92,43 @@ func (s *Store) GetSites(ctx context.Context, userID uuid.UUID) ([]api.Site, err
 		sites = append(sites, site)
 	}
 	return sites, nil
+}
+
+func (s *Store) UpdateSiteRetention(ctx context.Context, siteID uuid.UUID, userID uuid.UUID, days int) error {
+	_, err := s.db.ExecContext(ctx,
+		"UPDATE sites SET data_retention_days = ? WHERE id = ? AND user_id = ?",
+		days, siteID, userID,
+	)
+	if err != nil {
+		return fmt.Errorf("could not update site retention: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) ListAllSites(ctx context.Context) ([]api.Site, error) {
+	rows, err := s.db.QueryContext(ctx,
+		"SELECT id, user_id, domain, created_at FROM sites ORDER BY created_at DESC",
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	sites := []api.Site{}
+	for rows.Next() {
+		var site api.Site
+		if err := rows.Scan(&site.ID, &site.UserID, &site.Domain, &site.CreatedAt); err != nil {
+			return nil, err
+		}
+		sites = append(sites, site)
+	}
+	return sites, nil
+}
+
+func (s *Store) DeleteSite(ctx context.Context, siteID uuid.UUID) error {
+	_, err := s.db.ExecContext(ctx, "DELETE FROM sites WHERE id = ?", siteID)
+	if err != nil {
+		return fmt.Errorf("could not delete site: %w", err)
+	}
+	return nil
 }

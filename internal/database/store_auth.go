@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // CreatePasswordResetToken generates a secure token, saves it, and returns it.
@@ -94,5 +96,65 @@ func (s *Store) CompletePasswordReset(ctx context.Context, token string, newHash
 
 func (s *Store) UpdatePasswordByID(ctx context.Context, userID string, newHashedPassword string) error {
 	_, err := s.db.ExecContext(ctx, "UPDATE users SET password = ? WHERE id = ?", newHashedPassword, userID)
+	return err
+}
+
+// CreateRememberMeToken generates a secure token, saves it, and returns it.
+func (s *Store) CreateRememberMeToken(ctx context.Context, userID uuid.UUID) (string, error) {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+	token := hex.EncodeToString(bytes)
+
+	now := time.Now().UTC()
+	expiresAt := now.Add(30 * 24 * time.Hour) // 30 days
+
+	_, err := s.db.ExecContext(ctx,
+		"INSERT INTO remember_me_tokens (token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
+		token, userID, now, expiresAt,
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to insert remember me token: %w", err)
+	}
+
+	return token, nil
+}
+
+// ValidateRememberMeToken checks if the token is valid and returns the user ID.
+func (s *Store) ValidateRememberMeToken(ctx context.Context, token string) (uuid.UUID, error) {
+	var userID uuid.UUID
+	var expiresAt time.Time
+
+	err := s.db.QueryRowContext(ctx,
+		"SELECT user_id, expires_at FROM remember_me_tokens WHERE token = ?",
+		token,
+	).Scan(&userID, &expiresAt)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return uuid.Nil, nil
+	}
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("database error: %w", err)
+	}
+
+	if time.Now().After(expiresAt) {
+		// Clean up expired token
+		_ = s.DeleteRememberMeToken(ctx, token)
+		return uuid.Nil, nil
+	}
+
+	return userID, nil
+}
+
+// DeleteRememberMeToken removes a token.
+func (s *Store) DeleteRememberMeToken(ctx context.Context, token string) error {
+	_, err := s.db.ExecContext(ctx, "DELETE FROM remember_me_tokens WHERE token = ?", token)
+	return err
+}
+
+// DeleteAllRememberMeTokensForUser removes all tokens for a user (e.g. on password change).
+func (s *Store) DeleteAllRememberMeTokensForUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := s.db.ExecContext(ctx, "DELETE FROM remember_me_tokens WHERE user_id = ?", userID)
 	return err
 }

@@ -112,7 +112,7 @@ func (s *Server) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func (s *Server) handleIngestFollower(w http.ResponseWriter, r *http.Request) {
+func (s *Server) forwardToLeader(w http.ResponseWriter, r *http.Request, targetPath string) {
 	leaderIP := s.cluster.GetLeaderAddr()
 	if leaderIP == "" {
 		http.Error(w, "No leader available", http.StatusServiceUnavailable)
@@ -124,7 +124,7 @@ func (s *Server) handleIngestFollower(w http.ResponseWriter, r *http.Request) {
 		port = "8080"
 	}
 
-	forwardURL := fmt.Sprintf("http://%s:%s/ingest", leaderIP, port)
+	forwardURL := fmt.Sprintf("http://%s:%s%s", leaderIP, port, targetPath)
 	bodyBytes := new(bytes.Buffer)
 	if _, err := bodyBytes.ReadFrom(r.Body); err != nil {
 		http.Error(w, "Failed to read request body", http.StatusInternalServerError)
@@ -142,10 +142,98 @@ func (s *Server) handleIngestFollower(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := http.DefaultClient.Do(proxyReq)
 	if err != nil {
-		slog.Error("Follower failed to forward hit", "error", err, "target", forwardURL)
+		slog.Error("Follower failed to forward request", "error", err, "target", forwardURL)
 		http.Error(w, "Failed to forward request", http.StatusInternalServerError)
 		return
 	}
 	defer resp.Body.Close()
 	w.WriteHeader(resp.StatusCode)
+}
+
+func (s *Server) handleIngestFollower(w http.ResponseWriter, r *http.Request) {
+	s.forwardToLeader(w, r, "/ingest")
+}
+
+func (s *Server) handleIngestEvent() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+		} else {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
+
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		if s.cluster.IsLeader() || !s.cluster.HasPeers() {
+			s.handleIngestEventLeader(w, r)
+		} else {
+			s.handleIngestEventFollower(w, r)
+		}
+	}
+}
+
+func (s *Server) handleIngestEventLeader(w http.ResponseWriter, r *http.Request) {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		http.Error(w, "Origin header is required", http.StatusBadRequest)
+		return
+	}
+
+	parsedURL, err := url.Parse(origin)
+	if err != nil {
+		http.Error(w, "Invalid Origin header", http.StatusBadRequest)
+		return
+	}
+	domain := strings.TrimPrefix(parsedURL.Hostname(), "www.")
+
+	site, err := s.store.FindSiteByDomain(r.Context(), domain)
+	if err != nil {
+		slog.Error("Failed to find site", "error", err, "domain", domain)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	if site == nil {
+		slog.Warn("Dropped event for unknown site", "domain", domain)
+		w.WriteHeader(http.StatusAccepted)
+		return
+	}
+
+	type eventPayload struct {
+		Name       string         `json:"n"`
+		Properties map[string]any `json:"p"`
+		SessionID  uuid.UUID      `json:"sid"`
+	}
+
+	var payload eventPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Bad request body", http.StatusBadRequest)
+		return
+	}
+
+	event := api.Event{
+		SiteID:     site.ID,
+		SessionID:  payload.SessionID,
+		Name:       payload.Name,
+		Properties: payload.Properties,
+		Timestamp:  time.Now().UTC(),
+	}
+
+	body, _ := json.Marshal(event)
+	if err := s.producer.Publish("events", body); err != nil {
+		slog.Error("Failed to publish event to NSQ", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
+}
+
+func (s *Server) handleIngestEventFollower(w http.ResponseWriter, r *http.Request) {
+	s.forwardToLeader(w, r, "/ingest/event")
 }

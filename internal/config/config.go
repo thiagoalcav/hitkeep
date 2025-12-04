@@ -16,6 +16,7 @@ type Config struct {
 	ApiRateLimit           float64
 	AuthBurst              int
 	AuthRateLimit          float64
+	ArchivePath            string
 	BindAddr               string
 	DBPath                 string
 	Healthcheck            bool
@@ -39,6 +40,7 @@ type Config struct {
 	NSQTCPAddress          string
 	PublicURL              string
 	Version                string
+	DataRetentionDays      int
 }
 
 func Load() *Config {
@@ -91,6 +93,7 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	}
 
 	defDB := getEnv("HITKEEP_DB_PATH", "hitkeep.db")
+	defArchive := getEnv("HITKEEP_ARCHIVE_PATH", "archive")
 	defHTTP := getEnv("HITKEEP_HTTP_ADDR", ":8080")
 	defBind := getEnv("HITKEEP_BIND_ADDR", "0.0.0.0:7946")
 	defJoin := getEnv("HITKEEP_JOIN_ADDR", "")
@@ -118,6 +121,8 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	defMailFrom := getEnv("HITKEEP_MAIL_FROM_ADDRESS", "hitkeep@localhost")
 	defMailName := getEnv("HITKEEP_MAIL_FROM_NAME", "HitKeep")
 
+	defRetention := getInt("HITKEEP_DATA_RETENTION_DAYS", 365)
+
 	hostname, _ := os.Hostname()
 	defNodeName := getEnv("HITKEEP_NODE_NAME", fmt.Sprintf("%s-%d", hostname, time.Now().UnixNano()))
 
@@ -127,6 +132,7 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	fs.StringVar(&conf.PublicURL, "public-url", defPublicURL, "Public URL")
 
 	fs.StringVar(&conf.DBPath, "db", defDB, "Database file path")
+	fs.StringVar(&conf.ArchivePath, "archive-path", defArchive, "Data archive path")
 	fs.StringVar(&conf.LogLevel, "log-level", defLogLevel, "Log level")
 	fs.StringVar(&conf.JWTSecret, "jwt-secret", defJWT, "Secret key for JWT")
 
@@ -151,6 +157,8 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	fs.StringVar(&conf.MailPassword, "mail-password", defMailPass, "SMTP Password")
 	fs.StringVar(&conf.MailFromAddress, "mail-from-address", defMailFrom, "From Email")
 	fs.StringVar(&conf.MailFromName, "mail-from-name", defMailName, "From Name")
+
+	fs.IntVar(&conf.DataRetentionDays, "retention-days", defRetention, "Default data retention in days")
 
 	fs.StringVar(&conf.NodeName, "name", defNodeName, "Unique node name")
 

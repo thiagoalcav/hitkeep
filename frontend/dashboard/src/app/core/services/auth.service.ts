@@ -6,8 +6,12 @@ import { Observable } from 'rxjs';
 export class AuthService {
   private http = inject(HttpClient);
 
-  login(credentials: { email: string; password: string }): Observable<any> {
+  login(credentials: { email: string; password: string; remember_me?: boolean }): Observable<any> {
     return this.http.post('/api/login', credentials);
+  }
+
+  logout(): Observable<any> {
+    return this.http.post('/api/logout', {});
   }
 
   requestPasswordReset(email: string): Observable<any> {

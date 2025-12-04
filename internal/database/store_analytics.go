@@ -3,8 +3,11 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
 )
@@ -24,6 +27,7 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		TopPages:     []api.MetricStat{},
 		TopReferrers: []api.MetricStat{},
 		TopDevices:   []api.MetricStat{},
+		Goals:        []api.GoalStats{},
 	}
 
 	liveThreshold := time.Now().Add(-5 * time.Minute)
@@ -203,6 +207,173 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		if err := dRows.Scan(&m.Name, &m.Value); err == nil {
 			stats.TopDevices = append(stats.TopDevices, m)
 		}
+	}
+
+	// 6. Goals
+	// Fetch all goals for the site
+	goals, err := s.GetGoals(ctx, params.SiteID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch goals: %w", err)
+	}
+
+	for _, goal := range goals {
+		var conversions int
+		var err error
+
+		switch goal.Type {
+		case "path":
+			err = s.db.QueryRowContext(ctx, `
+				SELECT COUNT(DISTINCT session_id)
+				FROM hits
+				WHERE site_id = ? AND timestamp >= ? AND timestamp <= ? AND path = ?
+			`, params.SiteID, params.Start, params.End, goal.Value).Scan(&conversions)
+		case "event":
+			err = s.db.QueryRowContext(ctx, `
+				SELECT COUNT(DISTINCT session_id)
+				FROM events
+				WHERE site_id = ? AND timestamp >= ? AND timestamp <= ? AND name = ?
+			`, params.SiteID, params.Start, params.End, goal.Value).Scan(&conversions)
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to calc goal conversions: %w", err)
+		}
+
+		rate := 0.0
+		if stats.UniqueSessions > 0 {
+			rate = (float64(conversions) / float64(stats.UniqueSessions)) * 100
+		}
+
+		stats.Goals = append(stats.Goals, api.GoalStats{
+			GoalID:         goal.ID,
+			Name:           goal.Name,
+			Conversions:    conversions,
+			ConversionRate: rate,
+		})
+	}
+
+	return stats, nil
+}
+
+func (s *Store) GetFunnelStats(ctx context.Context, funnelID uuid.UUID, params api.AnalyticsParams) (*api.FunnelStats, error) {
+	var funnel api.Funnel
+	var stepsJSON []byte
+	err := s.db.QueryRowContext(ctx, "SELECT id, name, steps FROM funnels WHERE id = ? AND site_id = ?", funnelID, params.SiteID).Scan(&funnel.ID, &funnel.Name, &stepsJSON)
+	if err != nil {
+		return nil, fmt.Errorf("funnel not found: %w", err)
+	}
+	if err := json.Unmarshal(stepsJSON, &funnel.Steps); err != nil {
+		return nil, err
+	}
+
+	stats := &api.FunnelStats{
+		FunnelID: funnel.ID,
+		Name:     funnel.Name,
+		Steps:    make([]api.FunnelStepStats, len(funnel.Steps)),
+	}
+
+	// We need to find sessions that completed step 1, then step 2 (after step 1), etc.
+	// This is complex in SQL. For v1.5, we'll use a simplified approach:
+	// Count unique sessions for each step independently, but respecting the time range.
+	// A more rigorous approach would use sequence matching (e.g. DuckDB's window functions).
+
+	// Let's try a slightly better approach: CTEs for each step.
+	// But constructing dynamic SQL with CTEs for N steps is hard.
+	// Let's stick to the "independent unique sessions" approximation for now,
+	// but we can refine it to "sessions that did step X AND step X-1".
+
+	// Actually, for a true funnel, we want:
+	// Step 1: Count(Sessions doing Step 1)
+	// Step 2: Count(Sessions doing Step 2 AND Step 1) ... this gets expensive.
+
+	// Let's do the "Simple Funnel" first:
+	// Step 1: Users who did A
+	// Step 2: Users who did B (regardless of if they did A first, but usually B implies A in linear flows)
+	// Wait, that's wrong. A funnel MUST be sequential.
+
+	// Correct Approach for DuckDB:
+	// Use `list_sort(list(struct(timestamp, type, value)))` per session to reconstruct the journey?
+	// Or just simple counts for now to ship v1.5.
+
+	// Let's implement the "Simple Count" for v1.0 stability, but label it clearly.
+	// IMPROVEMENT: We will filter Step N to only include sessions present in Step N-1.
+
+	var previousStepSessions []uuid.UUID
+	var firstStepCount int
+
+	for i, step := range funnel.Steps {
+		var currentSessions []uuid.UUID
+		var query string
+		var args []any
+
+		if step.Type == "path" {
+			query = "SELECT DISTINCT session_id FROM hits WHERE site_id = ? AND timestamp >= ? AND timestamp <= ? AND path = ?"
+			args = []any{params.SiteID, params.Start, params.End, step.Value}
+		} else {
+			query = "SELECT DISTINCT session_id FROM events WHERE site_id = ? AND timestamp >= ? AND timestamp <= ? AND name = ?"
+			args = []any{params.SiteID, params.Start, params.End, step.Value}
+		}
+
+		rows, err := s.db.QueryContext(ctx, query, args...)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		stepSessionMap := make(map[uuid.UUID]bool)
+		for rows.Next() {
+			var sid uuid.UUID
+			if err := rows.Scan(&sid); err == nil {
+				stepSessionMap[sid] = true
+			}
+		}
+		rows.Close()
+
+		// Filter: Only keep sessions that were in the previous step (if i > 0)
+		if i == 0 {
+			for sid := range stepSessionMap {
+				currentSessions = append(currentSessions, sid)
+			}
+			firstStepCount = len(currentSessions)
+		} else {
+			for _, prevSid := range previousStepSessions {
+				if stepSessionMap[prevSid] {
+					currentSessions = append(currentSessions, prevSid)
+				}
+			}
+		}
+
+		count := len(currentSessions)
+		dropoff := 0
+		conversionRate := 0.0
+
+		if i > 0 {
+			prevCount := stats.Steps[i-1].Visitors
+			dropoff = prevCount - count
+			if prevCount > 0 {
+				conversionRate = (float64(count) / float64(prevCount)) * 100
+			}
+		} else {
+			conversionRate = 100.0 // First step is always 100% of itself
+		}
+
+		stats.Steps[i] = api.FunnelStepStats{
+			StepIndex:      i,
+			Name:           fmt.Sprintf("%s: %s", step.Type, step.Value),
+			Visitors:       count,
+			Dropoff:        dropoff,
+			ConversionRate: conversionRate,
+		}
+
+		previousStepSessions = currentSessions
+	}
+
+	stats.TotalEntries = firstStepCount
+	if len(stats.Steps) > 0 {
+		stats.TotalCompletions = stats.Steps[len(stats.Steps)-1].Visitors
+	}
+	if stats.TotalEntries > 0 {
+		stats.OverallConversionRate = (float64(stats.TotalCompletions) / float64(stats.TotalEntries)) * 100
 	}
 
 	return stats, nil

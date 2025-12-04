@@ -19,9 +19,11 @@ import { SiteService } from '../../features/sites/services/site.service';
 import { StatsService } from '../../features/analytics/services/stats.service';
 import { HitService } from '../../features/hits/services/hit.service';
 import { TrafficChart } from '../../features/analytics/components/traffic-chart';
-import { TrackingCode } from '../../features/sites/components/tracking-code';
 import {SiteFavicon} from '../../features/sites/components/site-favicon';
 import {MetricList} from '../../features/analytics/components/metric-list';
+import {GoalList} from '../../features/analytics/components/goal-list';
+import {FunnelList} from '../../features/analytics/components/funnel-list';
+
 interface RangeSelectEvent {
   value: {
     label: string;
@@ -36,7 +38,7 @@ interface RangeSelectEvent {
     CardModule, TableModule, SelectModule, ButtonModule,
     IconFieldModule, InputIconModule, InputTextModule,
     SkeletonModule, DialogModule, DatePickerModule, TooltipModule,
-    TrafficChart, TrackingCode, SiteFavicon, MetricList,
+    TrafficChart, SiteFavicon, MetricList, GoalList, FunnelList
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
@@ -57,7 +59,7 @@ export class Dashboard {
   protected selectedRange = signal(this.timeRanges[2]);
   protected isCustomRangeVisible = signal(false);
   protected customRangeDates = signal<Date[] | null>(null);
-  protected isSnippetVisible = signal(false);
+
   private searchSubject = new Subject<string>();
   protected searchQuery = signal('');
   private lastTableEvent: TableLazyLoadEvent | null = null;
@@ -156,11 +158,7 @@ export class Dashboard {
     this.selectedRange.set({...this.selectedRange()});
   }
 
-  openSnippetModal() {
-    this.isSnippetVisible.set(true);
-  }
-
-  private getCurrentDateRange() {
+  protected getCurrentDateRange() {
     const range = this.selectedRange();
     const end = new Date();
     const start = new Date();

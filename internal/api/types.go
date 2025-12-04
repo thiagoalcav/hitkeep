@@ -24,10 +24,42 @@ type Hit struct {
 }
 
 type Site struct {
+	ID                uuid.UUID `json:"id"`
+	UserID            uuid.UUID `json:"user_id"`
+	Domain            string    `json:"domain"`
+	DataRetentionDays int       `json:"data_retention_days"`
+	CreatedAt         time.Time `json:"created_at"`
+}
+
+type Event struct {
+	ID         uuid.UUID      `json:"id"`
+	SiteID     uuid.UUID      `json:"site_id"`
+	SessionID  uuid.UUID      `json:"session_id"`
+	Name       string         `json:"name"`
+	Properties map[string]any `json:"properties"`
+	Timestamp  time.Time      `json:"timestamp"`
+}
+
+type Goal struct {
 	ID        uuid.UUID `json:"id"`
-	UserID    uuid.UUID `json:"user_id"`
-	Domain    string    `json:"domain"`
+	SiteID    uuid.UUID `json:"site_id"`
+	Name      string    `json:"name"`
+	Type      string    `json:"type"` // "event" or "path"
+	Value     string    `json:"value"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type FunnelStep struct {
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+type Funnel struct {
+	ID        uuid.UUID    `json:"id"`
+	SiteID    uuid.UUID    `json:"site_id"`
+	Name      string       `json:"name"`
+	Steps     []FunnelStep `json:"steps"`
+	CreatedAt time.Time    `json:"created_at"`
 }
 
 type User struct {
@@ -67,6 +99,31 @@ type SiteStats struct {
 	TopPages           []MetricStat     `json:"top_pages"`
 	TopReferrers       []MetricStat     `json:"top_referrers"`
 	TopDevices         []MetricStat     `json:"top_devices"`
+	Goals              []GoalStats      `json:"goals"`
+}
+
+type GoalStats struct {
+	GoalID         uuid.UUID `json:"goal_id"`
+	Name           string    `json:"name"`
+	Conversions    int       `json:"conversions"`
+	ConversionRate float64   `json:"conversion_rate"`
+}
+
+type FunnelStepStats struct {
+	StepIndex      int     `json:"step_index"`
+	Name           string  `json:"name"`
+	Visitors       int     `json:"visitors"`
+	Dropoff        int     `json:"dropoff"`
+	ConversionRate float64 `json:"conversion_rate"`
+}
+
+type FunnelStats struct {
+	FunnelID              uuid.UUID         `json:"funnel_id"`
+	Name                  string            `json:"name"`
+	Steps                 []FunnelStepStats `json:"steps"`
+	TotalEntries          int               `json:"total_entries"`
+	TotalCompletions      int               `json:"total_completions"`
+	OverallConversionRate float64           `json:"overall_conversion_rate"`
 }
 
 type HitQueryParams struct {
@@ -84,4 +141,12 @@ type HitQueryParams struct {
 type PaginatedHits struct {
 	Data  []Hit `json:"data"`
 	Total int   `json:"total"`
+}
+
+type SiteMember struct {
+	ID      uuid.UUID `json:"id"`
+	UserID  uuid.UUID `json:"user_id"`
+	Email   string    `json:"email"`
+	Role    string    `json:"role"`
+	AddedAt time.Time `json:"added_at"`
 }

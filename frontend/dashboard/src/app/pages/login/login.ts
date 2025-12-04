@@ -14,6 +14,7 @@ import { finalize } from 'rxjs/operators';
 import { PasswordModule } from 'primeng/password';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
+import { CheckboxModule } from 'primeng/checkbox';
 
 // Corrected path to Core
 import { Brand } from '../../core/components/brand/brand';
@@ -28,6 +29,7 @@ import { Brand } from '../../core/components/brand/brand';
     PasswordModule,
     ButtonModule,
     InputTextModule,
+    CheckboxModule,
     RouterLink
   ],
   templateUrl: './login.html',
@@ -44,7 +46,8 @@ export class Login {
 
   protected loginForm: FormGroup = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required]]
+    password: ['', [Validators.required]],
+    rememberMe: [false]
   });
 
   onSubmit(): void {
@@ -56,9 +59,9 @@ export class Login {
     this.isLoading = true;
     this.errorMessage = null;
 
-    const { email, password } = this.loginForm.value;
+    const { email, password, rememberMe } = this.loginForm.value;
 
-    this.http.post('/api/login', { email, password })
+    this.http.post('/api/login', { email, password, remember_me: rememberMe })
       .pipe(
         finalize(() => this.isLoading = false)
       )

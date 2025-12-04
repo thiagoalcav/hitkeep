@@ -90,8 +90,9 @@ func (s *Server) handleCreateInitialUser() http.HandlerFunc {
 
 func (s *Server) handleLogin() http.HandlerFunc {
 	type request struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email      string `json:"email"`
+		Password   string `json:"password"`
+		RememberMe bool   `json:"remember_me"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -137,6 +138,16 @@ func (s *Server) handleLogin() http.HandlerFunc {
 
 		isSecure := strings.HasPrefix(s.conf.PublicURL, "https://")
 		auth.SetTokenCookie(w, token, isSecure)
+
+		if req.RememberMe {
+			rememberToken, err := s.store.CreateRememberMeToken(r.Context(), user.ID)
+			if err != nil {
+				slog.Error("Failed to create remember me token", "error", err)
+				// Don't fail login, just log error
+			} else {
+				auth.SetRememberMeCookie(w, rememberToken, isSecure)
+			}
+		}
 
 		slog.Info("User logged in", "user_id", user.ID)
 		w.Header().Set("Content-Type", "application/json")
@@ -314,6 +325,83 @@ func (s *Server) handleResetPassword() http.HandlerFunc {
 		}
 	}
 }
+func (s *Server) handleAcceptInvite() http.HandlerFunc {
+	type request struct {
+		Token    string `json:"token"`
+		Password string `json:"password"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if req.Token == "" || len(req.Password) < 8 {
+			http.Error(w, "Invalid token or password too short", http.StatusBadRequest)
+			return
+		}
+
+		// 1. Hash the new password
+		hashedPassword, err := hashPassword(req.Password)
+		if err != nil {
+			slog.Error("Failed to hash password", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		// 2. Perform the reset in the store (using same mechanism as password reset for now)
+		// Ideally we should have a separate invite token table, but for now we are reusing the password reset flow
+		// or rather, the invite link IS a password reset link effectively.
+		// Wait, in handler_admin.go we generated a temp password and sent it.
+		// Now we want to send a link.
+		// We need to generate a token and store it.
+		// The previous implementation in handler_admin.go was:
+		// tempPassword = uuid.New().String()
+		// hashedPassword, _ := hashPassword(tempPassword)
+		// s.store.CreateUser(..., hashedPassword)
+		//
+		// So the user exists with a random password.
+		// We can use the "Password Reset" flow to let them set their password.
+		// So we should generate a password reset token in handler_admin.go instead of a temp password.
+
+		// So this handler is actually just an alias for handleResetPassword?
+		// Or we can make it explicit.
+		// Let's reuse CompletePasswordReset for now as it does exactly what we want:
+		// verifies token, updates password, deletes token.
+
+		err = s.store.CompletePasswordReset(r.Context(), req.Token, hashedPassword)
+		if err != nil {
+			if err.Error() == "invalid or expired token" || err.Error() == "token expired" {
+				http.Error(w, "Invalid or expired link", http.StatusBadRequest)
+				return
+			}
+
+			slog.Error("Failed to complete invite acceptance", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		// Log the user in immediately?
+		// For now, let's just return success and let the frontend redirect to login.
+		// Or we can issue a token here.
+		// Let's issue a token so they are logged in.
+
+		// We need the user ID. CompletePasswordReset doesn't return it.
+		// We might need to fetch the user by the token before completing it?
+		// Or just let them log in. The frontend can handle "Invite accepted, please log in".
+		// That's safer and simpler.
+
+		slog.Info("Invite accepted", "token_mask", req.Token[:4]+"...")
+
+		w.WriteHeader(http.StatusOK)
+		err = json.NewEncoder(w).Encode(map[string]string{"status": "ok", "message": "Account set up successfully. Please log in."})
+		if err != nil {
+			slog.Error("Failed to encode response", "error", err)
+		}
+	}
+}
 
 func (s *Server) handleChangePassword() http.HandlerFunc {
 	type request struct {
@@ -377,6 +465,23 @@ func (s *Server) handleChangePassword() http.HandlerFunc {
 		}
 
 		slog.Info("User changed password", "user_id", userID)
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	}
+}
+
+func (s *Server) handleLogout() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		isSecure := strings.HasPrefix(s.conf.PublicURL, "https://")
+
+		// If we have a remember me cookie, delete the token from DB
+		if cookie, err := r.Cookie(auth.RememberMeCookieName); err == nil {
+			if err := s.store.DeleteRememberMeToken(r.Context(), cookie.Value); err != nil {
+				slog.Error("Failed to delete remember me token", "error", err)
+			}
+		}
+
+		auth.ClearCookies(w, isSecure)
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	}

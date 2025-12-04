@@ -22,6 +22,7 @@ import (
 	"hitkeep/internal/hklog"
 	"hitkeep/internal/ingest"
 	"hitkeep/internal/server"
+	"hitkeep/internal/worker"
 	"hitkeep/public"
 )
 
@@ -89,6 +90,10 @@ func Run() {
 
 		store, producer, leaderShutdown, err = startLeaderServices(gCtx, conf, logger, logLevel)
 		check(err)
+
+		// Start Retention Worker
+		retentionWorker := worker.NewRetentionWorker(store, conf.ArchivePath, conf.DataRetentionDays)
+		go retentionWorker.Start(gCtx)
 
 		g.Go(func() error {
 			<-gCtx.Done()

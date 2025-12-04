@@ -95,11 +95,64 @@ func (s *Server) handleCreateSite() http.HandlerFunc {
 			return
 		}
 
+		if s.conf.DataRetentionDays > 0 {
+			if err := s.store.UpdateSiteRetention(r.Context(), site.ID, userID, s.conf.DataRetentionDays); err != nil {
+				slog.Warn("Failed to set default data retention policy", "site_id", site.ID, "error", err)
+			}
+		}
+
 		slog.Info("Site created", "id", site.ID, "domain", domain, "user_id", userID)
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(site); err != nil {
 			slog.Error("Failed to encode response", "error", err)
 		}
+	}
+}
+
+func (s *Server) handleUpdateSiteRetention() http.HandlerFunc {
+	type request struct {
+		Days int `json:"days"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := getUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		siteIDStr := r.PathValue("id")
+		siteID, err := uuid.Parse(siteIDStr)
+		if err != nil {
+			http.Error(w, "Invalid site_id", http.StatusBadRequest)
+			return
+		}
+
+		// Verify ownership
+		site, err := s.store.GetSite(r.Context(), siteID, userID)
+		if err != nil || site == nil {
+			http.Error(w, "Site not found", http.StatusNotFound)
+			return
+		}
+
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if req.Days < 0 {
+			http.Error(w, "Retention days must be non-negative", http.StatusBadRequest)
+			return
+		}
+
+		if err := s.store.UpdateSiteRetention(r.Context(), siteID, userID, req.Days); err != nil {
+			slog.Error("Failed to update site retention", "error", err, "site_id", siteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -252,6 +305,14 @@ func (s *Server) handleGetSiteStats() http.HandlerFunc {
 
 // helper to extract UserID from context (set by auth middleware)
 func getUserIDFromContext(r *http.Request) uuid.UUID {
+	// First check PermissionContext (new RBAC)
+	if val := r.Context().Value(PermissionKey); val != nil {
+		if perms, ok := val.(PermissionContext); ok {
+			return perms.UserID
+		}
+	}
+
+	// Fallback to legacy UserIDKey
 	val := r.Context().Value(UserIDKey)
 	if val == nil {
 		return uuid.Nil

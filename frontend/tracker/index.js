@@ -13,6 +13,8 @@
     const dntEnabled = navigator.doNotTrack === '1';
 
     if (isLocal || isBot || (dntEnabled && !collectDnt)) {
+      window.hk = window.hk || {};
+      window.hk.event = () => {};
       return;
     }
 
@@ -128,6 +130,31 @@
     } else {
       sendPageView();
     }
+
+    window.hk = window.hk || {};
+    window.hk.event = (name, properties) => {
+      const payload = {
+        n: name,
+        p: properties || {},
+        sid: sessionId,
+      };
+
+      const body = JSON.stringify(payload);
+      const eventEndpoint = `${scriptUrl.origin}/ingest/event`;
+
+      if (navigator.sendBeacon && !disableBeacon) {
+        const blob = new Blob([body], { type: 'application/json' });
+        navigator.sendBeacon(eventEndpoint, blob);
+      } else {
+        fetch(eventEndpoint, {
+          method: 'POST',
+          body,
+          headers: { 'Content-Type': 'application/json' },
+          keepalive: true,
+          credentials: 'omit',
+        }).catch(() => {});
+      }
+    };
   } catch (e) {
     if (console?.debug) console.debug('[HitKeep]', e);
   }

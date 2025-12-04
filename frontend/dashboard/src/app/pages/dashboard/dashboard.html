@@ -17,22 +17,18 @@
                 (onChange)="onRangeChange($event)" class="w-40 md:w-48" aria-label="Time Range Selector">
       </p-select>
 
-      <p-button icon="pi pi-code" (onClick)="openSnippetModal()"
-                class="p-button-rounded p-button-text p-button-secondary" pTooltip="Get Tracking Code"
-                tooltipPosition="bottom">
-      </p-button>
-
       <p-button icon="pi pi-refresh" (onClick)="refreshAll()"
                 [loading]="statsService.isLoading()"
                 class="p-button-rounded p-button-text p-button-secondary" pTooltip="Refresh Data"
                 tooltipPosition="bottom">
       </p-button>
+
     </div>
   </div>
   @if (siteService.activeSite()) {
     <!-- KPI Cards -->
     <!-- TODO: Refactor for mobile, weird UX -->
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-6 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
       <ng-container *ngTemplateOutlet="kpiCard; context: {
         label: 'Live Visitors',
         value: statsService.stats()?.live_visitors || 0,
@@ -54,17 +50,17 @@
     <!-- Traffic Chart -->
     <div class="mb-6">
       <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card">
-
-        <h3 class="text-lg font-semibold mb-4">{{ chartTitle() }}</h3>
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold">{{ chartTitle() }}</h3>
+        </div>
         <app-traffic-chart
           [data]="statsService.stats()?.chart_data || []"
           [isLoading]="statsService.isLoading()"
-          [isShortRange]="isShortRange()"
-          (snippetClicked)="openSnippetModal()"/>
+          [isShortRange]="isShortRange()"/>
       </p-card>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
       <app-metric-list
         title="Top Pages"
         icon="pi-file"
@@ -82,6 +78,19 @@
         icon="pi-mobile"
         [data]="statsService.stats()?.top_devices || []"
         [isLoading]="statsService.isLoading()"/>
+    </div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <app-goal-list 
+            [data]="statsService.stats()?.goals || []" 
+            [siteId]="siteService.activeSite()?.id || null"
+            [isLoading]="statsService.isLoading()"
+            (refresh)="refreshAll()" />
+            
+        <!-- We pass summary=true (you need to add this input to funnel-list) to hide complexity -->
+        <app-funnel-list 
+            [funnels]="statsService.stats()?.funnels || []" 
+            [isLoading]="statsService.isLoading()" />
     </div>
 
     <!-- Hits Table -->
@@ -153,8 +162,6 @@
     </div>
   </p-card>
 </ng-template>
-<!-- Tracking Code Component -->
-<app-tracking-code [(visible)]="isSnippetVisible"/>
 <!-- Date Range Dialog -->
 <p-dialog header="Select Date Range" [(visible)]="isCustomRangeVisible" [modal]="true">
   <p-datepicker [(ngModel)]="customRangeDates" selectionMode="range" [inline]="true" [showWeek]="false"/>

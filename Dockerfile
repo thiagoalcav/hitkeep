@@ -1,4 +1,4 @@
-ARG GOLANG_VERSION=1.25.4-bookworm
+ARG GOLANG_VERSION=1.25.5-bookworm
 
 FROM golang:$GOLANG_VERSION AS builder
 
@@ -31,6 +31,7 @@ COPY --from=builder --chown=nonroot:nonroot /var/lib/hitkeep/data /var/lib/hitke
 COPY --from=builder /dist/hitkeep /usr/local/bin/hitkeep
 
 ENV HITKEEP_DB_PATH="/var/lib/hitkeep/data/hitkeep.db"
+ENV HITKEEP_ARCHIVE_PATH="/var/lib/hitkeep/data/archive"
 VOLUME /var/lib/hitkeep/data
 
 HEALTHCHECK --start-period=60s --start-interval=3s --interval=10s --timeout=3s --retries=3 \

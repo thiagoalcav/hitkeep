@@ -1,11 +1,11 @@
 import { Component, input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { Site } from '../../../core/models/analytics.types';
 
 @Component({
   selector: 'app-site-danger-zone',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   template: `
     <div>
       <h3 class="font-bold">Danger Zone</h3>

@@ -1,6 +1,6 @@
 import { Component, inject, signal, computed, HostListener } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { Brand } from '../components/brand/brand';
 import { SiteSelector } from '../../features/sites/components/site-selector';
@@ -20,10 +20,19 @@ import { DrawerModule } from 'primeng/drawer';
   selector: 'app-main-layout',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, RouterOutlet, RouterLink, RouterLinkActive,
-    Brand, SiteSelector, AddSiteDialog, SiteSettingsDrawer,
-    AvatarModule, ButtonModule, MenuModule, DrawerModule
-  ],
+    FormsModule,
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    Brand,
+    SiteSelector,
+    AddSiteDialog,
+    SiteSettingsDrawer,
+    AvatarModule,
+    ButtonModule,
+    MenuModule,
+    DrawerModule
+],
   template: `
     <div class="flex h-screen w-full bg-[var(--p-surface-ground)]">
       <!-- Sidebar (Desktop) -->

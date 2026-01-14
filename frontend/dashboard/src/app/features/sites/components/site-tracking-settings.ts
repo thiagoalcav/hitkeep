@@ -1,5 +1,5 @@
 import { Component, input, computed, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { Site } from '../../../core/models/analytics.types';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
@@ -7,7 +7,7 @@ import { ToggleSwitchModule } from 'primeng/toggleswitch';
 @Component({
   selector: 'app-site-tracking-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, ToggleSwitchModule],
+  imports: [FormsModule, ToggleSwitchModule],
   template: `
     <div class="flex flex-col gap-6">
       <div class="text-[var(--p-text-muted-color)] leading-relaxed">

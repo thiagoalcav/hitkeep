@@ -1,5 +1,5 @@
 import { Component, Input, Output, EventEmitter, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
@@ -13,7 +13,7 @@ import { Funnel, FunnelStep } from '../../../core/models/analytics.types';
 @Component({
   selector: 'app-funnel-manager',
   standalone: true,
-  imports: [CommonModule, FormsModule, DialogModule, ButtonModule, InputTextModule, SelectModule, TableModule, TooltipModule],
+  imports: [FormsModule, DialogModule, ButtonModule, InputTextModule, SelectModule, TableModule, TooltipModule],
   template: `
     <p-dialog header="Manage Funnels" [(visible)]="visible" [modal]="true" [style]="{width: '800px', maxWidth: '90vw'}" [draggable]="false" [resizable]="false" (onHide)="onHide()">
         <p class="text-sm text-muted-color mb-4">Track user journeys across multiple steps.</p>

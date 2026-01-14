@@ -1,5 +1,5 @@
 import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
 import { ButtonModule } from 'primeng/button';
@@ -9,7 +9,7 @@ import {SiteFavicon} from './site-favicon';
 @Component({
   selector: 'app-site-selector',
   standalone: true,
-  imports: [CommonModule, FormsModule, SelectModule, ButtonModule, SkeletonModule, SiteFavicon],
+  imports: [FormsModule, SelectModule, ButtonModule, SkeletonModule, SiteFavicon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-2 w-full" role="region" aria-label="Site Selection">

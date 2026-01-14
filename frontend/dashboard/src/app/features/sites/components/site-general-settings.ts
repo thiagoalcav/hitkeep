@@ -1,12 +1,12 @@
 import { Component, input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { ButtonModule } from 'primeng/button';
 import { Site } from '../../../core/models/analytics.types';
 
 @Component({
   selector: 'app-site-general-settings',
   standalone: true,
-  imports: [CommonModule, ButtonModule],
+  imports: [ButtonModule],
   template: `
     <div class="flex flex-col gap-6">
       <div>

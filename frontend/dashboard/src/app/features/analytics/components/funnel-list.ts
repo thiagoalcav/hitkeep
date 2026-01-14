@@ -1,5 +1,5 @@
 import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { SkeletonModule } from 'primeng/skeleton';
@@ -8,7 +8,7 @@ import { Funnel } from '../../../core/models/analytics.types';
 @Component({
   selector: 'app-funnel-list',
   standalone: true,
-  imports: [CommonModule, CardModule, ButtonModule, SkeletonModule],
+  imports: [CardModule, ButtonModule, SkeletonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p-card class="shadow-sm h-full border border-surface-200 dark:border-surface-700 surface-card">

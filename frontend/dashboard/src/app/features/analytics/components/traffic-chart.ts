@@ -1,5 +1,5 @@
 import { Component, input, output, computed, inject, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { ChartModule } from 'primeng/chart';
 import { ButtonModule } from 'primeng/button';
 import { ChartDataPoint } from '../../../core/models/analytics.types';
@@ -14,7 +14,7 @@ interface ChartContext {
 @Component({
   selector: 'app-traffic-chart',
   standalone: true,
-  imports: [CommonModule, ChartModule, ButtonModule],
+  imports: [ChartModule, ButtonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="h-80 w-full relative" role="img" [attr.aria-label]="accessibilityLabel()">

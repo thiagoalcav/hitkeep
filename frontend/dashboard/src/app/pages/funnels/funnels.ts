@@ -1,5 +1,5 @@
 import { Component, inject, signal, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { ButtonModule } from 'primeng/button';
 import { SiteService } from '../../features/sites/services/site.service';
 import { AnalyticsService } from '../../core/services/analytics.service';
@@ -12,7 +12,7 @@ import { Funnel } from '../../core/models/analytics.types';
 @Component({
   selector: 'app-funnels',
   standalone: true,
-  imports: [CommonModule, ButtonModule, FunnelList, FunnelManager, FunnelViewer, SiteFavicon],
+  imports: [ButtonModule, FunnelList, FunnelManager, FunnelViewer, SiteFavicon],
   template: `
     <div class="flex flex-col h-full w-full bg-[var(--p-surface-ground)] transition-colors duration-200">
       <!-- Header -->

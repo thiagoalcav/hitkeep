@@ -1,5 +1,5 @@
 import { Component, inject, signal, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { ButtonModule } from 'primeng/button';
 import { SiteService } from '../../features/sites/services/site.service';
 import { StatsService } from '../../features/analytics/services/stats.service';
@@ -10,7 +10,7 @@ import { SiteFavicon } from '../../features/sites/components/site-favicon';
 @Component({
   selector: 'app-goals',
   standalone: true,
-  imports: [CommonModule, ButtonModule, GoalList, GoalManager, SiteFavicon],
+  imports: [ButtonModule, GoalList, GoalManager, SiteFavicon],
   template: `
     <div class="flex flex-col h-full w-full bg-[var(--p-surface-ground)] transition-colors duration-200">
       <!-- Header -->
@@ -37,7 +37,9 @@ import { SiteFavicon } from '../../features/sites/components/site-favicon';
         <div class="grid grid-cols-1 gap-4">
           <app-goal-list
             [data]="statsService.stats()?.goals || []"
-            [isLoading]="statsService.isLoading()"/>
+            [siteId]="siteService.activeSite()?.id || null"
+            [isLoading]="statsService.isLoading()"
+            (refresh)="refreshStats()" />
         </div>
       } @else {
         <div class="flex flex-col items-center justify-center h-[50vh] gap-4">

@@ -1,5 +1,5 @@
 import { Component, input, model } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { Site } from '../../../core/models/analytics.types';
 
 // PrimeNG
@@ -18,7 +18,6 @@ import { SiteTeamSettings } from './site-team-settings';
   selector: 'app-site-settings-drawer',
   standalone: true,
   imports: [
-    CommonModule,
     DrawerModule,
     TabsModule,
     ButtonModule,
@@ -27,7 +26,7 @@ import { SiteTeamSettings } from './site-team-settings';
     SiteDangerZone,
     SiteRetentionSettings,
     SiteTeamSettings
-  ],
+],
   template: `
     <p-drawer
       [visible]="visible()"

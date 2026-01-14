@@ -1,11 +1,11 @@
 import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { ButtonModule } from 'primeng/button';
 
 @Component({
   selector: 'app-empty-state',
   standalone: true,
-  imports: [CommonModule, ButtonModule],
+  imports: [ButtonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col items-center justify-center py-12 text-center h-full w-full">

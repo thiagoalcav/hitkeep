@@ -1,5 +1,5 @@
 import { Component, inject, signal, effect, input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -11,7 +11,7 @@ import { Site } from '../../../core/models/analytics.types';
 @Component({
   selector: 'app-site-retention-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonModule, InputNumberModule, MessageModule],
+  imports: [FormsModule, ButtonModule, InputNumberModule, MessageModule],
   template: `
     <div class="flex flex-col gap-4">
       <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg flex gap-3">

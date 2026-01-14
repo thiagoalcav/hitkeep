@@ -1,5 +1,5 @@
 import { Component, effect, inject, signal, computed } from '@angular/core';
-import {CommonModule, DecimalPipe, DatePipe, NgOptimizedImage} from '@angular/common';
+import { CommonModule, DecimalPipe, DatePipe, NgOptimizedImage } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 // PrimeNG

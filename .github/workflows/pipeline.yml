@@ -101,6 +101,7 @@ jobs:
           retention-days: 5
 
       - name: Upload Release Binaries
+        if: ${{ inputs.upload_to_release && inputs.release_tag_name != '' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

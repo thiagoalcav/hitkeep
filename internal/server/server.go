@@ -267,7 +267,7 @@ func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 // withRateLimit wraps a handler with IP-based rate limiting.
 func (s *Server) withRateLimit(limiter *IPRateLimiter, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ip := getRealIP(r)
+		ip := getRealIP(r, s.conf.GetTrustedProxyNetworks())
 		l := limiter.GetLimiter(ip)
 		if !l.Allow() {
 			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)

@@ -3,7 +3,7 @@ import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import { PermissionService } from '../services/permission.service';
 import { map, of, switchMap } from 'rxjs';
 
-export const adminGuard: CanActivateFn = (route, state) => {
+export const adminGuard: CanActivateFn = () => {
   const perms = inject(PermissionService);
   const router = inject(Router);
 

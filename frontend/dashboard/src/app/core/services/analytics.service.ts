@@ -45,6 +45,7 @@ export interface SiteStats {
   top_pages: MetricStat[];
   top_referrers: MetricStat[];
   top_devices: MetricStat[];
+  top_countries: MetricStat[];
   goals: GoalStats[];
 }
 

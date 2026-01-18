@@ -3,12 +3,14 @@ import { Component, input, output, ChangeDetectionStrategy } from '@angular/core
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { SkeletonModule } from 'primeng/skeleton';
+import { TooltipModule } from 'primeng/tooltip';
 import { Funnel } from '../../../core/models/analytics.types';
+import { EmptyState } from '../../../core/components/molecules/empty-state';
 
 @Component({
   selector: 'app-funnel-list',
   standalone: true,
-  imports: [CardModule, ButtonModule, SkeletonModule],
+  imports: [CardModule, ButtonModule, SkeletonModule, TooltipModule, EmptyState],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p-card class="shadow-sm h-full border border-surface-200 dark:border-surface-700 surface-card">
@@ -17,7 +19,15 @@ import { Funnel } from '../../../core/models/analytics.types';
           <i class="pi pi-filter text-[var(--p-primary-color)]" aria-hidden="true"></i>
           <h3 class="font-semibold text-lg">Funnels</h3>
         </div>
-        <p-button icon="pi pi-cog" (onClick)="manageClicked.emit()" styleClass="p-button-text p-button-sm p-button-secondary" [rounded]="true" pTooltip="Manage Funnels"></p-button>
+        @if (!isLoading() && funnels() && funnels().length > 0) {
+          <p-button
+            icon="pi pi-plus"
+            (onClick)="manageClicked.emit()"
+            [rounded]="true"
+            [text]="true"
+            pTooltip="Manage Funnels"
+            styleClass="w-8 h-8" />
+        }
       </div>
 
       @if (isLoading()) {
@@ -27,10 +37,13 @@ import { Funnel } from '../../../core/models/analytics.types';
           }
         </div>
       } @else if (!funnels() || funnels().length === 0) {
-        <div class="text-muted-color text-sm italic py-4 text-center">No funnels configured</div>
-        <div class="flex justify-center">
-            <p-button label="Create Funnel" (onClick)="manageClicked.emit()" size="small" [outlined]="true"></p-button>
-        </div>
+        <app-empty-state
+          icon="pi-filter"
+          title="No funnels yet"
+          description="Build a path of events to measure drop-off and conversions."
+          actionLabel="Create Funnel"
+          (actionClicked)="manageClicked.emit()"
+        />
       } @else {
         <ul class="flex flex-col gap-3 m-0 p-0 list-none">
           @for (funnel of funnels(); track funnel.id) {

@@ -1,14 +1,14 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import { PermissionService } from '../services/permission.service';
-import { map, of, switchMap } from 'rxjs';
+import { map } from 'rxjs';
 
-export const permissionGuard: CanActivateFn = (route, state) => {
+export const permissionGuard: CanActivateFn = (route) => {
   const perms = inject(PermissionService);
   const router = inject(Router);
   
   // Get required roles from route data, e.g., data: { roles: ['owner', 'editor'] }
-  const requiredRoles = route.data['roles'] as Array<string> | undefined;
+  const requiredRoles = route.data['roles'] as string[] | undefined;
 
   const checkPermissions = (): boolean | UrlTree => {
     const userRole = perms.permissions()?.instance_role || '';

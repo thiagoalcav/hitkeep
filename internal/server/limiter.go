@@ -82,22 +82,104 @@ func (i *IPRateLimiter) Stop() {
 	close(i.stop)
 }
 
-// getRealIP extracts the real IP, supporting X-Forwarded-For for proxies.
-func getRealIP(r *http.Request) string {
-	xff := r.Header.Get("X-Forwarded-For")
-	if xff != "" {
-		parts := strings.Split(xff, ",")
-		return strings.TrimSpace(parts[0])
-	}
-
-	xri := r.Header.Get("X-Real-IP")
-	if xri != "" {
-		return xri
-	}
-
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
+// getRealIP extracts the real client IP using trusted proxy configuration.
+func getRealIP(r *http.Request, trustedProxies []*net.IPNet) string {
+	directIP := remoteIPFromAddr(r.RemoteAddr)
+	parsedDirectIP := net.ParseIP(directIP)
+	if parsedDirectIP == nil {
+		if directIP != "" {
+			return directIP
+		}
 		return r.RemoteAddr
 	}
+
+	if !isTrustedProxy(parsedDirectIP, trustedProxies) {
+		return directIP
+	}
+
+	if ip := parseIPHeader(r.Header.Get("CF-Connecting-IP")); ip != "" {
+		return ip
+	}
+	if ip := parseIPHeader(r.Header.Get("Fastly-Client-IP")); ip != "" {
+		return ip
+	}
+	if ip := parseIPHeader(r.Header.Get("CloudFront-Viewer-Address")); ip != "" {
+		return ip
+	}
+
+	if ip := parseIPHeader(r.Header.Get("X-Real-IP")); ip != "" {
+		return ip
+	}
+
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		parts := strings.Split(xff, ",")
+		if len(trustedProxies) == 0 {
+			for _, part := range parts {
+				if ip := parseIPHeader(strings.TrimSpace(part)); ip != "" {
+					return ip
+				}
+			}
+		} else {
+			for i := len(parts) - 1; i >= 0; i-- {
+				ip := strings.TrimSpace(parts[i])
+				parsedIP := net.ParseIP(ip)
+				if parsedIP == nil {
+					continue
+				}
+				if !isIPInNetworks(parsedIP, trustedProxies) {
+					return ip
+				}
+			}
+		}
+	}
+
+	return directIP
+}
+
+func remoteIPFromAddr(addr string) string {
+	if addr == "" {
+		return ""
+	}
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return addr
+	}
 	return host
+}
+
+func parseIPHeader(value string) string {
+	if value == "" {
+		return ""
+	}
+	if host, _, err := net.SplitHostPort(value); err == nil {
+		if isValidIP(host) {
+			return host
+		}
+		return ""
+	}
+	if isValidIP(value) {
+		return value
+	}
+	return ""
+}
+
+func isValidIP(ip string) bool {
+	return net.ParseIP(ip) != nil
+}
+
+func isTrustedProxy(ip net.IP, trustedProxies []*net.IPNet) bool {
+	if len(trustedProxies) == 0 {
+		return true
+	}
+	return isIPInNetworks(ip, trustedProxies)
+}
+
+// isIPInNetworks checks if an IP belongs to any of the provided networks.
+func isIPInNetworks(ip net.IP, networks []*net.IPNet) bool {
+	for _, network := range networks {
+		if network.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }

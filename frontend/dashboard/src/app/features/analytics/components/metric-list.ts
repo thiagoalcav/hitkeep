@@ -23,7 +23,13 @@ import { MetricStat } from '../../../core/models/analytics.types';
           }
         </div>
       } @else if (!data() || data().length === 0) {
-        <div class="text-muted-color text-sm italic py-4 text-center">No data available</div>
+        <ul class="flex flex-col gap-3 m-0 p-0 list-none">
+          <li class="relative flex items-center justify-between text-sm text-muted-color">
+            <div class="absolute left-0 top-0 h-full w-full bg-[var(--p-surface-100)] dark:bg-[var(--p-surface-800)] rounded-r"></div>
+            <span class="relative z-10 truncate font-medium px-2 py-1">Unspecified</span>
+            <span class="relative z-10 font-semibold px-2">0</span>
+          </li>
+        </ul>
       } @else {
         <ul class="flex flex-col gap-3 m-0 p-0 list-none">
           @for (item of data(); track item.name) {

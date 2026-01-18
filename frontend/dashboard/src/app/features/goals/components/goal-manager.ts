@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject, signal, effect } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, signal, effect, OnChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
@@ -93,7 +93,7 @@ import { Goal } from '../../../core/models/analytics.types';
     </p-dialog>
   `
 })
-export class GoalManager {
+export class GoalManager implements OnChanges {
   @Input() visible = false;
   @Output() visibleChange = new EventEmitter<boolean>();
   @Input() siteId: string | null = null;

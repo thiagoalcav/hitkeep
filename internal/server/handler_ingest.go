@@ -87,6 +87,14 @@ func (s *Server) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	extractor := NewCountryCodeExtractor(s.conf.GetTrustedProxyNetworks())
+	countryCode := extractor.ExtractFromRequest(r, payload.Language)
+
+	var countryCodePtr *string
+	if countryCode != "" {
+		countryCodePtr = &countryCode
+	}
+
 	hit := api.Hit{
 		SiteID:         site.ID,
 		SessionID:      payload.SessionID,
@@ -100,6 +108,7 @@ func (s *Server) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 		ScreenWidth:    payload.SCWidth,
 		ScreenHeight:   payload.SCHeight,
 		Language:       payload.Language,
+		CountryCode:    countryCodePtr,
 		IsUnique:       &payload.IsUnique,
 	}
 

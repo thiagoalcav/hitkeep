@@ -67,6 +67,7 @@ func (s *TakeoutService) ExportSiteData(ctx context.Context, siteID uuid.UUID, f
 	}
 
 	var ext, duckFormat string
+	allowFallback := false
 
 	switch format {
 	case "parquet":
@@ -80,6 +81,7 @@ func (s *TakeoutService) ExportSiteData(ctx context.Context, siteID uuid.UUID, f
 	default:
 		ext = "xlsx"
 		duckFormat = "XLSX"
+		allowFallback = true
 	}
 
 	filename := filepath.Join(s.path, fmt.Sprintf("site_takeout_%s_%d.%s", siteID, time.Now().Unix(), ext))
@@ -93,7 +95,23 @@ func (s *TakeoutService) ExportSiteData(ctx context.Context, siteID uuid.UUID, f
 `, siteID, siteID, filename, duckFormat)
 
 	if _, err := s.store.DB().ExecContext(ctx, query); err != nil {
-		return "", fmt.Errorf("failed to export site data: %w", err)
+		if !allowFallback {
+			return "", fmt.Errorf("failed to export site data: %w", err)
+		}
+
+		csvFilename := filepath.Join(s.path, fmt.Sprintf("site_takeout_%s_%d.csv", siteID, time.Now().Unix()))
+		fallbackQuery := fmt.Sprintf(`
+	COPY (
+		SELECT 'hit' as record_type, * FROM hits WHERE site_id = '%s'
+		UNION BY NAME
+		SELECT 'event' as record_type, * FROM events WHERE site_id = '%s'
+	) TO '%s' (FORMAT CSV, HEADER);
+`, siteID, siteID, csvFilename)
+
+		if _, err := s.store.DB().ExecContext(ctx, fallbackQuery); err != nil {
+			return "", fmt.Errorf("failed to export site data: %w", err)
+		}
+		return csvFilename, nil
 	}
 
 	return filename, nil

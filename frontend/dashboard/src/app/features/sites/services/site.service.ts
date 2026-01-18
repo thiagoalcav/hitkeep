@@ -3,6 +3,8 @@ import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs';
 import { Site } from '../../../core/models/analytics.types';
 
+const LAST_SITE_KEY = 'hk_last_site_id';
+
 @Injectable({ providedIn: 'root' })
 export class SiteService {
   private http = inject(HttpClient);
@@ -17,10 +19,15 @@ export class SiteService {
     this.http.get<Site[]>('/api/sites').subscribe({
       next: (data) => {
         this.sites.set(data);
-        // Auto-select first site if none active
+        
         if (data.length > 0 && !this.activeSite()) {
-          this.activeSite.set(data[0]);
+          const lastId = localStorage.getItem(LAST_SITE_KEY);
+          
+          const matchedSite = lastId ? data.find(s => s.id === lastId) : null;
+          
+          this.activeSite.set(matchedSite || data[0]);
         }
+        
         this.isLoading.set(false);
       },
       error: () => this.isLoading.set(false)
@@ -29,13 +36,14 @@ export class SiteService {
 
   selectSite(site: Site) {
     this.activeSite.set(site);
+    localStorage.setItem(LAST_SITE_KEY, site.id);
   }
 
   createSite(domain: string) {
     return this.http.post<Site>('/api/sites', { domain }).pipe(
       tap((newSite) => {
         this.sites.update(list => [newSite, ...list]);
-        this.activeSite.set(newSite);
+        this.selectSite(newSite);
       })
     );
   }

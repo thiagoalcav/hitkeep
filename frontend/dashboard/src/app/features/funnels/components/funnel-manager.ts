@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject, signal } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, signal, OnChanges } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
@@ -92,7 +92,7 @@ import { Funnel, FunnelStep } from '../../../core/models/analytics.types';
     </p-dialog>
   `
 })
-export class FunnelManager {
+export class FunnelManager implements OnChanges {
   @Input() visible = false;
   @Output() visibleChange = new EventEmitter<boolean>();
   @Input() siteId: string | null = null;

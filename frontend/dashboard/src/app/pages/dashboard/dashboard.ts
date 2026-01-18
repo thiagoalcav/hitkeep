@@ -20,9 +20,12 @@ import { StatsService } from '../../features/analytics/services/stats.service';
 import { HitService } from '../../features/hits/services/hit.service';
 import { TrafficChart } from '../../features/analytics/components/traffic-chart';
 import {SiteFavicon} from '../../features/sites/components/site-favicon';
-import {MetricList} from '../../features/analytics/components/metric-list';
-import {GoalList} from '../../features/analytics/components/goal-list';
-import {FunnelList} from '../../features/analytics/components/funnel-list';
+import { MetricList } from '../../features/analytics/components/metric-list';
+import { GoalList } from '../../features/analytics/components/goal-list';
+import { FunnelList } from '../../features/analytics/components/funnel-list';
+import { FunnelManager } from '../../features/funnels/components/funnel-manager';
+import { FunnelViewer } from '../../features/funnels/components/funnel-viewer';
+import { Funnel } from '../../core/models/analytics.types';
 
 interface RangeSelectEvent {
   value: {
@@ -38,7 +41,7 @@ interface RangeSelectEvent {
     CardModule, TableModule, SelectModule, ButtonModule,
     IconFieldModule, InputIconModule, InputTextModule,
     SkeletonModule, DialogModule, DatePickerModule, TooltipModule,
-    TrafficChart, SiteFavicon, MetricList, GoalList, FunnelList
+    TrafficChart, SiteFavicon, MetricList, GoalList, FunnelList, FunnelManager, FunnelViewer
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
@@ -59,6 +62,10 @@ export class Dashboard {
   protected selectedRange = signal(this.timeRanges[2]);
   protected isCustomRangeVisible = signal(false);
   protected customRangeDates = signal<Date[] | null>(null);
+  protected showFunnelManager = signal(false);
+  protected showFunnelViewer = signal(false);
+  protected selectedFunnelId = signal<string | null>(null);
+  protected funnelDateRange = computed(() => this.getCurrentDateRange());
 
   private searchSubject = new Subject<string>();
   protected searchQuery = signal('');
@@ -193,5 +200,10 @@ export class Dashboard {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return m > 0 ? `${m}m ${s}s` : `${s}s`;
+  }
+
+  protected openFunnelViewer(funnel: Funnel) {
+    this.selectedFunnelId.set(funnel.id);
+    this.showFunnelViewer.set(true);
   }
 }

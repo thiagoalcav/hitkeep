@@ -20,6 +20,7 @@ type Hit struct {
 	ScreenWidth    *int      `json:"screen_width"`
 	ScreenHeight   *int      `json:"screen_height"`
 	Language       *string   `json:"language"`
+	CountryCode    *string   `json:"country_code"`
 	IsUnique       *bool     `json:"is_unique"`
 }
 
@@ -93,12 +94,13 @@ type SiteStats struct {
 	TotalPageviews     int              `json:"total_pageviews"`
 	UniqueSessions     int              `json:"unique_sessions"`
 	BounceRate         float64          `json:"bounce_rate"`
-	AvgSessionDuration float64          `json:"avg_session_duration"` // Seconds
+	AvgSessionDuration float64          `json:"avg_session_duration"`
 	PagesPerSession    float64          `json:"pages_per_session"`
 	ChartData          []ChartDataPoint `json:"chart_data"`
 	TopPages           []MetricStat     `json:"top_pages"`
 	TopReferrers       []MetricStat     `json:"top_referrers"`
 	TopDevices         []MetricStat     `json:"top_devices"`
+	TopCountries       []MetricStat     `json:"top_countries"`
 	Goals              []GoalStats      `json:"goals"`
 }
 

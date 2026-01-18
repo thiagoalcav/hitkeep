@@ -1,0 +1,180 @@
+// File: internal/server/geoip.go
+package server
+
+import (
+	"iter"
+	"net"
+	"net/http"
+	"strings"
+
+	"github.com/phuslu/iploc"
+)
+
+// CountryCodeExtractor provides methods to extract country codes from various sources.
+// It uses a fallback strategy optimized for web analytics accuracy.
+type CountryCodeExtractor struct {
+	ipResolver       func(net.IP) string
+	trustedProxyNets []*net.IPNet
+}
+
+// NewCountryCodeExtractor creates a new extractor with the default IP resolver.
+func NewCountryCodeExtractor(trustedProxyNets []*net.IPNet) *CountryCodeExtractor {
+	return &CountryCodeExtractor{
+		ipResolver: func(ip net.IP) string {
+			return iploc.Country(ip)
+		},
+		trustedProxyNets: trustedProxyNets,
+	}
+}
+
+// ExtractFromRequest extracts country code from request using multiple strategies.
+// Returns an empty string if no valid country code can be determined.
+func (e *CountryCodeExtractor) ExtractFromRequest(r *http.Request, language *string) string {
+	for code := range e.strategies(r, language) {
+		if e.isValidCountryCode(code) {
+			return strings.ToUpper(code)
+		}
+	}
+	return ""
+}
+
+// strategies returns an iterator that yields country codes from various sources
+func (e *CountryCodeExtractor) strategies(r *http.Request, language *string) iter.Seq[string] {
+	return func(yield func(string) bool) {
+		if e.shouldTrustProxyHeaders(r) {
+			if code := e.fromCDNHeaders(r); code != "" {
+				if !yield(code) {
+					return
+				}
+			}
+
+			if code := e.fromProxyHeaders(r); code != "" {
+				if !yield(code) {
+					return
+				}
+			}
+		}
+
+		if code := e.fromGeoIP(r); code != "" {
+			if !yield(code) {
+				return
+			}
+		}
+	}
+}
+
+// fromCDNHeaders extracts country code from CDN-provided headers.
+func (e *CountryCodeExtractor) fromCDNHeaders(r *http.Request) string {
+	// Cloudflare (most common)
+	if code := r.Header.Get("CF-IPCountry"); code != "" {
+		return code
+	}
+
+	// Fastly
+	if code := r.Header.Get("Fastly-Client-IP-Country"); code != "" {
+		return code
+	}
+
+	// AWS CloudFront
+	if code := r.Header.Get("CloudFront-Viewer-Country"); code != "" {
+		return code
+	}
+
+	// Akamai
+	if code := r.Header.Get("X-Akamai-Edgescape"); code != "" {
+		// country_code=US,region_code=CA
+		if parts := strings.Split(code, ","); len(parts) > 0 {
+			if cc := strings.TrimPrefix(parts[0], "country_code="); cc != "" {
+				return cc
+			}
+		}
+	}
+
+	return ""
+}
+
+// fromProxyHeaders extracts country code from reverse proxy headers.
+func (e *CountryCodeExtractor) fromProxyHeaders(r *http.Request) string {
+	if code := r.Header.Get("X-Country-Code"); code != "" {
+		return code
+	}
+
+	if code := r.Header.Get("X-GeoIP-Country-Code"); code != "" {
+		return code
+	}
+
+	if code := r.Header.Get("X-Geo-Country"); code != "" {
+		return code
+	}
+
+	return ""
+}
+
+// fromGeoIP extracts country code using local GeoIP database lookup.
+func (e *CountryCodeExtractor) fromGeoIP(r *http.Request) string {
+	userIP := getRealIP(r, e.trustedProxyNets)
+
+	parsedIP := net.ParseIP(userIP)
+	if parsedIP == nil {
+		return ""
+	}
+
+	// Skip private/local IPs - they won't resolve to countries
+	if e.isPrivateIP(parsedIP) {
+		return ""
+	}
+
+	return e.ipResolver(parsedIP)
+}
+
+func (e *CountryCodeExtractor) shouldTrustProxyHeaders(r *http.Request) bool {
+	directIP := remoteIPFromAddr(r.RemoteAddr)
+	if directIP == "" {
+		return len(e.trustedProxyNets) == 0
+	}
+
+	parsedDirectIP := net.ParseIP(directIP)
+	if parsedDirectIP == nil {
+		return len(e.trustedProxyNets) == 0
+	}
+
+	return isTrustedProxy(parsedDirectIP, e.trustedProxyNets)
+}
+
+// isPrivateIP checks if an IP is in private/local address space.
+func (e *CountryCodeExtractor) isPrivateIP(ip net.IP) bool {
+	// Check for loopback
+	if ip.IsLoopback() {
+		return true
+	}
+
+	// Check for private IPv4 ranges
+	if ip.To4() != nil {
+		return ip.IsPrivate()
+	}
+
+	// Check for private IPv6 ranges (link-local, unique local)
+	if ip.To16() != nil {
+		return ip.IsPrivate() || ip.IsLinkLocalUnicast()
+	}
+
+	return false
+}
+
+// isValidCountryCode checks if a country code is valid.
+// Rejects empty strings, "XX" (unknown), and "T1" (Tor/anonymous proxy).
+func (e *CountryCodeExtractor) isValidCountryCode(code string) bool {
+	if code == "" || len(code) != 2 {
+		return false
+	}
+
+	// Common placeholder/invalid codes
+	invalid := []string{"XX", "T1", "A1", "A2", "O1"}
+	for _, inv := range invalid {
+		if code == inv {
+			return false
+		}
+	}
+
+	return true
+}

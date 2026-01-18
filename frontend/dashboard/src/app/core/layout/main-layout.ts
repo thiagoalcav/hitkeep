@@ -206,7 +206,7 @@ export class MainLayout {
     }
   }
 
-  openSiteSettings(tab: string = '0') {
+  openSiteSettings(tab = '0') {
     if (this.siteService.activeSite()) {
       this.siteSettingsTab.set(tab);
       this.isSiteSettingsVisible.set(true);

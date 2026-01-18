@@ -208,10 +208,14 @@ func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 		RateLimiter: s.apiLimiter,
 	}, s.handleGetSiteHits()))
 
-	mux.HandleFunc("GET /api/sites/{id}/favicon", s.Handler(HandlerConfig{
+	mux.HandleFunc("GET /api/sites/{id}/hits/export", s.Handler(HandlerConfig{
 		SitePerm:    auth.PermSiteView,
 		RateLimiter: s.apiLimiter,
-	}, s.handleGetSiteFavicon()))
+	}, s.handleExportSiteHits()))
+
+	mux.HandleFunc("GET /api/favicon/{domain}", s.Handler(HandlerConfig{
+		RateLimiter: s.apiLimiter,
+	}, s.handleGetFavicon()))
 
 	mux.HandleFunc("PUT /api/sites/{id}/retention", s.Handler(HandlerConfig{
 		SitePerm:    auth.PermSiteManageData,

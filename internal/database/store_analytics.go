@@ -30,11 +30,11 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		Goals:        []api.GoalStats{},
 	}
 
+	filterSQL, filterArgs := buildHitFilter(params.FilterType, params.FilterValue, "h")
+
 	liveThreshold := time.Now().Add(-5 * time.Minute)
-	err = s.db.QueryRowContext(ctx,
-		"SELECT COUNT(DISTINCT session_id) FROM hits WHERE site_id = ? AND timestamp >= ?",
-		params.SiteID, liveThreshold,
-	).Scan(&stats.LiveVisitors)
+	liveQuery := "SELECT COUNT(DISTINCT h.session_id) FROM hits h WHERE h.site_id = ? AND h.timestamp >= ?" + filterSQL
+	err = s.db.QueryRowContext(ctx, liveQuery, append([]any{params.SiteID, liveThreshold}, filterArgs...)...).Scan(&stats.LiveVisitors)
 	if err != nil {
 		return nil, fmt.Errorf("failed to calc live visitors: %w", err)
 	}
@@ -64,14 +64,15 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		}
 	}
 
-	kpiQuery := `
+	//nolint:gosec // filterSQL is derived from a fixed allowlist
+	kpiQuery := fmt.Sprintf(`
 	WITH session_metrics AS (
 		SELECT 
 			session_id,
 			count(*) as pvs,
 			(MAX(timestamp) - MIN(timestamp)) as duration
-		FROM hits
-		WHERE site_id = ? AND timestamp >= ? AND timestamp <= ?
+		FROM hits h
+		WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
 		GROUP BY session_id
 	)
 	SELECT 
@@ -84,9 +85,9 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		COALESCE(AVG(EXTRACT('epoch' FROM duration)), 0) as avg_duration_seconds,
 		COALESCE(AVG(pvs), 0) as pages_per_session
 	FROM session_metrics;
-	`
+	`, filterSQL)
 
-	err = s.db.QueryRowContext(ctx, kpiQuery, params.SiteID, params.Start, params.End).Scan(
+	err = s.db.QueryRowContext(ctx, kpiQuery, append([]any{params.SiteID, params.Start, params.End}, filterArgs...)...).Scan(
 		&stats.TotalPageviews,
 		&stats.UniqueSessions,
 		&stats.BounceRate,
@@ -97,7 +98,7 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		return nil, fmt.Errorf("failed to calc KPIs: %w", err)
 	}
 
-	//nolint:gosec // not user input
+	//nolint:gosec // interval/truncUnit/filterSQL are derived from fixed allowlists
 	chartQuery := fmt.Sprintf(`
 	WITH time_range AS (
 		SELECT unnest(generate_series(?::TIMESTAMP, ?::TIMESTAMP, INTERVAL %s)) as bucket
@@ -107,8 +108,8 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 			date_trunc('%s', timestamp)::TIMESTAMP as bucket,
 			COUNT(*) as pageviews,
 			COUNT(DISTINCT session_id) as visitors
-		FROM hits
-		WHERE site_id = ? AND timestamp >= ? AND timestamp <= ?
+		FROM hits h
+		WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
 		GROUP BY bucket
 	)
 	SELECT 
@@ -118,9 +119,9 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 	FROM time_range tr
 	LEFT JOIN daily_hits dh ON tr.bucket = dh.bucket
 	ORDER BY tr.bucket ASC;
-	`, interval, truncUnit)
+	`, interval, truncUnit, filterSQL)
 
-	rows, err := s.db.QueryContext(ctx, chartQuery, gridStart, gridEnd, params.SiteID, params.Start, params.End)
+	rows, err := s.db.QueryContext(ctx, chartQuery, append([]any{gridStart, gridEnd, params.SiteID, params.Start, params.End}, filterArgs...)...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query chart data: %w", err)
 	}
@@ -135,15 +136,16 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 	}
 
 	// 3. Top Pages
-	pagesQuery := `
-		SELECT path, COUNT(*) as val 
-		FROM hits 
-		WHERE site_id = ? AND timestamp >= ? AND timestamp <= ?
-		GROUP BY path 
-		ORDER BY val DESC 
+	//nolint:gosec // filterSQL is derived from a fixed allowlist
+	pagesQuery := fmt.Sprintf(`
+		SELECT h.path, COUNT(*) as val
+		FROM hits h
+		WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
+		GROUP BY h.path
+		ORDER BY val DESC
 		LIMIT 10
-	`
-	pRows, err := s.db.QueryContext(ctx, pagesQuery, params.SiteID, params.Start, params.End)
+	`, filterSQL)
+	pRows, err := s.db.QueryContext(ctx, pagesQuery, append([]any{params.SiteID, params.Start, params.End}, filterArgs...)...)
 	if err != nil {
 		return nil, err
 	}
@@ -156,22 +158,23 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 	}
 
 	// TODO: Refactor once we tackle Events
-	refQuery := `
+	//nolint:gosec // filterSQL is derived from a fixed allowlist
+	refQuery := fmt.Sprintf(`
 		SELECT 
 			CASE 
-				WHEN referrer IS NULL OR referrer = '' THEN '(Direct)'
+				WHEN h.referrer IS NULL OR h.referrer = '' THEN '(Direct)'
 				-- Simple hack to extract domain-ish part for now, relies on 'http' prefix
-				WHEN referrer LIKE 'http%' THEN regexp_extract(referrer, 'https?://([^/]+)', 1)
-				ELSE referrer 
+				WHEN h.referrer LIKE 'http%%' THEN regexp_extract(h.referrer, 'https?://([^/]+)', 1)
+				ELSE h.referrer
 			END as source, 
 			COUNT(*) as val 
-		FROM hits 
-		WHERE site_id = ? AND timestamp >= ? AND timestamp <= ?
+		FROM hits h
+		WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
 		GROUP BY source 
 		ORDER BY val DESC 
 		LIMIT 10
-	`
-	rRows, err := s.db.QueryContext(ctx, refQuery, params.SiteID, params.Start, params.End)
+	`, filterSQL)
+	rRows, err := s.db.QueryContext(ctx, refQuery, append([]any{params.SiteID, params.Start, params.End}, filterArgs...)...)
 	if err != nil {
 		return nil, err
 	}
@@ -184,20 +187,21 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 	}
 
 	// TODO: Good enough for now
-	devQuery := `
+	//nolint:gosec // filterSQL is derived from a fixed allowlist
+	devQuery := fmt.Sprintf(`
 		SELECT 
 			CASE 
-				WHEN viewport_width < 576 THEN 'Mobile'
-				WHEN viewport_width < 992 THEN 'Tablet'
+				WHEN h.viewport_width < 576 THEN 'Mobile'
+				WHEN h.viewport_width < 992 THEN 'Tablet'
 				ELSE 'Desktop' 
 			END as device,
 			COUNT(*) as val 
-		FROM hits 
-		WHERE site_id = ? AND timestamp >= ? AND timestamp <= ?
+		FROM hits h
+		WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
 		GROUP BY device 
 		ORDER BY val DESC 
-	`
-	dRows, err := s.db.QueryContext(ctx, devQuery, params.SiteID, params.Start, params.End)
+	`, filterSQL)
+	dRows, err := s.db.QueryContext(ctx, devQuery, append([]any{params.SiteID, params.Start, params.End}, filterArgs...)...)
 	if err != nil {
 		return nil, err
 	}

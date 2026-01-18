@@ -26,6 +26,7 @@ import { FunnelList } from '../../features/analytics/components/funnel-list';
 import { FunnelManager } from '../../features/funnels/components/funnel-manager';
 import { FunnelViewer } from '../../features/funnels/components/funnel-viewer';
 import { Funnel } from '../../core/models/analytics.types';
+import { MetricStat } from '../../core/models/analytics.types';
 
 interface RangeSelectEvent {
   value: {
@@ -33,6 +34,12 @@ interface RangeSelectEvent {
     value: string;
   };
 }
+
+type MetricFilterType = 'path' | 'referrer' | 'device';
+type MetricFilter = {
+  type: MetricFilterType;
+  value: string;
+};
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -41,7 +48,7 @@ interface RangeSelectEvent {
     CardModule, TableModule, SelectModule, ButtonModule,
     IconFieldModule, InputIconModule, InputTextModule,
     SkeletonModule, DialogModule, DatePickerModule, TooltipModule,
-    TrafficChart, SiteFavicon, MetricList, GoalList, FunnelList, FunnelManager, FunnelViewer
+    TrafficChart, SiteFavicon, MetricList, GoalList, FunnelList, FunnelManager, FunnelViewer, NgOptimizedImage
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
@@ -66,6 +73,42 @@ export class Dashboard {
   protected showFunnelViewer = signal(false);
   protected selectedFunnelId = signal<string | null>(null);
   protected funnelDateRange = computed(() => this.getCurrentDateRange());
+  protected siteDomain = computed(() => this.siteService.activeSite()?.domain ?? null);
+  protected siteFaviconUrl = computed(() => {
+    const domain = this.siteDomain();
+    return domain ? `/api/favicon/${encodeURIComponent(domain)}` : '';
+  });
+  protected activeFilter = signal<MetricFilter | null>(null);
+  protected activeFilterLabel = computed(() => {
+    const filter = this.activeFilter();
+    if (!filter) return '';
+    switch (filter.type) {
+      case 'path':
+        return `Page: ${filter.value}`;
+      case 'referrer':
+        return `Source: ${filter.value}`;
+      case 'device':
+        return `Device: ${filter.value}`;
+      default:
+        return `${filter.type}: ${filter.value}`;
+    }
+  });
+  protected exportUrl = computed(() => {
+    const site = this.siteService.activeSite();
+    const dates = this.getCurrentDateRange();
+    if (!site || !dates) return '';
+
+    const params = new URLSearchParams({
+      from: dates.from,
+      to: dates.to,
+    });
+    const filter = this.activeFilter();
+    if (filter) {
+      params.set('filter_type', filter.type);
+      params.set('filter_value', filter.value);
+    }
+    return `/api/sites/${site.id}/hits/export?${params.toString()}`;
+  });
 
   private searchSubject = new Subject<string>();
   protected searchQuery = signal('');
@@ -107,8 +150,9 @@ export class Dashboard {
     effect(() => {
       const site = this.siteService.activeSite();
       const dates = this.getCurrentDateRange();
+      const filter = this.activeFilter();
       if (site && dates) {
-        this.statsService.loadStats(site.id, dates.from, dates.to);
+        this.statsService.loadStats(site.id, dates.from, dates.to, filter?.type, filter?.value);
         this.refreshHits();
       }
     });
@@ -117,8 +161,9 @@ export class Dashboard {
   refreshAll() {
     const site = this.siteService.activeSite();
     const dates = this.getCurrentDateRange();
+    const filter = this.activeFilter();
     if (site && dates) {
-      this.statsService.loadStats(site.id, dates.from, dates.to);
+      this.statsService.loadStats(site.id, dates.from, dates.to, filter?.type, filter?.value);
       this.refreshHits();
     }
   }
@@ -132,6 +177,7 @@ export class Dashboard {
     const site = this.siteService.activeSite();
     const dates = this.getCurrentDateRange();
     if (!site || !dates) return;
+    const filter = this.activeFilter();
 
     const rows = event.rows || 10;
     const first = event.first || 0;
@@ -145,7 +191,9 @@ export class Dashboard {
       rows,
       event.sortField as string,
       event.sortOrder === 1 ? 'asc' : 'desc',
-      this.searchQuery()
+      this.searchQuery(),
+      filter?.type,
+      filter?.value
     );
   }
 
@@ -205,5 +253,58 @@ export class Dashboard {
   protected openFunnelViewer(funnel: Funnel) {
     this.selectedFunnelId.set(funnel.id);
     this.showFunnelViewer.set(true);
+  }
+
+  protected applyMetricFilter(type: MetricFilterType, metric: MetricStat) {
+    if (!metric.name) return;
+    const current = this.activeFilter();
+    if (current && current.type === type && current.value === metric.name) {
+      this.activeFilter.set(null);
+      return;
+    }
+    this.activeFilter.set({ type, value: metric.name });
+  }
+
+  protected clearFilter() {
+    this.activeFilter.set(null);
+  }
+
+  protected exportFiltered() {
+    const url = this.exportUrl();
+    if (!url) return;
+    window.location.href = url;
+  }
+
+  protected buildSiteUrl(path: string | null | undefined): string | null {
+    const domain = this.siteDomain();
+    if (!domain || !path) return null;
+    const normalized = path.startsWith('/') ? path : `/${path}`;
+    return `https://${domain}${normalized}`;
+  }
+
+  protected buildReferrerUrl(referrer: string | null | undefined): string | null {
+    const url = this.normalizeUrl(referrer);
+    return url ? url.href : null;
+  }
+
+  protected referrerDomain(referrer: string | null | undefined): string | null {
+    const url = this.normalizeUrl(referrer);
+    return url ? url.hostname : null;
+  }
+
+  protected faviconUrlForDomain(domain: string | null | undefined): string | null {
+    return domain ? `/api/favicon/${encodeURIComponent(domain)}` : null;
+  }
+
+  private normalizeUrl(raw: string | null | undefined): URL | null {
+    if (!raw) return null;
+    const trimmed = raw.trim();
+    if (!trimmed || trimmed.toLowerCase() === 'direct') return null;
+    const normalized = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    try {
+      return new URL(normalized);
+    } catch {
+      return null;
+    }
   }
 }

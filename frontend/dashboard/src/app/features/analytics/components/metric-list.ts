@@ -1,5 +1,5 @@
-import { Component, input, computed, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule, DecimalPipe } from '@angular/common';
+import { Component, input, computed, output, ChangeDetectionStrategy } from '@angular/core';
+import { CommonModule, DecimalPipe, NgOptimizedImage } from '@angular/common';
 import { CardModule } from 'primeng/card';
 import { SkeletonModule } from 'primeng/skeleton';
 import { MetricStat } from '../../../core/models/analytics.types';
@@ -7,7 +7,7 @@ import { MetricStat } from '../../../core/models/analytics.types';
 @Component({
   selector: 'app-metric-list',
   standalone: true,
-  imports: [CommonModule, CardModule, SkeletonModule, DecimalPipe],
+  imports: [CommonModule, CardModule, SkeletonModule, DecimalPipe, NgOptimizedImage],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <p-card class="shadow-sm h-full border border-surface-200 dark:border-surface-700 surface-card">
@@ -33,15 +33,32 @@ import { MetricStat } from '../../../core/models/analytics.types';
       } @else {
         <ul class="flex flex-col gap-3 m-0 p-0 list-none">
           @for (item of data(); track item.name) {
-            <li class="relative flex items-center justify-between text-sm group">
+            <li [class]="rowClass(item)" (click)="onRowClick(item)">
               <!-- Background Bar -->
               <div class="absolute left-0 top-0 h-full bg-[var(--p-primary-50)] dark:bg-[var(--p-primary-900)]/30 rounded-r transition-all duration-500"
                    [style.width.%]="(item.value / maxValue()) * 100"></div>
 
               <!-- Content -->
-              <span class="relative z-10 truncate font-medium px-2 py-1" [title]="item.name">
-                {{ item.name }}
-              </span>
+              <div class="relative z-10 flex items-center gap-2 min-w-0 px-2 py-1">
+                @if (linkInfo(item); as info) {
+                  @if (info.faviconUrl) {
+                    <img [ngSrc]="info.faviconUrl" class="size-4 shrink-0" [width]="16" [height]="16" alt="" />
+                  }
+                  <span class="truncate font-medium text-[var(--p-text-color)]" [title]="item.name">
+                    {{ item.name }}
+                  </span>
+                  <a class="shrink-0 text-muted-color hover:text-[var(--p-text-color)]"
+                     [href]="info.href"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     (click)="$event.stopPropagation()"
+                     aria-label="Open in new tab">
+                    <i class="pi pi-external-link text-xs" aria-hidden="true"></i>
+                  </a>
+                } @else {
+                  <span class="truncate font-medium" [title]="item.name">{{ item.name }}</span>
+                }
+              </div>
               <span class="relative z-10 font-semibold text-[var(--p-text-color)] px-2">
                 {{ item.value | number }}
               </span>
@@ -57,10 +74,74 @@ export class MetricList {
   icon = input<string>('pi-list');
   data = input.required<MetricStat[]>();
   isLoading = input<boolean>(false);
+  linkMode = input<'none' | 'path' | 'url'>('none');
+  siteDomain = input<string | null>(null);
+  isRowClickable = input<boolean>(false);
+  activeValue = input<string | null>(null);
+  rowClicked = output<MetricStat>();
 
   protected maxValue = computed(() => {
     const list = this.data();
     if (!list || list.length === 0) return 0;
     return Math.max(...list.map(i => i.value));
   });
+
+  protected linkInfo(item: MetricStat): { href: string; faviconUrl: string | null } | null {
+    const mode = this.linkMode();
+    if (mode === 'none') return null;
+
+    if (!item.name) return null;
+
+    if (mode === 'path') {
+      const domain = this.siteDomain();
+      if (!domain) return null;
+      const path = item.name.startsWith('/') ? item.name : `/${item.name}`;
+      return {
+        href: `https://${domain}${path}`,
+        faviconUrl: this.buildFaviconUrl(domain),
+      };
+    }
+
+    const url = this.normalizeUrl(item.name);
+    if (!url) return null;
+
+    return {
+      href: url.href,
+      faviconUrl: this.buildFaviconUrl(url.hostname),
+    };
+  }
+
+  private buildFaviconUrl(domain: string): string {
+    return `/api/favicon/${encodeURIComponent(domain)}`;
+  }
+
+  private normalizeUrl(raw: string): URL | null {
+    const trimmed = raw.trim();
+    if (!trimmed || trimmed.toLowerCase() === 'direct') return null;
+    const normalized = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+    try {
+      return new URL(normalized);
+    } catch {
+      return null;
+    }
+  }
+
+  protected onRowClick(item: MetricStat) {
+    if (!this.isRowClickable()) return;
+    this.rowClicked.emit(item);
+  }
+
+  protected rowClass(item: MetricStat): string {
+    const base = 'relative flex items-center justify-between text-sm group border border-transparent rounded-md';
+    const clickable = this.isRowClickable() ? ' cursor-pointer' : '';
+    const active = this.isActive(item)
+      ? ' border-[var(--p-primary-color)] ring-1 ring-[var(--p-primary-color)] bg-[var(--p-primary-50)]/40'
+      : '';
+    return base + clickable + active;
+  }
+
+  private isActive(item: MetricStat): boolean {
+    const active = this.activeValue();
+    return !!active && active === item.name;
+  }
 }

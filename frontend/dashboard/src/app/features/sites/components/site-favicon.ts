@@ -12,6 +12,9 @@ import { Site } from '../../../core/models/analytics.types';
 })
 export class SiteFavicon {
   site = input.required<Site|null>();
-  protected faviconUrl = computed(() => `/api/sites/${this.site()?.id}/favicon`);
+  protected faviconUrl = computed(() => {
+    const domain = this.site()?.domain;
+    return domain ? `/api/favicon/${encodeURIComponent(domain)}` : '';
+  });
 
 }

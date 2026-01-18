@@ -71,10 +71,12 @@ type User struct {
 }
 
 type AnalyticsParams struct {
-	SiteID uuid.UUID
-	UserID uuid.UUID
-	Start  time.Time
-	End    time.Time
+	SiteID      uuid.UUID
+	UserID      uuid.UUID
+	Start       time.Time
+	End         time.Time
+	FilterType  string
+	FilterValue string
 }
 
 type ChartDataPoint struct {
@@ -129,15 +131,17 @@ type FunnelStats struct {
 }
 
 type HitQueryParams struct {
-	SiteID    uuid.UUID
-	UserID    uuid.UUID
-	Start     time.Time
-	End       time.Time
-	Query     string
-	SortField string
-	SortOrder string
-	Limit     int
-	Offset    int
+	SiteID      uuid.UUID
+	UserID      uuid.UUID
+	Start       time.Time
+	End         time.Time
+	Query       string
+	SortField   string
+	SortOrder   string
+	Limit       int
+	Offset      int
+	FilterType  string
+	FilterValue string
 }
 
 type PaginatedHits struct {

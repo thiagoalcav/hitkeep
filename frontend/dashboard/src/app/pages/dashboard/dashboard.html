@@ -51,7 +51,14 @@
     <div class="mb-6">
       <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card">
         <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold">{{ chartTitle() }}</h3>
+            <div class="flex items-center gap-2">
+              <h3 class="text-lg font-semibold">{{ chartTitle() }}</h3>
+              @if (activeFilter()) {
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full border border-[var(--p-primary-color)] text-xs font-medium">
+                  Filtered
+                </span>
+              }
+            </div>
         </div>
         <app-traffic-chart
           [data]="statsService.stats()?.chart_data || []"
@@ -60,24 +67,58 @@
       </p-card>
     </div>
 
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <div class="flex items-center gap-2">
+        @if (activeFilter()) {
+          <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--p-primary-color)] text-sm">
+            <span class="font-medium text-[var(--p-text-color)]">{{ activeFilterLabel() }}</span>
+            <button type="button" class="text-muted-color hover:text-[var(--p-text-color)]"
+                    (click)="clearFilter()" aria-label="Clear filter">
+              <i class="pi pi-times" aria-hidden="true"></i>
+            </button>
+          </span>
+        } @else {
+          <span class="text-sm text-[var(--p-text-muted-color)]">No active filter</span>
+        }
+      </div>
+      <div class="flex items-center gap-2">
+        <p-button icon="pi pi-download" label="Export CSV" size="small"
+                  (onClick)="exportFiltered()"
+                  [disabled]="!exportUrl()"
+                  styleClass="p-button-outlined p-button-sm"></p-button>
+      </div>
+    </div>
+
      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
       <app-metric-list
         title="Top Pages"
         icon="pi-file"
         [data]="statsService.stats()?.top_pages || []"
-        [isLoading]="statsService.isLoading()"/>
+        [linkMode]="'path'"
+        [siteDomain]="siteService.activeSite()?.domain || null"
+        [isLoading]="statsService.isLoading()"
+        [isRowClickable]="true"
+        [activeValue]="activeFilter()?.type === 'path' ? (activeFilter()?.value ?? null) : null"
+        (rowClicked)="applyMetricFilter('path', $event)"/>
 
       <app-metric-list
         title="Top Sources"
         icon="pi-link"
         [data]="statsService.stats()?.top_referrers || []"
-        [isLoading]="statsService.isLoading()"/>
+        [linkMode]="'url'"
+        [isLoading]="statsService.isLoading()"
+        [isRowClickable]="true"
+        [activeValue]="activeFilter()?.type === 'referrer' ? (activeFilter()?.value ?? null) : null"
+        (rowClicked)="applyMetricFilter('referrer', $event)"/>
 
       <app-metric-list
         title="Devices"
         icon="pi-mobile"
         [data]="statsService.stats()?.top_devices || []"
-        [isLoading]="statsService.isLoading()"/>
+        [isLoading]="statsService.isLoading()"
+        [isRowClickable]="true"
+        [activeValue]="activeFilter()?.type === 'device' ? (activeFilter()?.value ?? null) : null"
+        (rowClicked)="applyMetricFilter('device', $event)"/>
 
       <app-metric-list
         title="Countries"
@@ -149,9 +190,50 @@
 
         <ng-template pTemplate="body" let-hit>
           <tr class="text-sm hover:bg-[var(--p-surface-hover)]">
-            <td class="font-medium truncate max-w-[200px]" [title]="hit.path">{{ hit.path }}</td>
+            <td class="font-medium truncate max-w-[200px]" [title]="hit.path">
+              <div class="flex items-center gap-2 min-w-0">
+                @if (siteFaviconUrl(); as favicon) {
+                  <img [ngSrc]="favicon" class="size-4 shrink-0" [width]="16" [height]="16" alt="" />
+                }
+                @if (buildSiteUrl(hit.path); as pageUrl) {
+                  <span class="truncate" [title]="hit.path">{{ hit.path }}</span>
+                  <a class="shrink-0 text-muted-color hover:text-[var(--p-text-color)]"
+                     [href]="pageUrl"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     aria-label="Open page in new tab">
+                    <i class="pi pi-external-link text-xs" aria-hidden="true"></i>
+                  </a>
+                } @else {
+                  <span class="truncate" [title]="hit.path">{{ hit.path }}</span>
+                }
+              </div>
+            </td>
             <td class="whitespace-nowrap text-muted-color">{{ hit.timestamp | date:'MMM d, h:mm a' }}</td>
-            <td class="truncate max-w-[200px] text-muted-color" [title]="hit.referrer">{{ hit.referrer || 'Direct' }}
+            <td class="truncate max-w-[200px] text-muted-color" [title]="hit.referrer">
+              @if (hit.referrer) {
+                <div class="flex items-center gap-2 min-w-0">
+                  @if (referrerDomain(hit.referrer); as domain) {
+                    @if (faviconUrlForDomain(domain); as favicon) {
+                      <img [ngSrc]="favicon" class="size-4 shrink-0" [width]="16" [height]="16" alt="" />
+                    }
+                  }
+                  @if (buildReferrerUrl(hit.referrer); as referrerUrl) {
+                    <span class="truncate" [title]="hit.referrer">{{ hit.referrer }}</span>
+                    <a class="shrink-0 text-muted-color hover:text-[var(--p-text-color)]"
+                       [href]="referrerUrl"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       aria-label="Open referrer in new tab">
+                      <i class="pi pi-external-link text-xs" aria-hidden="true"></i>
+                    </a>
+                  } @else {
+                    <span class="truncate">{{ hit.referrer }}</span>
+                  }
+                </div>
+              } @else {
+                <span>Direct</span>
+              }
             </td>
             <td>
                   <span

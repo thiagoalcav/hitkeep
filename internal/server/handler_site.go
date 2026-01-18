@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -195,6 +196,12 @@ func (s *Server) handleGetSiteHits() http.HandlerFunc {
 			}
 		}
 
+		filterType, filterValue, err := parseFilterParams(q)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
 		limit := 10
 		offset := 0
 		if l := q.Get("limit"); l != "" {
@@ -215,15 +222,17 @@ func (s *Server) handleGetSiteHits() http.HandlerFunc {
 		}
 
 		params := api.HitQueryParams{
-			SiteID:    siteID,
-			UserID:    userID,
-			Start:     start,
-			End:       end,
-			Query:     q.Get("q"),
-			SortField: q.Get("sort"),
-			SortOrder: q.Get("order"), // asc/desc
-			Limit:     limit,
-			Offset:    offset,
+			SiteID:      siteID,
+			UserID:      userID,
+			Start:       start,
+			End:         end,
+			Query:       q.Get("q"),
+			SortField:   q.Get("sort"),
+			SortOrder:   q.Get("order"), // asc/desc
+			Limit:       limit,
+			Offset:      offset,
+			FilterType:  filterType,
+			FilterValue: filterValue,
 		}
 
 		result, err := s.store.GetHits(r.Context(), params)
@@ -235,6 +244,71 @@ func (s *Server) handleGetSiteHits() http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(result); err != nil {
 			slog.Error("Failed to encode response", "error", err)
+		}
+	}
+}
+
+// handleExportSiteHits streams filtered hits as CSV.
+// Path: GET /api/sites/{id}/hits/export
+func (s *Server) handleExportSiteHits() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := getUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		if s.store == nil {
+			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
+			return
+		}
+
+		siteIDStr := r.PathValue("id")
+		siteID, err := uuid.Parse(siteIDStr)
+		if err != nil {
+			http.Error(w, "Invalid site_id", http.StatusBadRequest)
+			return
+		}
+
+		q := r.URL.Query()
+
+		now := time.Now().UTC()
+		start := now.Add(-24 * time.Hour)
+		end := now
+
+		if fromStr := q.Get("from"); fromStr != "" {
+			if parsed, err := time.Parse(time.RFC3339, fromStr); err == nil {
+				start = parsed
+			}
+		}
+		if toStr := q.Get("to"); toStr != "" {
+			if parsed, err := time.Parse(time.RFC3339, toStr); err == nil {
+				end = parsed
+			}
+		}
+
+		filterType, filterValue, err := parseFilterParams(q)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		params := api.HitQueryParams{
+			SiteID:      siteID,
+			UserID:      userID,
+			Start:       start,
+			End:         end,
+			Query:       q.Get("q"),
+			FilterType:  filterType,
+			FilterValue: filterValue,
+		}
+
+		filename := fmt.Sprintf("hits_%s_%d.csv", siteID, time.Now().Unix())
+		w.Header().Set("Content-Type", "text/csv")
+		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
+
+		if err := s.store.ExportHitsCSV(r.Context(), params, w); err != nil {
+			slog.Error("Failed to export hits", "error", err, "site_id", siteID, "user_id", userID)
 		}
 	}
 }
@@ -278,11 +352,19 @@ func (s *Server) handleGetSiteStats() http.HandlerFunc {
 			}
 		}
 
+		filterType, filterValue, err := parseFilterParams(q)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
 		params := api.AnalyticsParams{
-			SiteID: siteID,
-			UserID: userID,
-			Start:  start,
-			End:    end,
+			SiteID:      siteID,
+			UserID:      userID,
+			Start:       start,
+			End:         end,
+			FilterType:  filterType,
+			FilterValue: filterValue,
 		}
 
 		stats, err := s.store.GetSiteStats(r.Context(), params)
@@ -324,49 +406,50 @@ func getUserIDFromContext(r *http.Request) uuid.UUID {
 	return id
 }
 
-// handleGetSiteFavicon proxies the favicon request to DuckDuckGo to avoid CORS and privacy leaks.
-// GET /api/sites/{id}/favicon
-func (s *Server) handleGetSiteFavicon() http.HandlerFunc {
+func parseFilterParams(q url.Values) (string, string, error) {
+	filterType := strings.ToLower(strings.TrimSpace(q.Get("filter_type")))
+	filterValue := strings.TrimSpace(q.Get("filter_value"))
+
+	if filterType == "" && filterValue == "" {
+		return "", "", nil
+	}
+	if filterType == "" || filterValue == "" {
+		return "", "", fmt.Errorf("filter_type and filter_value are required together")
+	}
+
+	switch filterType {
+	case "path", "referrer", "device":
+		return filterType, filterValue, nil
+	default:
+		return "", "", fmt.Errorf("invalid filter_type")
+	}
+}
+
+// handleGetFavicon proxies the favicon request to DuckDuckGo to avoid CORS and privacy leaks.
+// GET /api/favicon/{domain}
+func (s *Server) handleGetFavicon() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := getUserIDFromContext(r)
-		if userID == uuid.Nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		siteIDStr := r.PathValue("id")
-		siteID, err := uuid.Parse(siteIDStr)
-		if err != nil {
-			http.Error(w, "Invalid site_id", http.StatusBadRequest)
-			return
-		}
-
-		site, err := s.store.GetSite(r.Context(), siteID, userID)
-		if err != nil {
-			slog.Error("Failed to get site for favicon", "error", err)
-			http.Error(w, "Internal error", http.StatusInternalServerError)
-			return
-		}
-		if site == nil {
-			http.Error(w, "Site not found", http.StatusNotFound)
+		domain := strings.TrimSpace(r.PathValue("domain"))
+		if domain == "" || strings.Contains(domain, "/") {
+			http.Error(w, "Invalid domain", http.StatusBadRequest)
 			return
 		}
 
 		// Use DuckDuckGo's favicon service
-		ddgURL := fmt.Sprintf("https://icons.duckduckgo.com/ip3/%s.ico", site.Domain)
+		ddgURL := fmt.Sprintf("https://icons.duckduckgo.com/ip3/%s.ico", domain)
 
 		client := &http.Client{Timeout: 5 * time.Second}
 		resp, err := client.Get(ddgURL)
+		if err != nil {
+			slog.Warn("Failed to fetch favicon upstream", "domain", domain, "error", err)
+			http.Error(w, "Upstream error", http.StatusBadGateway)
+			return
+		}
 		defer func() {
 			if err := resp.Body.Close(); err != nil {
 				slog.Warn("Failed to close response body", "error", err)
 			}
 		}()
-		if err != nil {
-			slog.Warn("Failed to fetch favicon upstream", "domain", site.Domain, "error", err)
-			http.Error(w, "Upstream error", http.StatusBadGateway)
-			return
-		}
 
 		// Cache for 24 hours in the browser to reduce load
 		w.Header().Set("Cache-Control", "public, max-age=86400")

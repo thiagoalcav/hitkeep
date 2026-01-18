@@ -10,10 +10,13 @@ export class StatsService {
   readonly stats = signal<SiteStats | null>(null);
   readonly isLoading = signal<boolean>(false);
 
-  loadStats(siteId: string, from: string, to: string) {
+  loadStats(siteId: string, from: string, to: string, filterType?: string, filterValue?: string) {
     this.isLoading.set(true);
 
-    const params = new HttpParams().set('from', from).set('to', to);
+    let params = new HttpParams().set('from', from).set('to', to);
+    if (filterType && filterValue) {
+      params = params.set('filter_type', filterType).set('filter_value', filterValue);
+    }
 
     this.http.get<SiteStats>(`/api/sites/${siteId}/stats`, { params })
       .pipe(finalize(() => this.isLoading.set(false)))

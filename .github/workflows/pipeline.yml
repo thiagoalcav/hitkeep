@@ -7,11 +7,6 @@ on:
         required: true
         type: string
         description: "Version string to embed in the binary (e.g., v1.0.0 or snapshot-abc)"
-      build_binaries:
-        required: false
-        type: boolean
-        default: true
-        description: "Whether to build and upload platform binaries"
       meta_config:
         required: true
         type: string
@@ -83,7 +78,6 @@ jobs:
           cp -r frontend/dashboard/dist/dashboard/browser/* public/
 
       - name: Build Linux AMD64
-        if: ${{ inputs.build_binaries }}
         run: |
           CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
             -ldflags="-w -s -X 'hitkeep/cmd.Version=${{ inputs.version }}'" \
@@ -91,7 +85,6 @@ jobs:
             ./cmd/hitkeep/main.go
 
       - name: Build Linux ARM64
-        if: ${{ inputs.build_binaries }}
         run: |
           CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ \
           CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build \
@@ -100,7 +93,6 @@ jobs:
             ./cmd/hitkeep/main.go
 
       - uses: actions/upload-artifact@v5
-        if: ${{ inputs.build_binaries }}
         with:
           name: hitkeep-binaries-${{ inputs.version }}
           path: |
@@ -109,7 +101,6 @@ jobs:
           retention-days: 5
 
       - name: Upload Release Binaries
-        if: ${{ inputs.build_binaries && inputs.upload_to_release }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

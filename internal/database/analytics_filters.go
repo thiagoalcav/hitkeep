@@ -35,6 +35,11 @@ func buildHitFilter(filterType, filterValue, alias string) (string, []any) {
 			ELSE 'Desktop'
 		END`, prefix)
 		return " AND " + expr + " = ?", []any{filterValue}
+	case "country":
+		if isUnknownCountry(filterValue) {
+			return fmt.Sprintf(" AND (%scountry_code IS NULL OR %scountry_code = '')", prefix, prefix), nil
+		}
+		return fmt.Sprintf(" AND %scountry_code = ?", prefix), []any{filterValue}
 	default:
 		return "", nil
 	}
@@ -43,4 +48,9 @@ func buildHitFilter(filterType, filterValue, alias string) (string, []any) {
 func isDirectReferrer(value string) bool {
 	normalized := strings.ToLower(strings.TrimSpace(value))
 	return normalized == "direct" || normalized == "(direct)"
+}
+
+func isUnknownCountry(value string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	return normalized == "unknown" || normalized == "(unknown)"
 }

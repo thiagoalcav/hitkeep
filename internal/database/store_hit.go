@@ -24,11 +24,11 @@ func (s *Store) CreateHit(ctx context.Context, hit *api.Hit) error {
         INSERT INTO hits (
             site_id, session_id, page_id, timestamp, path, referrer, user_agent, 
             viewport_width, viewport_height, screen_width, screen_height, 
-            language, is_unique
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            language, country_code, is_unique
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		hit.SiteID, hit.SessionID, hit.PageID, hit.Timestamp, hit.Path, hit.Referrer,
 		hit.UserAgent, hit.ViewportWidth, hit.ViewportHeight, hit.ScreenWidth,
-		hit.ScreenHeight, hit.Language, hit.IsUnique,
+		hit.ScreenHeight, hit.Language, hit.CountryCode, hit.IsUnique,
 	)
 	if err != nil {
 		return fmt.Errorf("could not insert hit: %w", err)
@@ -89,7 +89,7 @@ func (s *Store) GetHits(ctx context.Context, params api.HitQueryParams) (*api.Pa
 	selectQuery := `
 		SELECT
             h.id, h.site_id, h.session_id, h.page_id, h.timestamp, h.path, h.referrer, h.user_agent,
-            h.viewport_width, h.viewport_height, h.screen_width, h.screen_height, h.language, h.is_unique
+            h.viewport_width, h.viewport_height, h.screen_width, h.screen_height, h.language, h.country_code, h.is_unique
 	` + baseQuery // whitelisted
 
 	rows, err := s.db.QueryContext(ctx, selectQuery, args...)
@@ -104,7 +104,7 @@ func (s *Store) GetHits(ctx context.Context, params api.HitQueryParams) (*api.Pa
 		if err := rows.Scan(
 			&hit.ID, &hit.SiteID, &hit.SessionID, &hit.PageID, &hit.Timestamp, &hit.Path, &hit.Referrer,
 			&hit.UserAgent, &hit.ViewportWidth, &hit.ViewportHeight, &hit.ScreenWidth,
-			&hit.ScreenHeight, &hit.Language, &hit.IsUnique,
+			&hit.ScreenHeight, &hit.Language, &hit.CountryCode, &hit.IsUnique,
 		); err != nil {
 			return nil, err
 		}
@@ -140,10 +140,11 @@ func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w 
 
 	baseQuery += " ORDER BY h.timestamp DESC"
 
+	//nolint:gosec // baseQuery is built from fixed allowlists and parameter placeholders
 	selectQuery := `
 		SELECT
             h.id, h.site_id, h.session_id, h.page_id, h.timestamp, h.path, h.referrer, h.user_agent,
-            h.viewport_width, h.viewport_height, h.screen_width, h.screen_height, h.language, h.is_unique
+            h.viewport_width, h.viewport_height, h.screen_width, h.screen_height, h.language, h.country_code, h.is_unique
 	` + baseQuery
 
 	rows, err := s.db.QueryContext(ctx, selectQuery, args...)
@@ -167,6 +168,7 @@ func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w 
 		"screen_width",
 		"screen_height",
 		"language",
+		"country_code",
 		"is_unique",
 	}); err != nil {
 		return fmt.Errorf("failed to write csv header: %w", err)
@@ -174,13 +176,13 @@ func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w 
 
 	for rows.Next() {
 		var (
-			id, siteID, sessionID, pageID uuid.UUID
-			timestamp                     time.Time
-			path                          string
-			referrer, userAgent, language sql.NullString
-			viewportWidth, viewportHeight sql.NullInt32
-			screenWidth, screenHeight     sql.NullInt32
-			isUnique                      sql.NullBool
+			id, siteID, sessionID, pageID              uuid.UUID
+			timestamp                                  time.Time
+			path                                       string
+			referrer, userAgent, language, countryCode sql.NullString
+			viewportWidth, viewportHeight              sql.NullInt32
+			screenWidth, screenHeight                  sql.NullInt32
+			isUnique                                   sql.NullBool
 		)
 		if err := rows.Scan(
 			&id,
@@ -196,6 +198,7 @@ func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w 
 			&screenWidth,
 			&screenHeight,
 			&language,
+			&countryCode,
 			&isUnique,
 		); err != nil {
 			return fmt.Errorf("failed to scan export row: %w", err)
@@ -215,6 +218,7 @@ func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w 
 			nullInt32(screenWidth),
 			nullInt32(screenHeight),
 			nullString(language),
+			nullString(countryCode),
 			nullBool(isUnique),
 		}
 		if err := writer.Write(record); err != nil {

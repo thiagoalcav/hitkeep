@@ -40,12 +40,15 @@ import { MetricStat } from '../../../core/models/analytics.types';
 
               <!-- Content -->
               <div class="relative z-10 flex items-center gap-2 min-w-0 px-2 py-1">
+                @if (showCountryFlags() && countryFlagUrl(item.name); as flagUrl) {
+                  <img [ngSrc]="flagUrl" class="size-4 shrink-0" [width]="16" [height]="16" alt="" />
+                }
                 @if (linkInfo(item); as info) {
                   @if (info.faviconUrl) {
                     <img [ngSrc]="info.faviconUrl" class="size-4 shrink-0" [width]="16" [height]="16" alt="" />
                   }
-                  <span class="truncate font-medium text-[var(--p-text-color)]" [title]="item.name">
-                    {{ item.name }}
+                  <span class="truncate font-medium text-[var(--p-text-color)]" [title]="titleForItem(item)">
+                    {{ displayLabel(item) }}
                   </span>
                   <a class="shrink-0 text-muted-color hover:text-[var(--p-text-color)]"
                      [href]="info.href"
@@ -56,7 +59,7 @@ import { MetricStat } from '../../../core/models/analytics.types';
                     <i class="pi pi-external-link text-xs" aria-hidden="true"></i>
                   </a>
                 } @else {
-                  <span class="truncate font-medium" [title]="item.name">{{ item.name }}</span>
+                  <span class="truncate font-medium" [title]="titleForItem(item)">{{ displayLabel(item) }}</span>
                 }
               </div>
               <span class="relative z-10 font-semibold text-[var(--p-text-color)] px-2">
@@ -78,6 +81,8 @@ export class MetricList {
   siteDomain = input<string | null>(null);
   isRowClickable = input<boolean>(false);
   activeValue = input<string | null>(null);
+  showCountryFlags = input<boolean>(false);
+  showCountryNames = input<boolean>(false);
   rowClicked = output<MetricStat>();
 
   protected maxValue = computed(() => {
@@ -121,6 +126,36 @@ export class MetricList {
     const normalized = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
     try {
       return new URL(normalized);
+    } catch {
+      return null;
+    }
+  }
+
+  protected countryFlagUrl(value: string): string | null {
+    const trimmed = value.trim();
+    const code = trimmed.toLowerCase();
+    if (!/^[a-z]{2}$/.test(code)) return '/flags/other/earth.svg';
+    return `/flags/${code}.svg`;
+  }
+
+  protected displayLabel(item: MetricStat): string {
+    if (!this.showCountryNames()) return item.name;
+    const name = this.countryDisplayName(item.name);
+    return name ?? item.name;
+  }
+
+  protected titleForItem(item: MetricStat): string {
+    const display = this.displayLabel(item);
+    if (display === item.name) return item.name;
+    return `${item.name} · ${display}`;
+  }
+
+  private countryDisplayName(value: string): string | null {
+    const code = value.trim().toUpperCase();
+    if (!/^[A-Z]{2}$/.test(code)) return null;
+    try {
+      const displayNames = new Intl.DisplayNames(['en'], { type: 'region' });
+      return displayNames.of(code) ?? null;
     } catch {
       return null;
     }

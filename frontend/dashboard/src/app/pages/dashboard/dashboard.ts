@@ -35,7 +35,7 @@ interface RangeSelectEvent {
   };
 }
 
-type MetricFilterType = 'path' | 'referrer' | 'device';
+type MetricFilterType = 'path' | 'referrer' | 'device' | 'country';
 type MetricFilter = {
   type: MetricFilterType;
   value: string;
@@ -89,6 +89,8 @@ export class Dashboard {
         return `Source: ${filter.value}`;
       case 'device':
         return `Device: ${filter.value}`;
+      case 'country':
+        return `Country: ${filter.value}`;
       default:
         return `${filter.type}: ${filter.value}`;
     }

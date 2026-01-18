@@ -24,6 +24,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*.svg",
+                "input": "node_modules/circle-flags/flags",
+                "output": "flags"
               }
             ],
             "styles": [
@@ -81,6 +86,11 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              {
+                "glob": "**/*.svg",
+                "input": "node_modules/circle-flags/flags",
+                "output": "flags"
               }
             ],
             "styles": [

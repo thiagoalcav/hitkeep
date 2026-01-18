@@ -124,7 +124,12 @@
         title="Countries"
         icon="pi-globe"
         [data]="statsService.stats()?.top_countries || []"
-        [isLoading]="statsService.isLoading()"/>
+        [isLoading]="statsService.isLoading()"
+        [isRowClickable]="true"
+        [showCountryFlags]="true"
+        [showCountryNames]="true"
+        [activeValue]="activeFilter()?.type === 'country' ? (activeFilter()?.value ?? null) : null"
+        (rowClicked)="applyMetricFilter('country', $event)"/>
     </div>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">

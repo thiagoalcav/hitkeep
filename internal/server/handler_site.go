@@ -418,7 +418,7 @@ func parseFilterParams(q url.Values) (string, string, error) {
 	}
 
 	switch filterType {
-	case "path", "referrer", "device":
+	case "path", "referrer", "device", "country":
 		return filterType, filterValue, nil
 	default:
 		return "", "", fmt.Errorf("invalid filter_type")

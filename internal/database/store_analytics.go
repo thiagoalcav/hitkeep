@@ -27,6 +27,7 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		TopPages:     []api.MetricStat{},
 		TopReferrers: []api.MetricStat{},
 		TopDevices:   []api.MetricStat{},
+		TopCountries: []api.MetricStat{},
 		Goals:        []api.GoalStats{},
 	}
 
@@ -210,6 +211,30 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		var m api.MetricStat
 		if err := dRows.Scan(&m.Name, &m.Value); err == nil {
 			stats.TopDevices = append(stats.TopDevices, m)
+		}
+	}
+
+	// TODO: Good enough for now
+	//nolint:gosec // filterSQL is derived from a fixed allowlist
+	countryQuery := fmt.Sprintf(`
+		SELECT 
+			COALESCE(NULLIF(h.country_code, ''), '(Unknown)') as country,
+			COUNT(*) as val
+		FROM hits h
+		WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
+		GROUP BY country
+		ORDER BY val DESC
+		LIMIT 10
+	`, filterSQL)
+	cRows, err := s.db.QueryContext(ctx, countryQuery, append([]any{params.SiteID, params.Start, params.End}, filterArgs...)...)
+	if err != nil {
+		return nil, err
+	}
+	defer cRows.Close()
+	for cRows.Next() {
+		var m api.MetricStat
+		if err := cRows.Scan(&m.Name, &m.Value); err == nil {
+			stats.TopCountries = append(stats.TopCountries, m)
 		}
 	}
 

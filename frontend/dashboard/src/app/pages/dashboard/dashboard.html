@@ -53,7 +53,7 @@
         <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2">
               <h3 class="text-lg font-semibold">{{ chartTitle() }}</h3>
-              @if (activeFilter()) {
+              @if (hasFilters()) {
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full border border-[var(--p-primary-color)] text-xs font-medium">
                   Filtered
                 </span>
@@ -67,27 +67,33 @@
       </p-card>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-      <div class="flex items-center gap-2">
-        @if (activeFilter()) {
-          <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--p-primary-color)] text-sm">
-            <span class="font-medium text-[var(--p-text-color)]">{{ activeFilterLabel() }}</span>
-            <button type="button" class="text-muted-color hover:text-[var(--p-text-color)]"
-                    (click)="clearFilter()" aria-label="Clear filter">
-              <i class="pi pi-times" aria-hidden="true"></i>
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div class="flex flex-wrap items-center gap-2">
+          @if (hasFilters()) {
+            @for (filter of filterChips(); track filter.type) {
+              <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--p-primary-color)] text-sm">
+                <span class="font-medium text-[var(--p-text-color)]">{{ filter.label }}</span>
+                <button type="button" class="text-muted-color hover:text-[var(--p-text-color)]"
+                        (click)="removeFilter(filter.type, filter.value)" aria-label="Remove filter">
+                  <i class="pi pi-times" aria-hidden="true"></i>
+                </button>
+              </span>
+            }
+            <button type="button" class="text-xs text-muted-color hover:text-[var(--p-text-color)] underline"
+                    (click)="clearFilter()">
+              Clear all
             </button>
-          </span>
-        } @else {
-          <span class="text-sm text-[var(--p-text-muted-color)]">No active filter</span>
-        }
+          } @else {
+            <span class="text-sm text-[var(--p-text-muted-color)]">No active filter</span>
+          }
+        </div>
+        <div class="flex items-center gap-2">
+          <p-button icon="pi pi-download" label="Export CSV" size="small"
+                    (onClick)="exportFiltered()"
+                    [disabled]="!exportUrl()"
+                    styleClass="p-button-outlined p-button-sm"></p-button>
+        </div>
       </div>
-      <div class="flex items-center gap-2">
-        <p-button icon="pi pi-download" label="Export CSV" size="small"
-                  (onClick)="exportFiltered()"
-                  [disabled]="!exportUrl()"
-                  styleClass="p-button-outlined p-button-sm"></p-button>
-      </div>
-    </div>
 
      <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
       <app-metric-list
@@ -98,7 +104,7 @@
         [siteDomain]="siteService.activeSite()?.domain || null"
         [isLoading]="statsService.isLoading()"
         [isRowClickable]="true"
-        [activeValue]="activeFilter()?.type === 'path' ? (activeFilter()?.value ?? null) : null"
+        [activeValue]="activeFilterValue('path')"
         (rowClicked)="applyMetricFilter('path', $event)"/>
 
       <app-metric-list
@@ -108,7 +114,7 @@
         [linkMode]="'url'"
         [isLoading]="statsService.isLoading()"
         [isRowClickable]="true"
-        [activeValue]="activeFilter()?.type === 'referrer' ? (activeFilter()?.value ?? null) : null"
+        [activeValue]="activeFilterValue('referrer')"
         (rowClicked)="applyMetricFilter('referrer', $event)"/>
 
       <app-metric-list
@@ -117,7 +123,7 @@
         [data]="statsService.stats()?.top_devices || []"
         [isLoading]="statsService.isLoading()"
         [isRowClickable]="true"
-        [activeValue]="activeFilter()?.type === 'device' ? (activeFilter()?.value ?? null) : null"
+        [activeValue]="activeFilterValue('device')"
         (rowClicked)="applyMetricFilter('device', $event)"/>
 
       <app-metric-list
@@ -128,7 +134,7 @@
         [isRowClickable]="true"
         [showCountryFlags]="true"
         [showCountryNames]="true"
-        [activeValue]="activeFilter()?.type === 'country' ? (activeFilter()?.value ?? null) : null"
+        [activeValue]="activeFilterValue('country')"
         (rowClicked)="applyMetricFilter('country', $event)"/>
     </div>
 

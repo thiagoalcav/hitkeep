@@ -3,7 +3,28 @@ package database
 import (
 	"fmt"
 	"strings"
+
+	"hitkeep/internal/api"
 )
+
+func buildHitFilters(filters []api.Filter, alias string) (string, []any) {
+	if len(filters) == 0 {
+		return "", nil
+	}
+
+	var sql strings.Builder
+	var args []any
+	for _, filter := range filters {
+		clause, clauseArgs := buildHitFilter(filter.Type, filter.Value, alias)
+		if clause == "" {
+			continue
+		}
+		sql.WriteString(clause)
+		args = append(args, clauseArgs...)
+	}
+
+	return sql.String(), args
+}
 
 func buildHitFilter(filterType, filterValue, alias string) (string, []any) {
 	if filterType == "" || filterValue == "" {

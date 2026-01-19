@@ -31,7 +31,8 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		Goals:        []api.GoalStats{},
 	}
 
-	filterSQL, filterArgs := buildHitFilter(params.FilterType, params.FilterValue, "h")
+	filterSQL, filterArgs := buildHitFilters(params.Filters, "h")
+	useRollups := len(params.Filters) == 0
 
 	liveThreshold := time.Now().Add(-5 * time.Minute)
 	liveQuery := "SELECT COUNT(DISTINCT h.session_id) FROM hits h WHERE h.site_id = ? AND h.timestamp >= ?" + filterSQL
@@ -43,6 +44,7 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 	duration := params.End.Sub(params.Start)
 	interval := "1 DAY"
 	truncUnit := "day"
+	rollupKind := rollupHourly
 
 	var gridStart, gridEnd time.Time
 
@@ -63,66 +65,52 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		if !gridEnd.After(params.End) {
 			gridEnd = gridEnd.AddDate(0, 0, 1)
 		}
+		if duration >= 180*24*time.Hour {
+			interval = "1 MONTH"
+			truncUnit = "month"
+			rollupKind = rollupMonthly
+			gridStart = time.Date(gridStart.Year(), gridStart.Month(), 1, 0, 0, 0, 0, gridStart.Location())
+			gridEnd = time.Date(gridEnd.Year(), gridEnd.Month(), 1, 0, 0, 0, 0, gridEnd.Location())
+			if !gridEnd.After(params.End) {
+				gridEnd = gridEnd.AddDate(0, 1, 0)
+			}
+		} else {
+			rollupKind = rollupDaily
+		}
 	}
 
-	//nolint:gosec // filterSQL is derived from a fixed allowlist
-	kpiQuery := fmt.Sprintf(`
-	WITH session_metrics AS (
-		SELECT 
-			session_id,
-			count(*) as pvs,
-			(MAX(timestamp) - MIN(timestamp)) as duration
-		FROM hits h
-		WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
-		GROUP BY session_id
-	)
-	SELECT 
-		COALESCE(SUM(pvs), 0) as total_pageviews,
-		COUNT(session_id) as unique_sessions,
-		CASE 
-			WHEN COUNT(session_id) = 0 THEN 0 
-			ELSE CAST(COUNT(CASE WHEN pvs = 1 THEN 1 END) AS FLOAT) / COUNT(session_id) * 100 
-		END as bounce_rate,
-		COALESCE(AVG(EXTRACT('epoch' FROM duration)), 0) as avg_duration_seconds,
-		COALESCE(AVG(pvs), 0) as pages_per_session
-	FROM session_metrics;
-	`, filterSQL)
+	if useRollups {
+		switch rollupKind {
+		case rollupHourly:
+			if err := s.ensureHourlyRollups(ctx, params.SiteID, gridStart, gridEnd); err != nil {
+				return nil, fmt.Errorf("failed to update hourly rollups: %w", err)
+			}
+			if err := s.ensureHourlySessionRollups(ctx, params.SiteID, gridStart, gridEnd); err != nil {
+				return nil, fmt.Errorf("failed to update hourly session rollups: %w", err)
+			}
+		case rollupDaily:
+			if err := s.ensureDailyRollups(ctx, params.SiteID, gridStart, gridEnd); err != nil {
+				return nil, fmt.Errorf("failed to update daily rollups: %w", err)
+			}
+			if err := s.ensureDailySessionRollups(ctx, params.SiteID, gridStart, gridEnd); err != nil {
+				return nil, fmt.Errorf("failed to update daily session rollups: %w", err)
+			}
+		case rollupMonthly:
+			if err := s.ensureMonthlyRollups(ctx, params.SiteID, gridStart, gridEnd); err != nil {
+				return nil, fmt.Errorf("failed to update monthly rollups: %w", err)
+			}
+			if err := s.ensureMonthlySessionRollups(ctx, params.SiteID, gridStart, gridEnd); err != nil {
+				return nil, fmt.Errorf("failed to update monthly session rollups: %w", err)
+			}
+		}
+	}
 
-	err = s.db.QueryRowContext(ctx, kpiQuery, append([]any{params.SiteID, params.Start, params.End}, filterArgs...)...).Scan(
-		&stats.TotalPageviews,
-		&stats.UniqueSessions,
-		&stats.BounceRate,
-		&stats.AvgSessionDuration,
-		&stats.PagesPerSession,
-	)
+	err = s.queryKpis(ctx, params, filterSQL, filterArgs, useRollups, rollupKind, &stats.TotalPageviews, &stats.UniqueSessions, &stats.BounceRate, &stats.AvgSessionDuration, &stats.PagesPerSession)
 	if err != nil {
 		return nil, fmt.Errorf("failed to calc KPIs: %w", err)
 	}
 
-	//nolint:gosec // interval/truncUnit/filterSQL are derived from fixed allowlists
-	chartQuery := fmt.Sprintf(`
-	WITH time_range AS (
-		SELECT unnest(generate_series(?::TIMESTAMP, ?::TIMESTAMP, INTERVAL %s)) as bucket
-	),
-	daily_hits AS (
-		SELECT 
-			date_trunc('%s', timestamp)::TIMESTAMP as bucket,
-			COUNT(*) as pageviews,
-			COUNT(DISTINCT session_id) as visitors
-		FROM hits h
-		WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
-		GROUP BY bucket
-	)
-	SELECT 
-		tr.bucket,
-		COALESCE(dh.pageviews, 0),
-		COALESCE(dh.visitors, 0)
-	FROM time_range tr
-	LEFT JOIN daily_hits dh ON tr.bucket = dh.bucket
-	ORDER BY tr.bucket ASC;
-	`, interval, truncUnit, filterSQL)
-
-	rows, err := s.db.QueryContext(ctx, chartQuery, append([]any{gridStart, gridEnd, params.SiteID, params.Start, params.End}, filterArgs...)...)
+	rows, err := s.queryChartData(ctx, params, gridStart, gridEnd, interval, truncUnit, filterSQL, filterArgs, useRollups, rollupKind)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query chart data: %w", err)
 	}
@@ -136,104 +124,73 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		stats.ChartData = append(stats.ChartData, p)
 	}
 
-	// 3. Top Pages
+	// Top lists via GROUPING SETS to keep a single scan.
 	//nolint:gosec // filterSQL is derived from a fixed allowlist
-	pagesQuery := fmt.Sprintf(`
-		SELECT h.path, COUNT(*) as val
-		FROM hits h
-		WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
-		GROUP BY h.path
-		ORDER BY val DESC
-		LIMIT 10
+	topQuery := fmt.Sprintf(`
+		WITH base AS (
+			SELECT
+				h.path AS path,
+				CASE
+					WHEN h.referrer IS NULL OR h.referrer = '' THEN '(Direct)'
+					WHEN h.referrer LIKE 'http%%' THEN regexp_extract(h.referrer, 'https?://([^/]+)', 1)
+					ELSE h.referrer
+				END AS referrer,
+				CASE
+					WHEN h.viewport_width < 576 THEN 'Mobile'
+					WHEN h.viewport_width < 992 THEN 'Tablet'
+					ELSE 'Desktop'
+				END AS device,
+				COALESCE(NULLIF(h.country_code, ''), '(Unknown)') AS country
+			FROM hits h
+			WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
+		),
+		agg AS (
+			SELECT
+				CASE
+					WHEN GROUPING(path) = 0 THEN 'path'
+					WHEN GROUPING(referrer) = 0 THEN 'referrer'
+					WHEN GROUPING(device) = 0 THEN 'device'
+					WHEN GROUPING(country) = 0 THEN 'country'
+				END AS dim,
+				COALESCE(path, referrer, device, country) AS name,
+				COUNT(*) AS val
+			FROM base
+			GROUP BY GROUPING SETS ((path), (referrer), (device), (country))
+		),
+		ranked AS (
+			SELECT
+				dim,
+				name,
+				val,
+				ROW_NUMBER() OVER (PARTITION BY dim ORDER BY val DESC) AS rn
+			FROM agg
+		)
+		SELECT dim, name, val
+		FROM ranked
+		WHERE rn <= 10
+		ORDER BY dim, val DESC;
 	`, filterSQL)
-	pRows, err := s.db.QueryContext(ctx, pagesQuery, append([]any{params.SiteID, params.Start, params.End}, filterArgs...)...)
+
+	topRows, err := s.db.QueryContext(ctx, topQuery, append([]any{params.SiteID, params.Start, params.End}, filterArgs...)...)
 	if err != nil {
 		return nil, err
 	}
-	defer pRows.Close()
-	for pRows.Next() {
+	defer topRows.Close()
+
+	for topRows.Next() {
+		var dim string
 		var m api.MetricStat
-		if err := pRows.Scan(&m.Name, &m.Value); err == nil {
+		if err := topRows.Scan(&dim, &m.Name, &m.Value); err != nil {
+			return nil, err
+		}
+		switch dim {
+		case "path":
 			stats.TopPages = append(stats.TopPages, m)
-		}
-	}
-
-	// TODO: Refactor once we tackle Events
-	//nolint:gosec // filterSQL is derived from a fixed allowlist
-	refQuery := fmt.Sprintf(`
-		SELECT 
-			CASE 
-				WHEN h.referrer IS NULL OR h.referrer = '' THEN '(Direct)'
-				-- Simple hack to extract domain-ish part for now, relies on 'http' prefix
-				WHEN h.referrer LIKE 'http%%' THEN regexp_extract(h.referrer, 'https?://([^/]+)', 1)
-				ELSE h.referrer
-			END as source, 
-			COUNT(*) as val 
-		FROM hits h
-		WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
-		GROUP BY source 
-		ORDER BY val DESC 
-		LIMIT 10
-	`, filterSQL)
-	rRows, err := s.db.QueryContext(ctx, refQuery, append([]any{params.SiteID, params.Start, params.End}, filterArgs...)...)
-	if err != nil {
-		return nil, err
-	}
-	defer rRows.Close()
-	for rRows.Next() {
-		var m api.MetricStat
-		if err := rRows.Scan(&m.Name, &m.Value); err == nil {
+		case "referrer":
 			stats.TopReferrers = append(stats.TopReferrers, m)
-		}
-	}
-
-	// TODO: Good enough for now
-	//nolint:gosec // filterSQL is derived from a fixed allowlist
-	devQuery := fmt.Sprintf(`
-		SELECT 
-			CASE 
-				WHEN h.viewport_width < 576 THEN 'Mobile'
-				WHEN h.viewport_width < 992 THEN 'Tablet'
-				ELSE 'Desktop' 
-			END as device,
-			COUNT(*) as val 
-		FROM hits h
-		WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
-		GROUP BY device 
-		ORDER BY val DESC 
-	`, filterSQL)
-	dRows, err := s.db.QueryContext(ctx, devQuery, append([]any{params.SiteID, params.Start, params.End}, filterArgs...)...)
-	if err != nil {
-		return nil, err
-	}
-	defer dRows.Close()
-	for dRows.Next() {
-		var m api.MetricStat
-		if err := dRows.Scan(&m.Name, &m.Value); err == nil {
+		case "device":
 			stats.TopDevices = append(stats.TopDevices, m)
-		}
-	}
-
-	// TODO: Good enough for now
-	//nolint:gosec // filterSQL is derived from a fixed allowlist
-	countryQuery := fmt.Sprintf(`
-		SELECT 
-			COALESCE(NULLIF(h.country_code, ''), '(Unknown)') as country,
-			COUNT(*) as val
-		FROM hits h
-		WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
-		GROUP BY country
-		ORDER BY val DESC
-		LIMIT 10
-	`, filterSQL)
-	cRows, err := s.db.QueryContext(ctx, countryQuery, append([]any{params.SiteID, params.Start, params.End}, filterArgs...)...)
-	if err != nil {
-		return nil, err
-	}
-	defer cRows.Close()
-	for cRows.Next() {
-		var m api.MetricStat
-		if err := cRows.Scan(&m.Name, &m.Value); err == nil {
+		case "country":
 			stats.TopCountries = append(stats.TopCountries, m)
 		}
 	}
@@ -282,6 +239,555 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 	}
 
 	return stats, nil
+}
+
+func (s *Store) queryChartData(
+	ctx context.Context,
+	params api.AnalyticsParams,
+	gridStart time.Time,
+	gridEnd time.Time,
+	interval string,
+	truncUnit string,
+	filterSQL string,
+	filterArgs []any,
+	useRollups bool,
+	rollupKind rollupKind,
+) (*sql.Rows, error) {
+	if useRollups {
+		return s.queryRollupChart(ctx, params.SiteID, gridStart, gridEnd, interval, truncUnit, rollupKind)
+	}
+
+	//nolint:gosec // interval/truncUnit/filterSQL are derived from fixed allowlists
+	chartQuery := fmt.Sprintf(`
+	WITH time_range AS (
+		SELECT unnest(generate_series(?::TIMESTAMP, ?::TIMESTAMP, INTERVAL %s)) as bucket
+	),
+	daily_hits AS (
+		SELECT 
+			date_trunc('%s', timestamp)::TIMESTAMP as bucket,
+			COUNT(*) as pageviews,
+			COUNT(DISTINCT session_id) as visitors
+		FROM hits h
+		WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
+		GROUP BY bucket
+	)
+	SELECT 
+		tr.bucket,
+		COALESCE(dh.pageviews, 0),
+		COALESCE(dh.visitors, 0)
+	FROM time_range tr
+	LEFT JOIN daily_hits dh ON tr.bucket = dh.bucket
+	ORDER BY tr.bucket ASC;
+	`, interval, truncUnit, filterSQL)
+
+	return s.db.QueryContext(ctx, chartQuery, append([]any{gridStart, gridEnd, params.SiteID, params.Start, params.End}, filterArgs...)...)
+}
+
+func (s *Store) queryKpis(
+	ctx context.Context,
+	params api.AnalyticsParams,
+	filterSQL string,
+	filterArgs []any,
+	useRollups bool,
+	kind rollupKind,
+	totalPageviews *int,
+	uniqueSessions *int,
+	bounceRate *float64,
+	avgDuration *float64,
+	pagesPerSession *float64,
+) error {
+	if useRollups {
+		table := "session_rollups_hourly"
+		switch kind {
+		case rollupDaily:
+			table = "session_rollups_daily"
+		case rollupMonthly:
+			table = "session_rollups_monthly"
+		case rollupHourly:
+			table = "session_rollups_hourly"
+		}
+
+		query := fmt.Sprintf(`
+			SELECT
+				COALESCE(SUM(pageviews), 0) as total_pageviews,
+				COALESCE(SUM(sessions), 0) as unique_sessions,
+				CASE
+					WHEN COALESCE(SUM(sessions), 0) = 0 THEN 0
+					ELSE CAST(SUM(bounced_sessions) AS FLOAT) / SUM(sessions) * 100
+				END as bounce_rate,
+				CASE
+					WHEN COALESCE(SUM(sessions), 0) = 0 THEN 0
+					ELSE COALESCE(SUM(duration_sum_seconds), 0) / SUM(sessions)
+				END as avg_duration_seconds,
+				CASE
+					WHEN COALESCE(SUM(sessions), 0) = 0 THEN 0
+					ELSE CAST(SUM(pageviews) AS FLOAT) / SUM(sessions)
+				END as pages_per_session
+			FROM %s
+			WHERE site_id = ? AND bucket >= ? AND bucket <= ?
+		`, table)
+
+		return s.db.QueryRowContext(ctx, query, params.SiteID, params.Start, params.End).Scan(
+			totalPageviews,
+			uniqueSessions,
+			bounceRate,
+			avgDuration,
+			pagesPerSession,
+		)
+	}
+
+	//nolint:gosec // filterSQL is derived from a fixed allowlist
+	kpiQuery := fmt.Sprintf(`
+	WITH session_metrics AS (
+		SELECT 
+			session_id,
+			count(*) as pvs,
+			(MAX(timestamp) - MIN(timestamp)) as duration
+		FROM hits h
+		WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
+		GROUP BY session_id
+	)
+	SELECT 
+		COALESCE(SUM(pvs), 0) as total_pageviews,
+		COUNT(session_id) as unique_sessions,
+		CASE 
+			WHEN COUNT(session_id) = 0 THEN 0 
+			ELSE CAST(COUNT(CASE WHEN pvs = 1 THEN 1 END) AS FLOAT) / COUNT(session_id) * 100 
+		END as bounce_rate,
+		COALESCE(AVG(EXTRACT('epoch' FROM duration)), 0) as avg_duration_seconds,
+		COALESCE(AVG(pvs), 0) as pages_per_session
+	FROM session_metrics;
+	`, filterSQL)
+
+	return s.db.QueryRowContext(ctx, kpiQuery, append([]any{params.SiteID, params.Start, params.End}, filterArgs...)...).Scan(
+		totalPageviews,
+		uniqueSessions,
+		bounceRate,
+		avgDuration,
+		pagesPerSession,
+	)
+}
+
+type rollupKind string
+
+const (
+	rollupHourly  rollupKind = "hourly"
+	rollupDaily   rollupKind = "daily"
+	rollupMonthly rollupKind = "monthly"
+)
+
+func (s *Store) queryRollupChart(
+	ctx context.Context,
+	siteID uuid.UUID,
+	gridStart time.Time,
+	gridEnd time.Time,
+	interval string,
+	truncUnit string,
+	kind rollupKind,
+) (*sql.Rows, error) {
+	var table string
+	switch kind {
+	case rollupHourly:
+		table = "hit_rollups_hourly"
+	case rollupDaily:
+		table = "hit_rollups_daily"
+	case rollupMonthly:
+		table = "hit_rollups_monthly"
+	default:
+		table = "hit_rollups_hourly"
+	}
+
+	//nolint:gosec // interval/truncUnit are derived from fixed allowlists
+	chartQuery := fmt.Sprintf(`
+	WITH time_range AS (
+		SELECT unnest(generate_series(?::TIMESTAMP, ?::TIMESTAMP, INTERVAL %s)) as bucket
+	),
+	rollup_hits AS (
+		SELECT 
+			date_trunc('%s', bucket)::TIMESTAMP as bucket,
+			SUM(pageviews) as pageviews,
+			SUM(visitors) as visitors
+		FROM %s
+		WHERE site_id = ? AND bucket >= ? AND bucket <= ?
+		GROUP BY bucket
+	)
+	SELECT 
+		tr.bucket,
+		COALESCE(rh.pageviews, 0),
+		COALESCE(rh.visitors, 0)
+	FROM time_range tr
+	LEFT JOIN rollup_hits rh ON tr.bucket = rh.bucket
+	ORDER BY tr.bucket ASC;
+	`, interval, truncUnit, table)
+
+	return s.db.QueryContext(ctx, chartQuery, gridStart, gridEnd, siteID, gridStart, gridEnd)
+}
+
+func (s *Store) ensureHourlyRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	return s.ensureHourlyRollup(ctx, "hit_rollups_hourly", siteID, start, end, s.insertHourlyRollups)
+}
+
+func (s *Store) insertHourlyRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	if end.Before(start) {
+		return nil
+	}
+	endExclusive := end.Add(time.Hour)
+
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO hit_rollups_hourly (site_id, bucket, pageviews, visitors)
+		SELECT
+			site_id,
+			date_trunc('hour', timestamp)::TIMESTAMPTZ as bucket,
+			COUNT(*) as pageviews,
+			COUNT(DISTINCT session_id) as visitors
+		FROM hits
+		WHERE site_id = ? AND timestamp >= ? AND timestamp < ?
+		GROUP BY site_id, bucket
+	`, siteID, start, endExclusive)
+	if err != nil {
+		return fmt.Errorf("failed to insert rollups: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) ensureDailyRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	return s.ensureDailyRollup(ctx, "hit_rollups_daily", siteID, start, end, s.insertDailyRollups)
+}
+
+func (s *Store) insertDailyRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	if end.Before(start) {
+		return nil
+	}
+	endExclusive := end.AddDate(0, 0, 1)
+
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO hit_rollups_daily (site_id, bucket, pageviews, visitors)
+		SELECT
+			site_id,
+			date_trunc('day', timestamp)::DATE as bucket,
+			COUNT(*) as pageviews,
+			COUNT(DISTINCT session_id) as visitors
+		FROM hits
+		WHERE site_id = ? AND timestamp >= ? AND timestamp < ?
+		GROUP BY site_id, bucket
+	`, siteID, start, endExclusive)
+	if err != nil {
+		return fmt.Errorf("failed to insert daily rollups: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) ensureMonthlyRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	return s.ensureMonthlyRollup(ctx, "hit_rollups_monthly", siteID, start, end, s.insertMonthlyRollups)
+}
+
+func (s *Store) ensureHourlySessionRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	return s.ensureHourlyRollup(ctx, "session_rollups_hourly", siteID, start, end, s.insertHourlySessionRollups)
+}
+
+func (s *Store) insertHourlySessionRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	if end.Before(start) {
+		return nil
+	}
+	endExclusive := end.Add(time.Hour)
+
+	_, err := s.db.ExecContext(ctx, `
+		WITH session_metrics AS (
+			SELECT
+				site_id,
+				session_id,
+				date_trunc('hour', timestamp)::TIMESTAMPTZ as bucket,
+				COUNT(*) as pvs,
+				EXTRACT('epoch' FROM (MAX(timestamp) - MIN(timestamp))) as duration_seconds
+			FROM hits
+			WHERE site_id = ? AND timestamp >= ? AND timestamp < ?
+			GROUP BY site_id, session_id, bucket
+		)
+		INSERT INTO session_rollups_hourly (site_id, bucket, sessions, bounced_sessions, duration_sum_seconds, pageviews)
+		SELECT
+			site_id,
+			bucket,
+			COUNT(*) as sessions,
+			SUM(CASE WHEN pvs = 1 THEN 1 ELSE 0 END) as bounced_sessions,
+			COALESCE(SUM(duration_seconds), 0) as duration_sum_seconds,
+			COALESCE(SUM(pvs), 0) as pageviews
+		FROM session_metrics
+		GROUP BY site_id, bucket
+	`, siteID, start, endExclusive)
+	if err != nil {
+		return fmt.Errorf("failed to insert hourly session rollups: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) ensureDailySessionRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	return s.ensureDailyRollup(ctx, "session_rollups_daily", siteID, start, end, s.insertDailySessionRollups)
+}
+
+func (s *Store) insertDailySessionRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	if end.Before(start) {
+		return nil
+	}
+	endExclusive := end.AddDate(0, 0, 1)
+
+	_, err := s.db.ExecContext(ctx, `
+		WITH session_metrics AS (
+			SELECT
+				site_id,
+				session_id,
+				date_trunc('day', timestamp)::DATE as bucket,
+				COUNT(*) as pvs,
+				EXTRACT('epoch' FROM (MAX(timestamp) - MIN(timestamp))) as duration_seconds
+			FROM hits
+			WHERE site_id = ? AND timestamp >= ? AND timestamp < ?
+			GROUP BY site_id, session_id, bucket
+		)
+		INSERT INTO session_rollups_daily (site_id, bucket, sessions, bounced_sessions, duration_sum_seconds, pageviews)
+		SELECT
+			site_id,
+			bucket,
+			COUNT(*) as sessions,
+			SUM(CASE WHEN pvs = 1 THEN 1 ELSE 0 END) as bounced_sessions,
+			COALESCE(SUM(duration_seconds), 0) as duration_sum_seconds,
+			COALESCE(SUM(pvs), 0) as pageviews
+		FROM session_metrics
+		GROUP BY site_id, bucket
+	`, siteID, start, endExclusive)
+	if err != nil {
+		return fmt.Errorf("failed to insert daily session rollups: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) ensureMonthlySessionRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	return s.ensureMonthlyRollup(ctx, "session_rollups_monthly", siteID, start, end, s.insertMonthlySessionRollups)
+}
+
+func (s *Store) insertMonthlySessionRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	if end.Before(start) {
+		return nil
+	}
+	endExclusive := end.AddDate(0, 1, 0)
+
+	_, err := s.db.ExecContext(ctx, `
+		WITH session_metrics AS (
+			SELECT
+				site_id,
+				session_id,
+				date_trunc('month', timestamp)::DATE as bucket,
+				COUNT(*) as pvs,
+				EXTRACT('epoch' FROM (MAX(timestamp) - MIN(timestamp))) as duration_seconds
+			FROM hits
+			WHERE site_id = ? AND timestamp >= ? AND timestamp < ?
+			GROUP BY site_id, session_id, bucket
+		)
+		INSERT INTO session_rollups_monthly (site_id, bucket, sessions, bounced_sessions, duration_sum_seconds, pageviews)
+		SELECT
+			site_id,
+			bucket,
+			COUNT(*) as sessions,
+			SUM(CASE WHEN pvs = 1 THEN 1 ELSE 0 END) as bounced_sessions,
+			COALESCE(SUM(duration_seconds), 0) as duration_sum_seconds,
+			COALESCE(SUM(pvs), 0) as pageviews
+		FROM session_metrics
+		GROUP BY site_id, bucket
+	`, siteID, start, endExclusive)
+	if err != nil {
+		return fmt.Errorf("failed to insert monthly session rollups: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) ensureMonthlyRollup(
+	ctx context.Context,
+	table string,
+	siteID uuid.UUID,
+	start time.Time,
+	end time.Time,
+	insertFn func(context.Context, uuid.UUID, time.Time, time.Time) error,
+) error {
+	startBucket := monthOnly(start)
+	endBucket := monthOnly(end)
+	if endBucket.Before(startBucket) {
+		return nil
+	}
+
+	var minBucket sql.NullTime
+	var maxBucket sql.NullTime
+	//nolint:gosec // table is selected from fixed allowlist
+	query := fmt.Sprintf("SELECT MIN(bucket), MAX(bucket) FROM %s WHERE site_id = ?", table)
+	if err := s.db.QueryRowContext(ctx, query, siteID).Scan(&minBucket, &maxBucket); err != nil {
+		return err
+	}
+
+	if !minBucket.Valid || !maxBucket.Valid {
+		return insertFn(ctx, siteID, startBucket, endBucket)
+	}
+
+	if startBucket.Before(minBucket.Time) {
+		if err := insertFn(ctx, siteID, startBucket, minBucket.Time.AddDate(0, -1, 0)); err != nil {
+			return err
+		}
+	}
+
+	if endBucket.After(maxBucket.Time) {
+		if err := insertFn(ctx, siteID, maxBucket.Time.AddDate(0, 1, 0), endBucket); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Store) ensureDailyRollup(
+	ctx context.Context,
+	table string,
+	siteID uuid.UUID,
+	start time.Time,
+	end time.Time,
+	insertFn func(context.Context, uuid.UUID, time.Time, time.Time) error,
+) error {
+	startBucket := dateOnly(start)
+	endBucket := dateOnly(end)
+	if endBucket.Before(startBucket) {
+		return nil
+	}
+
+	var minBucket sql.NullTime
+	var maxBucket sql.NullTime
+	//nolint:gosec // table is selected from fixed allowlist
+	query := fmt.Sprintf("SELECT MIN(bucket), MAX(bucket) FROM %s WHERE site_id = ?", table)
+	if err := s.db.QueryRowContext(ctx, query, siteID).Scan(&minBucket, &maxBucket); err != nil {
+		return err
+	}
+
+	if !minBucket.Valid || !maxBucket.Valid {
+		return insertFn(ctx, siteID, startBucket, endBucket)
+	}
+
+	if startBucket.Before(minBucket.Time) {
+		if err := insertFn(ctx, siteID, startBucket, minBucket.Time.AddDate(0, 0, -1)); err != nil {
+			return err
+		}
+	}
+
+	if endBucket.After(maxBucket.Time) {
+		if err := insertFn(ctx, siteID, maxBucket.Time.AddDate(0, 0, 1), endBucket); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Store) ensureHourlyRollup(
+	ctx context.Context,
+	table string,
+	siteID uuid.UUID,
+	start time.Time,
+	end time.Time,
+	insertFn func(context.Context, uuid.UUID, time.Time, time.Time) error,
+) error {
+	startBucket := start.Truncate(time.Hour)
+	endBucket := end.Truncate(time.Hour)
+	if endBucket.Before(startBucket) {
+		return nil
+	}
+
+	var minBucket sql.NullTime
+	var maxBucket sql.NullTime
+	//nolint:gosec // table is selected from fixed allowlist
+	query := fmt.Sprintf("SELECT MIN(bucket), MAX(bucket) FROM %s WHERE site_id = ?", table)
+	if err := s.db.QueryRowContext(ctx, query, siteID).Scan(&minBucket, &maxBucket); err != nil {
+		return err
+	}
+
+	if !minBucket.Valid || !maxBucket.Valid {
+		return insertFn(ctx, siteID, startBucket, endBucket)
+	}
+
+	if startBucket.Before(minBucket.Time) {
+		if err := insertFn(ctx, siteID, startBucket, minBucket.Time.Add(-time.Hour)); err != nil {
+			return err
+		}
+	}
+
+	if endBucket.After(maxBucket.Time) {
+		if err := insertFn(ctx, siteID, maxBucket.Time.Add(time.Hour), endBucket); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *Store) BackfillRollups(ctx context.Context, siteID uuid.UUID) error {
+	var minTS sql.NullTime
+	var maxTS sql.NullTime
+	if err := s.db.QueryRowContext(ctx,
+		"SELECT MIN(timestamp), MAX(timestamp) FROM hits WHERE site_id = ?",
+		siteID,
+	).Scan(&minTS, &maxTS); err != nil {
+		return err
+	}
+	if !minTS.Valid || !maxTS.Valid {
+		return nil
+	}
+
+	start := minTS.Time
+	end := maxTS.Time
+
+	if err := s.ensureHourlyRollups(ctx, siteID, start, end); err != nil {
+		return err
+	}
+	if err := s.ensureDailyRollups(ctx, siteID, start, end); err != nil {
+		return err
+	}
+	if err := s.ensureMonthlyRollups(ctx, siteID, start, end); err != nil {
+		return err
+	}
+	if err := s.ensureHourlySessionRollups(ctx, siteID, start, end); err != nil {
+		return err
+	}
+	if err := s.ensureDailySessionRollups(ctx, siteID, start, end); err != nil {
+		return err
+	}
+	if err := s.ensureMonthlySessionRollups(ctx, siteID, start, end); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *Store) insertMonthlyRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	if end.Before(start) {
+		return nil
+	}
+	endExclusive := end.AddDate(0, 1, 0)
+
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO hit_rollups_monthly (site_id, bucket, pageviews, visitors)
+		SELECT
+			site_id,
+			date_trunc('month', timestamp)::DATE as bucket,
+			COUNT(*) as pageviews,
+			COUNT(DISTINCT session_id) as visitors
+		FROM hits
+		WHERE site_id = ? AND timestamp >= ? AND timestamp < ?
+		GROUP BY site_id, bucket
+	`, siteID, start, endExclusive)
+	if err != nil {
+		return fmt.Errorf("failed to insert monthly rollups: %w", err)
+	}
+	return nil
+}
+
+func dateOnly(value time.Time) time.Time {
+	return time.Date(value.Year(), value.Month(), value.Day(), 0, 0, 0, 0, value.Location())
+}
+
+func monthOnly(value time.Time) time.Time {
+	return time.Date(value.Year(), value.Month(), 1, 0, 0, 0, 0, value.Location())
 }
 
 func (s *Store) GetFunnelStats(ctx context.Context, funnelID uuid.UUID, params api.AnalyticsParams) (*api.FunnelStats, error) {

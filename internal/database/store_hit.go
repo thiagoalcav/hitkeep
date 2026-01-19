@@ -48,7 +48,7 @@ func (s *Store) GetHits(ctx context.Context, params api.HitQueryParams) (*api.Pa
 	`
 	args := []any{params.SiteID, params.UserID, params.Start, params.End}
 
-	filterSQL, filterArgs := buildHitFilter(params.FilterType, params.FilterValue, "h")
+	filterSQL, filterArgs := buildHitFilters(params.Filters, "h")
 	baseQuery += filterSQL
 	args = append(args, filterArgs...)
 
@@ -128,7 +128,7 @@ func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w 
 	`
 	args := []any{params.SiteID, params.UserID, params.Start, params.End}
 
-	filterSQL, filterArgs := buildHitFilter(params.FilterType, params.FilterValue, "h")
+	filterSQL, filterArgs := buildHitFilters(params.Filters, "h")
 	baseQuery += filterSQL
 	args = append(args, filterArgs...)
 

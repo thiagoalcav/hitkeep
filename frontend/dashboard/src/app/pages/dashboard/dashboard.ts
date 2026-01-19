@@ -78,23 +78,12 @@ export class Dashboard {
     const domain = this.siteDomain();
     return domain ? `/api/favicon/${encodeURIComponent(domain)}` : '';
   });
-  protected activeFilter = signal<MetricFilter | null>(null);
-  protected activeFilterLabel = computed(() => {
-    const filter = this.activeFilter();
-    if (!filter) return '';
-    switch (filter.type) {
-      case 'path':
-        return `Page: ${filter.value}`;
-      case 'referrer':
-        return `Source: ${filter.value}`;
-      case 'device':
-        return `Device: ${filter.value}`;
-      case 'country':
-        return `Country: ${filter.value}`;
-      default:
-        return `${filter.type}: ${filter.value}`;
-    }
-  });
+  protected activeFilters = signal<MetricFilter[]>([]);
+  protected hasFilters = computed(() => this.activeFilters().length > 0);
+  protected filterChips = computed(() => this.activeFilters().map(filter => ({
+    ...filter,
+    label: this.filterLabel(filter)
+  })));
   protected exportUrl = computed(() => {
     const site = this.siteService.activeSite();
     const dates = this.getCurrentDateRange();
@@ -104,10 +93,8 @@ export class Dashboard {
       from: dates.from,
       to: dates.to,
     });
-    const filter = this.activeFilter();
-    if (filter) {
-      params.set('filter_type', filter.type);
-      params.set('filter_value', filter.value);
+    for (const filter of this.activeFilters()) {
+      params.append('filter', `${filter.type}:${filter.value}`);
     }
     return `/api/sites/${site.id}/hits/export?${params.toString()}`;
   });
@@ -152,9 +139,9 @@ export class Dashboard {
     effect(() => {
       const site = this.siteService.activeSite();
       const dates = this.getCurrentDateRange();
-      const filter = this.activeFilter();
+      const filters = this.activeFilters();
       if (site && dates) {
-        this.statsService.loadStats(site.id, dates.from, dates.to, filter?.type, filter?.value);
+        this.statsService.loadStats(site.id, dates.from, dates.to, filters);
         this.refreshHits();
       }
     });
@@ -163,9 +150,9 @@ export class Dashboard {
   refreshAll() {
     const site = this.siteService.activeSite();
     const dates = this.getCurrentDateRange();
-    const filter = this.activeFilter();
+    const filters = this.activeFilters();
     if (site && dates) {
-      this.statsService.loadStats(site.id, dates.from, dates.to, filter?.type, filter?.value);
+      this.statsService.loadStats(site.id, dates.from, dates.to, filters);
       this.refreshHits();
     }
   }
@@ -179,7 +166,7 @@ export class Dashboard {
     const site = this.siteService.activeSite();
     const dates = this.getCurrentDateRange();
     if (!site || !dates) return;
-    const filter = this.activeFilter();
+    const filters = this.activeFilters();
 
     const rows = event.rows || 10;
     const first = event.first || 0;
@@ -194,8 +181,7 @@ export class Dashboard {
       event.sortField as string,
       event.sortOrder === 1 ? 'asc' : 'desc',
       this.searchQuery(),
-      filter?.type,
-      filter?.value
+      filters
     );
   }
 
@@ -259,16 +245,46 @@ export class Dashboard {
 
   protected applyMetricFilter(type: MetricFilterType, metric: MetricStat) {
     if (!metric.name) return;
-    const current = this.activeFilter();
-    if (current && current.type === type && current.value === metric.name) {
-      this.activeFilter.set(null);
-      return;
-    }
-    this.activeFilter.set({ type, value: metric.name });
+    this.activeFilters.update(filters => {
+      const existingIndex = filters.findIndex(filter => filter.type === type);
+      if (existingIndex >= 0) {
+        const existing = filters[existingIndex];
+        if (existing.value === metric.name) {
+          return filters.filter((_, idx) => idx !== existingIndex);
+        }
+        const next = [...filters];
+        next[existingIndex] = { type, value: metric.name };
+        return next;
+      }
+      return [...filters, { type, value: metric.name }];
+    });
   }
 
   protected clearFilter() {
-    this.activeFilter.set(null);
+    this.activeFilters.set([]);
+  }
+
+  protected removeFilter(type: MetricFilterType, value: string) {
+    this.activeFilters.update(filters => filters.filter(filter => !(filter.type === type && filter.value === value)));
+  }
+
+  protected activeFilterValue(type: MetricFilterType): string | null {
+    return this.activeFilters().find(filter => filter.type === type)?.value ?? null;
+  }
+
+  private filterLabel(filter: MetricFilter): string {
+    switch (filter.type) {
+      case 'path':
+        return `Page: ${filter.value}`;
+      case 'referrer':
+        return `Source: ${filter.value}`;
+      case 'device':
+        return `Device: ${filter.value}`;
+      case 'country':
+        return `Country: ${filter.value}`;
+      default:
+        return `${filter.type}: ${filter.value}`;
+    }
   }
 
   protected exportFiltered() {

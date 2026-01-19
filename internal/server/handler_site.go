@@ -196,7 +196,7 @@ func (s *Server) handleGetSiteHits() http.HandlerFunc {
 			}
 		}
 
-		filterType, filterValue, err := parseFilterParams(q)
+		filters, err := parseFilters(q)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -222,17 +222,16 @@ func (s *Server) handleGetSiteHits() http.HandlerFunc {
 		}
 
 		params := api.HitQueryParams{
-			SiteID:      siteID,
-			UserID:      userID,
-			Start:       start,
-			End:         end,
-			Query:       q.Get("q"),
-			SortField:   q.Get("sort"),
-			SortOrder:   q.Get("order"), // asc/desc
-			Limit:       limit,
-			Offset:      offset,
-			FilterType:  filterType,
-			FilterValue: filterValue,
+			SiteID:    siteID,
+			UserID:    userID,
+			Start:     start,
+			End:       end,
+			Query:     q.Get("q"),
+			SortField: q.Get("sort"),
+			SortOrder: q.Get("order"), // asc/desc
+			Limit:     limit,
+			Offset:    offset,
+			Filters:   filters,
 		}
 
 		result, err := s.store.GetHits(r.Context(), params)
@@ -287,20 +286,19 @@ func (s *Server) handleExportSiteHits() http.HandlerFunc {
 			}
 		}
 
-		filterType, filterValue, err := parseFilterParams(q)
+		filters, err := parseFilters(q)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		params := api.HitQueryParams{
-			SiteID:      siteID,
-			UserID:      userID,
-			Start:       start,
-			End:         end,
-			Query:       q.Get("q"),
-			FilterType:  filterType,
-			FilterValue: filterValue,
+			SiteID:  siteID,
+			UserID:  userID,
+			Start:   start,
+			End:     end,
+			Query:   q.Get("q"),
+			Filters: filters,
 		}
 
 		filename := fmt.Sprintf("hits_%s_%d.csv", siteID, time.Now().Unix())
@@ -352,19 +350,18 @@ func (s *Server) handleGetSiteStats() http.HandlerFunc {
 			}
 		}
 
-		filterType, filterValue, err := parseFilterParams(q)
+		filters, err := parseFilters(q)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
 		params := api.AnalyticsParams{
-			SiteID:      siteID,
-			UserID:      userID,
-			Start:       start,
-			End:         end,
-			FilterType:  filterType,
-			FilterValue: filterValue,
+			SiteID:  siteID,
+			UserID:  userID,
+			Start:   start,
+			End:     end,
+			Filters: filters,
 		}
 
 		stats, err := s.store.GetSiteStats(r.Context(), params)
@@ -406,22 +403,48 @@ func getUserIDFromContext(r *http.Request) uuid.UUID {
 	return id
 }
 
-func parseFilterParams(q url.Values) (string, string, error) {
+func parseFilters(q url.Values) ([]api.Filter, error) {
+	var filters []api.Filter
+
+	for _, raw := range q["filter"] {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		parts := strings.SplitN(raw, ":", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid filter format")
+		}
+		filterType := strings.ToLower(strings.TrimSpace(parts[0]))
+		filterValue := strings.TrimSpace(parts[1])
+		if err := validateFilter(filterType, filterValue); err != nil {
+			return nil, err
+		}
+		filters = append(filters, api.Filter{Type: filterType, Value: filterValue})
+	}
+
 	filterType := strings.ToLower(strings.TrimSpace(q.Get("filter_type")))
 	filterValue := strings.TrimSpace(q.Get("filter_value"))
-
-	if filterType == "" && filterValue == "" {
-		return "", "", nil
+	if filterType != "" || filterValue != "" {
+		if err := validateFilter(filterType, filterValue); err != nil {
+			return nil, err
+		}
+		filters = append(filters, api.Filter{Type: filterType, Value: filterValue})
 	}
+
+	return filters, nil
+}
+
+func validateFilter(filterType, filterValue string) error {
 	if filterType == "" || filterValue == "" {
-		return "", "", fmt.Errorf("filter_type and filter_value are required together")
+		return fmt.Errorf("filter_type and filter_value are required together")
 	}
 
 	switch filterType {
 	case "path", "referrer", "device", "country":
-		return filterType, filterValue, nil
+		return nil
 	default:
-		return "", "", fmt.Errorf("invalid filter_type")
+		return fmt.Errorf("invalid filter_type")
 	}
 }
 

@@ -141,6 +141,42 @@ func (w *RetentionWorker) Run(ctx context.Context) error {
 			}
 		}
 
+		if _, err := tx.ExecContext(ctx, "DELETE FROM hit_rollups_hourly WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
+			slog.Error("Failed to prune hourly rollups", "error", err, "site_id", p.ID)
+			defer func() { _ = tx.Rollback() }()
+			continue
+		}
+
+		if _, err := tx.ExecContext(ctx, "DELETE FROM hit_rollups_daily WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
+			slog.Error("Failed to prune daily rollups", "error", err, "site_id", p.ID)
+			defer func() { _ = tx.Rollback() }()
+			continue
+		}
+
+		if _, err := tx.ExecContext(ctx, "DELETE FROM hit_rollups_monthly WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
+			slog.Error("Failed to prune monthly rollups", "error", err, "site_id", p.ID)
+			defer func() { _ = tx.Rollback() }()
+			continue
+		}
+
+		if _, err := tx.ExecContext(ctx, "DELETE FROM session_rollups_hourly WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
+			slog.Error("Failed to prune hourly session rollups", "error", err, "site_id", p.ID)
+			defer func() { _ = tx.Rollback() }()
+			continue
+		}
+
+		if _, err := tx.ExecContext(ctx, "DELETE FROM session_rollups_daily WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
+			slog.Error("Failed to prune daily session rollups", "error", err, "site_id", p.ID)
+			defer func() { _ = tx.Rollback() }()
+			continue
+		}
+
+		if _, err := tx.ExecContext(ctx, "DELETE FROM session_rollups_monthly WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
+			slog.Error("Failed to prune monthly session rollups", "error", err, "site_id", p.ID)
+			defer func() { _ = tx.Rollback() }()
+			continue
+		}
+
 		if err := tx.Commit(); err != nil {
 			slog.Error("Failed to commit deletion", "error", err, "site_id", p.ID)
 		} else {

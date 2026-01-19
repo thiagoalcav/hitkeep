@@ -95,6 +95,10 @@ func Run() {
 		retentionWorker := worker.NewRetentionWorker(store, conf.ArchivePath, conf.DataRetentionDays)
 		go retentionWorker.Start(gCtx)
 
+		// Start Rollup Backfill Worker
+		rollupWorker := worker.NewRollupBackfillWorker(store)
+		go rollupWorker.Start(gCtx)
+
 		g.Go(func() error {
 			<-gCtx.Done()
 			leaderShutdown()

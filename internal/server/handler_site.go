@@ -196,26 +196,6 @@ func (s *Server) handleGetSiteHits() http.HandlerFunc {
 			}
 		}
 
-		var goalIDs []uuid.UUID
-		for _, rawID := range q["goal_id"] {
-			id, err := uuid.Parse(rawID)
-			if err != nil {
-				http.Error(w, "Invalid goal_id", http.StatusBadRequest)
-				return
-			}
-			goalIDs = append(goalIDs, id)
-		}
-
-		var funnelIDs []uuid.UUID
-		for _, rawID := range q["funnel_id"] {
-			id, err := uuid.Parse(rawID)
-			if err != nil {
-				http.Error(w, "Invalid funnel_id", http.StatusBadRequest)
-				return
-			}
-			funnelIDs = append(funnelIDs, id)
-		}
-
 		filters, err := parseFilters(q)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -397,12 +377,12 @@ func (s *Server) handleGetSiteStats() http.HandlerFunc {
 		}
 
 		params := api.AnalyticsParams{
-			SiteID:  siteID,
-			UserID:  userID,
-			Start:   start,
-			End:     end,
-			Filters: filters,
-			GoalIDs: goalIDs,
+			SiteID:    siteID,
+			UserID:    userID,
+			Start:     start,
+			End:       end,
+			Filters:   filters,
+			GoalIDs:   goalIDs,
 			FunnelIDs: funnelIDs,
 		}
 

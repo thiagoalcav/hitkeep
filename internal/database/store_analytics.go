@@ -658,6 +658,8 @@ func (s *Store) ensureGoalRollups(ctx context.Context, kind rollupKind, siteID u
 	switch kind {
 	case rollupHourly:
 		return s.ensureHourlyRollup(ctx, "goal_rollups_hourly", siteID, start, end, s.insertHourlyGoalRollups)
+	case rollupDaily:
+		return s.ensureDailyRollup(ctx, "goal_rollups_daily", siteID, start, end, s.insertDailyGoalRollups)
 	case rollupMonthly:
 		return s.ensureMonthlyRollup(ctx, "goal_rollups_monthly", siteID, start, end, s.insertMonthlyGoalRollups)
 	default:
@@ -669,6 +671,8 @@ func (s *Store) ensureFunnelRollups(ctx context.Context, kind rollupKind, siteID
 	switch kind {
 	case rollupHourly:
 		return s.ensureHourlyRollup(ctx, "funnel_rollups_hourly", siteID, start, end, s.insertHourlyFunnelRollups)
+	case rollupDaily:
+		return s.ensureDailyRollup(ctx, "funnel_rollups_daily", siteID, start, end, s.insertDailyFunnelRollups)
 	case rollupMonthly:
 		return s.ensureMonthlyRollup(ctx, "funnel_rollups_monthly", siteID, start, end, s.insertMonthlyFunnelRollups)
 	default:
@@ -1230,12 +1234,16 @@ func (s *Store) queryFunnelStepCounts(ctx context.Context, siteID uuid.UUID, sta
 }
 
 func (s *Store) queryGoalRollupCounts(ctx context.Context, kind rollupKind, siteID uuid.UUID, start time.Time, end time.Time, goalIDs []uuid.UUID) (map[time.Time]int, error) {
-	table := "goal_rollups_hourly"
+	var table string
 	switch kind {
+	case rollupHourly:
+		table = "goal_rollups_hourly"
 	case rollupDaily:
 		table = "goal_rollups_daily"
 	case rollupMonthly:
 		table = "goal_rollups_monthly"
+	default:
+		table = "goal_rollups_hourly"
 	}
 
 	args := []any{siteID, start, end}
@@ -1275,12 +1283,16 @@ func (s *Store) queryGoalRollupCounts(ctx context.Context, kind rollupKind, site
 }
 
 func (s *Store) queryFunnelRollupCounts(ctx context.Context, kind rollupKind, siteID uuid.UUID, start time.Time, end time.Time, funnelIDs []uuid.UUID) (map[time.Time]int, map[time.Time]int, error) {
-	table := "funnel_rollups_hourly"
+	var table string
 	switch kind {
+	case rollupHourly:
+		table = "funnel_rollups_hourly"
 	case rollupDaily:
 		table = "funnel_rollups_daily"
 	case rollupMonthly:
 		table = "funnel_rollups_monthly"
+	default:
+		table = "funnel_rollups_hourly"
 	}
 
 	args := []any{siteID, start, end}
@@ -1327,6 +1339,8 @@ func kindToTruncUnit(kind rollupKind) string {
 	switch kind {
 	case rollupHourly:
 		return "hour"
+	case rollupDaily:
+		return "day"
 	case rollupMonthly:
 		return "month"
 	default:
@@ -1514,6 +1528,8 @@ func (s *Store) ensureHitRollups(ctx context.Context, kind rollupKind, siteID uu
 	switch kind {
 	case rollupHourly:
 		return s.ensureHourlyRollups(ctx, siteID, start, end)
+	case rollupDaily:
+		return s.ensureDailyRollups(ctx, siteID, start, end)
 	case rollupMonthly:
 		return s.ensureMonthlyRollups(ctx, siteID, start, end)
 	default:
@@ -1524,6 +1540,8 @@ func (s *Store) ensureHitRollups(ctx context.Context, kind rollupKind, siteID uu
 func (s *Store) queryHitRollupCounts(ctx context.Context, kind rollupKind, siteID uuid.UUID, start time.Time, end time.Time) (map[time.Time]api.ChartDataPoint, error) {
 	table := "hit_rollups_hourly"
 	switch kind {
+	case rollupHourly:
+		table = "hit_rollups_hourly"
 	case rollupDaily:
 		table = "hit_rollups_daily"
 	case rollupMonthly:

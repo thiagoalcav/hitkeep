@@ -1,7 +1,7 @@
 package server
 
 import (
-	"crypto/md5"
+	"crypto/md5" //nolint:gosec // Gravatar requires MD5 hashes for avatar lookups.
 	"encoding/hex"
 	"encoding/json"
 	"io"
@@ -116,7 +116,7 @@ func gravatarURL(email string, size int) string {
 
 func gravatarHash(email string) string {
 	normalized := strings.TrimSpace(strings.ToLower(email))
-	sum := md5.Sum([]byte(normalized))
+	sum := md5.Sum([]byte(normalized)) //nolint:gosec // Gravatar requires MD5 hashes for avatar lookups.
 	return hex.EncodeToString(sum[:])
 }
 

@@ -1,9 +1,11 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -61,56 +63,10 @@ func (s *Server) handleGetGoals() http.HandlerFunc {
 }
 
 func (s *Server) handleGetGoalTimeseries() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		siteID, ok := s.validateSiteOwnership(w, r)
-		if !ok {
-			return
-		}
-
-		now := time.Now().UTC()
-		end := now.AddDate(0, 0, 1)
-		start := end.AddDate(0, 0, -30)
-
-		q := r.URL.Query()
-		if fromStr := q.Get("from"); fromStr != "" {
-			if parsed, err := time.Parse(time.RFC3339, fromStr); err == nil {
-				start = parsed
-			}
-		}
-		if toStr := q.Get("to"); toStr != "" {
-			if parsed, err := time.Parse(time.RFC3339, toStr); err == nil {
-				end = parsed
-			}
-		}
-
-		var goalIDs []uuid.UUID
-		for _, rawID := range q["goal_id"] {
-			id, err := uuid.Parse(rawID)
-			if err != nil {
-				http.Error(w, "Invalid goal_id", http.StatusBadRequest)
-				return
-			}
-			goalIDs = append(goalIDs, id)
-		}
-
-		params := api.AnalyticsParams{
-			SiteID: siteID,
-			Start:  start,
-			End:    end,
-		}
-
-		series, err := s.store.GetGoalTimeseries(r.Context(), params, goalIDs)
-		if err != nil {
-			slog.Error("Failed to get goal timeseries", "error", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(series); err != nil {
-			slog.Error("Failed to encode response", "error", err)
-		}
-	}
+	return s.handleTimeseries("goal_id", "Invalid goal_id", "Failed to get goal timeseries",
+		func(ctx context.Context, params api.AnalyticsParams, ids []uuid.UUID) (any, error) {
+			return s.store.GetGoalTimeseries(ctx, params, ids)
+		})
 }
 
 func (s *Server) handleCreateGoal() http.HandlerFunc {
@@ -192,36 +148,30 @@ func (s *Server) handleGetFunnels() http.HandlerFunc {
 }
 
 func (s *Server) handleGetFunnelTimeseries() http.HandlerFunc {
+	return s.handleTimeseries("funnel_id", "Invalid funnel_id", "Failed to get funnel timeseries",
+		func(ctx context.Context, params api.AnalyticsParams, ids []uuid.UUID) (any, error) {
+			return s.store.GetFunnelTimeseries(ctx, params, ids)
+		})
+}
+
+func (s *Server) handleTimeseries(
+	idParam string,
+	invalidIDMessage string,
+	logMessage string,
+	fetch func(context.Context, api.AnalyticsParams, []uuid.UUID) (any, error),
+) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		siteID, ok := s.validateSiteOwnership(w, r)
 		if !ok {
 			return
 		}
 
-		now := time.Now().UTC()
-		end := now.AddDate(0, 0, 1)
-		start := end.AddDate(0, 0, -30)
+		start, end := parseTimeseriesRange(r.URL.Query())
 
-		q := r.URL.Query()
-		if fromStr := q.Get("from"); fromStr != "" {
-			if parsed, err := time.Parse(time.RFC3339, fromStr); err == nil {
-				start = parsed
-			}
-		}
-		if toStr := q.Get("to"); toStr != "" {
-			if parsed, err := time.Parse(time.RFC3339, toStr); err == nil {
-				end = parsed
-			}
-		}
-
-		var funnelIDs []uuid.UUID
-		for _, rawID := range q["funnel_id"] {
-			id, err := uuid.Parse(rawID)
-			if err != nil {
-				http.Error(w, "Invalid funnel_id", http.StatusBadRequest)
-				return
-			}
-			funnelIDs = append(funnelIDs, id)
+		ids, err := parseUUIDQueryParam(r.URL.Query(), idParam)
+		if err != nil {
+			http.Error(w, invalidIDMessage, http.StatusBadRequest)
+			return
 		}
 
 		params := api.AnalyticsParams{
@@ -230,9 +180,9 @@ func (s *Server) handleGetFunnelTimeseries() http.HandlerFunc {
 			End:    end,
 		}
 
-		series, err := s.store.GetFunnelTimeseries(r.Context(), params, funnelIDs)
+		series, err := fetch(r.Context(), params, ids)
 		if err != nil {
-			slog.Error("Failed to get funnel timeseries", "error", err)
+			slog.Error(logMessage, "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -242,6 +192,42 @@ func (s *Server) handleGetFunnelTimeseries() http.HandlerFunc {
 			slog.Error("Failed to encode response", "error", err)
 		}
 	}
+}
+
+func parseTimeseriesRange(q url.Values) (time.Time, time.Time) {
+	now := time.Now().UTC()
+	end := now.AddDate(0, 0, 1)
+	start := end.AddDate(0, 0, -30)
+
+	if fromStr := q.Get("from"); fromStr != "" {
+		if parsed, err := time.Parse(time.RFC3339, fromStr); err == nil {
+			start = parsed
+		}
+	}
+	if toStr := q.Get("to"); toStr != "" {
+		if parsed, err := time.Parse(time.RFC3339, toStr); err == nil {
+			end = parsed
+		}
+	}
+
+	return start, end
+}
+
+func parseUUIDQueryParam(q url.Values, key string) ([]uuid.UUID, error) {
+	values := q[key]
+	if len(values) == 0 {
+		return nil, nil
+	}
+
+	ids := make([]uuid.UUID, 0, len(values))
+	for _, rawID := range values {
+		id, err := uuid.Parse(rawID)
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }
 
 func (s *Server) handleCreateFunnel() http.HandlerFunc {

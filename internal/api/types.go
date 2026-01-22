@@ -78,12 +78,12 @@ type UserProfile struct {
 }
 
 type AnalyticsParams struct {
-	SiteID  uuid.UUID
-	UserID  uuid.UUID
-	Start   time.Time
-	End     time.Time
-	Filters []Filter
-	GoalIDs []uuid.UUID
+	SiteID    uuid.UUID
+	UserID    uuid.UUID
+	Start     time.Time
+	End       time.Time
+	Filters   []Filter
+	GoalIDs   []uuid.UUID
 	FunnelIDs []uuid.UUID
 }
 

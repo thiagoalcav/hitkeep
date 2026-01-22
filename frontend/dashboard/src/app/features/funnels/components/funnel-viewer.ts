@@ -66,9 +66,9 @@ import { FunnelStats } from '../../../core/models/analytics.types';
                             <!-- Step Conversion -->
                             @if (!first) {
                                 <div class="flex flex-col items-end shrink-0">
-                                    <div class="text-sm font-bold" [ngClass]="getConversionColor(step.conversion_rate)">
-                                        {{ step.conversion_rate | number:'1.1-1' }}%
-                                    </div>
+                                <div [class]="conversionClass(step.conversion_rate)">
+                                    {{ step.conversion_rate | number:'1.1-1' }}%
+                                </div>
                                     <div class="text-xs text-muted-color">retention</div>
                                 </div>
                             } @else {
@@ -113,10 +113,11 @@ export class FunnelViewer implements OnChanges {
     });
   }
 
-  getConversionColor(rate: number): string {
-    if (rate >= 70) return 'text-green-600 dark:text-green-400';
-    if (rate >= 40) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-red-600 dark:text-red-400';
+  conversionClass(rate: number): string {
+    const base = 'text-sm font-bold';
+    if (rate >= 70) return `${base} text-green-600 dark:text-green-400`;
+    if (rate >= 40) return `${base} text-yellow-600 dark:text-yellow-400`;
+    return `${base} text-red-600 dark:text-red-400`;
   }
 
   onHide() {

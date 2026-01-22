@@ -36,8 +36,12 @@ func (s *TakeoutService) ExportUserData(ctx context.Context, userID uuid.UUID) (
 		SELECT 'hit' as record_type, * FROM hits WHERE site_id IN (SELECT site_id FROM site_members WHERE user_id = '%s')
 		UNION BY NAME
 		SELECT 'event' as record_type, * FROM events WHERE site_id IN (SELECT site_id FROM site_members WHERE user_id = '%s')
+		UNION BY NAME
+		SELECT 'goal' as record_type, * FROM goals WHERE site_id IN (SELECT site_id FROM site_members WHERE user_id = '%s')
+		UNION BY NAME
+		SELECT 'funnel' as record_type, * FROM funnels WHERE site_id IN (SELECT site_id FROM site_members WHERE user_id = '%s')
 	) TO '%s' (FORMAT XLSX);
-`, userID, userID, filename)
+`, userID, userID, userID, userID, filename)
 
 	if _, err := s.store.DB().ExecContext(ctx, query); err != nil {
 		// Fallback to CSV if XLSX fails
@@ -47,8 +51,12 @@ func (s *TakeoutService) ExportUserData(ctx context.Context, userID uuid.UUID) (
 			SELECT 'hit' as record_type, * FROM hits WHERE site_id IN (SELECT site_id FROM site_members WHERE user_id = '%s')
 			UNION BY NAME
 			SELECT 'event' as record_type, * FROM events WHERE site_id IN (SELECT site_id FROM site_members WHERE user_id = '%s')
+			UNION BY NAME
+			SELECT 'goal' as record_type, * FROM goals WHERE site_id IN (SELECT site_id FROM site_members WHERE user_id = '%s')
+			UNION BY NAME
+			SELECT 'funnel' as record_type, * FROM funnels WHERE site_id IN (SELECT site_id FROM site_members WHERE user_id = '%s')
 		) TO '%s' (FORMAT CSV, HEADER);
-	`, userID, userID, csvFilename)
+	`, userID, userID, userID, userID, csvFilename)
 
 		if _, err := s.store.DB().ExecContext(ctx, query); err != nil {
 			return "", fmt.Errorf("failed to export user data: %w", err)
@@ -91,8 +99,12 @@ func (s *TakeoutService) ExportSiteData(ctx context.Context, siteID uuid.UUID, f
 		SELECT 'hit' as record_type, * FROM hits WHERE site_id = '%s'
 		UNION BY NAME
 		SELECT 'event' as record_type, * FROM events WHERE site_id = '%s'
+		UNION BY NAME
+		SELECT 'goal' as record_type, * FROM goals WHERE site_id = '%s'
+		UNION BY NAME
+		SELECT 'funnel' as record_type, * FROM funnels WHERE site_id = '%s'
 	) TO '%s' (FORMAT %s);
-`, siteID, siteID, filename, duckFormat)
+`, siteID, siteID, siteID, siteID, filename, duckFormat)
 
 	if _, err := s.store.DB().ExecContext(ctx, query); err != nil {
 		if !allowFallback {
@@ -105,8 +117,12 @@ func (s *TakeoutService) ExportSiteData(ctx context.Context, siteID uuid.UUID, f
 		SELECT 'hit' as record_type, * FROM hits WHERE site_id = '%s'
 		UNION BY NAME
 		SELECT 'event' as record_type, * FROM events WHERE site_id = '%s'
+		UNION BY NAME
+		SELECT 'goal' as record_type, * FROM goals WHERE site_id = '%s'
+		UNION BY NAME
+		SELECT 'funnel' as record_type, * FROM funnels WHERE site_id = '%s'
 	) TO '%s' (FORMAT CSV, HEADER);
-`, siteID, siteID, csvFilename)
+`, siteID, siteID, siteID, siteID, csvFilename)
 
 		if _, err := s.store.DB().ExecContext(ctx, fallbackQuery); err != nil {
 			return "", fmt.Errorf("failed to export site data: %w", err)

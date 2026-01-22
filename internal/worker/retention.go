@@ -159,6 +159,42 @@ func (w *RetentionWorker) Run(ctx context.Context) error {
 			continue
 		}
 
+		if _, err := tx.ExecContext(ctx, "DELETE FROM goal_rollups_hourly WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
+			slog.Error("Failed to prune hourly goal rollups", "error", err, "site_id", p.ID)
+			defer func() { _ = tx.Rollback() }()
+			continue
+		}
+
+		if _, err := tx.ExecContext(ctx, "DELETE FROM goal_rollups_daily WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
+			slog.Error("Failed to prune daily goal rollups", "error", err, "site_id", p.ID)
+			defer func() { _ = tx.Rollback() }()
+			continue
+		}
+
+		if _, err := tx.ExecContext(ctx, "DELETE FROM goal_rollups_monthly WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
+			slog.Error("Failed to prune monthly goal rollups", "error", err, "site_id", p.ID)
+			defer func() { _ = tx.Rollback() }()
+			continue
+		}
+
+		if _, err := tx.ExecContext(ctx, "DELETE FROM funnel_rollups_hourly WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
+			slog.Error("Failed to prune hourly funnel rollups", "error", err, "site_id", p.ID)
+			defer func() { _ = tx.Rollback() }()
+			continue
+		}
+
+		if _, err := tx.ExecContext(ctx, "DELETE FROM funnel_rollups_daily WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
+			slog.Error("Failed to prune daily funnel rollups", "error", err, "site_id", p.ID)
+			defer func() { _ = tx.Rollback() }()
+			continue
+		}
+
+		if _, err := tx.ExecContext(ctx, "DELETE FROM funnel_rollups_monthly WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
+			slog.Error("Failed to prune monthly funnel rollups", "error", err, "site_id", p.ID)
+			defer func() { _ = tx.Rollback() }()
+			continue
+		}
+
 		if _, err := tx.ExecContext(ctx, "DELETE FROM session_rollups_hourly WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
 			slog.Error("Failed to prune hourly session rollups", "error", err, "site_id", p.ID)
 			defer func() { _ = tx.Rollback() }()

@@ -70,18 +70,38 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type UserProfile struct {
+	ID          uuid.UUID `json:"id"`
+	Email       string    `json:"email"`
+	DisplayName string    `json:"display_name"`
+	AvatarURL   string    `json:"avatar_url"`
+}
+
 type AnalyticsParams struct {
 	SiteID  uuid.UUID
 	UserID  uuid.UUID
 	Start   time.Time
 	End     time.Time
 	Filters []Filter
+	GoalIDs []uuid.UUID
+	FunnelIDs []uuid.UUID
 }
 
 type ChartDataPoint struct {
 	Time      time.Time `json:"time"`
 	Pageviews int       `json:"pageviews"`
 	Visitors  int       `json:"visitors"`
+}
+
+type GoalSeriesPoint struct {
+	Time        time.Time `json:"time"`
+	Conversions int       `json:"conversions"`
+}
+
+type FunnelSeriesPoint struct {
+	Time        time.Time `json:"time"`
+	Entries     int       `json:"entries"`
+	Completions int       `json:"completions"`
 }
 
 type MetricStat struct {

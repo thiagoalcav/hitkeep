@@ -139,6 +139,16 @@ func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 		RateLimiter: s.authLimiter,
 	}, s.handleChangePassword()))
 
+	mux.HandleFunc("GET /api/user/profile", s.Handler(HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: s.apiLimiter,
+	}, s.handleGetUserProfile()))
+
+	mux.HandleFunc("GET /api/user/avatar", s.Handler(HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: s.apiLimiter,
+	}, s.handleGetUserAvatar()))
+
 	mux.HandleFunc("GET /api/user/permissions", s.Handler(HandlerConfig{
 		RequireAuth: true,
 		RateLimiter: s.apiLimiter,
@@ -228,6 +238,11 @@ func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 		RateLimiter: s.apiLimiter,
 	}, s.handleGetGoals()))
 
+	mux.HandleFunc("GET /api/sites/{id}/goals/timeseries", s.Handler(HandlerConfig{
+		SitePerm:    auth.PermSiteView,
+		RateLimiter: s.apiLimiter,
+	}, s.handleGetGoalTimeseries()))
+
 	mux.HandleFunc("POST /api/sites/{id}/goals", s.Handler(HandlerConfig{
 		SitePerm:    auth.PermSiteManageGoals,
 		RateLimiter: s.apiLimiter,
@@ -243,6 +258,11 @@ func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 		SitePerm:    auth.PermSiteView,
 		RateLimiter: s.apiLimiter,
 	}, s.handleGetFunnels()))
+
+	mux.HandleFunc("GET /api/sites/{id}/funnels/timeseries", s.Handler(HandlerConfig{
+		SitePerm:    auth.PermSiteView,
+		RateLimiter: s.apiLimiter,
+	}, s.handleGetFunnelTimeseries()))
 
 	mux.HandleFunc("POST /api/sites/{id}/funnels", s.Handler(HandlerConfig{
 		SitePerm:    auth.PermSiteManageGoals,
@@ -326,6 +346,16 @@ func (s *Server) spaHandler(publicFS fs.FS) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/")
 
+		if strings.HasSuffix(path, ".js") ||
+			strings.HasSuffix(path, ".css") ||
+			strings.HasSuffix(path, ".woff2") ||
+			strings.HasSuffix(path, ".png") ||
+			strings.HasSuffix(path, ".svg") {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		}
+
 		if path == "" {
 			fileServer.ServeHTTP(w, r)
 			return
@@ -334,6 +364,7 @@ func (s *Server) spaHandler(publicFS fs.FS) http.HandlerFunc {
 		f, err := publicFS.Open(path)
 		if os.IsNotExist(err) {
 			if strings.HasPrefix(path, "api/") || strings.HasPrefix(path, "ingest") {
+				w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 				http.NotFound(w, r)
 				return
 			}

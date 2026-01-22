@@ -7,7 +7,7 @@ import { Site } from '../../../core/models/analytics.types';
   imports: [NgOptimizedImage],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <img [ngSrc]="faviconUrl()" class="size-5 max-w-5" [width]="20" [height]="20" loading="lazy" [alt]="site()?.domain">
+    <img [ngSrc]="faviconUrl()" class="size-5 max-w-5 rounded-full" [width]="20" [height]="20" loading="lazy" [alt]="site()?.domain">
   `,
 })
 export class SiteFavicon {

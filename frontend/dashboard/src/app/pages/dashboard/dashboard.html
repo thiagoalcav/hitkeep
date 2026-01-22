@@ -1,50 +1,41 @@
 <div class="flex flex-col h-full w-full bg-[var(--p-surface-ground)] transition-colors duration-200">
   <!-- Header & Controls -->
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-    <div>
-      <div class="flex items-center gap-3">
-        @if (siteService.activeSite()) {
-          <app-site-favicon [site]="siteService.activeSite()"/>
-        }
-        <h1 class="text-2xl md:text-3xl font-bold text-[var(--p-text-color)]">Overview</h1>
-      </div>
-      <p class="text-sm text-[var(--p-text-muted-color)] mt-1">
-        {{ siteService.activeSite()?.domain || 'Select a Site' }}
-      </p>
+  <app-page-header>
+    <div header-left>
+      <app-page-breadcrumb [items]="breadcrumbItems()" />
     </div>
-    <div class="flex items-center gap-3">
-      <p-select [options]="timeRanges" [(ngModel)]="selectedRange" optionLabel="label"
-                (onChange)="onRangeChange($event)" class="w-40 md:w-48" aria-label="Time Range Selector">
-      </p-select>
+  </app-page-header>
 
-      <p-button icon="pi pi-refresh" (onClick)="refreshAll()"
-                [loading]="statsService.isLoading()"
-                class="p-button-rounded p-button-text p-button-secondary" pTooltip="Refresh Data"
-                tooltipPosition="bottom">
-      </p-button>
+  <div class="flex flex-wrap items-center gap-3 mb-6 -mx-4 md:-mx-8 px-4 md:px-8 self-end">
+    <p-select [options]="timeRanges" [(ngModel)]="selectedRange" optionLabel="label"
+              (onChange)="onRangeChange($event)" class="w-40 md:w-48" aria-label="Time Range Selector">
+    </p-select>
 
-    </div>
+    <p-button icon="pi pi-refresh"
+              loadingIcon="pi pi-refresh"
+              (onClick)="refreshAll()"
+              [loading]="statsService.isLoading()"
+              class="p-button-rounded p-button-text p-button-secondary"
+              pTooltip="Refresh Data"
+              tooltipPosition="bottom">
+    </p-button>
   </div>
-  @if (siteService.activeSite()) {
+  @if (siteService.isLoading()) {
+    <div class="flex items-center gap-2 text-sm text-[var(--p-text-muted-color)]">
+      <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+      <span>Loading site data…</span>
+    </div>
+  } @else if (siteService.activeSite()) {
     <!-- KPI Cards -->
     <!-- TODO: Refactor for mobile, weird UX -->
     <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
-      <ng-container *ngTemplateOutlet="kpiCard; context: {
-        label: 'Live Visitors',
-        value: statsService.stats()?.live_visitors || 0,
-        loading: statsService.isLoading(),
-        valueClass: (statsService.stats()?.live_visitors || 0) > 0 ? 'text-green-600 dark:text-green-400 animate-pulse' : ''
-      }"></ng-container>
-      <ng-container
-        *ngTemplateOutlet="kpiCard; context: {label: 'Pageviews', value: statsService.stats()?.total_pageviews, loading: statsService.isLoading()}"></ng-container>
-      <ng-container
-        *ngTemplateOutlet="kpiCard; context: {label: 'Unique Sessions', value: statsService.stats()?.unique_sessions, loading: statsService.isLoading()}"></ng-container>
-      <ng-container
-        *ngTemplateOutlet="kpiCard; context: {label: 'Bounce Rate', value: (statsService.stats()?.bounce_rate | number:'1.0-1') + '%', loading: statsService.isLoading()}"></ng-container>
-      <ng-container
-        *ngTemplateOutlet="kpiCard; context: {label: 'Avg. Duration', value: formatDuration(statsService.stats()?.avg_session_duration || 0), loading: statsService.isLoading()}"></ng-container>
-      <ng-container
-        *ngTemplateOutlet="kpiCard; context: {label: 'Pages / Session', value: (statsService.stats()?.pages_per_session | number:'1.1-2'), loading: statsService.isLoading()}"></ng-container>
+      @for (card of kpiCards(); track card.label) {
+        <app-kpi-card
+          [label]="card.label"
+          [value]="card.value"
+          [loading]="card.loading"
+          [valueClass]="card.valueClass" />
+      }
     </div>
 
     <!-- Traffic Chart -->
@@ -68,9 +59,10 @@
     </div>
 
       <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+        @let chips = filterChips();
         <div class="flex flex-wrap items-center gap-2">
-          @if (hasFilters()) {
-            @for (filter of filterChips(); track filter.type) {
+          @if (chips.length) {
+            @for (filter of chips; track filter.type) {
               <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--p-primary-color)] text-sm">
                 <span class="font-medium text-[var(--p-text-color)]">{{ filter.label }}</span>
                 <button type="button" class="text-muted-color hover:text-[var(--p-text-color)]"
@@ -204,7 +196,7 @@
             <td class="font-medium truncate max-w-[200px]" [title]="hit.path">
               <div class="flex items-center gap-2 min-w-0">
                 @if (siteFaviconUrl(); as favicon) {
-                  <img [ngSrc]="favicon" class="size-4 shrink-0" [width]="16" [height]="16" alt="" />
+                  <img [ngSrc]="favicon" class="size-4 shrink-0 rounded-full" [width]="16" [height]="16" alt="" />
                 }
                 @if (buildSiteUrl(hit.path); as pageUrl) {
                   <span class="truncate" [title]="hit.path">{{ hit.path }}</span>
@@ -226,7 +218,7 @@
                 <div class="flex items-center gap-2 min-w-0">
                   @if (referrerDomain(hit.referrer); as domain) {
                     @if (faviconUrlForDomain(domain); as favicon) {
-                      <img [ngSrc]="favicon" class="size-4 shrink-0" [width]="16" [height]="16" alt="" />
+                      <img [ngSrc]="favicon" class="size-4 shrink-0 rounded-full" [width]="16" [height]="16" alt="" />
                     }
                   }
                   @if (buildReferrerUrl(hit.referrer); as referrerUrl) {
@@ -264,21 +256,6 @@
     </div>
   }
 </div>
-<!-- Reusable KPI Card Template -->
-<ng-template #kpiCard let-label="label" let-value="value" let-loading="loading">
-  <p-card class="shadow-sm h-full border border-surface-200 dark:border-surface-700 surface-card">
-    <div class="flex flex-col gap-2">
-      <span class="text-sm font-medium text-muted-color">{{ label }}</span>
-      <div class="text-2xl xl:text-3xl font-bold">
-        @if (loading) {
-          <p-skeleton width="60%" height="2rem"/>
-        } @else {
-          {{ value || 0 }}
-        }
-      </div>
-    </div>
-  </p-card>
-</ng-template>
 <!-- Date Range Dialog -->
 <p-dialog header="Select Date Range" [(visible)]="isCustomRangeVisible" [modal]="true">
   <p-datepicker [(ngModel)]="customRangeDates" selectionMode="range" [inline]="true" [showWeek]="false"/>

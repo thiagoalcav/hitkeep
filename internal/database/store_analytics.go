@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,7 +33,22 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 	}
 
 	filterSQL, filterArgs := buildHitFilters(params.Filters, "h")
+	funnelPathSQL, funnelPathArgs, err := s.buildFunnelPathFilter(ctx, params, "h")
+	if err != nil {
+		return nil, err
+	}
+	sessionSQL, sessionArgs, err := s.buildSessionFilter(ctx, params, "h")
+	if err != nil {
+		return nil, err
+	}
+	filterSQL += funnelPathSQL
+	filterSQL += sessionSQL
+	filterArgs = append(filterArgs, funnelPathArgs...)
+	filterArgs = append(filterArgs, sessionArgs...)
 	useRollups := len(params.Filters) == 0
+	if sessionSQL != "" || funnelPathSQL != "" {
+		useRollups = false
+	}
 
 	liveThreshold := time.Now().Add(-5 * time.Minute)
 	liveQuery := "SELECT COUNT(DISTINCT h.session_id) FROM hits h WHERE h.site_id = ? AND h.timestamp >= ?" + filterSQL
@@ -110,18 +126,25 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		return nil, fmt.Errorf("failed to calc KPIs: %w", err)
 	}
 
-	rows, err := s.queryChartData(ctx, params, gridStart, gridEnd, interval, truncUnit, filterSQL, filterArgs, useRollups, rollupKind)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query chart data: %w", err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var p api.ChartDataPoint
-		if err := rows.Scan(&p.Time, &p.Pageviews, &p.Visitors); err != nil {
-			return nil, err
+	if useRollups {
+		stats.ChartData, err = s.queryHybridChartData(ctx, params, truncUnit, rollupKind)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query hybrid chart data: %w", err)
 		}
-		stats.ChartData = append(stats.ChartData, p)
+	} else {
+		rows, err := s.queryChartData(ctx, params, gridStart, gridEnd, interval, truncUnit, filterSQL, filterArgs, useRollups, rollupKind)
+		if err != nil {
+			return nil, fmt.Errorf("failed to query chart data: %w", err)
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var p api.ChartDataPoint
+			if err := rows.Scan(&p.Time, &p.Pageviews, &p.Visitors); err != nil {
+				return nil, err
+			}
+			stats.ChartData = append(stats.ChartData, p)
+		}
 	}
 
 	// Top lists via GROUPING SETS to keep a single scan.
@@ -239,6 +262,145 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 	}
 
 	return stats, nil
+}
+
+func (s *Store) buildSessionFilter(ctx context.Context, params api.AnalyticsParams, alias string) (string, []any, error) {
+	if len(params.GoalIDs) == 0 && len(params.FunnelIDs) == 0 {
+		return "", nil, nil
+	}
+
+	prefix := ""
+	if alias != "" {
+		prefix = alias + "."
+	}
+
+	var clauses []string
+	var args []any
+
+	if len(params.GoalIDs) > 0 {
+		goals, err := s.GetGoals(ctx, params.SiteID)
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to load goals: %w", err)
+		}
+		allowed := make(map[uuid.UUID]struct{}, len(params.GoalIDs))
+		for _, id := range params.GoalIDs {
+			allowed[id] = struct{}{}
+		}
+
+		var pathValues []string
+		var eventValues []string
+		for _, goal := range goals {
+			if _, ok := allowed[goal.ID]; !ok {
+				continue
+			}
+			switch goal.Type {
+			case "path":
+				pathValues = append(pathValues, goal.Value)
+			case "event":
+				eventValues = append(eventValues, goal.Value)
+			}
+		}
+
+		if len(pathValues) == 0 && len(eventValues) == 0 {
+			return " AND 1=0", nil, nil
+		}
+
+		subquery, subArgs := buildSessionUnionSubquery(params.SiteID, params.Start, params.End, pathValues, eventValues)
+		clauses = append(clauses, fmt.Sprintf("%ssession_id IN (%s)", prefix, subquery))
+		args = append(args, subArgs...)
+	}
+
+	if len(params.FunnelIDs) > 0 {
+		funnels, err := s.GetFunnels(ctx, params.SiteID)
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to load funnels: %w", err)
+		}
+		allowed := make(map[uuid.UUID]struct{}, len(params.FunnelIDs))
+		for _, id := range params.FunnelIDs {
+			allowed[id] = struct{}{}
+		}
+
+		var entryPathValues []string
+		var entryEventValues []string
+		for _, funnel := range funnels {
+			if _, ok := allowed[funnel.ID]; !ok {
+				continue
+			}
+			if len(funnel.Steps) == 0 {
+				continue
+			}
+			first := funnel.Steps[0]
+			switch first.Type {
+			case "path":
+				entryPathValues = append(entryPathValues, first.Value)
+			case "event":
+				entryEventValues = append(entryEventValues, first.Value)
+			}
+		}
+
+		if len(entryPathValues) == 0 && len(entryEventValues) == 0 {
+			return " AND 1=0", nil, nil
+		}
+
+		subquery, subArgs := buildSessionUnionSubquery(params.SiteID, params.Start, params.End, entryPathValues, entryEventValues)
+		clauses = append(clauses, fmt.Sprintf("%ssession_id IN (%s)", prefix, subquery))
+		args = append(args, subArgs...)
+	}
+
+	if len(clauses) == 0 {
+		return "", nil, nil
+	}
+
+	return " AND " + strings.Join(clauses, " AND "), args, nil
+}
+
+func (s *Store) buildFunnelPathFilter(ctx context.Context, params api.AnalyticsParams, alias string) (string, []any, error) {
+	if len(params.FunnelIDs) == 0 {
+		return "", nil, nil
+	}
+
+	prefix := ""
+	if alias != "" {
+		prefix = alias + "."
+	}
+
+	funnels, err := s.GetFunnels(ctx, params.SiteID)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to load funnels: %w", err)
+	}
+	allowed := make(map[uuid.UUID]struct{}, len(params.FunnelIDs))
+	for _, id := range params.FunnelIDs {
+		allowed[id] = struct{}{}
+	}
+
+	pathSet := make(map[string]struct{})
+	for _, funnel := range funnels {
+		if _, ok := allowed[funnel.ID]; !ok {
+			continue
+		}
+		for _, step := range funnel.Steps {
+			if step.Type == "path" && step.Value != "" {
+				pathSet[step.Value] = struct{}{}
+			}
+		}
+	}
+
+	if len(pathSet) == 0 {
+		return " AND 1=0", nil, nil
+	}
+
+	values := make([]string, 0, len(pathSet))
+	for value := range pathSet {
+		values = append(values, value)
+	}
+
+	placeholders := buildPlaceholders(len(values))
+	args := make([]any, 0, len(values))
+	for _, value := range values {
+		args = append(args, value)
+	}
+
+	return fmt.Sprintf(" AND %spath IN (%s)", prefix, placeholders), args, nil
 }
 
 func (s *Store) queryChartData(
@@ -376,6 +538,17 @@ const (
 	rollupMonthly rollupKind = "monthly"
 )
 
+func rollupKindFromTruncUnit(truncUnit string) rollupKind {
+	switch truncUnit {
+	case "hour":
+		return rollupHourly
+	case "month":
+		return rollupMonthly
+	default:
+		return rollupDaily
+	}
+}
+
 func (s *Store) queryRollupChart(
 	ctx context.Context,
 	siteID uuid.UUID,
@@ -479,6 +652,28 @@ func (s *Store) insertDailyRollups(ctx context.Context, siteID uuid.UUID, start 
 
 func (s *Store) ensureMonthlyRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
 	return s.ensureMonthlyRollup(ctx, "hit_rollups_monthly", siteID, start, end, s.insertMonthlyRollups)
+}
+
+func (s *Store) ensureGoalRollups(ctx context.Context, kind rollupKind, siteID uuid.UUID, start time.Time, end time.Time) error {
+	switch kind {
+	case rollupHourly:
+		return s.ensureHourlyRollup(ctx, "goal_rollups_hourly", siteID, start, end, s.insertHourlyGoalRollups)
+	case rollupMonthly:
+		return s.ensureMonthlyRollup(ctx, "goal_rollups_monthly", siteID, start, end, s.insertMonthlyGoalRollups)
+	default:
+		return s.ensureDailyRollup(ctx, "goal_rollups_daily", siteID, start, end, s.insertDailyGoalRollups)
+	}
+}
+
+func (s *Store) ensureFunnelRollups(ctx context.Context, kind rollupKind, siteID uuid.UUID, start time.Time, end time.Time) error {
+	switch kind {
+	case rollupHourly:
+		return s.ensureHourlyRollup(ctx, "funnel_rollups_hourly", siteID, start, end, s.insertHourlyFunnelRollups)
+	case rollupMonthly:
+		return s.ensureMonthlyRollup(ctx, "funnel_rollups_monthly", siteID, start, end, s.insertMonthlyFunnelRollups)
+	default:
+		return s.ensureDailyRollup(ctx, "funnel_rollups_daily", siteID, start, end, s.insertDailyFunnelRollups)
+	}
 }
 
 func (s *Store) ensureHourlySessionRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
@@ -755,6 +950,24 @@ func (s *Store) BackfillRollups(ctx context.Context, siteID uuid.UUID) error {
 	if err := s.ensureMonthlySessionRollups(ctx, siteID, start, end); err != nil {
 		return err
 	}
+	if err := s.ensureGoalRollups(ctx, rollupHourly, siteID, start, end); err != nil {
+		return err
+	}
+	if err := s.ensureGoalRollups(ctx, rollupDaily, siteID, start, end); err != nil {
+		return err
+	}
+	if err := s.ensureGoalRollups(ctx, rollupMonthly, siteID, start, end); err != nil {
+		return err
+	}
+	if err := s.ensureFunnelRollups(ctx, rollupHourly, siteID, start, end); err != nil {
+		return err
+	}
+	if err := s.ensureFunnelRollups(ctx, rollupDaily, siteID, start, end); err != nil {
+		return err
+	}
+	if err := s.ensureFunnelRollups(ctx, rollupMonthly, siteID, start, end); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -782,6 +995,344 @@ func (s *Store) insertMonthlyRollups(ctx context.Context, siteID uuid.UUID, star
 	return nil
 }
 
+func (s *Store) insertHourlyGoalRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	if end.Before(start) {
+		return nil
+	}
+	endExclusive := end.Add(time.Hour)
+
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO goal_rollups_hourly (site_id, goal_id, bucket, conversions)
+		SELECT
+			g.site_id,
+			g.id,
+			date_trunc('hour', h.timestamp)::TIMESTAMPTZ as bucket,
+			COUNT(DISTINCT h.session_id) as conversions
+		FROM goals g
+		JOIN hits h ON h.site_id = g.site_id AND g.type = 'path' AND h.path = g.value
+		WHERE g.site_id = ? AND h.timestamp >= ? AND h.timestamp < ?
+		GROUP BY g.site_id, g.id, bucket
+		UNION ALL
+		SELECT
+			g.site_id,
+			g.id,
+			date_trunc('hour', e.timestamp)::TIMESTAMPTZ as bucket,
+			COUNT(DISTINCT e.session_id) as conversions
+		FROM goals g
+		JOIN events e ON e.site_id = g.site_id AND g.type = 'event' AND e.name = g.value
+		WHERE g.site_id = ? AND e.timestamp >= ? AND e.timestamp < ?
+		GROUP BY g.site_id, g.id, bucket
+	`, siteID, start, endExclusive, siteID, start, endExclusive)
+	if err != nil {
+		return fmt.Errorf("failed to insert hourly goal rollups: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) insertDailyGoalRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	if end.Before(start) {
+		return nil
+	}
+	endExclusive := end.AddDate(0, 0, 1)
+
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO goal_rollups_daily (site_id, goal_id, bucket, conversions)
+		SELECT
+			g.site_id,
+			g.id,
+			date_trunc('day', h.timestamp)::DATE as bucket,
+			COUNT(DISTINCT h.session_id) as conversions
+		FROM goals g
+		JOIN hits h ON h.site_id = g.site_id AND g.type = 'path' AND h.path = g.value
+		WHERE g.site_id = ? AND h.timestamp >= ? AND h.timestamp < ?
+		GROUP BY g.site_id, g.id, bucket
+		UNION ALL
+		SELECT
+			g.site_id,
+			g.id,
+			date_trunc('day', e.timestamp)::DATE as bucket,
+			COUNT(DISTINCT e.session_id) as conversions
+		FROM goals g
+		JOIN events e ON e.site_id = g.site_id AND g.type = 'event' AND e.name = g.value
+		WHERE g.site_id = ? AND e.timestamp >= ? AND e.timestamp < ?
+		GROUP BY g.site_id, g.id, bucket
+	`, siteID, start, endExclusive, siteID, start, endExclusive)
+	if err != nil {
+		return fmt.Errorf("failed to insert daily goal rollups: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) insertMonthlyGoalRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	if end.Before(start) {
+		return nil
+	}
+	endExclusive := end.AddDate(0, 1, 0)
+
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO goal_rollups_monthly (site_id, goal_id, bucket, conversions)
+		SELECT
+			g.site_id,
+			g.id,
+			date_trunc('month', h.timestamp)::DATE as bucket,
+			COUNT(DISTINCT h.session_id) as conversions
+		FROM goals g
+		JOIN hits h ON h.site_id = g.site_id AND g.type = 'path' AND h.path = g.value
+		WHERE g.site_id = ? AND h.timestamp >= ? AND h.timestamp < ?
+		GROUP BY g.site_id, g.id, bucket
+		UNION ALL
+		SELECT
+			g.site_id,
+			g.id,
+			date_trunc('month', e.timestamp)::DATE as bucket,
+			COUNT(DISTINCT e.session_id) as conversions
+		FROM goals g
+		JOIN events e ON e.site_id = g.site_id AND g.type = 'event' AND e.name = g.value
+		WHERE g.site_id = ? AND e.timestamp >= ? AND e.timestamp < ?
+		GROUP BY g.site_id, g.id, bucket
+	`, siteID, start, endExclusive, siteID, start, endExclusive)
+	if err != nil {
+		return fmt.Errorf("failed to insert monthly goal rollups: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) insertHourlyFunnelRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	return s.insertFunnelRollups(ctx, "funnel_rollups_hourly", "hour", siteID, start, end.Add(time.Hour))
+}
+
+func (s *Store) insertDailyFunnelRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	return s.insertFunnelRollups(ctx, "funnel_rollups_daily", "day", siteID, start, end.AddDate(0, 0, 1))
+}
+
+func (s *Store) insertMonthlyFunnelRollups(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time) error {
+	return s.insertFunnelRollups(ctx, "funnel_rollups_monthly", "month", siteID, start, end.AddDate(0, 1, 0))
+}
+
+func (s *Store) insertFunnelRollups(ctx context.Context, table string, truncUnit string, siteID uuid.UUID, start time.Time, endExclusive time.Time) error {
+	if endExclusive.Before(start) {
+		return nil
+	}
+
+	funnels, err := s.GetFunnels(ctx, siteID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch funnels: %w", err)
+	}
+	if len(funnels) == 0 {
+		return nil
+	}
+
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	//nolint:gosec // table is selected from fixed allowlist
+	stmt, err := tx.PrepareContext(ctx, fmt.Sprintf(`
+		INSERT INTO %s (site_id, funnel_id, bucket, entries, completions)
+		VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT (site_id, funnel_id, bucket) DO NOTHING
+	`, table))
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, funnel := range funnels {
+		if len(funnel.Steps) == 0 {
+			continue
+		}
+		first := funnel.Steps[0]
+		last := funnel.Steps[len(funnel.Steps)-1]
+
+		entryCounts, err := s.queryFunnelStepCounts(ctx, siteID, start, endExclusive, truncUnit, first)
+		if err != nil {
+			return err
+		}
+		completionCounts, err := s.queryFunnelStepCounts(ctx, siteID, start, endExclusive, truncUnit, last)
+		if err != nil {
+			return err
+		}
+
+		buckets := make(map[time.Time]bool)
+		for bucket := range entryCounts {
+			buckets[bucket] = true
+		}
+		for bucket := range completionCounts {
+			buckets[bucket] = true
+		}
+
+		for bucket := range buckets {
+			entries := entryCounts[bucket]
+			completions := completionCounts[bucket]
+			if entries == 0 && completions == 0 {
+				continue
+			}
+			if _, err := stmt.ExecContext(ctx, siteID, funnel.ID, bucket, entries, completions); err != nil {
+				return fmt.Errorf("failed to insert funnel rollup: %w", err)
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Store) queryFunnelStepCounts(ctx context.Context, siteID uuid.UUID, start time.Time, end time.Time, truncUnit string, step api.FunnelStep) (map[time.Time]int, error) {
+	if end.Before(start) {
+		return map[time.Time]int{}, nil
+	}
+
+	var (
+		table      string
+		valueField string
+		value      string
+	)
+	if step.Type == "path" {
+		table = "hits"
+		valueField = "path"
+		value = step.Value
+	} else {
+		table = "events"
+		valueField = "name"
+		value = step.Value
+	}
+
+	//nolint:gosec // table/valueField/truncUnit are from fixed allowlists
+	query := fmt.Sprintf(`
+		SELECT date_trunc('%s', timestamp) AS bucket, COUNT(DISTINCT session_id) AS conversions
+		FROM %s
+		WHERE site_id = ? AND timestamp >= ? AND timestamp < ? AND %s = ?
+		GROUP BY bucket
+		ORDER BY bucket
+	`, truncUnit, table, valueField)
+
+	rows, err := s.db.QueryContext(ctx, query, siteID, start, end, value)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[time.Time]int)
+	for rows.Next() {
+		var bucket time.Time
+		var count int
+		if err := rows.Scan(&bucket, &count); err != nil {
+			return nil, err
+		}
+		result[truncToUnit(bucket, truncUnit)] = count
+	}
+
+	return result, nil
+}
+
+func (s *Store) queryGoalRollupCounts(ctx context.Context, kind rollupKind, siteID uuid.UUID, start time.Time, end time.Time, goalIDs []uuid.UUID) (map[time.Time]int, error) {
+	table := "goal_rollups_hourly"
+	switch kind {
+	case rollupDaily:
+		table = "goal_rollups_daily"
+	case rollupMonthly:
+		table = "goal_rollups_monthly"
+	}
+
+	args := []any{siteID, start, end}
+	filterSQL := ""
+	if len(goalIDs) > 0 {
+		filterSQL = fmt.Sprintf(" AND goal_id IN (%s)", buildPlaceholders(len(goalIDs)))
+		for _, id := range goalIDs {
+			args = append(args, id)
+		}
+	}
+
+	//nolint:gosec // table is selected from fixed allowlist
+	query := fmt.Sprintf(`
+		SELECT bucket, SUM(conversions) as conversions
+		FROM %s
+		WHERE site_id = ? AND bucket >= ? AND bucket <= ?%s
+		GROUP BY bucket
+		ORDER BY bucket
+	`, table, filterSQL)
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[time.Time]int)
+	for rows.Next() {
+		var bucket time.Time
+		var count int
+		if err := rows.Scan(&bucket, &count); err != nil {
+			return nil, err
+		}
+		result[truncToUnit(bucket, kindToTruncUnit(kind))] = count
+	}
+	return result, nil
+}
+
+func (s *Store) queryFunnelRollupCounts(ctx context.Context, kind rollupKind, siteID uuid.UUID, start time.Time, end time.Time, funnelIDs []uuid.UUID) (map[time.Time]int, map[time.Time]int, error) {
+	table := "funnel_rollups_hourly"
+	switch kind {
+	case rollupDaily:
+		table = "funnel_rollups_daily"
+	case rollupMonthly:
+		table = "funnel_rollups_monthly"
+	}
+
+	args := []any{siteID, start, end}
+	filterSQL := ""
+	if len(funnelIDs) > 0 {
+		filterSQL = fmt.Sprintf(" AND funnel_id IN (%s)", buildPlaceholders(len(funnelIDs)))
+		for _, id := range funnelIDs {
+			args = append(args, id)
+		}
+	}
+
+	//nolint:gosec // table is selected from fixed allowlist
+	query := fmt.Sprintf(`
+		SELECT bucket, SUM(entries) as entries, SUM(completions) as completions
+		FROM %s
+		WHERE site_id = ? AND bucket >= ? AND bucket <= ?%s
+		GROUP BY bucket
+		ORDER BY bucket
+	`, table, filterSQL)
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	entryCounts := make(map[time.Time]int)
+	completionCounts := make(map[time.Time]int)
+	for rows.Next() {
+		var bucket time.Time
+		var entries int
+		var completions int
+		if err := rows.Scan(&bucket, &entries, &completions); err != nil {
+			return nil, nil, err
+		}
+		normalized := truncToUnit(bucket, kindToTruncUnit(kind))
+		entryCounts[normalized] = entries
+		completionCounts[normalized] = completions
+	}
+	return entryCounts, completionCounts, nil
+}
+
+func kindToTruncUnit(kind rollupKind) string {
+	switch kind {
+	case rollupHourly:
+		return "hour"
+	case rollupMonthly:
+		return "month"
+	default:
+		return "day"
+	}
+}
 func dateOnly(value time.Time) time.Time {
 	return time.Date(value.Year(), value.Month(), value.Day(), 0, 0, 0, 0, value.Location())
 }
@@ -790,10 +1341,660 @@ func monthOnly(value time.Time) time.Time {
 	return time.Date(value.Year(), value.Month(), 1, 0, 0, 0, 0, value.Location())
 }
 
+func truncUnitForRange(start time.Time, end time.Time) string {
+	duration := end.Sub(start)
+	if duration < 48*time.Hour {
+		return "hour"
+	}
+	if duration >= 180*24*time.Hour {
+		return "month"
+	}
+	return "day"
+}
+
+func addUnit(value time.Time, truncUnit string, delta int) time.Time {
+	switch truncUnit {
+	case "hour":
+		return value.Add(time.Duration(delta) * time.Hour)
+	case "day":
+		return value.AddDate(0, 0, delta)
+	case "month":
+		return value.AddDate(0, delta, 0)
+	default:
+		return value
+	}
+}
+
+func truncToUnit(value time.Time, truncUnit string) time.Time {
+	switch truncUnit {
+	case "hour":
+		return value.Truncate(time.Hour)
+	case "day":
+		return dateOnly(value)
+	case "month":
+		return monthOnly(value)
+	default:
+		return value
+	}
+}
+
+func isAlignedToUnit(value time.Time, truncUnit string) bool {
+	return value.Equal(truncToUnit(value, truncUnit))
+}
+
+type rollupWindow struct {
+	FullStart time.Time
+	FullEnd   time.Time
+	Leading   *time.Time
+	Trailing  *time.Time
+	UseRollup bool
+}
+
+func buildRollupWindow(start time.Time, end time.Time, truncUnit string) rollupWindow {
+	startBucket := truncToUnit(start, truncUnit)
+	endBucket := truncToUnit(end, truncUnit)
+
+	fullStart := startBucket
+	if !isAlignedToUnit(start, truncUnit) {
+		fullStart = addUnit(startBucket, truncUnit, 1)
+	}
+
+	fullEnd := addUnit(endBucket, truncUnit, -1)
+
+	if fullStart.After(end) || fullEnd.Before(fullStart) {
+		leadEnd := end
+		return rollupWindow{
+			Leading:   &leadEnd,
+			UseRollup: false,
+		}
+	}
+
+	window := rollupWindow{
+		FullStart: fullStart,
+		FullEnd:   fullEnd,
+		UseRollup: true,
+	}
+
+	if start.Before(fullStart) {
+		leadEnd := fullStart
+		window.Leading = &leadEnd
+	}
+
+	trailingStart := addUnit(fullEnd, truncUnit, 1)
+	if end.After(trailingStart) {
+		window.Trailing = &trailingStart
+	}
+
+	return window
+}
+
+func buildSeriesBuckets(start time.Time, end time.Time, truncUnit string) []time.Time {
+	if end.Before(start) {
+		return nil
+	}
+
+	cursor := truncToUnit(start, truncUnit)
+	last := truncToUnit(end, truncUnit)
+	var buckets []time.Time
+	for !cursor.After(last) {
+		buckets = append(buckets, cursor)
+		cursor = addUnit(cursor, truncUnit, 1)
+	}
+	return buckets
+}
+
+func (s *Store) queryHybridChartData(ctx context.Context, params api.AnalyticsParams, truncUnit string, rollupKind rollupKind) ([]api.ChartDataPoint, error) {
+	window := buildRollupWindow(params.Start, params.End, truncUnit)
+	counts := make(map[time.Time]api.ChartDataPoint)
+
+	if window.UseRollup {
+		if err := s.ensureHitRollups(ctx, rollupKind, params.SiteID, window.FullStart, window.FullEnd); err != nil {
+			return nil, err
+		}
+		rollupCounts, err := s.queryHitRollupCounts(ctx, rollupKind, params.SiteID, window.FullStart, window.FullEnd)
+		if err != nil {
+			return nil, err
+		}
+		for bucket, point := range rollupCounts {
+			counts[bucket] = mergeChartPoint(counts[bucket], point)
+		}
+	}
+
+	if window.Leading != nil {
+		edgeEnd := *window.Leading
+		if edgeEnd.After(params.Start) {
+			edgeEnd = edgeEnd.Add(-time.Nanosecond)
+		}
+		edgeParams := params
+		edgeParams.Start = params.Start
+		edgeParams.End = edgeEnd
+		rawCounts, err := s.queryHitSeriesCounts(ctx, edgeParams, truncUnit)
+		if err != nil {
+			return nil, err
+		}
+		for bucket, point := range rawCounts {
+			counts[bucket] = mergeChartPoint(counts[bucket], point)
+		}
+	}
+
+	if window.Trailing != nil {
+		edgeStart := *window.Trailing
+		edgeParams := params
+		edgeParams.Start = edgeStart
+		edgeParams.End = params.End
+		rawCounts, err := s.queryHitSeriesCounts(ctx, edgeParams, truncUnit)
+		if err != nil {
+			return nil, err
+		}
+		for bucket, point := range rawCounts {
+			counts[bucket] = mergeChartPoint(counts[bucket], point)
+		}
+	}
+
+	buckets := buildSeriesBuckets(params.Start, params.End, truncUnit)
+	series := make([]api.ChartDataPoint, 0, len(buckets))
+	for _, bucket := range buckets {
+		point := counts[bucket]
+		point.Time = bucket
+		series = append(series, point)
+	}
+
+	return series, nil
+}
+
+func mergeChartPoint(base api.ChartDataPoint, next api.ChartDataPoint) api.ChartDataPoint {
+	return api.ChartDataPoint{
+		Time:      base.Time,
+		Pageviews: base.Pageviews + next.Pageviews,
+		Visitors:  base.Visitors + next.Visitors,
+	}
+}
+
+func (s *Store) ensureHitRollups(ctx context.Context, kind rollupKind, siteID uuid.UUID, start time.Time, end time.Time) error {
+	switch kind {
+	case rollupHourly:
+		return s.ensureHourlyRollups(ctx, siteID, start, end)
+	case rollupMonthly:
+		return s.ensureMonthlyRollups(ctx, siteID, start, end)
+	default:
+		return s.ensureDailyRollups(ctx, siteID, start, end)
+	}
+}
+
+func (s *Store) queryHitRollupCounts(ctx context.Context, kind rollupKind, siteID uuid.UUID, start time.Time, end time.Time) (map[time.Time]api.ChartDataPoint, error) {
+	table := "hit_rollups_hourly"
+	switch kind {
+	case rollupDaily:
+		table = "hit_rollups_daily"
+	case rollupMonthly:
+		table = "hit_rollups_monthly"
+	}
+
+	//nolint:gosec // table is selected from fixed allowlist
+	query := fmt.Sprintf(`
+		SELECT bucket, SUM(pageviews) as pageviews, SUM(visitors) as visitors
+		FROM %s
+		WHERE site_id = ? AND bucket >= ? AND bucket <= ?
+		GROUP BY bucket
+		ORDER BY bucket
+	`, table)
+
+	rows, err := s.db.QueryContext(ctx, query, siteID, start, end)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[time.Time]api.ChartDataPoint)
+	for rows.Next() {
+		var bucket time.Time
+		var pageviews int
+		var visitors int
+		if err := rows.Scan(&bucket, &pageviews, &visitors); err != nil {
+			return nil, err
+		}
+		normalized := truncToUnit(bucket, kindToTruncUnit(kind))
+		result[normalized] = api.ChartDataPoint{
+			Time:      normalized,
+			Pageviews: pageviews,
+			Visitors:  visitors,
+		}
+	}
+	return result, nil
+}
+
+func (s *Store) queryHitSeriesCounts(ctx context.Context, params api.AnalyticsParams, truncUnit string) (map[time.Time]api.ChartDataPoint, error) {
+	//nolint:gosec // truncUnit is from fixed allowlist
+	query := fmt.Sprintf(`
+		SELECT date_trunc('%s', timestamp) AS bucket, COUNT(*) AS pageviews, COUNT(DISTINCT session_id) AS visitors
+		FROM hits
+		WHERE site_id = ? AND timestamp >= ? AND timestamp <= ?
+		GROUP BY bucket
+		ORDER BY bucket
+	`, truncUnit)
+
+	rows, err := s.db.QueryContext(ctx, query, params.SiteID, params.Start, params.End)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[time.Time]api.ChartDataPoint)
+	for rows.Next() {
+		var bucket time.Time
+		var pageviews int
+		var visitors int
+		if err := rows.Scan(&bucket, &pageviews, &visitors); err != nil {
+			return nil, err
+		}
+		normalized := truncToUnit(bucket, truncUnit)
+		result[normalized] = api.ChartDataPoint{
+			Time:      normalized,
+			Pageviews: pageviews,
+			Visitors:  visitors,
+		}
+	}
+	return result, nil
+}
+
+func buildPlaceholders(count int) string {
+	if count <= 0 {
+		return ""
+	}
+	return strings.TrimRight(strings.Repeat("?,", count), ",")
+}
+
+func buildSessionUnionSubquery(siteID uuid.UUID, start time.Time, end time.Time, pathValues []string, eventValues []string) (string, []any) {
+	var parts []string
+	var args []any
+
+	if len(pathValues) > 0 {
+		parts = append(parts, buildSessionValueSubquery("hits", "path", len(pathValues)))
+		args = append(args, siteID, start, end)
+		for _, value := range pathValues {
+			args = append(args, value)
+		}
+	}
+
+	if len(eventValues) > 0 {
+		parts = append(parts, buildSessionValueSubquery("events", "name", len(eventValues)))
+		args = append(args, siteID, start, end)
+		for _, value := range eventValues {
+			args = append(args, value)
+		}
+	}
+
+	return strings.Join(parts, " UNION "), args
+}
+
+func buildSessionValueSubquery(table string, field string, valueCount int) string {
+	placeholders := buildPlaceholders(valueCount)
+	//nolint:gosec // table/field are fixed allowlists in call sites
+	return fmt.Sprintf(
+		"SELECT DISTINCT session_id FROM %s WHERE site_id = ? AND timestamp >= ? AND timestamp <= ? AND %s IN (%s)",
+		table,
+		field,
+		placeholders,
+	)
+}
+
+func (s *Store) querySeriesCounts(ctx context.Context, table string, valueField string, values []string, params api.AnalyticsParams, truncUnit string) (map[time.Time]int, error) {
+	result := make(map[time.Time]int)
+	if len(values) == 0 {
+		return result, nil
+	}
+
+	placeholders := buildPlaceholders(len(values))
+	args := make([]any, 0, 3+len(values))
+	args = append(args, params.SiteID, params.Start, params.End)
+	for _, v := range values {
+		args = append(args, v)
+	}
+
+	//nolint:gosec // table/valueField/truncUnit are from fixed allowlists
+	query := fmt.Sprintf(`
+		SELECT date_trunc('%s', timestamp) AS bucket, COUNT(DISTINCT session_id) AS conversions
+		FROM %s
+		WHERE site_id = ? AND timestamp >= ? AND timestamp <= ? AND %s IN (%s)
+		GROUP BY bucket
+		ORDER BY bucket
+	`, truncUnit, table, valueField, placeholders)
+
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var bucket time.Time
+		var count int
+		if err := rows.Scan(&bucket, &count); err != nil {
+			return nil, err
+		}
+		result[truncToUnit(bucket, truncUnit)] = count
+	}
+	return result, nil
+}
+
+func (s *Store) GetGoalTimeseries(ctx context.Context, params api.AnalyticsParams, goalIDs []uuid.UUID) ([]api.GoalSeriesPoint, error) {
+	goals, err := s.GetGoals(ctx, params.SiteID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch goals: %w", err)
+	}
+	if len(goals) == 0 {
+		return []api.GoalSeriesPoint{}, nil
+	}
+
+	if len(goalIDs) > 0 {
+		allowed := make(map[uuid.UUID]bool, len(goalIDs))
+		for _, id := range goalIDs {
+			allowed[id] = true
+		}
+		filtered := goals[:0]
+		for _, goal := range goals {
+			if allowed[goal.ID] {
+				filtered = append(filtered, goal)
+			}
+		}
+		goals = filtered
+		if len(goals) == 0 {
+			return []api.GoalSeriesPoint{}, nil
+		}
+	}
+
+	var pathValues []string
+	var eventValues []string
+	for _, goal := range goals {
+		if goal.Type == "path" {
+			pathValues = append(pathValues, goal.Value)
+		}
+		if goal.Type == "event" {
+			eventValues = append(eventValues, goal.Value)
+		}
+	}
+
+	truncUnit := truncUnitForRange(params.Start, params.End)
+	rollupKind := rollupKindFromTruncUnit(truncUnit)
+	window := buildRollupWindow(params.Start, params.End, truncUnit)
+
+	counts := make(map[time.Time]int)
+	if window.UseRollup {
+		if err := s.ensureGoalRollups(ctx, rollupKind, params.SiteID, window.FullStart, window.FullEnd); err != nil {
+			return nil, err
+		}
+		rollupCounts, err := s.queryGoalRollupCounts(ctx, rollupKind, params.SiteID, window.FullStart, window.FullEnd, goalIDs)
+		if err != nil {
+			return nil, err
+		}
+		for bucket, count := range rollupCounts {
+			counts[bucket] += count
+		}
+	}
+
+	if window.Leading != nil {
+		edgeEnd := *window.Leading
+		if edgeEnd.After(params.Start) {
+			edgeEnd = edgeEnd.Add(-time.Nanosecond)
+		}
+		edgeParams := params
+		edgeParams.Start = params.Start
+		edgeParams.End = edgeEnd
+		if len(pathValues) > 0 {
+			pathCounts, err := s.querySeriesCounts(ctx, "hits", "path", pathValues, edgeParams, truncUnit)
+			if err != nil {
+				return nil, err
+			}
+			for bucket, count := range pathCounts {
+				counts[bucket] += count
+			}
+		}
+		if len(eventValues) > 0 {
+			eventCounts, err := s.querySeriesCounts(ctx, "events", "name", eventValues, edgeParams, truncUnit)
+			if err != nil {
+				return nil, err
+			}
+			for bucket, count := range eventCounts {
+				counts[bucket] += count
+			}
+		}
+	}
+
+	if window.Trailing != nil {
+		edgeStart := *window.Trailing
+		edgeParams := params
+		edgeParams.Start = edgeStart
+		edgeParams.End = params.End
+		if len(pathValues) > 0 {
+			pathCounts, err := s.querySeriesCounts(ctx, "hits", "path", pathValues, edgeParams, truncUnit)
+			if err != nil {
+				return nil, err
+			}
+			for bucket, count := range pathCounts {
+				counts[bucket] += count
+			}
+		}
+		if len(eventValues) > 0 {
+			eventCounts, err := s.querySeriesCounts(ctx, "events", "name", eventValues, edgeParams, truncUnit)
+			if err != nil {
+				return nil, err
+			}
+			for bucket, count := range eventCounts {
+				counts[bucket] += count
+			}
+		}
+	}
+
+	buckets := buildSeriesBuckets(params.Start, params.End, truncUnit)
+	series := make([]api.GoalSeriesPoint, 0, len(buckets))
+	for _, bucket := range buckets {
+		series = append(series, api.GoalSeriesPoint{
+			Time:        bucket,
+			Conversions: counts[bucket],
+		})
+	}
+	return series, nil
+}
+
+func (s *Store) GetFunnelTimeseries(ctx context.Context, params api.AnalyticsParams, funnelIDs []uuid.UUID) ([]api.FunnelSeriesPoint, error) {
+	funnels, err := s.GetFunnels(ctx, params.SiteID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch funnels: %w", err)
+	}
+	if len(funnels) == 0 {
+		return []api.FunnelSeriesPoint{}, nil
+	}
+
+	if len(funnelIDs) > 0 {
+		allowed := make(map[uuid.UUID]bool, len(funnelIDs))
+		for _, id := range funnelIDs {
+			allowed[id] = true
+		}
+		filtered := funnels[:0]
+		for _, funnel := range funnels {
+			if allowed[funnel.ID] {
+				filtered = append(filtered, funnel)
+			}
+		}
+		funnels = filtered
+		if len(funnels) == 0 {
+			return []api.FunnelSeriesPoint{}, nil
+		}
+	}
+
+	entryPaths := make(map[string]bool)
+	entryEvents := make(map[string]bool)
+	completionPaths := make(map[string]bool)
+	completionEvents := make(map[string]bool)
+
+	for _, funnel := range funnels {
+		if len(funnel.Steps) == 0 {
+			continue
+		}
+		first := funnel.Steps[0]
+		last := funnel.Steps[len(funnel.Steps)-1]
+
+		if first.Type == "path" {
+			entryPaths[first.Value] = true
+		} else {
+			entryEvents[first.Value] = true
+		}
+
+		if last.Type == "path" {
+			completionPaths[last.Value] = true
+		} else {
+			completionEvents[last.Value] = true
+		}
+	}
+
+	if len(entryPaths) == 0 && len(entryEvents) == 0 && len(completionPaths) == 0 && len(completionEvents) == 0 {
+		return []api.FunnelSeriesPoint{}, nil
+	}
+
+	truncUnit := truncUnitForRange(params.Start, params.End)
+	rollupKind := rollupKindFromTruncUnit(truncUnit)
+	window := buildRollupWindow(params.Start, params.End, truncUnit)
+	entryCounts := make(map[time.Time]int)
+	completionCounts := make(map[time.Time]int)
+
+	entryPathValues := make([]string, 0, len(entryPaths))
+	for v := range entryPaths {
+		entryPathValues = append(entryPathValues, v)
+	}
+	entryEventValues := make([]string, 0, len(entryEvents))
+	for v := range entryEvents {
+		entryEventValues = append(entryEventValues, v)
+	}
+	completionPathValues := make([]string, 0, len(completionPaths))
+	for v := range completionPaths {
+		completionPathValues = append(completionPathValues, v)
+	}
+	completionEventValues := make([]string, 0, len(completionEvents))
+	for v := range completionEvents {
+		completionEventValues = append(completionEventValues, v)
+	}
+
+	if window.UseRollup {
+		if err := s.ensureFunnelRollups(ctx, rollupKind, params.SiteID, window.FullStart, window.FullEnd); err != nil {
+			return nil, err
+		}
+		rollupEntries, rollupCompletions, err := s.queryFunnelRollupCounts(ctx, rollupKind, params.SiteID, window.FullStart, window.FullEnd, funnelIDs)
+		if err != nil {
+			return nil, err
+		}
+		for bucket, count := range rollupEntries {
+			entryCounts[bucket] += count
+		}
+		for bucket, count := range rollupCompletions {
+			completionCounts[bucket] += count
+		}
+	}
+
+	if window.Leading != nil {
+		edgeEnd := *window.Leading
+		if edgeEnd.After(params.Start) {
+			edgeEnd = edgeEnd.Add(-time.Nanosecond)
+		}
+		edgeParams := params
+		edgeParams.Start = params.Start
+		edgeParams.End = edgeEnd
+		if len(entryPathValues) > 0 {
+			pathCounts, err := s.querySeriesCounts(ctx, "hits", "path", entryPathValues, edgeParams, truncUnit)
+			if err != nil {
+				return nil, err
+			}
+			for bucket, count := range pathCounts {
+				entryCounts[bucket] += count
+			}
+		}
+		if len(entryEventValues) > 0 {
+			eventCounts, err := s.querySeriesCounts(ctx, "events", "name", entryEventValues, edgeParams, truncUnit)
+			if err != nil {
+				return nil, err
+			}
+			for bucket, count := range eventCounts {
+				entryCounts[bucket] += count
+			}
+		}
+		if len(completionPathValues) > 0 {
+			pathCounts, err := s.querySeriesCounts(ctx, "hits", "path", completionPathValues, edgeParams, truncUnit)
+			if err != nil {
+				return nil, err
+			}
+			for bucket, count := range pathCounts {
+				completionCounts[bucket] += count
+			}
+		}
+		if len(completionEventValues) > 0 {
+			eventCounts, err := s.querySeriesCounts(ctx, "events", "name", completionEventValues, edgeParams, truncUnit)
+			if err != nil {
+				return nil, err
+			}
+			for bucket, count := range eventCounts {
+				completionCounts[bucket] += count
+			}
+		}
+	}
+
+	if window.Trailing != nil {
+		edgeStart := *window.Trailing
+		edgeParams := params
+		edgeParams.Start = edgeStart
+		edgeParams.End = params.End
+		if len(entryPathValues) > 0 {
+			pathCounts, err := s.querySeriesCounts(ctx, "hits", "path", entryPathValues, edgeParams, truncUnit)
+			if err != nil {
+				return nil, err
+			}
+			for bucket, count := range pathCounts {
+				entryCounts[bucket] += count
+			}
+		}
+		if len(entryEventValues) > 0 {
+			eventCounts, err := s.querySeriesCounts(ctx, "events", "name", entryEventValues, edgeParams, truncUnit)
+			if err != nil {
+				return nil, err
+			}
+			for bucket, count := range eventCounts {
+				entryCounts[bucket] += count
+			}
+		}
+		if len(completionPathValues) > 0 {
+			pathCounts, err := s.querySeriesCounts(ctx, "hits", "path", completionPathValues, edgeParams, truncUnit)
+			if err != nil {
+				return nil, err
+			}
+			for bucket, count := range pathCounts {
+				completionCounts[bucket] += count
+			}
+		}
+		if len(completionEventValues) > 0 {
+			eventCounts, err := s.querySeriesCounts(ctx, "events", "name", completionEventValues, edgeParams, truncUnit)
+			if err != nil {
+				return nil, err
+			}
+			for bucket, count := range eventCounts {
+				completionCounts[bucket] += count
+			}
+		}
+	}
+
+	buckets := buildSeriesBuckets(params.Start, params.End, truncUnit)
+	series := make([]api.FunnelSeriesPoint, 0, len(buckets))
+	for _, bucket := range buckets {
+		series = append(series, api.FunnelSeriesPoint{
+			Time:        bucket,
+			Entries:     entryCounts[bucket],
+			Completions: completionCounts[bucket],
+		})
+	}
+	return series, nil
+}
+
 func (s *Store) GetFunnelStats(ctx context.Context, funnelID uuid.UUID, params api.AnalyticsParams) (*api.FunnelStats, error) {
 	var funnel api.Funnel
 	var stepsJSON []byte
-	err := s.db.QueryRowContext(ctx, "SELECT id, name, steps FROM funnels WHERE id = ? AND site_id = ?", funnelID, params.SiteID).Scan(&funnel.ID, &funnel.Name, &stepsJSON)
+	err := s.db.QueryRowContext(ctx, "SELECT id, name, CAST(steps AS VARCHAR) FROM funnels WHERE id = ? AND site_id = ?", funnelID, params.SiteID).Scan(&funnel.ID, &funnel.Name, &stepsJSON)
 	if err != nil {
 		return nil, fmt.Errorf("funnel not found: %w", err)
 	}

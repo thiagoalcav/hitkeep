@@ -49,7 +49,8 @@ import { AuthService } from '../../../core/services/auth.service';
             [feedback]="false"
             class="w-full"
             placeholder="••••••••"
-            [ngClass]="{'ng-invalid ng-dirty': form.get('currentPassword')?.touched && form.get('currentPassword')?.invalid}"
+            [class.ng-invalid]="form.get('currentPassword')?.touched && form.get('currentPassword')?.invalid"
+            [class.ng-dirty]="form.get('currentPassword')?.dirty"
           ></p-password>
         </div>
 

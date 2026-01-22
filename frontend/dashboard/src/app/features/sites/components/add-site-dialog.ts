@@ -37,7 +37,8 @@ import { SiteService } from '../services/site.service';
             placeholder="example.com"
             class="w-full"
             (blur)="sanitizeInput()"
-            [ngClass]="{'ng-invalid ng-dirty': isInvalid()}" />
+            [class.ng-invalid]="isInvalid()"
+            [class.ng-dirty]="form.get('domain')?.dirty" />
 
           <!-- Validation Messages -->
           @if (isInvalid()) {

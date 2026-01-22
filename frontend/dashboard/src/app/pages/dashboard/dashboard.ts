@@ -1,5 +1,5 @@
-import { Component, effect, inject, signal, computed } from '@angular/core';
-import { CommonModule, DecimalPipe, DatePipe, NgOptimizedImage } from '@angular/common';
+import { Component, effect, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import { CommonModule, DatePipe, DecimalPipe, NgOptimizedImage } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 // PrimeNG
@@ -19,7 +19,7 @@ import { SiteService } from '../../features/sites/services/site.service';
 import { StatsService } from '../../features/analytics/services/stats.service';
 import { HitService } from '../../features/hits/services/hit.service';
 import { TrafficChart } from '../../features/analytics/components/traffic-chart';
-import {SiteFavicon} from '../../features/sites/components/site-favicon';
+import { SiteFavicon } from '../../features/sites/components/site-favicon';
 import { MetricList } from '../../features/analytics/components/metric-list';
 import { GoalList } from '../../features/analytics/components/goal-list';
 import { FunnelList } from '../../features/analytics/components/funnel-list';
@@ -27,6 +27,9 @@ import { FunnelManager } from '../../features/funnels/components/funnel-manager'
 import { FunnelViewer } from '../../features/funnels/components/funnel-viewer';
 import { Funnel } from '../../core/models/analytics.types';
 import { MetricStat } from '../../core/models/analytics.types';
+import { PageHeader } from '../../core/components/page-header/page-header';
+import { PageBreadcrumb, PageBreadcrumbItem } from '../../core/components/page-breadcrumb/page-breadcrumb';
+import { KpiCard } from '../../features/analytics/components/kpi-card';
 
 interface RangeSelectEvent {
   value: {
@@ -40,25 +43,36 @@ type MetricFilter = {
   type: MetricFilterType;
   value: string;
 };
+type KpiCardData = {
+  label: string;
+  value: number | string;
+  loading: boolean;
+  valueClass: string;
+};
 @Component({
   selector: 'app-dashboard',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, DecimalPipe, DatePipe,
+    CommonModule, FormsModule, DatePipe,
     CardModule, TableModule, SelectModule, ButtonModule,
     IconFieldModule, InputIconModule, InputTextModule,
     SkeletonModule, DialogModule, DatePickerModule, TooltipModule,
-    TrafficChart, SiteFavicon, MetricList, GoalList, FunnelList, FunnelManager, FunnelViewer, NgOptimizedImage
+    PageHeader,
+    PageBreadcrumb,
+    KpiCard,
+    TrafficChart, MetricList, GoalList, FunnelList, FunnelManager, FunnelViewer, NgOptimizedImage
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
-  providers: [DatePipe]
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [DatePipe, DecimalPipe]
 })
 export class Dashboard {
   protected siteService = inject(SiteService);
   protected statsService = inject(StatsService);
   protected hitService = inject(HitService);
   private datePipe = inject(DatePipe);
+  private decimalPipe = inject(DecimalPipe);
   protected timeRanges = [
     {label: 'Last 24 Hours', value: '24h'},
     {label: 'Last 7 Days', value: '7d'},
@@ -67,6 +81,7 @@ export class Dashboard {
     {label: 'Custom Range', value: 'custom'}
   ];
   protected selectedRange = signal(this.timeRanges[2]);
+  private readonly autoRefreshIntervalMs = 30000;
   protected isCustomRangeVisible = signal(false);
   protected customRangeDates = signal<Date[] | null>(null);
   protected showFunnelManager = signal(false);
@@ -97,6 +112,60 @@ export class Dashboard {
       params.append('filter', `${filter.type}:${filter.value}`);
     }
     return `/api/sites/${site.id}/hits/export?${params.toString()}`;
+  });
+  protected readonly kpiCards = computed<KpiCardData[]>(() => {
+    const stats = this.statsService.stats();
+    const loading = this.statsService.isLoading();
+    const baseClass = 'text-2xl xl:text-3xl font-bold';
+    const liveVisitors = stats?.live_visitors ?? 0;
+    const bounceValue = this.decimalPipe.transform(stats?.bounce_rate ?? 0, '1.0-1') ?? '0';
+    const pagesValue = this.decimalPipe.transform(stats?.pages_per_session ?? 0, '1.1-2') ?? '0';
+
+    return [
+      {
+        label: 'Live Visitors',
+        value: liveVisitors,
+        loading,
+        valueClass: liveVisitors > 0 ? `${baseClass} text-green-600 dark:text-green-400 animate-pulse` : baseClass
+      },
+      {
+        label: 'Pageviews',
+        value: stats?.total_pageviews ?? 0,
+        loading,
+        valueClass: baseClass
+      },
+      {
+        label: 'Unique Sessions',
+        value: stats?.unique_sessions ?? 0,
+        loading,
+        valueClass: baseClass
+      },
+      {
+        label: 'Bounce Rate',
+        value: `${bounceValue}%`,
+        loading,
+        valueClass: baseClass
+      },
+      {
+        label: 'Avg. Duration',
+        value: this.formatDuration(stats?.avg_session_duration || 0),
+        loading,
+        valueClass: baseClass
+      },
+      {
+        label: 'Pages / Session',
+        value: pagesValue,
+        loading,
+        valueClass: baseClass
+      }
+    ];
+  });
+  protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
+    const site = this.siteService.activeSite();
+    if (!site) {
+      return [{ label: 'Overview', isCurrent: true }];
+    }
+    return [{ label: site.domain, favicon: site, isCurrent: true }];
   });
 
   private searchSubject = new Subject<string>();
@@ -139,22 +208,24 @@ export class Dashboard {
     effect(() => {
       const site = this.siteService.activeSite();
       const dates = this.getCurrentDateRange();
-      const filters = this.activeFilters();
       if (site && dates) {
-        this.statsService.loadStats(site.id, dates.from, dates.to, filters);
+        this.loadStatsForCurrentRange();
         this.refreshHits();
       }
+    });
+
+    effect((onCleanup) => {
+      const site = this.siteService.activeSite();
+      const dates = this.getCurrentDateRange();
+      if (!site || !dates) return;
+      const timerId = setInterval(() => this.refreshStatsOnly(), this.autoRefreshIntervalMs);
+      onCleanup(() => clearInterval(timerId));
     });
   }
 
   refreshAll() {
-    const site = this.siteService.activeSite();
-    const dates = this.getCurrentDateRange();
-    const filters = this.activeFilters();
-    if (site && dates) {
-      this.statsService.loadStats(site.id, dates.from, dates.to, filters);
-      this.refreshHits();
-    }
+    this.loadStatsForCurrentRange();
+    this.refreshHits();
   }
 
   onSearch(event: Event) {
@@ -190,6 +261,19 @@ export class Dashboard {
       this.lastTableEvent.first = 0;
       this.loadHits(this.lastTableEvent);
     }
+  }
+
+  private refreshStatsOnly() {
+    if (this.statsService.isLoading()) return;
+    this.loadStatsForCurrentRange();
+  }
+
+  private loadStatsForCurrentRange() {
+    const site = this.siteService.activeSite();
+    const dates = this.getCurrentDateRange();
+    const filters = this.activeFilters();
+    if (!site || !dates) return;
+    this.statsService.loadStats(site.id, dates.from, dates.to, filters);
   }
 
   onRangeChange(event: RangeSelectEvent) {

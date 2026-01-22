@@ -28,8 +28,8 @@ describe('SiteSelector', () => {
     expect(select.attributes['inputId']).toBe('site-dropdown');
   });
 
-  it('A11Y: New Site button should have aria-label', () => {
-    const btn = fixture.debugElement.query(By.css('p-button'));
-    expect(btn.attributes['ariaLabel']).toBeTruthy();
+  it('A11Y: Add Site button should have aria-label', () => {
+    const btn = fixture.debugElement.query(By.css('button[aria-label="Add a new Site"]'));
+    expect(btn).toBeTruthy();
   });
 });

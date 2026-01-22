@@ -60,6 +60,59 @@ func (s *Server) handleGetGoals() http.HandlerFunc {
 	}
 }
 
+func (s *Server) handleGetGoalTimeseries() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		siteID, ok := s.validateSiteOwnership(w, r)
+		if !ok {
+			return
+		}
+
+		now := time.Now().UTC()
+		end := now.AddDate(0, 0, 1)
+		start := end.AddDate(0, 0, -30)
+
+		q := r.URL.Query()
+		if fromStr := q.Get("from"); fromStr != "" {
+			if parsed, err := time.Parse(time.RFC3339, fromStr); err == nil {
+				start = parsed
+			}
+		}
+		if toStr := q.Get("to"); toStr != "" {
+			if parsed, err := time.Parse(time.RFC3339, toStr); err == nil {
+				end = parsed
+			}
+		}
+
+		var goalIDs []uuid.UUID
+		for _, rawID := range q["goal_id"] {
+			id, err := uuid.Parse(rawID)
+			if err != nil {
+				http.Error(w, "Invalid goal_id", http.StatusBadRequest)
+				return
+			}
+			goalIDs = append(goalIDs, id)
+		}
+
+		params := api.AnalyticsParams{
+			SiteID: siteID,
+			Start:  start,
+			End:    end,
+		}
+
+		series, err := s.store.GetGoalTimeseries(r.Context(), params, goalIDs)
+		if err != nil {
+			slog.Error("Failed to get goal timeseries", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(series); err != nil {
+			slog.Error("Failed to encode response", "error", err)
+		}
+	}
+}
+
 func (s *Server) handleCreateGoal() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		siteID, ok := s.validateSiteOwnership(w, r)
@@ -133,6 +186,59 @@ func (s *Server) handleGetFunnels() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(funnels); err != nil {
+			slog.Error("Failed to encode response", "error", err)
+		}
+	}
+}
+
+func (s *Server) handleGetFunnelTimeseries() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		siteID, ok := s.validateSiteOwnership(w, r)
+		if !ok {
+			return
+		}
+
+		now := time.Now().UTC()
+		end := now.AddDate(0, 0, 1)
+		start := end.AddDate(0, 0, -30)
+
+		q := r.URL.Query()
+		if fromStr := q.Get("from"); fromStr != "" {
+			if parsed, err := time.Parse(time.RFC3339, fromStr); err == nil {
+				start = parsed
+			}
+		}
+		if toStr := q.Get("to"); toStr != "" {
+			if parsed, err := time.Parse(time.RFC3339, toStr); err == nil {
+				end = parsed
+			}
+		}
+
+		var funnelIDs []uuid.UUID
+		for _, rawID := range q["funnel_id"] {
+			id, err := uuid.Parse(rawID)
+			if err != nil {
+				http.Error(w, "Invalid funnel_id", http.StatusBadRequest)
+				return
+			}
+			funnelIDs = append(funnelIDs, id)
+		}
+
+		params := api.AnalyticsParams{
+			SiteID: siteID,
+			Start:  start,
+			End:    end,
+		}
+
+		series, err := s.store.GetFunnelTimeseries(r.Context(), params, funnelIDs)
+		if err != nil {
+			slog.Error("Failed to get funnel timeseries", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(series); err != nil {
 			slog.Error("Failed to encode response", "error", err)
 		}
 	}

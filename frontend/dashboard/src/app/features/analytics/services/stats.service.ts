@@ -10,12 +10,25 @@ export class StatsService {
   readonly stats = signal<SiteStats | null>(null);
   readonly isLoading = signal<boolean>(false);
 
-  loadStats(siteId: string, from: string, to: string, filters: Array<{ type: string; value: string }> = []) {
+  loadStats(
+    siteId: string,
+    from: string,
+    to: string,
+    filters: Array<{ type: string; value: string }> = [],
+    goalIds: string[] = [],
+    funnelIds: string[] = []
+  ) {
     this.isLoading.set(true);
 
     let params = new HttpParams().set('from', from).set('to', to);
     for (const filter of filters) {
       params = params.append('filter', `${filter.type}:${filter.value}`);
+    }
+    for (const id of goalIds) {
+      params = params.append('goal_id', id);
+    }
+    for (const id of funnelIds) {
+      params = params.append('funnel_id', id);
     }
 
     this.http.get<SiteStats>(`/api/sites/${siteId}/stats`, { params })

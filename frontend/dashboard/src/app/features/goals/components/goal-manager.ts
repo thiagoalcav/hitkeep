@@ -31,8 +31,7 @@ import { Goal } from '../../../core/models/analytics.types';
                 <tr>
                     <td class="font-medium">{{goal.name}}</td>
                     <td>
-                        <span class="text-xs font-bold px-2 py-1 rounded" 
-                              [ngClass]="{'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300': goal.type === 'event', 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300': goal.type === 'path'}">
+                        <span [class]="goalTypeClass(goal.type)">
                             {{goal.type}}
                         </span>
                     </td>
@@ -115,6 +114,12 @@ export class GoalManager implements OnChanges {
     type: 'path',
     value: ''
   };
+  protected goalTypeClass(type: Goal['type']) {
+    const base = 'text-xs font-bold px-2 py-1 rounded';
+    return type === 'event'
+      ? `${base} bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300`
+      : `${base} bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300`;
+  }
 
   ngOnChanges() {
     if (this.visible && this.siteId) {

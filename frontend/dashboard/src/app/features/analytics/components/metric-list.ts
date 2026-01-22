@@ -45,7 +45,7 @@ import { MetricStat } from '../../../core/models/analytics.types';
                 }
                 @if (linkInfo(item); as info) {
                   @if (info.faviconUrl) {
-                    <img [ngSrc]="info.faviconUrl" class="size-4 shrink-0" [width]="16" [height]="16" alt="" />
+                    <img [ngSrc]="info.faviconUrl" class="size-4 shrink-0 rounded-full" [width]="16" [height]="16" alt="" />
                   }
                   <span class="truncate font-medium text-[var(--p-text-color)]" [title]="titleForItem(item)">
                     {{ displayLabel(item) }}

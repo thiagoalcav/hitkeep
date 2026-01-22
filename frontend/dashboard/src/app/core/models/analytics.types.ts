@@ -32,6 +32,17 @@ export interface ChartDataPoint {
   visitors: number;
 }
 
+export interface GoalSeriesPoint {
+  time: string;
+  conversions: number;
+}
+
+export interface FunnelSeriesPoint {
+  time: string;
+  entries: number;
+  completions: number;
+}
+
 export interface MetricStat {
   name: string;
   value: number;

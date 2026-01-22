@@ -1,7 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
-import {Router, RouterLink} from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {
   FormBuilder,
   FormGroup,
@@ -18,6 +17,7 @@ import { CheckboxModule } from 'primeng/checkbox';
 
 // Corrected path to Core
 import { Brand } from '../../core/components/brand/brand';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -37,8 +37,8 @@ import { Brand } from '../../core/components/brand/brand';
 })
 export class Login {
   private fb = inject(FormBuilder);
-  private http = inject(HttpClient);
   private router = inject(Router);
+  private auth = inject(AuthService);
 
   protected isLoading = false;
   protected errorMessage: string | null = null;
@@ -61,7 +61,7 @@ export class Login {
 
     const { email, password, rememberMe } = this.loginForm.value;
 
-    this.http.post('/api/login', { email, password, remember_me: rememberMe })
+    this.auth.login({ email, password, remember_me: rememberMe })
       .pipe(
         finalize(() => this.isLoading = false)
       )

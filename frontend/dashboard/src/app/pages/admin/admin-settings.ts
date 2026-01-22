@@ -7,6 +7,8 @@ import { SelectModule } from 'primeng/select';
 import { CardModule } from 'primeng/card';
 import { TabsModule } from 'primeng/tabs';
 import { HttpClient } from '@angular/common/http';
+import { PageHeader } from '../../core/components/page-header/page-header';
+import { PageBreadcrumb, PageBreadcrumbItem } from '../../core/components/page-breadcrumb/page-breadcrumb';
 
 interface User {
   id: string;
@@ -25,95 +27,9 @@ interface Site {
 @Component({
   selector: 'app-admin-settings',
   standalone: true,
-  imports: [CommonModule, FormsModule, TableModule, ButtonModule, SelectModule, CardModule, TabsModule],
-  template: `
-    <div class="max-w-6xl mx-auto p-6">
-      <h1 class="text-2xl font-bold mb-6">Instance Administration</h1>
-      
-      <p-tabs value="0">
-        <p-tablist>
-            <p-tab value="0">Users</p-tab>
-            <p-tab value="1">Sites</p-tab>
-        </p-tablist>
-        <p-tabpanels>
-            <p-tabpanel value="0">
-                <p-card>
-                    <h2 class="text-lg font-semibold mb-4">Users</h2>
-                    
-                    <p-table [value]="users()" [loading]="isLoading()">
-                    <ng-template pTemplate="header">
-                        <tr>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Created</th>
-                        <th>Actions</th>
-                        </tr>
-                    </ng-template>
-                    
-                    <ng-template pTemplate="body" let-user>
-                        <tr>
-                        <td>{{ user.email }}</td>
-                        <td>
-                            <p-select
-                            [options]="roleOptions"
-                            [(ngModel)]="user.instance_role"
-                            (onChange)="updateUserRole(user)"
-                            optionLabel="label"
-                            optionValue="value"
-                            [disabled]="user.id === currentUserId()"
-                            class="w-40" />
-                        </td>
-                        <td>{{ user.created_at | date:'short' }}</td>
-                        <td>
-                            <p-button
-                            icon="pi pi-trash"
-                            severity="danger"
-                            [text]="true"
-                            (onClick)="deleteUser(user)"
-                            [disabled]="user.id === currentUserId()" />
-                        </td>
-                        </tr>
-                    </ng-template>
-                    </p-table>
-                </p-card>
-            </p-tabpanel>
-            <p-tabpanel value="1">
-                <p-card>
-                    <h2 class="text-lg font-semibold mb-4">Sites</h2>
-                    
-                    <p-table [value]="sites()" [loading]="isLoadingSites()">
-                    <ng-template pTemplate="header">
-                        <tr>
-                        <th>Domain</th>
-                        <th>Created</th>
-                        <th>Actions</th>
-                        </tr>
-                    </ng-template>
-                    
-                    <ng-template pTemplate="body" let-site>
-                        <tr>
-                        <td>
-                            <a [href]="'https://' + site.domain" target="_blank" class="text-primary hover:underline">
-                                {{ site.domain }}
-                            </a>
-                        </td>
-                        <td>{{ site.created_at | date:'short' }}</td>
-                        <td>
-                            <p-button
-                            icon="pi pi-trash"
-                            severity="danger"
-                            [text]="true"
-                            (onClick)="deleteSite(site)" />
-                        </td>
-                        </tr>
-                    </ng-template>
-                    </p-table>
-                </p-card>
-            </p-tabpanel>
-        </p-tabpanels>
-      </p-tabs>
-    </div>
-  `
+  imports: [CommonModule, FormsModule, TableModule, ButtonModule, SelectModule, CardModule, TabsModule, PageHeader, PageBreadcrumb],
+  templateUrl: './admin-settings.html',
+  styleUrl: './admin-settings.css'
 })
 export class AdminSettings implements OnInit {
   private http = inject(HttpClient);
@@ -123,6 +39,7 @@ export class AdminSettings implements OnInit {
   protected isLoading = signal(false);
   protected isLoadingSites = signal(false);
   protected currentUserId = signal<string>('');
+  protected readonly breadcrumbItems: PageBreadcrumbItem[] = [{ label: 'Instance Administration', isCurrent: true }];
   
   protected roleOptions = [
     { label: 'Instance Owner', value: 'owner' },

@@ -2,20 +2,28 @@ import { Component, input, output, ChangeDetectionStrategy } from '@angular/core
 
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
-import { ButtonModule } from 'primeng/button';
 import { SkeletonModule } from 'primeng/skeleton';
 import { Site } from '../../../core/models/analytics.types';
 import {SiteFavicon} from './site-favicon';
 @Component({
   selector: 'app-site-selector',
   standalone: true,
-  imports: [FormsModule, SelectModule, ButtonModule, SkeletonModule, SiteFavicon],
+  imports: [FormsModule, SelectModule, SkeletonModule, SiteFavicon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-2 w-full" role="region" aria-label="Site Selection">
-      <label for="site-dropdown" class="text-xs font-semibold text-[var(--p-text-muted-color)] uppercase px-2">
-        Site
-      </label>
+      <div class="flex items-center justify-between">
+        <label for="site-dropdown" class="text-xs font-semibold text-[var(--p-text-muted-color)] uppercase">
+          Sites
+        </label>
+        <button
+          type="button"
+          (click)="addClicked.emit()"
+          class="cursor-pointer flex items-center justify-center size-6 rounded-md border border-surface-200 dark:border-surface-700 text-muted-color hover:text-[var(--p-text-color)] hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+          aria-label="Add a new Site">
+          <i class="pi pi-plus text-xs" aria-hidden="true"></i>
+        </button>
+      </div>
 
       @if (loading()) {
         <p-skeleton height="40px" class="rounded-md" />
@@ -55,7 +63,7 @@ import {SiteFavicon} from './site-favicon';
             <div class="flex items-center gap-1 px-1">
               <button
                 (click)="settingsClicked.emit()"
-                class="flex-1 flex items-center justify-center gap-2 p-1.5 text-xs font-medium text-muted-color hover:text-color hover:bg-surface-100 dark:hover:bg-surface-800 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+                class="cursor-pointer flex-1 flex items-center justify-center gap-2 p-1.5 text-xs font-medium text-muted-color hover:text-color hover:bg-surface-100 dark:hover:bg-surface-800 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
                 aria-label="Open Site Settings">
                 <i class="pi pi-cog"></i>
                 <span>Settings</span>
@@ -63,7 +71,7 @@ import {SiteFavicon} from './site-favicon';
               <div class="w-px h-4 bg-surface-200 dark:bg-surface-700"></div>
               <button
                 (click)="trackingClicked.emit()"
-                class="flex-1 flex items-center justify-center gap-2 p-1.5 text-xs font-medium text-muted-color hover:text-color hover:bg-surface-100 dark:hover:bg-surface-800 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+                class="cursor-pointer flex-1 flex items-center justify-center gap-2 p-1.5 text-xs font-medium text-muted-color hover:text-color hover:bg-surface-100 dark:hover:bg-surface-800 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
                 aria-label="Get Tracking Code">
                 <i class="pi pi-code"></i>
                 <span>Code</span>
@@ -71,13 +79,6 @@ import {SiteFavicon} from './site-favicon';
             </div>
           }
 
-          <p-button
-            [label]="sites().length > 0 ? 'New Site' : 'Create Site'"
-            [icon]="sites().length > 0 ? 'pi pi-plus' : 'pi pi-plus-circle'"
-            [size]="sites().length > 0 ? 'small' : 'large'"
-            styleClass="w-full"
-            (onClick)="addClicked.emit()"
-            ariaLabel="Create a new Site configuration" />
         </div>
       }
     </div>

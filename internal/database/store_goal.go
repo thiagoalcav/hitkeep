@@ -90,7 +90,7 @@ func (s *Store) CreateFunnel(ctx context.Context, funnel *api.Funnel) error {
 
 func (s *Store) GetFunnels(ctx context.Context, siteID uuid.UUID) ([]api.Funnel, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, site_id, name, steps, created_at
+		SELECT id, site_id, name, CAST(steps AS VARCHAR), created_at
 		FROM funnels
 		WHERE site_id = ?
 		ORDER BY created_at DESC`,

@@ -29,7 +29,8 @@
         id="email"
         formControlName="email"
         class="w-full"
-        [ngClass]="{'ng-invalid ng-dirty': loginForm.get('email')?.touched && loginForm.get('email')?.invalid}"
+        [class.ng-invalid]="loginForm.get('email')?.touched && loginForm.get('email')?.invalid"
+        [class.ng-dirty]="loginForm.get('email')?.dirty"
         placeholder="you@example.com"
       />
       @if (loginForm.get('email')?.touched && loginForm.get('email')?.invalid) {
@@ -53,7 +54,8 @@
         class="w-full"
         inputclass="w-full"
         placeholder="••••••••"
-        [ngClass]="{'ng-invalid ng-dirty': loginForm.get('password')?.touched && loginForm.get('password')?.invalid}"
+        [class.ng-invalid]="loginForm.get('password')?.touched && loginForm.get('password')?.invalid"
+        [class.ng-dirty]="loginForm.get('password')?.dirty"
       ></p-password>
       @if (loginForm.get('password')?.touched && loginForm.get('password')?.invalid) {
         <small class="text-red-500 text-xs">Password is required.</small>

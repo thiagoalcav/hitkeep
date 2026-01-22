@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { GoalSeriesPoint, FunnelSeriesPoint } from '../models/analytics.types';
 
 export interface Site {
   id: string;
@@ -34,6 +35,7 @@ export interface ChartDataPoint {
   pageviews: number;
   visitors: number;
 }
+
 
 export interface SiteStats {
   total_pageviews: number;
@@ -177,6 +179,16 @@ export class AnalyticsService {
     return this.http.get<Goal[]>(`/api/sites/${siteId}/goals`);
   }
 
+  getGoalTimeseries(siteId: string, from?: string, to?: string, goalIds: string[] = []): Observable<GoalSeriesPoint[]> {
+    let params = new HttpParams();
+    if (from) params = params.set('from', from);
+    if (to) params = params.set('to', to);
+    for (const id of goalIds) {
+      params = params.append('goal_id', id);
+    }
+    return this.http.get<GoalSeriesPoint[]>(`/api/sites/${siteId}/goals/timeseries`, { params });
+  }
+
   createGoal(siteId: string, goal: Partial<Goal>): Observable<void> {
     return this.http.post<void>(`/api/sites/${siteId}/goals`, goal);
   }
@@ -188,6 +200,16 @@ export class AnalyticsService {
   // Funnels
   getFunnels(siteId: string): Observable<Funnel[]> {
     return this.http.get<Funnel[]>(`/api/sites/${siteId}/funnels`);
+  }
+
+  getFunnelTimeseries(siteId: string, from?: string, to?: string, funnelIds: string[] = []): Observable<FunnelSeriesPoint[]> {
+    let params = new HttpParams();
+    if (from) params = params.set('from', from);
+    if (to) params = params.set('to', to);
+    for (const id of funnelIds) {
+      params = params.append('funnel_id', id);
+    }
+    return this.http.get<FunnelSeriesPoint[]>(`/api/sites/${siteId}/funnels/timeseries`, { params });
   }
 
   createFunnel(siteId: string, funnel: Partial<Funnel>): Observable<void> {

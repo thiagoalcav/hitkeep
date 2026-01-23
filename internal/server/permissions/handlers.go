@@ -1,4 +1,4 @@
-package server
+package permissions
 
 import (
 	"encoding/json"
@@ -7,29 +7,42 @@ import (
 
 	"github.com/google/uuid"
 
-	"hitkeep/internal/auth"
+	authcore "hitkeep/internal/auth"
+	"hitkeep/internal/server/shared"
 )
 
-func (s *Server) handleGetUserPermissions() http.HandlerFunc {
+type handler struct {
+	ctx *shared.Context
+}
+
+func Register(mux *http.ServeMux, ctx *shared.Context) {
+	h := &handler{ctx: ctx}
+	mux.HandleFunc("GET /api/user/permissions", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetUserPermissions()))
+}
+
+func (h *handler) handleGetUserPermissions() http.HandlerFunc {
 	type response struct {
-		InstanceRole auth.InstanceRole `json:"instance_role"`
-		Permissions  []auth.Permission `json:"permissions"`
+		InstanceRole authcore.InstanceRole `json:"instance_role"`
+		Permissions  []authcore.Permission `json:"permissions"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := getUserIDFromContext(r)
+		userID := shared.GetUserIDFromContext(r)
 		if userID == uuid.Nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		if s.store == nil {
+		if h.ctx.Store == nil {
 			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
 			return
 		}
 
 		// Get instance role
-		instanceRole, err := s.store.GetInstanceRole(r.Context(), userID)
+		instanceRole, err := h.ctx.Store.GetInstanceRole(r.Context(), userID)
 		if err != nil {
 			slog.Error("Failed to get instance role", "error", err, "user_id", userID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -60,13 +73,13 @@ func (s *Server) handleGetUserPermissions() http.HandlerFunc {
 		// But I'll do that in a separate step if needed.
 		// Actually, I can just iterate over all known permissions and check HasPermission.
 
-		allInstancePermissions := []auth.Permission{
-			auth.PermInstanceManageUsers,
-			auth.PermInstanceViewAllSites,
-			auth.PermInstanceManageSettings,
+		allInstancePermissions := []authcore.Permission{
+			authcore.PermInstanceManageUsers,
+			authcore.PermInstanceViewAllSites,
+			authcore.PermInstanceManageSettings,
 		}
 
-		var perms []auth.Permission
+		var perms []authcore.Permission
 		for _, p := range allInstancePermissions {
 			if instanceRole.HasPermission(p) {
 				perms = append(perms, p)

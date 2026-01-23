@@ -1,4 +1,4 @@
-package server
+package permissions
 
 import (
 	"context"
@@ -7,12 +7,41 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"hitkeep/internal/auth"
+	"hitkeep/internal/config"
+	"hitkeep/internal/database"
+	"hitkeep/internal/server/shared"
 )
 
+func setupTestEnv(t *testing.T) (*shared.Context, *database.Store, uuid.UUID) {
+	t.Helper()
+
+	store := database.NewStore(":memory:")
+	if err := store.Connect(); err != nil {
+		t.Fatalf("failed to connect to test db: %v", err)
+	}
+	if err := store.Migrate(context.Background()); err != nil {
+		t.Fatalf("failed to migrate test db: %v", err)
+	}
+
+	userID, err := store.CreateUser(context.Background(), "test@example.com", "hashed_secret")
+	if err != nil {
+		t.Fatalf("failed to create test user: %v", err)
+	}
+
+	ctx := &shared.Context{
+		Store:  store,
+		Config: &config.Config{},
+	}
+
+	return ctx, store, userID
+}
+
 func TestHandleGetUserPermissions(t *testing.T) {
-	s, _, userID := setupTestEnv(t)
-	defer s.store.Close()
+	ctx, store, userID := setupTestEnv(t)
+	defer store.Close()
 
 	tests := []struct {
 		name           string
@@ -60,12 +89,11 @@ func TestHandleGetUserPermissions(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/api/user/permissions", nil)
 
 			if tc.injectAuth {
-				ctx := context.WithValue(req.Context(), UserIDKey, userID)
-				req = req.WithContext(ctx)
+				req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, userID))
 			}
 
 			w := httptest.NewRecorder()
-			handler := s.handleGetUserPermissions()
+			handler := (&handler{ctx: ctx}).handleGetUserPermissions()
 			handler.ServeHTTP(w, req)
 
 			if w.Code != tc.expectedStatus {

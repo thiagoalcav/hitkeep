@@ -1,4 +1,4 @@
-package server
+package user
 
 import (
 	"crypto/md5" //nolint:gosec // Gravatar requires MD5 hashes for avatar lookups.
@@ -15,19 +15,36 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/server/shared"
 )
+
+type handler struct {
+	ctx *shared.Context
+}
+
+func Register(mux *http.ServeMux, ctx *shared.Context) {
+	h := &handler{ctx: ctx}
+	mux.HandleFunc("GET /api/user/profile", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetUserProfile()))
+	mux.HandleFunc("GET /api/user/avatar", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetUserAvatar()))
+}
 
 const gravatarBaseURL = "https://www.gravatar.com/avatar/"
 
-func (s *Server) handleGetUserProfile() http.HandlerFunc {
+func (h *handler) handleGetUserProfile() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := getUserIDFromContext(r)
+		userID := shared.GetUserIDFromContext(r)
 		if userID == uuid.Nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		user, err := s.store.GetUserByID(r.Context(), userID)
+		user, err := h.ctx.Store.GetUserByID(r.Context(), userID)
 		if err != nil {
 			slog.Error("Failed to load user profile", "error", err, "user_id", userID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -52,15 +69,15 @@ func (s *Server) handleGetUserProfile() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleGetUserAvatar() http.HandlerFunc {
+func (h *handler) handleGetUserAvatar() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := getUserIDFromContext(r)
+		userID := shared.GetUserIDFromContext(r)
 		if userID == uuid.Nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		user, err := s.store.GetUserByID(r.Context(), userID)
+		user, err := h.ctx.Store.GetUserByID(r.Context(), userID)
 		if err != nil {
 			slog.Error("Failed to load user for avatar", "error", err, "user_id", userID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

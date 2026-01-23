@@ -1,4 +1,4 @@
-package server
+package goals
 
 import (
 	"context"
@@ -12,12 +12,59 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	authcore "hitkeep/internal/auth"
+	"hitkeep/internal/server/shared"
 )
+
+type handler struct {
+	ctx *shared.Context
+}
+
+func Register(mux *http.ServeMux, ctx *shared.Context) {
+	h := &handler{ctx: ctx}
+	mux.HandleFunc("GET /api/sites/{id}/goals", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetGoals()))
+	mux.HandleFunc("GET /api/sites/{id}/goals/timeseries", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetGoalTimeseries()))
+	mux.HandleFunc("POST /api/sites/{id}/goals", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteManageGoals,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleCreateGoal()))
+	mux.HandleFunc("DELETE /api/sites/{id}/goals/{goalID}", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteManageGoals,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleDeleteGoal()))
+
+	mux.HandleFunc("GET /api/sites/{id}/funnels", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetFunnels()))
+	mux.HandleFunc("GET /api/sites/{id}/funnels/timeseries", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetFunnelTimeseries()))
+	mux.HandleFunc("POST /api/sites/{id}/funnels", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteManageGoals,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleCreateFunnel()))
+	mux.HandleFunc("DELETE /api/sites/{id}/funnels/{funnelID}", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteManageGoals,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleDeleteFunnel()))
+	mux.HandleFunc("GET /api/sites/{id}/funnels/{funnelID}/stats", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetFunnelStats()))
+}
 
 // Helper to validate user access to a site.
 // Returns the siteID and true if authorized, otherwise handles the error response and returns false.
-func (s *Server) validateSiteOwnership(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
-	userID := getUserIDFromContext(r)
+func (h *handler) validateSiteOwnership(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
+	userID := shared.GetUserIDFromContext(r)
 	if userID == uuid.Nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return uuid.Nil, false
@@ -31,7 +78,7 @@ func (s *Server) validateSiteOwnership(w http.ResponseWriter, r *http.Request) (
 	}
 
 	// Verify ownership
-	site, err := s.store.GetSite(r.Context(), siteID, userID)
+	site, err := h.ctx.Store.GetSite(r.Context(), siteID, userID)
 	if err != nil || site == nil {
 		http.Error(w, "Site not found", http.StatusNotFound)
 		return uuid.Nil, false
@@ -41,14 +88,14 @@ func (s *Server) validateSiteOwnership(w http.ResponseWriter, r *http.Request) (
 
 // Goals
 
-func (s *Server) handleGetGoals() http.HandlerFunc {
+func (h *handler) handleGetGoals() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		siteID, ok := s.validateSiteOwnership(w, r)
+		siteID, ok := h.validateSiteOwnership(w, r)
 		if !ok {
 			return
 		}
 
-		goals, err := s.store.GetGoals(r.Context(), siteID)
+		goals, err := h.ctx.Store.GetGoals(r.Context(), siteID)
 		if err != nil {
 			slog.Error("Failed to get goals", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -62,16 +109,16 @@ func (s *Server) handleGetGoals() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleGetGoalTimeseries() http.HandlerFunc {
-	return s.handleTimeseries("goal_id", "Invalid goal_id", "Failed to get goal timeseries",
+func (h *handler) handleGetGoalTimeseries() http.HandlerFunc {
+	return h.handleTimeseries("goal_id", "Invalid goal_id", "Failed to get goal timeseries",
 		func(ctx context.Context, params api.AnalyticsParams, ids []uuid.UUID) (any, error) {
-			return s.store.GetGoalTimeseries(ctx, params, ids)
+			return h.ctx.Store.GetGoalTimeseries(ctx, params, ids)
 		})
 }
 
-func (s *Server) handleCreateGoal() http.HandlerFunc {
+func (h *handler) handleCreateGoal() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		siteID, ok := s.validateSiteOwnership(w, r)
+		siteID, ok := h.validateSiteOwnership(w, r)
 		if !ok {
 			return
 		}
@@ -90,7 +137,7 @@ func (s *Server) handleCreateGoal() http.HandlerFunc {
 		req.SiteID = siteID
 		req.CreatedAt = time.Now()
 
-		if err := s.store.CreateGoal(r.Context(), &req); err != nil {
+		if err := h.ctx.Store.CreateGoal(r.Context(), &req); err != nil {
 			slog.Error("Failed to create goal", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
@@ -100,9 +147,9 @@ func (s *Server) handleCreateGoal() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleDeleteGoal() http.HandlerFunc {
+func (h *handler) handleDeleteGoal() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		siteID, ok := s.validateSiteOwnership(w, r)
+		siteID, ok := h.validateSiteOwnership(w, r)
 		if !ok {
 			return
 		}
@@ -114,7 +161,7 @@ func (s *Server) handleDeleteGoal() http.HandlerFunc {
 			return
 		}
 
-		if err := s.store.DeleteGoal(r.Context(), goalID, siteID); err != nil {
+		if err := h.ctx.Store.DeleteGoal(r.Context(), goalID, siteID); err != nil {
 			slog.Error("Failed to delete goal", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
@@ -126,14 +173,14 @@ func (s *Server) handleDeleteGoal() http.HandlerFunc {
 
 // Funnels
 
-func (s *Server) handleGetFunnels() http.HandlerFunc {
+func (h *handler) handleGetFunnels() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		siteID, ok := s.validateSiteOwnership(w, r)
+		siteID, ok := h.validateSiteOwnership(w, r)
 		if !ok {
 			return
 		}
 
-		funnels, err := s.store.GetFunnels(r.Context(), siteID)
+		funnels, err := h.ctx.Store.GetFunnels(r.Context(), siteID)
 		if err != nil {
 			slog.Error("Failed to get funnels", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -147,21 +194,21 @@ func (s *Server) handleGetFunnels() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleGetFunnelTimeseries() http.HandlerFunc {
-	return s.handleTimeseries("funnel_id", "Invalid funnel_id", "Failed to get funnel timeseries",
+func (h *handler) handleGetFunnelTimeseries() http.HandlerFunc {
+	return h.handleTimeseries("funnel_id", "Invalid funnel_id", "Failed to get funnel timeseries",
 		func(ctx context.Context, params api.AnalyticsParams, ids []uuid.UUID) (any, error) {
-			return s.store.GetFunnelTimeseries(ctx, params, ids)
+			return h.ctx.Store.GetFunnelTimeseries(ctx, params, ids)
 		})
 }
 
-func (s *Server) handleTimeseries(
+func (h *handler) handleTimeseries(
 	idParam string,
 	invalidIDMessage string,
 	logMessage string,
 	fetch func(context.Context, api.AnalyticsParams, []uuid.UUID) (any, error),
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		siteID, ok := s.validateSiteOwnership(w, r)
+		siteID, ok := h.validateSiteOwnership(w, r)
 		if !ok {
 			return
 		}
@@ -230,9 +277,9 @@ func parseUUIDQueryParam(q url.Values, key string) ([]uuid.UUID, error) {
 	return ids, nil
 }
 
-func (s *Server) handleCreateFunnel() http.HandlerFunc {
+func (h *handler) handleCreateFunnel() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		siteID, ok := s.validateSiteOwnership(w, r)
+		siteID, ok := h.validateSiteOwnership(w, r)
 		if !ok {
 			return
 		}
@@ -251,7 +298,7 @@ func (s *Server) handleCreateFunnel() http.HandlerFunc {
 		req.SiteID = siteID
 		req.CreatedAt = time.Now()
 
-		if err := s.store.CreateFunnel(r.Context(), &req); err != nil {
+		if err := h.ctx.Store.CreateFunnel(r.Context(), &req); err != nil {
 			slog.Error("Failed to create funnel", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
@@ -261,9 +308,9 @@ func (s *Server) handleCreateFunnel() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleDeleteFunnel() http.HandlerFunc {
+func (h *handler) handleDeleteFunnel() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		siteID, ok := s.validateSiteOwnership(w, r)
+		siteID, ok := h.validateSiteOwnership(w, r)
 		if !ok {
 			return
 		}
@@ -275,7 +322,7 @@ func (s *Server) handleDeleteFunnel() http.HandlerFunc {
 			return
 		}
 
-		if err := s.store.DeleteFunnel(r.Context(), funnelID, siteID); err != nil {
+		if err := h.ctx.Store.DeleteFunnel(r.Context(), funnelID, siteID); err != nil {
 			slog.Error("Failed to delete funnel", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
@@ -285,9 +332,9 @@ func (s *Server) handleDeleteFunnel() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleGetFunnelStats() http.HandlerFunc {
+func (h *handler) handleGetFunnelStats() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := getUserIDFromContext(r)
+		userID := shared.GetUserIDFromContext(r)
 		if userID == uuid.Nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -308,7 +355,7 @@ func (s *Server) handleGetFunnelStats() http.HandlerFunc {
 		}
 
 		// Verify ownership
-		site, err := s.store.GetSite(r.Context(), siteID, userID)
+		site, err := h.ctx.Store.GetSite(r.Context(), siteID, userID)
 		if err != nil || site == nil {
 			http.Error(w, "Site not found", http.StatusNotFound)
 			return
@@ -338,7 +385,7 @@ func (s *Server) handleGetFunnelStats() http.HandlerFunc {
 			End:    end,
 		}
 
-		stats, err := s.store.GetFunnelStats(r.Context(), funnelID, params)
+		stats, err := h.ctx.Store.GetFunnelStats(r.Context(), funnelID, params)
 		if err != nil {
 			slog.Error("Failed to get funnel stats", "error", err)
 			if strings.Contains(err.Error(), "not found") {

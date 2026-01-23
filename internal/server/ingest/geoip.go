@@ -1,5 +1,5 @@
 // File: internal/server/geoip.go
-package server
+package ingest
 
 import (
 	"iter"
@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/phuslu/iploc"
+
+	"hitkeep/internal/server/shared"
 )
 
 // CountryCodeExtractor provides methods to extract country codes from various sources.
@@ -112,7 +114,7 @@ func (e *CountryCodeExtractor) fromProxyHeaders(r *http.Request) string {
 
 // fromGeoIP extracts country code using local GeoIP database lookup.
 func (e *CountryCodeExtractor) fromGeoIP(r *http.Request) string {
-	userIP := getRealIP(r, e.trustedProxyNets)
+	userIP := shared.GetRealIP(r, e.trustedProxyNets)
 
 	parsedIP := net.ParseIP(userIP)
 	if parsedIP == nil {
@@ -128,7 +130,7 @@ func (e *CountryCodeExtractor) fromGeoIP(r *http.Request) string {
 }
 
 func (e *CountryCodeExtractor) shouldTrustProxyHeaders(r *http.Request) bool {
-	directIP := remoteIPFromAddr(r.RemoteAddr)
+	directIP := shared.RemoteIPFromAddr(r.RemoteAddr)
 	if directIP == "" {
 		return len(e.trustedProxyNets) == 0
 	}
@@ -138,7 +140,7 @@ func (e *CountryCodeExtractor) shouldTrustProxyHeaders(r *http.Request) bool {
 		return len(e.trustedProxyNets) == 0
 	}
 
-	return isTrustedProxy(parsedDirectIP, e.trustedProxyNets)
+	return shared.IsTrustedProxy(parsedDirectIP, e.trustedProxyNets)
 }
 
 // isPrivateIP checks if an IP is in private/local address space.

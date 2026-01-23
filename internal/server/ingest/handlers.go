@@ -1,4 +1,4 @@
-package server
+package ingest
 
 import (
 	"bytes"
@@ -14,9 +14,30 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/server/shared"
 )
 
-func (s *Server) handleIngest() http.HandlerFunc {
+type handler struct {
+	ctx *shared.Context
+}
+
+func Register(mux *http.ServeMux, ctx *shared.Context) {
+	h := &handler{ctx: ctx}
+	mux.HandleFunc("POST /ingest", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.IngestLimiter,
+	}, h.handleIngest()))
+	mux.HandleFunc("OPTIONS /ingest", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.IngestLimiter,
+	}, h.handleIngest()))
+	mux.HandleFunc("POST /ingest/event", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.IngestLimiter,
+	}, h.handleIngestEvent()))
+	mux.HandleFunc("OPTIONS /ingest/event", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.IngestLimiter,
+	}, h.handleIngestEvent()))
+}
+
+func (h *handler) handleIngest() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		if origin != "" {
@@ -33,15 +54,15 @@ func (s *Server) handleIngest() http.HandlerFunc {
 			return
 		}
 
-		if s.cluster.IsLeader() || !s.cluster.HasPeers() {
-			s.handleIngestLeader(w, r)
+		if h.ctx.Cluster.IsLeader() || !h.ctx.Cluster.HasPeers() {
+			h.handleIngestLeader(w, r)
 		} else {
-			s.handleIngestFollower(w, r)
+			h.handleIngestFollower(w, r)
 		}
 	}
 }
 
-func (s *Server) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
+func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 	origin := r.Header.Get("Origin")
 	if origin == "" {
 		http.Error(w, "Origin header is required", http.StatusBadRequest)
@@ -55,7 +76,7 @@ func (s *Server) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 	}
 	domain := strings.TrimPrefix(parsedURL.Hostname(), "www.")
 
-	site, err := s.store.FindSiteByDomain(r.Context(), domain)
+	site, err := h.ctx.Store.FindSiteByDomain(r.Context(), domain)
 	if err != nil {
 		slog.Error("Failed to find site", "error", err, "domain", domain)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -87,7 +108,7 @@ func (s *Server) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	extractor := NewCountryCodeExtractor(s.conf.GetTrustedProxyNetworks())
+	extractor := NewCountryCodeExtractor(h.ctx.Config.GetTrustedProxyNetworks())
 	countryCode := extractor.ExtractFromRequest(r, payload.Language)
 
 	var countryCodePtr *string
@@ -113,7 +134,7 @@ func (s *Server) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body, _ := json.Marshal(hit)
-	if err := s.producer.Publish("hits", body); err != nil {
+	if err := h.ctx.Producer.Publish("hits", body); err != nil {
 		slog.Error("Failed to publish hit to NSQ", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -121,14 +142,14 @@ func (s *Server) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func (s *Server) forwardToLeader(w http.ResponseWriter, r *http.Request, targetPath string) {
-	leaderIP := s.cluster.GetLeaderAddr()
+func (h *handler) forwardToLeader(w http.ResponseWriter, r *http.Request, targetPath string) {
+	leaderIP := h.ctx.Cluster.GetLeaderAddr()
 	if leaderIP == "" {
 		http.Error(w, "No leader available", http.StatusServiceUnavailable)
 		return
 	}
 
-	_, port, err := net.SplitHostPort(s.conf.HTTPAddr)
+	_, port, err := net.SplitHostPort(h.ctx.Config.HTTPAddr)
 	if err != nil {
 		port = "8080"
 	}
@@ -159,11 +180,11 @@ func (s *Server) forwardToLeader(w http.ResponseWriter, r *http.Request, targetP
 	w.WriteHeader(resp.StatusCode)
 }
 
-func (s *Server) handleIngestFollower(w http.ResponseWriter, r *http.Request) {
-	s.forwardToLeader(w, r, "/ingest")
+func (h *handler) handleIngestFollower(w http.ResponseWriter, r *http.Request) {
+	h.forwardToLeader(w, r, "/ingest")
 }
 
-func (s *Server) handleIngestEvent() http.HandlerFunc {
+func (h *handler) handleIngestEvent() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		if origin != "" {
@@ -180,15 +201,15 @@ func (s *Server) handleIngestEvent() http.HandlerFunc {
 			return
 		}
 
-		if s.cluster.IsLeader() || !s.cluster.HasPeers() {
-			s.handleIngestEventLeader(w, r)
+		if h.ctx.Cluster.IsLeader() || !h.ctx.Cluster.HasPeers() {
+			h.handleIngestEventLeader(w, r)
 		} else {
-			s.handleIngestEventFollower(w, r)
+			h.handleIngestEventFollower(w, r)
 		}
 	}
 }
 
-func (s *Server) handleIngestEventLeader(w http.ResponseWriter, r *http.Request) {
+func (h *handler) handleIngestEventLeader(w http.ResponseWriter, r *http.Request) {
 	origin := r.Header.Get("Origin")
 	if origin == "" {
 		http.Error(w, "Origin header is required", http.StatusBadRequest)
@@ -202,7 +223,7 @@ func (s *Server) handleIngestEventLeader(w http.ResponseWriter, r *http.Request)
 	}
 	domain := strings.TrimPrefix(parsedURL.Hostname(), "www.")
 
-	site, err := s.store.FindSiteByDomain(r.Context(), domain)
+	site, err := h.ctx.Store.FindSiteByDomain(r.Context(), domain)
 	if err != nil {
 		slog.Error("Failed to find site", "error", err, "domain", domain)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -235,7 +256,7 @@ func (s *Server) handleIngestEventLeader(w http.ResponseWriter, r *http.Request)
 	}
 
 	body, _ := json.Marshal(event)
-	if err := s.producer.Publish("events", body); err != nil {
+	if err := h.ctx.Producer.Publish("events", body); err != nil {
 		slog.Error("Failed to publish event to NSQ", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
@@ -243,6 +264,6 @@ func (s *Server) handleIngestEventLeader(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusAccepted)
 }
 
-func (s *Server) handleIngestEventFollower(w http.ResponseWriter, r *http.Request) {
-	s.forwardToLeader(w, r, "/ingest/event")
+func (h *handler) handleIngestEventFollower(w http.ResponseWriter, r *http.Request) {
+	h.forwardToLeader(w, r, "/ingest/event")
 }

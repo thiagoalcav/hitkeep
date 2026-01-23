@@ -1,4 +1,4 @@
-package server
+package takeout
 
 import (
 	"net/http"
@@ -7,21 +7,40 @@ import (
 
 	"github.com/google/uuid"
 
-	"hitkeep/internal/takeout"
+	authcore "hitkeep/internal/auth"
+	"hitkeep/internal/server/shared"
+	takeoutsvc "hitkeep/internal/takeout"
 )
 
 type TakeoutHandler struct {
-	service *takeout.TakeoutService
+	service *takeoutsvc.TakeoutService
 }
 
-func NewTakeoutHandler(service *takeout.TakeoutService) *TakeoutHandler {
+func NewTakeoutHandler(service *takeoutsvc.TakeoutService) *TakeoutHandler {
 	return &TakeoutHandler{
 		service: service,
 	}
 }
+
+func Register(mux *http.ServeMux, ctx *shared.Context) {
+	handler := NewTakeoutHandler(ctx.Takeout)
+	mux.HandleFunc("GET /api/user/takeout", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, handler.handleUserTakeout()))
+	mux.HandleFunc("GET /api/sites/{id}/takeout", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, handler.handleSiteTakeout()))
+}
+
 func (h *TakeoutHandler) handleUserTakeout() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := r.Context().Value(UserIDKey).(uuid.UUID)
+		userID := shared.GetUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
 
 		filename, err := h.service.ExportUserData(r.Context(), userID)
 		if err != nil {

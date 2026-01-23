@@ -1,16 +1,28 @@
-package server
+package system
 
 import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+
+	"hitkeep/internal/server/shared"
 )
 
+type handler struct {
+	ctx *shared.Context
+}
+
+func Register(mux *http.ServeMux, ctx *shared.Context) {
+	h := &handler{ctx: ctx}
+	mux.HandleFunc("GET /healthz", h.handleHealthz())
+	mux.HandleFunc("GET /api/status", h.handleGetStatus())
+}
+
 // handleHealthz checks the health of the node.
-func (s *Server) handleHealthz() http.HandlerFunc {
+func (h *handler) handleHealthz() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if s.store != nil {
-			if err := s.store.DB().Ping(); err != nil {
+		if h.ctx.Store != nil {
+			if err := h.ctx.Store.DB().Ping(); err != nil {
 				slog.Error("Healthcheck failed: database unreachable", "error", err)
 				http.Error(w, "Database unavailable", http.StatusServiceUnavailable)
 				return
@@ -24,14 +36,14 @@ func (s *Server) handleHealthz() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleGetStatus() http.HandlerFunc {
+func (h *handler) handleGetStatus() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if s.store == nil {
+		if h.ctx.Store == nil {
 			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
 			return
 		}
 
-		userCount, err := s.store.GetUserCount(r.Context())
+		userCount, err := h.ctx.Store.GetUserCount(r.Context())
 		if err != nil {
 			slog.Error("Failed to get user count", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -40,7 +52,7 @@ func (s *Server) handleGetStatus() http.HandlerFunc {
 
 		response := map[string]any{
 			"needs_setup": userCount == 0,
-			"version":     s.conf.Version,
+			"version":     h.ctx.Config.Version,
 		}
 
 		w.Header().Set("Content-Type", "application/json")

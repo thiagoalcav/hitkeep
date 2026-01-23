@@ -1,4 +1,4 @@
-package server
+package sites
 
 import (
 	"bytes"
@@ -13,11 +13,11 @@ import (
 	"hitkeep/internal/api"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
+	"hitkeep/internal/server/shared"
 )
 
-// setupTestEnv initializes an in-memory database and a Server instance with nil cluster/nsq dependencies
-// as they are not required for site management handlers.
-func setupTestEnv(t *testing.T) (*Server, *database.Store, uuid.UUID) {
+// setupTestEnv initializes an in-memory database and a handler instance.
+func setupTestEnv(t *testing.T) (*handler, *database.Store, uuid.UUID) {
 	t.Helper()
 
 	// Use in-memory DuckDB
@@ -35,21 +35,20 @@ func setupTestEnv(t *testing.T) (*Server, *database.Store, uuid.UUID) {
 		t.Fatalf("failed to create test user: %v", err)
 	}
 
-	s := &Server{
-		store: store,
-		conf:  &config.Config{},
-		// Cluster and Producer are not used in site handlers, so we leave them nil
+	ctx := &shared.Context{
+		Store:  store,
+		Config: &config.Config{},
 	}
 
-	return s, store, userID
+	return &handler{ctx: ctx}, store, userID
 }
 
 func TestHandleCreateSite(t *testing.T) {
-	s, _, userID := setupTestEnv(t)
-	defer s.store.Close()
+	h, store, userID := setupTestEnv(t)
+	defer store.Close()
 
 	// Pre-create a site to test conflict
-	_, _ = s.store.CreateSite(context.Background(), userID, "taken.com")
+	_, _ = store.CreateSite(context.Background(), userID, "taken.com")
 
 	tests := []struct {
 		name           string
@@ -163,12 +162,12 @@ func TestHandleCreateSite(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/api/sites", bytes.NewReader(bodyBytes))
 
 			if tc.injectAuth {
-				ctx := context.WithValue(req.Context(), UserIDKey, userID)
+				ctx := context.WithValue(req.Context(), shared.UserIDKey, userID)
 				req = req.WithContext(ctx)
 			}
 
 			w := httptest.NewRecorder()
-			handler := s.handleCreateSite()
+			handler := h.handleCreateSite()
 			handler.ServeHTTP(w, req)
 
 			if w.Code != tc.expectedStatus {
@@ -183,14 +182,14 @@ func TestHandleCreateSite(t *testing.T) {
 }
 
 func TestHandleGetSites(t *testing.T) {
-	s, _, userID := setupTestEnv(t)
-	defer s.store.Close()
+	h, store, userID := setupTestEnv(t)
+	defer store.Close()
 
-	_, _ = s.store.CreateSite(context.Background(), userID, "site1.com")
-	_, _ = s.store.CreateSite(context.Background(), userID, "site2.com")
+	_, _ = store.CreateSite(context.Background(), userID, "site1.com")
+	_, _ = store.CreateSite(context.Background(), userID, "site2.com")
 
 	otherUserID := uuid.New()
-	_, _ = s.store.CreateSite(context.Background(), otherUserID, "other.com")
+	_, _ = store.CreateSite(context.Background(), otherUserID, "other.com")
 
 	tests := []struct {
 		name           string
@@ -215,12 +214,12 @@ func TestHandleGetSites(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/api/sites", nil)
 			if tc.injectAuth {
-				ctx := context.WithValue(req.Context(), UserIDKey, userID)
+				ctx := context.WithValue(req.Context(), shared.UserIDKey, userID)
 				req = req.WithContext(ctx)
 			}
 
 			w := httptest.NewRecorder()
-			handler := s.handleGetSites()
+			handler := h.handleGetSites()
 			handler.ServeHTTP(w, req)
 
 			if w.Code != tc.expectedStatus {
@@ -241,10 +240,10 @@ func TestHandleGetSites(t *testing.T) {
 }
 
 func TestHandleGetSiteStats(t *testing.T) {
-	s, _, userID := setupTestEnv(t)
-	defer s.store.Close()
+	h, store, userID := setupTestEnv(t)
+	defer store.Close()
 
-	site, _ := s.store.CreateSite(context.Background(), userID, "stats.com")
+	site, _ := store.CreateSite(context.Background(), userID, "stats.com")
 
 	tests := []struct {
 		name           string
@@ -285,12 +284,12 @@ func TestHandleGetSiteStats(t *testing.T) {
 			req.SetPathValue("id", tc.siteID)
 
 			if tc.injectAuth {
-				ctx := context.WithValue(req.Context(), UserIDKey, userID)
+				ctx := context.WithValue(req.Context(), shared.UserIDKey, userID)
 				req = req.WithContext(ctx)
 			}
 
 			w := httptest.NewRecorder()
-			handler := s.handleGetSiteStats()
+			handler := h.handleGetSiteStats()
 			handler.ServeHTTP(w, req)
 
 			if w.Code != tc.expectedStatus {
@@ -301,10 +300,10 @@ func TestHandleGetSiteStats(t *testing.T) {
 }
 
 func TestHandleGetSiteHits(t *testing.T) {
-	s, _, userID := setupTestEnv(t)
-	defer s.store.Close()
+	h, store, userID := setupTestEnv(t)
+	defer store.Close()
 
-	site, _ := s.store.CreateSite(context.Background(), userID, "hits.com")
+	site, _ := store.CreateSite(context.Background(), userID, "hits.com")
 
 	tests := []struct {
 		name           string
@@ -340,12 +339,12 @@ func TestHandleGetSiteHits(t *testing.T) {
 			req.SetPathValue("id", tc.siteID)
 
 			if tc.injectAuth {
-				ctx := context.WithValue(req.Context(), UserIDKey, userID)
+				ctx := context.WithValue(req.Context(), shared.UserIDKey, userID)
 				req = req.WithContext(ctx)
 			}
 
 			w := httptest.NewRecorder()
-			handler := s.handleGetSiteHits()
+			handler := h.handleGetSiteHits()
 			handler.ServeHTTP(w, req)
 
 			if w.Code != tc.expectedStatus {

@@ -1,4 +1,4 @@
-package server
+package admin
 
 import (
 	"encoding/json"
@@ -7,11 +7,54 @@ import (
 
 	"github.com/google/uuid"
 
-	"hitkeep/internal/auth"
+	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/mailables"
+	serverauth "hitkeep/internal/server/auth"
+	"hitkeep/internal/server/shared"
 )
 
-func (s *Server) handleListUsers() http.HandlerFunc {
+type handler struct {
+	ctx *shared.Context
+}
+
+func Register(mux *http.ServeMux, ctx *shared.Context) {
+	h := &handler{ctx: ctx}
+	mux.HandleFunc("GET /api/admin/users", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceManageUsers,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleListUsers()))
+	mux.HandleFunc("POST /api/admin/users/{id}/role", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceManageUsers,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleUpdateUserRole()))
+	mux.HandleFunc("DELETE /api/admin/users/{id}", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceManageUsers,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleDeleteUser()))
+	mux.HandleFunc("GET /api/admin/sites", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceManageUsers,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleAdminListSites()))
+	mux.HandleFunc("DELETE /api/admin/sites/{id}", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceManageUsers,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleAdminDeleteSite()))
+
+	mux.HandleFunc("GET /api/sites/{id}/members", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetSiteMembers()))
+	mux.HandleFunc("POST /api/sites/{id}/members", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteManageTeam,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleAddSiteMember()))
+	mux.HandleFunc("DELETE /api/sites/{id}/members/{userId}", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteManageTeam,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleRemoveSiteMember()))
+}
+
+func (h *handler) handleListUsers() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// TODO: Implement ListUsers in store_user.go if not exists
 		// For now, let's assume it exists or we need to add it.
@@ -21,7 +64,7 @@ func (s *Server) handleListUsers() http.HandlerFunc {
 		// Actually, I should add ListUsers to store_user.go first.
 		// But let's write the handler assuming it will be there.
 
-		users, err := s.store.ListUsers(r.Context())
+		users, err := h.ctx.Store.ListUsers(r.Context())
 		if err != nil {
 			slog.Error("Failed to list users", "error", err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
@@ -35,7 +78,7 @@ func (s *Server) handleListUsers() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleUpdateUserRole() http.HandlerFunc {
+func (h *handler) handleUpdateUserRole() http.HandlerFunc {
 	type request struct {
 		Role string `json:"role"`
 	}
@@ -54,9 +97,9 @@ func (s *Server) handleUpdateUserRole() http.HandlerFunc {
 			return
 		}
 
-		actorID := getUserIDFromContext(r)
+		actorID := shared.GetUserIDFromContext(r)
 
-		err = s.store.UpdateInstanceRole(r.Context(), targetUserID, auth.InstanceRole(req.Role), actorID)
+		err = h.ctx.Store.UpdateInstanceRole(r.Context(), targetUserID, authcore.InstanceRole(req.Role), actorID)
 		if err != nil {
 			slog.Error("Failed to update role", "error", err)
 			http.Error(w, "Failed to update role", http.StatusInternalServerError)
@@ -70,7 +113,7 @@ func (s *Server) handleUpdateUserRole() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleDeleteUser() http.HandlerFunc {
+func (h *handler) handleDeleteUser() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		targetUserIDStr := r.PathValue("id")
 		targetUserID, err := uuid.Parse(targetUserIDStr)
@@ -79,7 +122,7 @@ func (s *Server) handleDeleteUser() http.HandlerFunc {
 			return
 		}
 
-		actorID := getUserIDFromContext(r)
+		actorID := shared.GetUserIDFromContext(r)
 
 		// Prevent deleting yourself
 		if actorID == targetUserID {
@@ -91,7 +134,7 @@ func (s *Server) handleDeleteUser() http.HandlerFunc {
 		// Ideally, only owners can delete other owners, etc.
 		// For now, we rely on the route permission check (PermInstanceManageUsers).
 
-		err = s.store.DeleteUser(r.Context(), targetUserID)
+		err = h.ctx.Store.DeleteUser(r.Context(), targetUserID)
 		if err != nil {
 			slog.Error("Failed to delete user", "error", err)
 			http.Error(w, "Failed to delete user", http.StatusInternalServerError)
@@ -105,9 +148,9 @@ func (s *Server) handleDeleteUser() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleAdminListSites() http.HandlerFunc {
+func (h *handler) handleAdminListSites() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		sites, err := s.store.ListAllSites(r.Context())
+		sites, err := h.ctx.Store.ListAllSites(r.Context())
 		if err != nil {
 			slog.Error("Failed to list all sites", "error", err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
@@ -121,7 +164,7 @@ func (s *Server) handleAdminListSites() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleAdminDeleteSite() http.HandlerFunc {
+func (h *handler) handleAdminDeleteSite() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		siteIDStr := r.PathValue("id")
 		siteID, err := uuid.Parse(siteIDStr)
@@ -130,7 +173,7 @@ func (s *Server) handleAdminDeleteSite() http.HandlerFunc {
 			return
 		}
 
-		err = s.store.DeleteSite(r.Context(), siteID)
+		err = h.ctx.Store.DeleteSite(r.Context(), siteID)
 		if err != nil {
 			slog.Error("Failed to delete site", "error", err)
 			http.Error(w, "Failed to delete site", http.StatusInternalServerError)
@@ -144,7 +187,7 @@ func (s *Server) handleAdminDeleteSite() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleGetSiteMembers() http.HandlerFunc {
+func (h *handler) handleGetSiteMembers() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		siteIDStr := r.PathValue("id")
 		siteID, err := uuid.Parse(siteIDStr)
@@ -153,7 +196,7 @@ func (s *Server) handleGetSiteMembers() http.HandlerFunc {
 			return
 		}
 
-		members, err := s.store.GetSiteMembers(r.Context(), siteID)
+		members, err := h.ctx.Store.GetSiteMembers(r.Context(), siteID)
 		if err != nil {
 			slog.Error("Failed to get members", "error", err)
 			http.Error(w, "Internal error", http.StatusInternalServerError)
@@ -167,7 +210,7 @@ func (s *Server) handleGetSiteMembers() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleAddSiteMember() http.HandlerFunc {
+func (h *handler) handleAddSiteMember() http.HandlerFunc {
 	type request struct {
 		Email string `json:"email"`
 		Role  string `json:"role"`
@@ -188,7 +231,7 @@ func (s *Server) handleAddSiteMember() http.HandlerFunc {
 		}
 
 		// Find user by email
-		user, err := s.store.GetUserByEmail(r.Context(), req.Email)
+		user, err := h.ctx.Store.GetUserByEmail(r.Context(), req.Email)
 		if err != nil {
 			slog.Error("Database error checking user", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -206,14 +249,14 @@ func (s *Server) handleAddSiteMember() http.HandlerFunc {
 			// Or better, we just create the user record.
 			// Since CreateUser requires a password, we'll generate a random one.
 			tempPassword := uuid.New().String() // Temporary
-			hashedPassword, err := hashPassword(tempPassword)
+			hashedPassword, err := serverauth.HashPassword(tempPassword)
 			if err != nil {
 				slog.Error("Failed to hash password", "error", err)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
 
-			userID, err = s.store.CreateUser(r.Context(), req.Email, hashedPassword)
+			userID, err = h.ctx.Store.CreateUser(r.Context(), req.Email, hashedPassword)
 			if err != nil {
 				slog.Error("Failed to create user", "error", err)
 				http.Error(w, "Failed to create user", http.StatusInternalServerError)
@@ -222,7 +265,7 @@ func (s *Server) handleAddSiteMember() http.HandlerFunc {
 			isNewUser = true
 
 			// Generate invite token (reusing password reset token mechanism)
-			inviteToken, err = s.store.CreatePasswordResetToken(r.Context(), req.Email)
+			inviteToken, err = h.ctx.Store.CreatePasswordResetToken(r.Context(), req.Email)
 			if err != nil {
 				slog.Error("Failed to create invite token", "error", err)
 				// Continue anyway, user is created but won't get email.
@@ -232,9 +275,9 @@ func (s *Server) handleAddSiteMember() http.HandlerFunc {
 			userID = user.ID
 		}
 
-		actorID := getUserIDFromContext(r)
+		actorID := shared.GetUserIDFromContext(r)
 
-		err = s.store.AddSiteMember(r.Context(), siteID, userID, auth.SiteRole(req.Role), actorID)
+		err = h.ctx.Store.AddSiteMember(r.Context(), siteID, userID, authcore.SiteRole(req.Role), actorID)
 		if err != nil {
 			slog.Error("Failed to add member", "error", err)
 			http.Error(w, "Failed to add member", http.StatusInternalServerError)
@@ -244,21 +287,21 @@ func (s *Server) handleAddSiteMember() http.HandlerFunc {
 		// Send invite email if new user
 		if isNewUser && inviteToken != "" {
 			// Get site details for email
-			site, err := s.store.GetSite(r.Context(), siteID, actorID)
+			site, err := h.ctx.Store.GetSite(r.Context(), siteID, actorID)
 			siteName := "Unknown Site"
 			if err == nil && site != nil {
 				siteName = site.Domain
 			}
 
 			// Get inviter details
-			inviter, err := s.store.GetUserByID(r.Context(), actorID)
+			inviter, err := h.ctx.Store.GetUserByID(r.Context(), actorID)
 			inviterName := "Someone"
 			if err == nil && inviter != nil {
 				inviterName = inviter.Email
 			}
 
-			inviteLink := s.conf.PublicURL + "/accept-invite?token=" + inviteToken
-			err = s.mailer.Send(req.Email, mailables.NewUserInvite(inviteLink, siteName, inviterName))
+			inviteLink := h.ctx.Config.PublicURL + "/accept-invite?token=" + inviteToken
+			err = h.ctx.Mailer.Send(req.Email, mailables.NewUserInvite(inviteLink, siteName, inviterName))
 			if err != nil {
 				slog.Warn("Failed to send invite email", "error", err, "email", req.Email)
 				// Don't fail the request, just log warning
@@ -272,7 +315,7 @@ func (s *Server) handleAddSiteMember() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleRemoveSiteMember() http.HandlerFunc {
+func (h *handler) handleRemoveSiteMember() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		siteIDStr := r.PathValue("id")
 		siteID, err := uuid.Parse(siteIDStr)
@@ -288,13 +331,13 @@ func (s *Server) handleRemoveSiteMember() http.HandlerFunc {
 			return
 		}
 
-		actorID := getUserIDFromContext(r)
+		actorID := shared.GetUserIDFromContext(r)
 
 		// Can't remove yourself if you're the only owner
 		if actorID == userID {
-			role, _ := s.store.GetSiteRole(r.Context(), userID, siteID)
-			if role == auth.SiteOwner {
-				owners, _ := s.store.CountSiteOwners(r.Context(), siteID)
+			role, _ := h.ctx.Store.GetSiteRole(r.Context(), userID, siteID)
+			if role == authcore.SiteOwner {
+				owners, _ := h.ctx.Store.CountSiteOwners(r.Context(), siteID)
 				if owners <= 1 {
 					http.Error(w, "Cannot remove the last owner", http.StatusBadRequest)
 					return
@@ -302,7 +345,7 @@ func (s *Server) handleRemoveSiteMember() http.HandlerFunc {
 			}
 		}
 
-		err = s.store.RemoveSiteMember(r.Context(), siteID, userID, actorID)
+		err = h.ctx.Store.RemoveSiteMember(r.Context(), siteID, userID, actorID)
 		if err != nil {
 			slog.Error("Failed to remove member", "error", err)
 			http.Error(w, "Failed to remove member", http.StatusInternalServerError)

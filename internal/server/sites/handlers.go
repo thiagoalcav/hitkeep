@@ -1,4 +1,4 @@
-package server
+package sites
 
 import (
 	"encoding/json"
@@ -15,24 +15,61 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	authcore "hitkeep/internal/auth"
+	"hitkeep/internal/server/shared"
 )
+
+type handler struct {
+	ctx *shared.Context
+}
+
+func Register(mux *http.ServeMux, ctx *shared.Context) {
+	h := &handler{ctx: ctx}
+	mux.HandleFunc("GET /api/sites", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetSites()))
+	mux.HandleFunc("POST /api/sites", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleCreateSite()))
+	mux.HandleFunc("GET /api/sites/{id}/stats", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetSiteStats()))
+	mux.HandleFunc("GET /api/sites/{id}/hits", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetSiteHits()))
+	mux.HandleFunc("GET /api/sites/{id}/hits/export", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleExportSiteHits()))
+	mux.HandleFunc("GET /api/favicon/{domain}", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetFavicon()))
+	mux.HandleFunc("PUT /api/sites/{id}/retention", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteManageData,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleUpdateSiteRetention()))
+}
 
 var domainRegex = regexp.MustCompile(`^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$`)
 
-func (s *Server) handleGetSites() http.HandlerFunc {
+func (h *handler) handleGetSites() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := getUserIDFromContext(r)
+		userID := shared.GetUserIDFromContext(r)
 		if userID == uuid.Nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		if s.store == nil {
+		if h.ctx.Store == nil {
 			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
 			return
 		}
 
-		sites, err := s.store.GetSites(r.Context(), userID)
+		sites, err := h.ctx.Store.GetSites(r.Context(), userID)
 		if err != nil {
 			slog.Error("Failed to get sites", "error", err, "user_id", userID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -45,19 +82,19 @@ func (s *Server) handleGetSites() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleCreateSite() http.HandlerFunc {
+func (h *handler) handleCreateSite() http.HandlerFunc {
 	type request struct {
 		Domain string `json:"domain"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := getUserIDFromContext(r)
+		userID := shared.GetUserIDFromContext(r)
 		if userID == uuid.Nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		if s.store == nil {
+		if h.ctx.Store == nil {
 			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
 			return
 		}
@@ -89,15 +126,15 @@ func (s *Server) handleCreateSite() http.HandlerFunc {
 			return
 		}
 
-		site, err := s.store.CreateSite(r.Context(), userID, domain)
+		site, err := h.ctx.Store.CreateSite(r.Context(), userID, domain)
 		if err != nil {
 			slog.Error("Failed to create site", "error", err, "domain", domain)
 			http.Error(w, "Failed to create site (domain might already exist)", http.StatusConflict)
 			return
 		}
 
-		if s.conf.DataRetentionDays > 0 {
-			if err := s.store.UpdateSiteRetention(r.Context(), site.ID, userID, s.conf.DataRetentionDays); err != nil {
+		if h.ctx.Config.DataRetentionDays > 0 {
+			if err := h.ctx.Store.UpdateSiteRetention(r.Context(), site.ID, userID, h.ctx.Config.DataRetentionDays); err != nil {
 				slog.Warn("Failed to set default data retention policy", "site_id", site.ID, "error", err)
 			}
 		}
@@ -110,13 +147,13 @@ func (s *Server) handleCreateSite() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleUpdateSiteRetention() http.HandlerFunc {
+func (h *handler) handleUpdateSiteRetention() http.HandlerFunc {
 	type request struct {
 		Days int `json:"days"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := getUserIDFromContext(r)
+		userID := shared.GetUserIDFromContext(r)
 		if userID == uuid.Nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
@@ -130,7 +167,7 @@ func (s *Server) handleUpdateSiteRetention() http.HandlerFunc {
 		}
 
 		// Verify ownership
-		site, err := s.store.GetSite(r.Context(), siteID, userID)
+		site, err := h.ctx.Store.GetSite(r.Context(), siteID, userID)
 		if err != nil || site == nil {
 			http.Error(w, "Site not found", http.StatusNotFound)
 			return
@@ -147,7 +184,7 @@ func (s *Server) handleUpdateSiteRetention() http.HandlerFunc {
 			return
 		}
 
-		if err := s.store.UpdateSiteRetention(r.Context(), siteID, userID, req.Days); err != nil {
+		if err := h.ctx.Store.UpdateSiteRetention(r.Context(), siteID, userID, req.Days); err != nil {
 			slog.Error("Failed to update site retention", "error", err, "site_id", siteID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
@@ -159,15 +196,15 @@ func (s *Server) handleUpdateSiteRetention() http.HandlerFunc {
 
 // handleGetSiteHits retrieves raw hits for a specific site.
 // Path: GET /api/sites/{id}/hits
-func (s *Server) handleGetSiteHits() http.HandlerFunc {
+func (h *handler) handleGetSiteHits() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := getUserIDFromContext(r)
+		userID := shared.GetUserIDFromContext(r)
 		if userID == uuid.Nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		if s.store == nil {
+		if h.ctx.Store == nil {
 			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
 			return
 		}
@@ -234,7 +271,7 @@ func (s *Server) handleGetSiteHits() http.HandlerFunc {
 			Filters:   filters,
 		}
 
-		result, err := s.store.GetHits(r.Context(), params)
+		result, err := h.ctx.Store.GetHits(r.Context(), params)
 		if err != nil {
 			slog.Error("Failed to get hits", "error", err, "site_id", siteID, "user_id", userID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -249,15 +286,15 @@ func (s *Server) handleGetSiteHits() http.HandlerFunc {
 
 // handleExportSiteHits streams filtered hits as CSV.
 // Path: GET /api/sites/{id}/hits/export
-func (s *Server) handleExportSiteHits() http.HandlerFunc {
+func (h *handler) handleExportSiteHits() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := getUserIDFromContext(r)
+		userID := shared.GetUserIDFromContext(r)
 		if userID == uuid.Nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		if s.store == nil {
+		if h.ctx.Store == nil {
 			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
 			return
 		}
@@ -305,21 +342,21 @@ func (s *Server) handleExportSiteHits() http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/csv")
 		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 
-		if err := s.store.ExportHitsCSV(r.Context(), params, w); err != nil {
+		if err := h.ctx.Store.ExportHitsCSV(r.Context(), params, w); err != nil {
 			slog.Error("Failed to export hits", "error", err, "site_id", siteID, "user_id", userID)
 		}
 	}
 }
 
-func (s *Server) handleGetSiteStats() http.HandlerFunc {
+func (h *handler) handleGetSiteStats() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := getUserIDFromContext(r)
+		userID := shared.GetUserIDFromContext(r)
 		if userID == uuid.Nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		if s.store == nil {
+		if h.ctx.Store == nil {
 			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
 			return
 		}
@@ -386,7 +423,7 @@ func (s *Server) handleGetSiteStats() http.HandlerFunc {
 			FunnelIDs: funnelIDs,
 		}
 
-		stats, err := s.store.GetSiteStats(r.Context(), params)
+		stats, err := h.ctx.Store.GetSiteStats(r.Context(), params)
 		if err != nil {
 			slog.Error("Failed to get site stats", "error", err, "site_id", siteID)
 			if strings.Contains(err.Error(), "not found") {
@@ -402,27 +439,6 @@ func (s *Server) handleGetSiteStats() http.HandlerFunc {
 			slog.Error("Failed to encode response", "error", err)
 		}
 	}
-}
-
-// helper to extract UserID from context (set by auth middleware)
-func getUserIDFromContext(r *http.Request) uuid.UUID {
-	// First check PermissionContext (new RBAC)
-	if val := r.Context().Value(PermissionKey); val != nil {
-		if perms, ok := val.(PermissionContext); ok {
-			return perms.UserID
-		}
-	}
-
-	// Fallback to legacy UserIDKey
-	val := r.Context().Value(UserIDKey)
-	if val == nil {
-		return uuid.Nil
-	}
-	id, ok := val.(uuid.UUID)
-	if !ok {
-		return uuid.Nil
-	}
-	return id
 }
 
 func parseFilters(q url.Values) ([]api.Filter, error) {
@@ -472,7 +488,7 @@ func validateFilter(filterType, filterValue string) error {
 
 // handleGetFavicon proxies the favicon request to DuckDuckGo to avoid CORS and privacy leaks.
 // GET /api/favicon/{domain}
-func (s *Server) handleGetFavicon() http.HandlerFunc {
+func (h *handler) handleGetFavicon() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		domain := strings.TrimSpace(r.PathValue("domain"))
 		if domain == "" || strings.Contains(domain, "/") {

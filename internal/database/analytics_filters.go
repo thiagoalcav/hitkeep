@@ -40,27 +40,22 @@ func buildHitFilter(filterType, filterValue, alias string) (string, []any) {
 	case "path":
 		return fmt.Sprintf(" AND %spath = ?", prefix), []any{filterValue}
 	case "referrer":
+		normalized := filterValue
 		if isDirectReferrer(filterValue) {
-			return fmt.Sprintf(" AND (%sreferrer IS NULL OR %sreferrer = '')", prefix, prefix), nil
+			normalized = "(Direct)"
 		}
-		expr := fmt.Sprintf(`CASE
-			WHEN %[1]sreferrer IS NULL OR %[1]sreferrer = '' THEN '(Direct)'
-			WHEN %[1]sreferrer LIKE 'http%%' THEN regexp_extract(%[1]sreferrer, 'https?://([^/]+)', 1)
-			ELSE %[1]sreferrer
-		END`, prefix)
-		return " AND " + expr + " = ?", []any{filterValue}
+		expr := fmt.Sprintf("hk_referrer(%sreferrer)", prefix)
+		return " AND " + expr + " = ?", []any{normalized}
 	case "device":
-		expr := fmt.Sprintf(`CASE
-			WHEN %[1]sviewport_width < 576 THEN 'Mobile'
-			WHEN %[1]sviewport_width < 992 THEN 'Tablet'
-			ELSE 'Desktop'
-		END`, prefix)
+		expr := fmt.Sprintf("hk_device(%sviewport_width)", prefix)
 		return " AND " + expr + " = ?", []any{filterValue}
 	case "country":
+		normalized := filterValue
 		if isUnknownCountry(filterValue) {
-			return fmt.Sprintf(" AND (%scountry_code IS NULL OR %scountry_code = '')", prefix, prefix), nil
+			normalized = "(Unknown)"
 		}
-		return fmt.Sprintf(" AND %scountry_code = ?", prefix), []any{filterValue}
+		expr := fmt.Sprintf("hk_country(%scountry_code)", prefix)
+		return " AND " + expr + " = ?", []any{normalized}
 	default:
 		return "", nil
 	}

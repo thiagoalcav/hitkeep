@@ -1,4 +1,4 @@
-package server
+package auth
 
 import (
 	"crypto/rand"
@@ -14,23 +14,54 @@ import (
 
 	"golang.org/x/crypto/argon2"
 
-	"hitkeep/internal/auth"
+	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/mailables"
+	"hitkeep/internal/server/shared"
 )
 
-func (s *Server) handleCreateInitialUser() http.HandlerFunc {
+type handler struct {
+	ctx *shared.Context
+}
+
+func Register(mux *http.ServeMux, ctx *shared.Context) {
+	h := &handler{ctx: ctx}
+	mux.HandleFunc("POST /api/initial-user", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleCreateInitialUser()))
+	mux.HandleFunc("POST /api/login", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleLogin()))
+	mux.HandleFunc("POST /api/logout", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleLogout()))
+	mux.HandleFunc("POST /api/auth/forgot-password", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleForgotPassword()))
+	mux.HandleFunc("POST /api/auth/reset-password", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleResetPassword()))
+	mux.HandleFunc("POST /api/auth/accept-invite", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleAcceptInvite()))
+	mux.HandleFunc("POST /api/user/password", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleChangePassword()))
+}
+
+func (h *handler) handleCreateInitialUser() http.HandlerFunc {
 	type request struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		if s.store == nil {
+		if h.ctx.Store == nil {
 			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
 			return
 		}
 
-		userCount, err := s.store.GetUserCount(r.Context())
+		userCount, err := h.ctx.Store.GetUserCount(r.Context())
 		if err != nil {
 			slog.Error("Failed to check user count during setup", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -52,29 +83,29 @@ func (s *Server) handleCreateInitialUser() http.HandlerFunc {
 			return
 		}
 
-		hashedPassword, err := hashPassword(req.Password)
+		hashedPassword, err := HashPassword(req.Password)
 		if err != nil {
 			slog.Error("Failed to hash password", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
-		userID, err := s.store.CreateUser(r.Context(), req.Email, hashedPassword)
+		userID, err := h.ctx.Store.CreateUser(r.Context(), req.Email, hashedPassword)
 		if err != nil {
 			slog.Error("Failed to create initial user", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
-		token, err := auth.GenerateToken(s.conf.JWTSecret, s.conf.PublicURL, userID)
+		token, err := authcore.GenerateToken(h.ctx.Config.JWTSecret, h.ctx.Config.PublicURL, userID)
 		if err != nil {
 			slog.Error("Failed to generate auth token", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
-		isSecure := strings.HasPrefix(s.conf.PublicURL, "https://")
-		auth.SetTokenCookie(w, token, isSecure)
+		isSecure := strings.HasPrefix(h.ctx.Config.PublicURL, "https://")
+		authcore.SetTokenCookie(w, token, isSecure)
 
 		slog.Info("Initial admin user created", "email", req.Email, "user_id", userID)
 
@@ -88,7 +119,7 @@ func (s *Server) handleCreateInitialUser() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleLogin() http.HandlerFunc {
+func (h *handler) handleLogin() http.HandlerFunc {
 	type request struct {
 		Email      string `json:"email"`
 		Password   string `json:"password"`
@@ -96,7 +127,7 @@ func (s *Server) handleLogin() http.HandlerFunc {
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		if s.store == nil {
+		if h.ctx.Store == nil {
 			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
 			return
 		}
@@ -107,7 +138,7 @@ func (s *Server) handleLogin() http.HandlerFunc {
 			return
 		}
 
-		user, err := s.store.GetUserByEmail(r.Context(), req.Email)
+		user, err := h.ctx.Store.GetUserByEmail(r.Context(), req.Email)
 		if err != nil {
 			slog.Error("Database error during login", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -129,23 +160,23 @@ func (s *Server) handleLogin() http.HandlerFunc {
 			return
 		}
 
-		token, err := auth.GenerateToken(s.conf.JWTSecret, s.conf.PublicURL, user.ID)
+		token, err := authcore.GenerateToken(h.ctx.Config.JWTSecret, h.ctx.Config.PublicURL, user.ID)
 		if err != nil {
 			slog.Error("Failed to generate auth token", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
-		isSecure := strings.HasPrefix(s.conf.PublicURL, "https://")
-		auth.SetTokenCookie(w, token, isSecure)
+		isSecure := strings.HasPrefix(h.ctx.Config.PublicURL, "https://")
+		authcore.SetTokenCookie(w, token, isSecure)
 
 		if req.RememberMe {
-			rememberToken, err := s.store.CreateRememberMeToken(r.Context(), user.ID)
+			rememberToken, err := h.ctx.Store.CreateRememberMeToken(r.Context(), user.ID)
 			if err != nil {
 				slog.Error("Failed to create remember me token", "error", err)
 				// Don't fail login, just log error
 			} else {
-				auth.SetRememberMeCookie(w, rememberToken, isSecure)
+				authcore.SetRememberMeCookie(w, rememberToken, isSecure)
 			}
 		}
 
@@ -158,7 +189,7 @@ func (s *Server) handleLogin() http.HandlerFunc {
 	}
 }
 
-func hashPassword(password string) (string, error) {
+func HashPassword(password string) (string, error) {
 	const (
 		time    = 1
 		memory  = 64 * 1024
@@ -220,7 +251,7 @@ func verifyPassword(password, encodedHash string) (bool, error) {
 	return false, nil
 }
 
-func (s *Server) handleForgotPassword() http.HandlerFunc {
+func (h *handler) handleForgotPassword() http.HandlerFunc {
 	type request struct {
 		Email string `json:"email"`
 	}
@@ -232,7 +263,7 @@ func (s *Server) handleForgotPassword() http.HandlerFunc {
 			return
 		}
 
-		user, err := s.store.GetUserByEmail(r.Context(), req.Email)
+		user, err := h.ctx.Store.GetUserByEmail(r.Context(), req.Email)
 		if err != nil {
 			slog.Error("Database error checking user", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -248,16 +279,16 @@ func (s *Server) handleForgotPassword() http.HandlerFunc {
 			return
 		}
 
-		token, err := s.store.CreatePasswordResetToken(r.Context(), user.Email)
+		token, err := h.ctx.Store.CreatePasswordResetToken(r.Context(), user.Email)
 		if err != nil {
 			slog.Error("Failed to create reset token", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
-		resetLink := fmt.Sprintf("%s/reset-password?token=%s", s.conf.PublicURL, token)
+		resetLink := fmt.Sprintf("%s/reset-password?token=%s", h.ctx.Config.PublicURL, token)
 
-		err = s.mailer.Send(user.Email, mailables.NewPasswordReset(resetLink))
+		err = h.ctx.Mailer.Send(user.Email, mailables.NewPasswordReset(resetLink))
 		if err != nil {
 			slog.Error("Failed to send password reset email", "error", err, "email", user.Email)
 			// Here we actually return an error because if the mailer fails, the user is stuck.
@@ -274,7 +305,7 @@ func (s *Server) handleForgotPassword() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleResetPassword() http.HandlerFunc {
+func (h *handler) handleResetPassword() http.HandlerFunc {
 	type request struct {
 		Token    string `json:"token"`
 		Password string `json:"password"`
@@ -293,7 +324,7 @@ func (s *Server) handleResetPassword() http.HandlerFunc {
 		}
 
 		// 1. Hash the new password (Reusing existing logic)
-		hashedPassword, err := hashPassword(req.Password)
+		hashedPassword, err := HashPassword(req.Password)
 		if err != nil {
 			slog.Error("Failed to hash password", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -301,7 +332,7 @@ func (s *Server) handleResetPassword() http.HandlerFunc {
 		}
 
 		// 2. Perform the reset in the store
-		err = s.store.CompletePasswordReset(r.Context(), req.Token, hashedPassword)
+		err = h.ctx.Store.CompletePasswordReset(r.Context(), req.Token, hashedPassword)
 		if err != nil {
 			// Don't leak exact DB errors to client, but "invalid token" is safe enough
 			if err.Error() == "invalid or expired token" || err.Error() == "token expired" {
@@ -325,7 +356,7 @@ func (s *Server) handleResetPassword() http.HandlerFunc {
 		}
 	}
 }
-func (s *Server) handleAcceptInvite() http.HandlerFunc {
+func (h *handler) handleAcceptInvite() http.HandlerFunc {
 	type request struct {
 		Token    string `json:"token"`
 		Password string `json:"password"`
@@ -344,7 +375,7 @@ func (s *Server) handleAcceptInvite() http.HandlerFunc {
 		}
 
 		// 1. Hash the new password
-		hashedPassword, err := hashPassword(req.Password)
+		hashedPassword, err := HashPassword(req.Password)
 		if err != nil {
 			slog.Error("Failed to hash password", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -359,8 +390,8 @@ func (s *Server) handleAcceptInvite() http.HandlerFunc {
 		// We need to generate a token and store it.
 		// The previous implementation in handler_admin.go was:
 		// tempPassword = uuid.New().String()
-		// hashedPassword, _ := hashPassword(tempPassword)
-		// s.store.CreateUser(..., hashedPassword)
+		// hashedPassword, _ := HashPassword(tempPassword)
+		// h.ctx.Store.CreateUser(..., hashedPassword)
 		//
 		// So the user exists with a random password.
 		// We can use the "Password Reset" flow to let them set their password.
@@ -371,7 +402,7 @@ func (s *Server) handleAcceptInvite() http.HandlerFunc {
 		// Let's reuse CompletePasswordReset for now as it does exactly what we want:
 		// verifies token, updates password, deletes token.
 
-		err = s.store.CompletePasswordReset(r.Context(), req.Token, hashedPassword)
+		err = h.ctx.Store.CompletePasswordReset(r.Context(), req.Token, hashedPassword)
 		if err != nil {
 			if err.Error() == "invalid or expired token" || err.Error() == "token expired" {
 				http.Error(w, "Invalid or expired link", http.StatusBadRequest)
@@ -403,15 +434,15 @@ func (s *Server) handleAcceptInvite() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleChangePassword() http.HandlerFunc {
+func (h *handler) handleChangePassword() http.HandlerFunc {
 	type request struct {
 		CurrentPassword string `json:"current_password"`
 		NewPassword     string `json:"new_password"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := getUserIDFromContext(r)
-		if s.store == nil {
+		userID := shared.GetUserIDFromContext(r)
+		if h.ctx.Store == nil {
 			http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
 			return
 		}
@@ -427,7 +458,7 @@ func (s *Server) handleChangePassword() http.HandlerFunc {
 			return
 		}
 
-		user, err := s.store.GetUserByID(r.Context(), userID)
+		user, err := h.ctx.Store.GetUserByID(r.Context(), userID)
 		if err != nil {
 			slog.Error("Failed to fetch user", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -451,14 +482,14 @@ func (s *Server) handleChangePassword() http.HandlerFunc {
 		}
 
 		// Hash new password
-		newHash, err := hashPassword(req.NewPassword)
+		newHash, err := HashPassword(req.NewPassword)
 		if err != nil {
 			slog.Error("Failed to hash new password", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
-		if err := s.store.UpdatePasswordByID(r.Context(), userID.String(), newHash); err != nil {
+		if err := h.ctx.Store.UpdatePasswordByID(r.Context(), userID.String(), newHash); err != nil {
 			slog.Error("Failed to update password", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
@@ -470,18 +501,18 @@ func (s *Server) handleChangePassword() http.HandlerFunc {
 	}
 }
 
-func (s *Server) handleLogout() http.HandlerFunc {
+func (h *handler) handleLogout() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		isSecure := strings.HasPrefix(s.conf.PublicURL, "https://")
+		isSecure := strings.HasPrefix(h.ctx.Config.PublicURL, "https://")
 
 		// If we have a remember me cookie, delete the token from DB
-		if cookie, err := r.Cookie(auth.RememberMeCookieName); err == nil {
-			if err := s.store.DeleteRememberMeToken(r.Context(), cookie.Value); err != nil {
+		if cookie, err := r.Cookie(authcore.RememberMeCookieName); err == nil {
+			if err := h.ctx.Store.DeleteRememberMeToken(r.Context(), cookie.Value); err != nil {
 				slog.Error("Failed to delete remember me token", "error", err)
 			}
 		}
 
-		auth.ClearCookies(w, isSecure)
+		authcore.ClearCookies(w, isSecure)
 		w.WriteHeader(http.StatusOK)
 		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	}

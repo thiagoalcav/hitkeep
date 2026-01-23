@@ -1,4 +1,4 @@
-package server
+package shared
 
 import (
 	"net"
@@ -10,7 +10,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-// IPRateLimiter manages rate limiters for individual IPs
+// IPRateLimiter manages rate limiters for individual IPs.
 type IPRateLimiter struct {
 	ips   map[string]*visitor
 	mu    sync.RWMutex
@@ -68,7 +68,7 @@ func (i *IPRateLimiter) cleanupLoop() {
 		case <-ticker.C:
 			i.mu.Lock()
 			for ip, v := range i.ips {
-				// If IP hasn't been seen in 3 minutes, delete it to free memory
+				// If IP hasn't been seen in 3 minutes, delete it to free memory.
 				if time.Since(v.lastSeen) > 3*time.Minute {
 					delete(i.ips, ip)
 				}
@@ -82,9 +82,9 @@ func (i *IPRateLimiter) Stop() {
 	close(i.stop)
 }
 
-// getRealIP extracts the real client IP using trusted proxy configuration.
-func getRealIP(r *http.Request, trustedProxies []*net.IPNet) string {
-	directIP := remoteIPFromAddr(r.RemoteAddr)
+// GetRealIP extracts the real client IP using trusted proxy configuration.
+func GetRealIP(r *http.Request, trustedProxies []*net.IPNet) string {
+	directIP := RemoteIPFromAddr(r.RemoteAddr)
 	parsedDirectIP := net.ParseIP(directIP)
 	if parsedDirectIP == nil {
 		if directIP != "" {
@@ -93,7 +93,7 @@ func getRealIP(r *http.Request, trustedProxies []*net.IPNet) string {
 		return r.RemoteAddr
 	}
 
-	if !isTrustedProxy(parsedDirectIP, trustedProxies) {
+	if !IsTrustedProxy(parsedDirectIP, trustedProxies) {
 		return directIP
 	}
 
@@ -136,7 +136,8 @@ func getRealIP(r *http.Request, trustedProxies []*net.IPNet) string {
 	return directIP
 }
 
-func remoteIPFromAddr(addr string) string {
+// RemoteIPFromAddr extracts the IP portion of a host:port address.
+func RemoteIPFromAddr(addr string) string {
 	if addr == "" {
 		return ""
 	}
@@ -167,7 +168,8 @@ func isValidIP(ip string) bool {
 	return net.ParseIP(ip) != nil
 }
 
-func isTrustedProxy(ip net.IP, trustedProxies []*net.IPNet) bool {
+// IsTrustedProxy reports if an IP belongs to any of the provided networks.
+func IsTrustedProxy(ip net.IP, trustedProxies []*net.IPNet) bool {
 	if len(trustedProxies) == 0 {
 		return true
 	}

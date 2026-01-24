@@ -3,7 +3,7 @@
 > **Web Analytics in a single binary.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Version](https://img.shields.io/badge/Go-1.25.5-00ADD8?logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.25.6-00ADD8?logo=go)](https://go.dev/)
 [![Docker Image](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://github.com/pascalebeier/hitkeep/pkgs/container/hitkeep)
 [![Documentation](https://img.shields.io/badge/📖_Documentation-hitkeep.com-33d399)](https://hitkeep.com)
 
@@ -37,6 +37,10 @@ Visit **[hitkeep.com](https://hitkeep.com)** for the complete documentation, inc
 *   **Privacy First:** Cookie-less tracking, respects Do Not Track (DNT), and fully self-hosted data sovereignty.
 *   **Cluster Ready:** Architecture supports Leader/Follower replication using HashiCorp Memberlist for high availability (optional).
 *   **Modern Dashboard:** Fast, responsive UI built with Angular and PrimeNG.
+*   **Goals & Funnels:** Define conversion goals and multi-step funnels with timeseries breakdowns.
+*   **Shareable Dashboards:** Create read-only share links for stakeholders.
+*   **Team & Admin Controls:** Instance roles, site roles, and team member management.
+*   **Retention & Takeout:** Per-site retention policies and exportable data archives.
 
 ## Library State
 
@@ -48,13 +52,14 @@ This is a heavy WIP, just past PoC and MVP - it is already being used in product
 - [ ] Raw hit pruning
 - [x] better OLAP integration - no more Adhoc buckets
 - [x] Allow users to opt out of sendBeacon
-- [ ] User management
-- [ ] Settings management
+- [x] User management
+- [x] Settings management
 - [x] More Metrics - currently it only shows the last 30 days
 - [ ] Helm chart
-- [ ] Data retention and archival with parquets
-- [ ] Takeout - also with parquets to csv with duckdb
-- [ ] Events integration
+- [x] Data retention and archival with parquets
+- [x] Takeout - also with parquets to csv with duckdb
+- [x] Events integration
+- [x] Goals and funnels
 
 
 ## Quick Start
@@ -151,6 +156,13 @@ HitKeep is configured via command-line flags or environment variables. Flags tak
 | `-http`       | `HITKEEP_HTTP_ADDR`  | `:8080`                 | Address to bind the HTTP server to.                                          |
 | `-db`         | `HITKEEP_DB_PATH`    | `hitkeep.db`            | Path to the DuckDB database file.                                            |
 | `-log-level`  | `HITKEEP_LOG_LEVEL`  | `info`                  | Logging verbosity (`debug`, `info`, `warn`, `error`).                        |
+
+### Data Management
+
+| Flag             | Environment Variable          | Default        | Description                                                   |
+|:-----------------|:------------------------------|:---------------|:--------------------------------------------------------------|
+| `-archive-path`  | `HITKEEP_ARCHIVE_PATH`        | `archive`      | Directory for exports, rollups, and archival artifacts.       |
+| `-retention-days`| `HITKEEP_DATA_RETENTION_DAYS` | `365`          | Default data retention window (days) for newly created sites. |
 
 ### Mailer (SMTP)
 

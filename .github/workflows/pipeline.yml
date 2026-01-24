@@ -117,7 +117,7 @@ jobs:
           tags: ${{ inputs.meta_config }}
 
       - name: Build and Push Docker Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         id: push
         with:
           context: .

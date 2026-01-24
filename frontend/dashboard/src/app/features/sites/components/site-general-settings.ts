@@ -15,7 +15,7 @@ import { Site } from '../../../core/models/analytics.types';
         <h3 class="font-bold text-lg mb-2">General Settings</h3>
         <div class="p-4 border rounded-lg bg-surface-50 dark:bg-surface-900 border-surface-200 dark:border-surface-700">
           <div class="flex flex-col gap-2">
-            <label class="text-sm font-medium text-muted-color">Domain</label>
+            <span class="text-sm font-medium text-muted-color">Domain</span>
             <div class="font-mono">{{ site()?.domain }}</div>
           </div>
         </div>
@@ -77,7 +77,7 @@ export class SiteGeneralSettings {
 
   private extractFilename(header: string | null): string | null {
     if (!header) return null;
-    const match = header.match(/filename="?([^\";]+)"?/i);
+    const match = header.match(/filename="?([^";]+)"?/i);
     return match ? match[1] : null;
   }
 

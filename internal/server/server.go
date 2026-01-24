@@ -21,6 +21,7 @@ import (
 	"hitkeep/internal/server/goals"
 	"hitkeep/internal/server/ingest"
 	"hitkeep/internal/server/permissions"
+	sharehandlers "hitkeep/internal/server/share"
 	"hitkeep/internal/server/shared"
 	"hitkeep/internal/server/sites"
 	"hitkeep/internal/server/system"
@@ -114,6 +115,7 @@ func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 	sites.Register(mux, ctx)
 	goals.Register(mux, ctx)
 	takeouthandlers.Register(mux, ctx)
+	sharehandlers.Register(mux, ctx)
 
 	// Static
 	mux.Handle("/", s.spaHandler(publicFS))

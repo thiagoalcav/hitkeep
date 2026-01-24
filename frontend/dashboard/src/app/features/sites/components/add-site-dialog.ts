@@ -122,7 +122,12 @@ export class AddSiteDialog {
       return;
     }
 
-    const domain = this.form.get('domain')?.value!
+    const domainControl = this.form.get('domain');
+    const domain = domainControl?.value ?? '';
+    if (!domain) {
+      this.isSubmitting.set(false);
+      return;
+    }
     this.isSubmitting.set(true);
     this.createError.set(null);
 

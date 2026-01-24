@@ -33,7 +33,7 @@ import { GoalManager } from '../../goals/components/goal-manager';
           <h3 class="font-semibold text-lg">Goals</h3>
         </div>
         <!-- Only show header add button if we have data (otherwise EmptyState handles it) -->
-        @if (!isLoading() && data() && data().length > 0) {
+        @if (!readOnly() && !isLoading() && data() && data().length > 0) {
           <p-button 
             icon="pi pi-plus" 
             (onClick)="showManager.set(true)" 
@@ -57,7 +57,7 @@ import { GoalManager } from '../../goals/components/goal-manager';
           icon="pi-flag"
           title="No goals yet"
           description="Track specific conversion events like signups or purchases."
-          actionLabel="Create Goal"
+          [actionLabel]="readOnly() ? '' : 'Create Goal'"
           (actionClicked)="showManager.set(true)" 
         />
 
@@ -80,11 +80,13 @@ import { GoalManager } from '../../goals/components/goal-manager';
       }
 
       <!-- Embedded Manager Dialog -->
-      <app-goal-manager 
-        [(visible)]="showManager" 
-        [siteId]="siteId()" 
-        (goalsChanged)="refresh.emit()" 
-      />
+      @if (!readOnly()) {
+        <app-goal-manager 
+          [(visible)]="showManager" 
+          [siteId]="siteId()" 
+          (goalsChanged)="refresh.emit()" 
+        />
+      }
     </p-card>
   `
 })
@@ -92,6 +94,7 @@ export class GoalList {
   data = input.required<GoalStats[]>();
   siteId = input.required<string | null>(); // Required for the manager
   isLoading = input<boolean>(false);
+  readOnly = input<boolean>(false);
   
   // Emit when data changes so parent can reload stats
   refresh = output<void>();

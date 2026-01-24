@@ -1,4 +1,4 @@
-import { Component, computed, input, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, computed, input, ChangeDetectionStrategy } from '@angular/core';
 import { NgOptimizedImage } from '@angular/common';
 import { Site } from '../../../core/models/analytics.types';
 @Component({
@@ -11,10 +11,9 @@ import { Site } from '../../../core/models/analytics.types';
   `,
 })
 export class SiteFavicon {
-  site = input.required<Site|null>();
+  site = input.required<Site | null>();
   protected faviconUrl = computed(() => {
     const domain = this.site()?.domain;
     return domain ? `/api/favicon/${encodeURIComponent(domain)}` : '';
   });
-
 }

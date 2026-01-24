@@ -28,6 +28,10 @@ export const routes: Routes = [
     canActivate: [setupGuard],
     children: [
       {
+        path: 'share/:token',
+        loadComponent: () => import('./pages/share/share').then(m => m.ShareDashboard)
+      },
+      {
         path: 'dashboard',
         loadComponent: () => import('./pages/dashboard/dashboard').then(m => m.Dashboard)
       },

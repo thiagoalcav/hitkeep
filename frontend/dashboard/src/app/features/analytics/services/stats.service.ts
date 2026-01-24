@@ -14,7 +14,7 @@ export class StatsService {
     siteId: string,
     from: string,
     to: string,
-    filters: Array<{ type: string; value: string }> = [],
+    filters: { type: string; value: string }[] = [],
     goalIds: string[] = [],
     funnelIds: string[] = []
   ) {

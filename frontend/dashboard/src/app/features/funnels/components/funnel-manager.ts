@@ -70,7 +70,7 @@ import { Funnel, FunnelStep } from '../../../core/models/analytics.types';
                 </div>
 
                 <div class="flex flex-col gap-2">
-                    <label class="text-xs font-medium">Steps</label>
+                    <span class="text-xs font-medium">Steps</span>
                     @for (step of newFunnel.steps; track $index) {
                         <div class="flex gap-2 items-center">
                             <span class="text-xs font-bold text-muted-color w-4">{{$index + 1}}.</span>

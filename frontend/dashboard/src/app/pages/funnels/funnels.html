@@ -6,14 +6,21 @@
     </div>
   </app-page-header>
 
-  <div class="flex flex-wrap items-center justify-between gap-3 mb-6 -mx-4 md:-mx-8 px-4 md:px-8">
-    <p-select [options]="timeRanges" [(ngModel)]="selectedRange" optionLabel="label"
-              (onChange)="onRangeChange($event)" class="w-40 md:w-48" aria-label="Time Range Selector">
-    </p-select>
-    <p-button icon="pi pi-plus" label="Create Funnel" (onClick)="openFunnelManager()"
-              class="p-button-rounded p-button-secondary" size="small">
+  <app-range-toolbar
+    [timeRanges]="timeRanges"
+    [selectedRange]="selectedRange()"
+    [loading]="isRefreshing()"
+    (selectedRangeChange)="selectedRange.set($event)"
+    (rangeChange)="onRangeChange($event)"
+    (refresh)="refreshStats()">
+    <p-button toolbar-right
+              icon="pi pi-plus"
+              label="Create Funnel"
+              (onClick)="openFunnelManager()"
+              class="p-button-rounded p-button-secondary"
+              size="small">
     </p-button>
-  </div>
+  </app-range-toolbar>
 
   @if (siteService.isLoading()) {
     <div class="flex items-center gap-2 text-sm text-[var(--p-text-muted-color)]">

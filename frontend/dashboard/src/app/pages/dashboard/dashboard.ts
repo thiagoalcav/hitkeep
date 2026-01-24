@@ -13,13 +13,11 @@ import { InputTextModule } from 'primeng/inputtext';
 import { SkeletonModule } from 'primeng/skeleton';
 import { DialogModule } from 'primeng/dialog';
 import { DatePickerModule } from 'primeng/datepicker';
-import { TooltipModule } from 'primeng/tooltip';
 // Features
 import { SiteService } from '../../features/sites/services/site.service';
 import { StatsService } from '../../features/analytics/services/stats.service';
 import { HitService } from '../../features/hits/services/hit.service';
 import { TrafficChart } from '../../features/analytics/components/traffic-chart';
-import { SiteFavicon } from '../../features/sites/components/site-favicon';
 import { MetricList } from '../../features/analytics/components/metric-list';
 import { GoalList } from '../../features/analytics/components/goal-list';
 import { FunnelList } from '../../features/analytics/components/funnel-list';
@@ -30,6 +28,8 @@ import { MetricStat } from '../../core/models/analytics.types';
 import { PageHeader } from '../../core/components/page-header/page-header';
 import { PageBreadcrumb, PageBreadcrumbItem } from '../../core/components/page-breadcrumb/page-breadcrumb';
 import { KpiCard } from '../../features/analytics/components/kpi-card';
+import { ShareService } from '../../core/services/share.service';
+import { RangeToolbar } from '../../core/components/range-toolbar/range-toolbar';
 
 interface RangeSelectEvent {
   value: {
@@ -39,16 +39,16 @@ interface RangeSelectEvent {
 }
 
 type MetricFilterType = 'path' | 'referrer' | 'device' | 'country';
-type MetricFilter = {
+interface MetricFilter {
   type: MetricFilterType;
   value: string;
-};
-type KpiCardData = {
+}
+interface KpiCardData {
   label: string;
   value: number | string;
   loading: boolean;
   valueClass: string;
-};
+}
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -56,9 +56,10 @@ type KpiCardData = {
     CommonModule, FormsModule, DatePipe,
     CardModule, TableModule, SelectModule, ButtonModule,
     IconFieldModule, InputIconModule, InputTextModule,
-    SkeletonModule, DialogModule, DatePickerModule, TooltipModule,
+    SkeletonModule, DialogModule, DatePickerModule,
     PageHeader,
     PageBreadcrumb,
+    RangeToolbar,
     KpiCard,
     TrafficChart, MetricList, GoalList, FunnelList, FunnelManager, FunnelViewer, NgOptimizedImage
   ],
@@ -71,6 +72,7 @@ export class Dashboard {
   protected siteService = inject(SiteService);
   protected statsService = inject(StatsService);
   protected hitService = inject(HitService);
+  private shareService = inject(ShareService);
   private datePipe = inject(DatePipe);
   private decimalPipe = inject(DecimalPipe);
   protected timeRanges = [
@@ -82,6 +84,7 @@ export class Dashboard {
   ];
   protected selectedRange = signal(this.timeRanges[2]);
   private readonly autoRefreshIntervalMs = 30000;
+  protected isShareMode = computed(() => this.shareService.isShareMode());
   protected isCustomRangeVisible = signal(false);
   protected customRangeDates = signal<Date[] | null>(null);
   protected showFunnelManager = signal(false);
@@ -100,6 +103,7 @@ export class Dashboard {
     label: this.filterLabel(filter)
   })));
   protected exportUrl = computed(() => {
+    const shareToken = this.shareService.token();
     const site = this.siteService.activeSite();
     const dates = this.getCurrentDateRange();
     if (!site || !dates) return '';
@@ -110,6 +114,9 @@ export class Dashboard {
     });
     for (const filter of this.activeFilters()) {
       params.append('filter', `${filter.type}:${filter.value}`);
+    }
+    if (this.isShareMode() && shareToken) {
+      return `/api/share/${encodeURIComponent(shareToken)}/sites/${site.id}/hits/export?${params.toString()}`;
     }
     return `/api/sites/${site.id}/hits/export?${params.toString()}`;
   });

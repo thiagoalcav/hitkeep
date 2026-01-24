@@ -27,8 +27,9 @@ interface SiteMember {
     <div class="flex flex-col gap-4">
       <div class="flex items-end gap-2">
         <div class="flex-1">
-          <label class="text-sm font-medium mb-2 block">Email Address</label>
+          <label for="member-email" class="text-sm font-medium mb-2 block">Email Address</label>
           <input 
+            id="member-email"
             pInputText 
             [(ngModel)]="newMemberEmail"
             placeholder="user@example.com"
@@ -36,8 +37,9 @@ interface SiteMember {
         </div>
         
         <div class="w-40">
-          <label class="text-sm font-medium mb-2 block">Role</label>
+          <label for="member-role" class="text-sm font-medium mb-2 block">Role</label>
           <p-select
+            inputId="member-role"
             [options]="roleOptions"
             [(ngModel)]="newMemberRole"
             optionLabel="label"

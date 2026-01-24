@@ -4,13 +4,13 @@ import { PreferencesService } from '../../../core/services/preferences.service';
 
 export type SeriesChartPoint = Record<string, number | string> & { time: string };
 
-export type SeriesDefinition = {
+export interface SeriesDefinition {
   key: string;
   label: string;
   color: string;
   gradientFrom: string;
   gradientTo: string;
-};
+}
 
 interface ChartContext {
   chart: {

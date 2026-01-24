@@ -22,16 +22,16 @@ export class AuthService {
     );
   }
 
-  requestPasswordReset(email: string): Observable<any> {
-    return this.http.post('/api/auth/forgot-password', { email });
+  requestPasswordReset(email: string): Observable<void> {
+    return this.http.post<void>('/api/auth/forgot-password', { email });
   }
 
-  resetPassword(token: string, password: string): Observable<any> {
-    return this.http.post('/api/auth/reset-password', { token, password });
+  resetPassword(token: string, password: string): Observable<void> {
+    return this.http.post<void>('/api/auth/reset-password', { token, password });
   }
 
-  changePassword(current: string, newPass: string): Observable<any> {
-    return this.http.post('/api/user/password', {
+  changePassword(current: string, newPass: string): Observable<void> {
+    return this.http.post<void>('/api/user/password', {
       current_password: current,
       new_password: newPass
     });

@@ -17,6 +17,7 @@ import { PageBreadcrumb, PageBreadcrumbItem } from '../../core/components/page-b
 import { SeriesChart, SeriesDefinition, SeriesChartPoint } from '../../features/analytics/components/series-chart';
 import { Goal, GoalSeriesPoint } from '../../core/models/analytics.types';
 import { KpiCard } from '../../features/analytics/components/kpi-card';
+import { RangeToolbar } from '../../core/components/range-toolbar/range-toolbar';
 import { finalize } from 'rxjs';
 
 interface RangeSelectEvent {
@@ -27,15 +28,15 @@ interface RangeSelectEvent {
 }
 
 type MetricFilterType = 'path' | 'referrer' | 'device' | 'country';
-type MetricFilter = {
+interface MetricFilter {
   type: MetricFilterType;
   value: string;
-};
+}
 
 @Component({
   selector: 'app-goals',
   standalone: true,
-  imports: [FormsModule, ButtonModule, CardModule, SelectModule, DatePickerModule, DialogModule, PageHeader, PageBreadcrumb, SeriesChart, KpiCard, MetricList, GoalList, GoalManager],
+  imports: [FormsModule, ButtonModule, CardModule, SelectModule, DatePickerModule, DialogModule, PageHeader, PageBreadcrumb, RangeToolbar, SeriesChart, KpiCard, MetricList, GoalList, GoalManager],
   templateUrl: './goals.html',
   styleUrl: './goals.css'
 })
@@ -68,6 +69,7 @@ export class Goals {
   protected isGoalManagerVisible = signal(false);
   protected goals = signal<Goal[]>([]);
   protected goalsLoading = signal(false);
+  protected isRefreshing = computed(() => this.statsService.isLoading() || this.isGoalSeriesLoading());
   protected goalSeries = signal<GoalSeriesPoint[]>([]);
   protected goalSeriesChart = computed<SeriesChartPoint[]>(() =>
     this.goalSeries().map(point => ({
@@ -76,8 +78,8 @@ export class Goals {
     }))
   );
   protected isGoalSeriesLoading = signal(false);
-  protected activeGoalFilters = signal<Array<{ id: string; name: string }>>([]);
-  protected activeFilters = signal<Array<{ type: MetricFilterType; value: string }>>([]);
+  protected activeGoalFilters = signal<{ id: string; name: string }[]>([]);
+  protected activeFilters = signal<{ type: MetricFilterType; value: string }[]>([]);
   protected hasFilters = computed(() => this.activeFilters().length > 0);
   protected filterChips = computed(() => this.activeFilters().map(filter => ({
     ...filter,
@@ -150,9 +152,7 @@ export class Goals {
 
     effect(() => {
       const site = this.siteService.activeSite();
-      const filters = this.activeGoalFilters();
       const metricFilters = this.activeFilters();
-      const range = this.selectedRange();
       const dates = this.getCurrentDateRange();
       if (site && dates) {
         const goalIds = this.getGoalIdsForFilters();

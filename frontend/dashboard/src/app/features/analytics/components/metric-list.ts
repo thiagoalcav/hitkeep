@@ -33,7 +33,13 @@ import { MetricStat } from '../../../core/models/analytics.types';
       } @else {
         <ul class="flex flex-col gap-3 m-0 p-0 list-none">
           @for (item of data(); track item.name) {
-            <li [class]="rowClass(item)" (click)="onRowClick(item)">
+            <li
+              [class]="rowClass(item)"
+              [attr.role]="isRowClickable() ? 'button' : null"
+              [attr.tabindex]="isRowClickable() ? 0 : -1"
+              (click)="onRowClick(item)"
+              (keydown.enter)="onRowClick(item)"
+              (keydown.space)="$event.preventDefault(); onRowClick(item)">
               <!-- Background Bar -->
               <div class="absolute left-0 top-0 h-full bg-[var(--p-primary-50)] dark:bg-[var(--p-primary-900)]/30 rounded-r transition-all duration-500"
                    [style.width.%]="(item.value / maxValue()) * 100"></div>

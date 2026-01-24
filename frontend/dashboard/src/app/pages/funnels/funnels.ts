@@ -19,6 +19,7 @@ import { PageBreadcrumb, PageBreadcrumbItem } from '../../core/components/page-b
 import { SeriesChart, SeriesDefinition, SeriesChartPoint } from '../../features/analytics/components/series-chart';
 import { FunnelSeriesPoint } from '../../core/models/analytics.types';
 import { KpiCard } from '../../features/analytics/components/kpi-card';
+import { RangeToolbar } from '../../core/components/range-toolbar/range-toolbar';
 import { finalize } from 'rxjs';
 
 interface RangeSelectEvent {
@@ -29,15 +30,15 @@ interface RangeSelectEvent {
 }
 
 type MetricFilterType = 'path' | 'referrer' | 'device' | 'country';
-type MetricFilter = {
+interface MetricFilter {
   type: MetricFilterType;
   value: string;
-};
+}
 
 @Component({
   selector: 'app-funnels',
   standalone: true,
-  imports: [FormsModule, ButtonModule, CardModule, SelectModule, DatePickerModule, DialogModule, PageHeader, PageBreadcrumb, SeriesChart, KpiCard, MetricList, FunnelList, FunnelManager, FunnelViewer],
+  imports: [FormsModule, ButtonModule, CardModule, SelectModule, DatePickerModule, DialogModule, PageHeader, PageBreadcrumb, RangeToolbar, SeriesChart, KpiCard, MetricList, FunnelList, FunnelManager, FunnelViewer],
   templateUrl: './funnels.html',
   styleUrl: './funnels.css'
 })
@@ -74,6 +75,7 @@ export class Funnels {
   protected funnels = signal<Funnel[]>([]);
   protected loading = signal(false);
   protected funnelsLoaded = signal(false);
+  protected isRefreshing = computed(() => this.statsService.isLoading() || this.isFunnelSeriesLoading() || this.loading());
   protected funnelSeries = signal<FunnelSeriesPoint[]>([]);
   protected funnelSeriesChart = computed<SeriesChartPoint[]>(() =>
     this.funnelSeries().map(point => ({
@@ -83,8 +85,8 @@ export class Funnels {
     }))
   );
   protected isFunnelSeriesLoading = signal(false);
-  protected activeFunnelFilters = signal<Array<{ id: string; name: string }>>([]);
-  protected activeFilters = signal<Array<{ type: MetricFilterType; value: string }>>([]);
+  protected activeFunnelFilters = signal<{ id: string; name: string }[]>([]);
+  protected activeFilters = signal<{ type: MetricFilterType; value: string }[]>([]);
   protected hasFilters = computed(() => this.activeFilters().length > 0);
   protected filterChips = computed(() => this.activeFilters().map(filter => ({
     ...filter,
@@ -168,7 +170,6 @@ export class Funnels {
       const site = this.siteService.activeSite();
       const filters = this.activeFunnelFilters();
       const metricFilters = this.activeFilters();
-      const range = this.selectedRange();
       const dates = this.getCurrentDateRange();
       if (site && dates && this.funnelsLoaded()) {
         const funnelIds = this.getFunnelIdsForFilters();
@@ -293,6 +294,31 @@ export class Funnels {
 
   protected onRangeChange(event: RangeSelectEvent) {
     if (event.value.value === 'custom') this.isCustomRangeVisible.set(true);
+  }
+
+  protected refreshStats() {
+    const site = this.siteService.activeSite();
+    const dates = this.getCurrentDateRange();
+    if (!site || !dates) return;
+
+    const filters = this.activeFunnelFilters();
+    const metricFilters = this.activeFilters();
+    const funnelIds = this.getFunnelIdsForFilters();
+
+    if (funnelIds.length === 0 && filters.length === 0) {
+      this.statsService.stats.set(null);
+      return;
+    }
+
+    this.loadFunnelSeries(site.id, dates.from, dates.to, filters.map(filter => filter.id));
+    this.statsService.loadStats(
+      site.id,
+      dates.from,
+      dates.to,
+      metricFilters,
+      [],
+      funnelIds
+    );
   }
 
   protected applyCustomRange() {

@@ -1,14 +1,18 @@
-import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, ViewChild, inject } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { SelectModule } from 'primeng/select';
 import { SkeletonModule } from 'primeng/skeleton';
+import { ButtonModule } from 'primeng/button';
+import { ButtonGroup } from 'primeng/buttongroup';
 import { Site } from '../../../core/models/analytics.types';
 import {SiteFavicon} from './site-favicon';
+import { ShareDashboardLink } from '../../share/components/share-dashboard-link';
+import { ShareService } from '../../../core/services/share.service';
 @Component({
   selector: 'app-site-selector',
   standalone: true,
-  imports: [FormsModule, SelectModule, SkeletonModule, SiteFavicon],
+  imports: [FormsModule, SelectModule, SkeletonModule, ButtonModule, ButtonGroup, SiteFavicon, ShareDashboardLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-2 w-full" role="region" aria-label="Site Selection">
@@ -16,13 +20,15 @@ import {SiteFavicon} from './site-favicon';
         <label for="site-dropdown" class="text-xs font-semibold text-[var(--p-text-muted-color)] uppercase">
           Sites
         </label>
-        <button
-          type="button"
-          (click)="addClicked.emit()"
-          class="cursor-pointer flex items-center justify-center size-6 rounded-md border border-surface-200 dark:border-surface-700 text-muted-color hover:text-[var(--p-text-color)] hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
-          aria-label="Add a new Site">
-          <i class="pi pi-plus text-xs" aria-hidden="true"></i>
-        </button>
+        @if (!shareService.isShareMode()) {
+          <button
+            type="button"
+            (click)="addClicked.emit()"
+            class="cursor-pointer flex items-center justify-center size-6 rounded-md border border-surface-200 dark:border-surface-700 text-muted-color hover:text-[var(--p-text-color)] hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+            aria-label="Add a new Site">
+            <i class="pi pi-plus text-xs" aria-hidden="true"></i>
+          </button>
+        }
       </div>
 
       @if (loading()) {
@@ -60,23 +66,30 @@ import {SiteFavicon} from './site-favicon';
           }
 
           @if (sites().length > 0) {
-            <div class="flex items-center gap-1 px-1">
-              <button
-                (click)="settingsClicked.emit()"
-                class="cursor-pointer flex-1 flex items-center justify-center gap-2 p-1.5 text-xs font-medium text-muted-color hover:text-color hover:bg-surface-100 dark:hover:bg-surface-800 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
-                aria-label="Open Site Settings">
-                <i class="pi pi-cog"></i>
-                <span>Settings</span>
-              </button>
-              <div class="w-px h-4 bg-surface-200 dark:bg-surface-700"></div>
-              <button
-                (click)="trackingClicked.emit()"
-                class="cursor-pointer flex-1 flex items-center justify-center gap-2 p-1.5 text-xs font-medium text-muted-color hover:text-color hover:bg-surface-100 dark:hover:bg-surface-800 rounded transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
-                aria-label="Get Tracking Code">
-                <i class="pi pi-code"></i>
-                <span>Code</span>
-              </button>
-            </div>
+            @if (!shareService.isShareMode()) {
+              <p-buttonGroup>
+                <p-button
+                  icon="pi pi-cog"
+                  ariaLabel="Site settings"
+                  [text]="true"
+                  size="small"
+                  (onClick)="settingsClicked.emit()" />
+                <p-button
+                  icon="pi pi-code"
+                  ariaLabel="Tracking code"
+                  [text]="true"
+                  size="small"
+                  (onClick)="trackingClicked.emit()" />
+                <p-button
+                  icon="pi pi-share-alt"
+                  ariaLabel="Share dashboard"
+                  [text]="true"
+                  size="small"
+                  (onClick)="openShareDialog()"
+                  [disabled]="!current()" />
+              </p-buttonGroup>
+              <app-share-dashboard-link />
+            }
           }
 
         </div>
@@ -85,6 +98,9 @@ import {SiteFavicon} from './site-favicon';
   `
 })
 export class SiteSelector {
+  protected shareService = inject(ShareService);
+  @ViewChild(ShareDashboardLink) private shareDialog?: ShareDashboardLink;
+
   sites = input.required<Site[]>();
   current = input<Site | null>(null);
   loading = input<boolean>(false);
@@ -92,4 +108,8 @@ export class SiteSelector {
   addClicked = output<void>();
   settingsClicked = output<void>();
   trackingClicked = output<void>();
+
+  protected openShareDialog() {
+    this.shareDialog?.open();
+  }
 }

@@ -1,5 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 
 import { FormsModule } from '@angular/forms';
 import { Brand } from '../components/brand/brand';
@@ -10,6 +10,7 @@ import { SiteService } from '../../features/sites/services/site.service';
 import { PermissionService } from '../services/permission.service';
 import { UserProfileService } from '../services/user-profile.service';
 import { UserControls } from '../components/user-controls/user-controls';
+import { ShareService } from '../services/share.service';
 // PrimeNG
 import { DrawerModule } from 'primeng/drawer';
 
@@ -80,14 +81,14 @@ import { DrawerModule } from 'primeng/drawer';
         <div class="md:hidden flex items-center justify-between p-4 bg-surface-card border-b border-surface-200 dark:border-surface-700">
           <app-brand size="small" />
           <div class="flex items-center gap-2">
-            <app-user-controls />
+            <app-user-controls [showMenu]="!shareService.isShareMode()" />
             <button (click)="isMobileDrawerOpen.set(true)" class="p-2 rounded hover:bg-surface-100 dark:hover:bg-surface-800">
               <i class="pi pi-bars text-xl"></i>
             </button>
           </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto p-4 md:p-8 relative">
+        <div class="flex-1 overflow-y-auto p-4 md:p-8 md:pt-4 relative">
           <router-outlet />
         </div>
       </main>
@@ -137,7 +138,9 @@ import { DrawerModule } from 'primeng/drawer';
   `
 })
 export class MainLayout {
+  private router = inject(Router);
   protected siteService = inject(SiteService);
+  protected shareService = inject(ShareService);
   protected perms = inject(PermissionService);
   protected profile = inject(UserProfileService);
 
@@ -163,6 +166,10 @@ export class MainLayout {
   }
 
   constructor() {
+    const currentUrl = this.router.routerState.snapshot.url;
+    if (currentUrl.startsWith('/share') || this.shareService.isShareMode()) {
+      return;
+    }
     this.siteService.loadSites();
     this.perms.loadPermissions().subscribe();
     this.profile.loadProfile().subscribe();

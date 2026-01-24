@@ -20,7 +20,7 @@ export class HitService {
     sortField?: string,
     sortOrder?: string,
     query?: string,
-    filters: Array<{ type: string; value: string }> = []
+    filters: { type: string; value: string }[] = []
   ) {
     this.isLoading.set(true);
 

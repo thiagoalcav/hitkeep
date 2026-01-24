@@ -42,7 +42,7 @@ func (s *Store) GetGoals(ctx context.Context, siteID uuid.UUID) ([]api.Goal, err
 	}
 	defer rows.Close()
 
-	var goals []api.Goal
+	goals := make([]api.Goal, 0)
 	for rows.Next() {
 		var g api.Goal
 		if err := rows.Scan(&g.ID, &g.SiteID, &g.Name, &g.Type, &g.Value, &g.CreatedAt); err != nil {
@@ -101,7 +101,7 @@ func (s *Store) GetFunnels(ctx context.Context, siteID uuid.UUID) ([]api.Funnel,
 	}
 	defer rows.Close()
 
-	var funnels []api.Funnel
+	funnels := make([]api.Funnel, 0)
 	for rows.Next() {
 		var f api.Funnel
 		var stepsJSON string

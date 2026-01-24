@@ -17,17 +17,22 @@ describe('TrackingCode', () => {
     expect(component).toBeTruthy();
   });
   it('should update snippet when toggles change', () => {
-    const getSnippet = () => (component as any).snippetCode();
+    const internals = component as TrackingCode & {
+      snippetCode: () => string;
+      collectDnt: { set: (value: boolean) => void };
+      disableBeacon: { set: (value: boolean) => void };
+    };
+    const getSnippet = () => internals.snippetCode();
 
     expect(getSnippet()).toContain('hk.js');
     expect(getSnippet()).not.toContain('data-collect-dnt');
     expect(getSnippet()).not.toContain('data-disable-beacon');
 
-    (component as any).collectDnt.set(true);
+    internals.collectDnt.set(true);
     fixture.detectChanges();
     expect(getSnippet()).toContain('data-collect-dnt="true"');
 
-    (component as any).disableBeacon.set(true);
+    internals.disableBeacon.set(true);
     fixture.detectChanges();
     expect(getSnippet()).toContain('hk.js');
     expect(getSnippet()).toContain('data-disable-beacon="true"');

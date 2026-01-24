@@ -19,7 +19,7 @@ import { EmptyState } from '../../../core/components/molecules/empty-state';
           <i class="pi pi-filter text-[var(--p-primary-color)]" aria-hidden="true"></i>
           <h3 class="font-semibold text-lg">Funnels</h3>
         </div>
-        @if (!isLoading() && funnels() && funnels().length > 0) {
+        @if (!readOnly() && !isLoading() && funnels() && funnels().length > 0) {
           <p-button
             icon="pi pi-plus"
             (onClick)="manageClicked.emit()"
@@ -41,20 +41,25 @@ import { EmptyState } from '../../../core/components/molecules/empty-state';
           icon="pi-filter"
           title="No funnels yet"
           description="Build a path of events to measure drop-off and conversions."
-          actionLabel="Create Funnel"
+          [actionLabel]="readOnly() ? '' : 'Create Funnel'"
           (actionClicked)="manageClicked.emit()"
         />
       } @else {
         <ul class="flex flex-col gap-3 m-0 p-0 list-none">
           @for (funnel of funnels(); track funnel.id) {
-            <li class="flex items-center justify-between text-sm p-3 border border-surface-100 dark:border-surface-800 rounded hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors cursor-pointer" (click)="funnelClicked.emit(funnel)">
-              <div class="flex flex-col gap-1">
-                <span class="font-medium truncate">{{ funnel.name }}</span>
-                <div class="flex items-center gap-1 text-xs text-muted-color">
-                    <span>{{ funnel.steps.length }} steps</span>
+            <li>
+              <button
+                type="button"
+                class="w-full flex items-center justify-between text-sm p-3 border border-surface-100 dark:border-surface-800 rounded hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors text-left"
+                (click)="funnelClicked.emit(funnel)">
+                <div class="flex flex-col gap-1 min-w-0">
+                  <span class="font-medium truncate">{{ funnel.name }}</span>
+                  <div class="flex items-center gap-1 text-xs text-muted-color">
+                      <span>{{ funnel.steps.length }} steps</span>
+                  </div>
                 </div>
-              </div>
-              <i class="pi pi-chevron-right text-muted-color"></i>
+                <i class="pi pi-chevron-right text-muted-color" aria-hidden="true"></i>
+              </button>
             </li>
           }
         </ul>
@@ -65,6 +70,7 @@ import { EmptyState } from '../../../core/components/molecules/empty-state';
 export class FunnelList {
   funnels = input.required<Funnel[]>();
   isLoading = input<boolean>(false);
+  readOnly = input<boolean>(false);
   manageClicked = output<void>();
   funnelClicked = output<Funnel>();
 }

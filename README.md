@@ -11,7 +11,7 @@ HitKeep is a self-hostable, privacy-first web analytics platform designed for **
 
 Unlike other solutions that require you to manage a complex stack (PostgreSQL, Redis, ClickHouse, Nginx), HitKeep runs as a **single, self-contained executable**. It embeds a high-performance OLAP database (DuckDB) and a distributed message queue (NSQ) directly into the binary.
 
-![dashboard](./.github/assets/dashboard.jpeg)
+![dashboard](./.github/assets/dashboard.png)
 
 > **HitKeep Cloud is coming!**
 >

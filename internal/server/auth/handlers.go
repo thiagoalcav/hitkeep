@@ -1,0 +1,519 @@
+package auth
+
+import (
+	"crypto/rand"
+	"crypto/subtle"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"math"
+	"net/http"
+	"strings"
+
+	"golang.org/x/crypto/argon2"
+
+	authcore "hitkeep/internal/auth"
+	"hitkeep/internal/mailables"
+	"hitkeep/internal/server/shared"
+)
+
+type handler struct {
+	ctx *shared.Context
+}
+
+func Register(mux *http.ServeMux, ctx *shared.Context) {
+	h := &handler{ctx: ctx}
+	mux.HandleFunc("POST /api/initial-user", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleCreateInitialUser()))
+	mux.HandleFunc("POST /api/login", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleLogin()))
+	mux.HandleFunc("POST /api/logout", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleLogout()))
+	mux.HandleFunc("POST /api/auth/forgot-password", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleForgotPassword()))
+	mux.HandleFunc("POST /api/auth/reset-password", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleResetPassword()))
+	mux.HandleFunc("POST /api/auth/accept-invite", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleAcceptInvite()))
+	mux.HandleFunc("POST /api/user/password", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleChangePassword()))
+}
+
+func (h *handler) handleCreateInitialUser() http.HandlerFunc {
+	type request struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.ctx.Store == nil {
+			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
+			return
+		}
+
+		userCount, err := h.ctx.Store.GetUserCount(r.Context())
+		if err != nil {
+			slog.Error("Failed to check user count during setup", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if userCount > 0 {
+			http.Error(w, "Setup has already been completed.", http.StatusForbidden)
+			return
+		}
+
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if req.Email == "" || len(req.Password) < 8 {
+			http.Error(w, "Email required; Password must be at least 8 characters", http.StatusBadRequest)
+			return
+		}
+
+		hashedPassword, err := HashPassword(req.Password)
+		if err != nil {
+			slog.Error("Failed to hash password", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		userID, err := h.ctx.Store.CreateUser(r.Context(), req.Email, hashedPassword)
+		if err != nil {
+			slog.Error("Failed to create initial user", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		token, err := authcore.GenerateToken(h.ctx.Config.JWTSecret, h.ctx.Config.PublicURL, userID)
+		if err != nil {
+			slog.Error("Failed to generate auth token", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		isSecure := strings.HasPrefix(h.ctx.Config.PublicURL, "https://")
+		authcore.SetTokenCookie(w, token, isSecure)
+
+		slog.Info("Initial admin user created", "email", req.Email, "user_id", userID)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if err := json.NewEncoder(w).Encode(map[string]string{
+			"token": token,
+		}); err != nil {
+			slog.Error("Failed to encode response", "error", err)
+		}
+	}
+}
+
+func (h *handler) handleLogin() http.HandlerFunc {
+	type request struct {
+		Email      string `json:"email"`
+		Password   string `json:"password"`
+		RememberMe bool   `json:"remember_me"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.ctx.Store == nil {
+			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
+			return
+		}
+
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		user, err := h.ctx.Store.GetUserByEmail(r.Context(), req.Email)
+		if err != nil {
+			slog.Error("Database error during login", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if user == nil {
+			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+			return
+		}
+
+		match, err := verifyPassword(req.Password, user.Password)
+		if err != nil {
+			slog.Error("Password verification error", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if !match {
+			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+			return
+		}
+
+		token, err := authcore.GenerateToken(h.ctx.Config.JWTSecret, h.ctx.Config.PublicURL, user.ID)
+		if err != nil {
+			slog.Error("Failed to generate auth token", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		isSecure := strings.HasPrefix(h.ctx.Config.PublicURL, "https://")
+		authcore.SetTokenCookie(w, token, isSecure)
+
+		if req.RememberMe {
+			rememberToken, err := h.ctx.Store.CreateRememberMeToken(r.Context(), user.ID)
+			if err != nil {
+				slog.Error("Failed to create remember me token", "error", err)
+				// Don't fail login, just log error
+			} else {
+				authcore.SetRememberMeCookie(w, rememberToken, isSecure)
+			}
+		}
+
+		slog.Info("User logged in", "user_id", user.ID)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+			slog.Error("Failed to encode response", "error", err)
+		}
+	}
+}
+
+func HashPassword(password string) (string, error) {
+	const (
+		time    = 1
+		memory  = 64 * 1024
+		threads = 4
+		keyLen  = 32
+		saltLen = 16
+	)
+	salt := make([]byte, saltLen)
+	if _, err := rand.Read(salt); err != nil {
+		return "", err
+	}
+	hash := argon2.IDKey([]byte(password), salt, time, memory, threads, keyLen)
+	b64Salt := base64.RawStdEncoding.EncodeToString(salt)
+	b64Hash := base64.RawStdEncoding.EncodeToString(hash)
+	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s", argon2.Version, memory, time, threads, b64Salt, b64Hash), nil
+}
+
+func verifyPassword(password, encodedHash string) (bool, error) {
+	parts := strings.Split(encodedHash, "$")
+	if len(parts) != 6 {
+		return false, errors.New("invalid hash format")
+	}
+	if parts[1] != "argon2id" {
+		return false, errors.New("incompatible variant")
+	}
+	var version int
+	_, err := fmt.Sscanf(parts[2], "v=%d", &version)
+	if err != nil {
+		return false, err
+	}
+	if version != argon2.Version {
+		return false, errors.New("incompatible version")
+	}
+	var memory uint32
+	var time uint32
+	var threads uint8
+	_, err = fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &memory, &time, &threads)
+	if err != nil {
+		return false, err
+	}
+	salt, err := base64.RawStdEncoding.DecodeString(parts[4])
+	if err != nil {
+		return false, err
+	}
+	decodedHash, err := base64.RawStdEncoding.DecodeString(parts[5])
+	if err != nil {
+		return false, err
+	}
+	// Ensure the key length doesnt exceed MaxUint32 to prevent overflow in IDKey
+	if uint64(len(decodedHash)) > math.MaxUint32 {
+		return false, errors.New("decoded hash too long")
+	}
+	//nolint:gosec // above
+	keyLen := uint32(len(decodedHash))
+	comparisonHash := argon2.IDKey([]byte(password), salt, time, memory, threads, keyLen)
+	if subtle.ConstantTimeCompare(decodedHash, comparisonHash) == 1 {
+		return true, nil
+	}
+	return false, nil
+}
+
+func (h *handler) handleForgotPassword() http.HandlerFunc {
+	type request struct {
+		Email string `json:"email"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		user, err := h.ctx.Store.GetUserByEmail(r.Context(), req.Email)
+		if err != nil {
+			slog.Error("Database error checking user", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		// fake to prevenet enumeration
+		if user == nil {
+			w.WriteHeader(http.StatusOK)
+			if err := json.NewEncoder(w).Encode(map[string]string{"message": "If an account exists, a reset link has been sent."}); err != nil {
+				slog.Error("Failed to encode response", "error", err)
+			}
+			return
+		}
+
+		token, err := h.ctx.Store.CreatePasswordResetToken(r.Context(), user.Email)
+		if err != nil {
+			slog.Error("Failed to create reset token", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		resetLink := fmt.Sprintf("%s/reset-password?token=%s", h.ctx.Config.PublicURL, token)
+
+		err = h.ctx.Mailer.Send(user.Email, mailables.NewPasswordReset(resetLink))
+		if err != nil {
+			slog.Error("Failed to send password reset email", "error", err, "email", user.Email)
+			// Here we actually return an error because if the mailer fails, the user is stuck.
+			http.Error(w, "Failed to send email. Check server logs.", http.StatusBadGateway)
+			return
+		}
+
+		slog.Info("Password reset requested", "email", user.Email)
+
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(map[string]string{"message": "If an account exists, a reset link has been sent."}); err != nil {
+			slog.Error("Failed to encode response", "error", err)
+		}
+	}
+}
+
+func (h *handler) handleResetPassword() http.HandlerFunc {
+	type request struct {
+		Token    string `json:"token"`
+		Password string `json:"password"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if req.Token == "" || len(req.Password) < 8 {
+			http.Error(w, "Invalid token or password too short", http.StatusBadRequest)
+			return
+		}
+
+		// 1. Hash the new password (Reusing existing logic)
+		hashedPassword, err := HashPassword(req.Password)
+		if err != nil {
+			slog.Error("Failed to hash password", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		// 2. Perform the reset in the store
+		err = h.ctx.Store.CompletePasswordReset(r.Context(), req.Token, hashedPassword)
+		if err != nil {
+			// Don't leak exact DB errors to client, but "invalid token" is safe enough
+			if err.Error() == "invalid or expired token" || err.Error() == "token expired" {
+				http.Error(w, "Invalid or expired link", http.StatusBadRequest)
+				return
+			}
+
+			slog.Error("Failed to complete password reset", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		slog.Info("Password reset successful", "token_mask", req.Token[:4]+"...")
+
+		w.WriteHeader(http.StatusOK)
+		err = json.NewEncoder(w).Encode(map[string]string{"status": "ok", "message": "Password updated successfully"})
+		if err != nil {
+			slog.Error("Failed to complete password reset", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+	}
+}
+func (h *handler) handleAcceptInvite() http.HandlerFunc {
+	type request struct {
+		Token    string `json:"token"`
+		Password string `json:"password"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		if req.Token == "" || len(req.Password) < 8 {
+			http.Error(w, "Invalid token or password too short", http.StatusBadRequest)
+			return
+		}
+
+		// 1. Hash the new password
+		hashedPassword, err := HashPassword(req.Password)
+		if err != nil {
+			slog.Error("Failed to hash password", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		// 2. Perform the reset in the store (using same mechanism as password reset for now)
+		// Ideally we should have a separate invite token table, but for now we are reusing the password reset flow
+		// or rather, the invite link IS a password reset link effectively.
+		// Wait, in handler_admin.go we generated a temp password and sent it.
+		// Now we want to send a link.
+		// We need to generate a token and store it.
+		// The previous implementation in handler_admin.go was:
+		// tempPassword = uuid.New().String()
+		// hashedPassword, _ := HashPassword(tempPassword)
+		// h.ctx.Store.CreateUser(..., hashedPassword)
+		//
+		// So the user exists with a random password.
+		// We can use the "Password Reset" flow to let them set their password.
+		// So we should generate a password reset token in handler_admin.go instead of a temp password.
+
+		// So this handler is actually just an alias for handleResetPassword?
+		// Or we can make it explicit.
+		// Let's reuse CompletePasswordReset for now as it does exactly what we want:
+		// verifies token, updates password, deletes token.
+
+		err = h.ctx.Store.CompletePasswordReset(r.Context(), req.Token, hashedPassword)
+		if err != nil {
+			if err.Error() == "invalid or expired token" || err.Error() == "token expired" {
+				http.Error(w, "Invalid or expired link", http.StatusBadRequest)
+				return
+			}
+
+			slog.Error("Failed to complete invite acceptance", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		// Log the user in immediately?
+		// For now, let's just return success and let the frontend redirect to login.
+		// Or we can issue a token here.
+		// Let's issue a token so they are logged in.
+
+		// We need the user ID. CompletePasswordReset doesn't return it.
+		// We might need to fetch the user by the token before completing it?
+		// Or just let them log in. The frontend can handle "Invite accepted, please log in".
+		// That's safer and simpler.
+
+		slog.Info("Invite accepted", "token_mask", req.Token[:4]+"...")
+
+		w.WriteHeader(http.StatusOK)
+		err = json.NewEncoder(w).Encode(map[string]string{"status": "ok", "message": "Account set up successfully. Please log in."})
+		if err != nil {
+			slog.Error("Failed to encode response", "error", err)
+		}
+	}
+}
+
+func (h *handler) handleChangePassword() http.HandlerFunc {
+	type request struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := shared.GetUserIDFromContext(r)
+		if h.ctx.Store == nil {
+			http.Error(w, "Service unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request", http.StatusBadRequest)
+			return
+		}
+
+		if len(req.NewPassword) < 8 {
+			http.Error(w, "New password must be at least 8 characters", http.StatusBadRequest)
+			return
+		}
+
+		user, err := h.ctx.Store.GetUserByID(r.Context(), userID)
+		if err != nil {
+			slog.Error("Failed to fetch user", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if user == nil {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+
+		// Verify old password
+		match, err := verifyPassword(req.CurrentPassword, user.Password)
+		if err != nil {
+			slog.Error("Error verifying password", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if !match {
+			http.Error(w, "Current password is incorrect", http.StatusForbidden)
+			return
+		}
+
+		// Hash new password
+		newHash, err := HashPassword(req.NewPassword)
+		if err != nil {
+			slog.Error("Failed to hash new password", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		if err := h.ctx.Store.UpdatePasswordByID(r.Context(), userID.String(), newHash); err != nil {
+			slog.Error("Failed to update password", "error", err)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		slog.Info("User changed password", "user_id", userID)
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	}
+}
+
+func (h *handler) handleLogout() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		isSecure := strings.HasPrefix(h.ctx.Config.PublicURL, "https://")
+
+		// If we have a remember me cookie, delete the token from DB
+		if cookie, err := r.Cookie(authcore.RememberMeCookieName); err == nil {
+			if err := h.ctx.Store.DeleteRememberMeToken(r.Context(), cookie.Value); err != nil {
+				slog.Error("Failed to delete remember me token", "error", err)
+			}
+		}
+
+		authcore.ClearCookies(w, isSecure)
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	}
+}

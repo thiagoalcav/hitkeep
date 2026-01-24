@@ -16,6 +16,18 @@ import (
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
 	"hitkeep/internal/mailer"
+	"hitkeep/internal/server/admin"
+	serverauth "hitkeep/internal/server/auth"
+	"hitkeep/internal/server/goals"
+	"hitkeep/internal/server/ingest"
+	"hitkeep/internal/server/permissions"
+	sharehandlers "hitkeep/internal/server/share"
+	"hitkeep/internal/server/shared"
+	"hitkeep/internal/server/sites"
+	"hitkeep/internal/server/system"
+	takeouthandlers "hitkeep/internal/server/takeout"
+	"hitkeep/internal/server/user"
+	"hitkeep/internal/takeout"
 )
 
 type Server struct {
@@ -25,19 +37,23 @@ type Server struct {
 	producer      *nsq.Producer
 	mailer        *mailer.Mailer
 	conf          *config.Config
-	ingestLimiter *IPRateLimiter
-	apiLimiter    *IPRateLimiter
-	authLimiter   *IPRateLimiter
+	ingestLimiter *shared.IPRateLimiter
+	apiLimiter    *shared.IPRateLimiter
+	authLimiter   *shared.IPRateLimiter
+	takeout       *takeout.TakeoutService
+	ctx           *shared.Context
 }
 
 func New(conf *config.Config, publicFS fs.FS, store *database.Store, cluster *cluster.Manager, producer *nsq.Producer) *Server {
-	ingestLim := NewIPRateLimiter(rate.Limit(conf.IngestRateLimit), conf.IngestBurst)
-	apiLim := NewIPRateLimiter(rate.Limit(conf.ApiRateLimit), conf.ApiBurst)
-	authLim := NewIPRateLimiter(rate.Limit(conf.AuthRateLimit), conf.AuthBurst)
+	ingestLim := shared.NewIPRateLimiter(rate.Limit(conf.IngestRateLimit), conf.IngestBurst)
+	apiLim := shared.NewIPRateLimiter(rate.Limit(conf.ApiRateLimit), conf.ApiBurst)
+	authLim := shared.NewIPRateLimiter(rate.Limit(conf.AuthRateLimit), conf.AuthBurst)
 	mailService, err := mailer.New(conf)
 	if err != nil {
 		slog.Warn("Failed to initialize mailer. Email features will not work.", "error", err)
 	}
+
+	takeoutService := takeout.NewTakeoutService(store, "archive/takeout")
 
 	s := &Server{
 		store:         store,
@@ -48,6 +64,18 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, cluster *cl
 		ingestLimiter: ingestLim,
 		apiLimiter:    apiLim,
 		authLimiter:   authLim,
+		takeout:       takeoutService,
+	}
+	s.ctx = &shared.Context{
+		Store:         store,
+		Cluster:       cluster,
+		Producer:      producer,
+		Mailer:        mailService,
+		Config:        conf,
+		Takeout:       takeoutService,
+		IngestLimiter: ingestLim,
+		ApiLimiter:    apiLim,
+		AuthLimiter:   authLim,
 	}
 
 	mux := http.NewServeMux()
@@ -77,27 +105,17 @@ func (s *Server) Shutdown(ctx context.Context) error {
 }
 
 func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
-	// System
-	mux.HandleFunc("GET /healthz", s.handleHealthz())
-	mux.HandleFunc("GET /api/status", s.handleGetStatus())
-
-	// Ingest
-	mux.HandleFunc("POST /ingest", s.withRateLimit(s.ingestLimiter, s.handleIngest()))
-	mux.HandleFunc("OPTIONS /ingest", s.withRateLimit(s.ingestLimiter, s.handleIngest()))
-
-	// Auth
-	mux.HandleFunc("POST /api/initial-user", s.withRateLimit(s.authLimiter, s.handleCreateInitialUser()))
-	mux.HandleFunc("POST /api/login", s.withRateLimit(s.authLimiter, s.handleLogin()))
-	mux.HandleFunc("POST /api/auth/forgot-password", s.withRateLimit(s.authLimiter, s.handleForgotPassword()))
-	mux.HandleFunc("POST /api/auth/reset-password", s.withRateLimit(s.authLimiter, s.handleResetPassword()))
-	mux.HandleFunc("POST /api/user/password", s.withRateLimit(s.authLimiter, s.requireAuth(s.handleChangePassword())))
-
-	// API
-	mux.HandleFunc("GET /api/sites", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleGetSites())))
-	mux.HandleFunc("POST /api/sites", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleCreateSite())))
-	mux.HandleFunc("GET /api/sites/{id}/stats", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleGetSiteStats())))
-	mux.HandleFunc("GET /api/sites/{id}/hits", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleGetSiteHits())))
-	mux.HandleFunc("GET /api/sites/{id}/favicon", s.withRateLimit(s.apiLimiter, s.requireAuth(s.handleGetSiteFavicon())))
+	ctx := s.ctx
+	system.Register(mux, ctx)
+	ingest.Register(mux, ctx)
+	serverauth.Register(mux, ctx)
+	user.Register(mux, ctx)
+	permissions.Register(mux, ctx)
+	admin.Register(mux, ctx)
+	sites.Register(mux, ctx)
+	goals.Register(mux, ctx)
+	takeouthandlers.Register(mux, ctx)
+	sharehandlers.Register(mux, ctx)
 
 	// Static
 	mux.Handle("/", s.spaHandler(publicFS))
@@ -109,6 +127,16 @@ func (s *Server) spaHandler(publicFS fs.FS) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/")
 
+		if strings.HasSuffix(path, ".js") ||
+			strings.HasSuffix(path, ".css") ||
+			strings.HasSuffix(path, ".woff2") ||
+			strings.HasSuffix(path, ".png") ||
+			strings.HasSuffix(path, ".svg") {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		}
+
 		if path == "" {
 			fileServer.ServeHTTP(w, r)
 			return
@@ -117,6 +145,7 @@ func (s *Server) spaHandler(publicFS fs.FS) http.HandlerFunc {
 		f, err := publicFS.Open(path)
 		if os.IsNotExist(err) {
 			if strings.HasPrefix(path, "api/") || strings.HasPrefix(path, "ingest") {
+				w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 				http.NotFound(w, r)
 				return
 			}

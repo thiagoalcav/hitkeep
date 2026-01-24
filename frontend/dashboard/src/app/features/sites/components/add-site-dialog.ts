@@ -37,7 +37,8 @@ import { SiteService } from '../services/site.service';
             placeholder="example.com"
             class="w-full"
             (blur)="sanitizeInput()"
-            [ngClass]="{'ng-invalid ng-dirty': isInvalid()}" />
+            [class.ng-invalid]="isInvalid()"
+            [class.ng-dirty]="form.get('domain')?.dirty" />
 
           <!-- Validation Messages -->
           @if (isInvalid()) {
@@ -121,7 +122,12 @@ export class AddSiteDialog {
       return;
     }
 
-    const domain = this.form.get('domain')?.value!
+    const domainControl = this.form.get('domain');
+    const domain = domainControl?.value ?? '';
+    if (!domain) {
+      this.isSubmitting.set(false);
+      return;
+    }
     this.isSubmitting.set(true);
     this.createError.set(null);
 

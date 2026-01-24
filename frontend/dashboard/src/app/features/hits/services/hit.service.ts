@@ -19,7 +19,8 @@ export class HitService {
     pageSize = 10,
     sortField?: string,
     sortOrder?: string,
-    query?: string
+    query?: string,
+    filters: { type: string; value: string }[] = []
   ) {
     this.isLoading.set(true);
 
@@ -32,6 +33,9 @@ export class HitService {
     if (sortField) params = params.set('sort', sortField);
     if (sortOrder) params = params.set('order', sortOrder);
     if (query) params = params.set('q', query);
+    for (const filter of filters) {
+      params = params.append('filter', `${filter.type}:${filter.value}`);
+    }
 
     this.http.get<PaginatedHits>(`/api/sites/${siteId}/hits`, { params })
       .pipe(finalize(() => this.isLoading.set(false)))

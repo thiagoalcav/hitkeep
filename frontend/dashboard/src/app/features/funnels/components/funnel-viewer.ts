@@ -1,0 +1,128 @@
+import { Component, Input, Output, EventEmitter, inject, signal, OnChanges } from '@angular/core';
+import { CommonModule, DecimalPipe } from '@angular/common';
+import { DialogModule } from 'primeng/dialog';
+import { SkeletonModule } from 'primeng/skeleton';
+import { AnalyticsService } from '../../../core/services/analytics.service';
+import { FunnelStats } from '../../../core/models/analytics.types';
+
+@Component({
+  selector: 'app-funnel-viewer',
+  standalone: true,
+  imports: [CommonModule, DialogModule, SkeletonModule, DecimalPipe],
+  template: `
+<p-dialog [header]="stats()?.name || 'Funnel Analysis'" [(visible)]="visible" [modal]="true" [style]="{width: '900px', maxWidth: '95vw'}" [draggable]="false" [resizable]="false" (onHide)="onHide()">        
+        @if (loading()) {
+            <div class="flex flex-col gap-4 p-4">
+                <p-skeleton height="200px" styleClass="w-full" />
+                <div class="flex justify-between">
+                    <p-skeleton width="100px" height="2rem" />
+                    <p-skeleton width="100px" height="2rem" />
+                </div>
+            </div>
+        } @else if (stats()) {
+          <div class="flex flex-col gap-6 p-2">
+                <!-- Top Summary Cards -->
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="p-4 bg-surface-50 dark:bg-surface-900 rounded border border-surface-200 dark:border-surface-700 text-center">
+                        <div class="text-sm text-muted-color mb-1">Entries</div>
+                        <div class="text-2xl font-bold">{{ stats()!.total_entries | number }}</div>
+                    </div>
+                    <div class="p-4 bg-surface-50 dark:bg-surface-900 rounded border border-surface-200 dark:border-surface-700 text-center">
+                        <div class="text-sm text-muted-color mb-1">Completions</div>
+                        <div class="text-2xl font-bold">{{ stats()!.total_completions | number }}</div>
+                    </div>
+                    <div class="p-4 bg-surface-50 dark:bg-surface-900 rounded border border-surface-200 dark:border-surface-700 text-center">
+                        <div class="text-sm text-muted-color mb-1">Conversion Rate</div>
+                        <div class="text-2xl font-bold text-primary">{{ stats()!.overall_conversion_rate | number:'1.1-2' }}%</div>
+                    </div>
+                </div>
+
+                <!-- Visual Steps -->
+                <div class="flex flex-col gap-0">
+                    @for (step of stats()!.steps; track step.step_index; let first = $first) {
+                        
+                        <!-- Connector Line -->
+                        @if (!first) {
+                           <div class="h-8 ml-8 border-l-2 border-dashed border-surface-300 dark:border-surface-600 relative">
+                                <!-- Dropoff Pill -->
+                                <div class="absolute top-1/2 left-4 -translate-y-1/2 text-xs font-medium text-red-500 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-full border border-red-200 dark:border-red-900/50">
+                                    -{{ step.dropoff | number }} dropped
+                                </div>
+                           </div>
+                        }
+
+                        <div class="flex items-center gap-4 p-4 border border-surface-200 dark:border-surface-700 rounded-lg bg-surface-0 dark:bg-surface-800 shadow-sm relative z-10">
+                            <!-- Step Index Circle -->
+                            <div class="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-contrast font-bold text-sm shrink-0">
+                                {{ step.step_index + 1 }}
+                            </div>
+
+                            <!-- Info -->
+                            <div class="flex-1 min-w-0">
+                                <div class="font-semibold truncate" [title]="step.name">{{ step.name }}</div>
+                                <div class="text-sm text-muted-color">{{ step.visitors | number }} visitors</div>
+                            </div>
+
+                            <!-- Step Conversion -->
+                            @if (!first) {
+                                <div class="flex flex-col items-end shrink-0">
+                                <div [class]="conversionClass(step.conversion_rate)">
+                                    {{ step.conversion_rate | number:'1.1-1' }}%
+                                </div>
+                                    <div class="text-xs text-muted-color">retention</div>
+                                </div>
+                            } @else {
+                                <div class="text-xs font-medium text-muted-color uppercase tracking-wider px-2">Entry</div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </p-dialog>
+  `
+})
+export class FunnelViewer implements OnChanges {
+  @Input() visible = false;
+  @Output() visibleChange = new EventEmitter<boolean>();
+  @Input() siteId: string | null = null;
+  @Input() funnelId: string | null = null;
+  @Input() dateRange: { from: string, to: string } | null = null;
+
+  private analyticsService = inject(AnalyticsService);
+
+  stats = signal<FunnelStats | null>(null);
+  loading = signal(false);
+
+  ngOnChanges() {
+    if (this.visible && this.siteId && this.funnelId && this.dateRange) {
+      this.loadStats();
+    }
+  }
+
+  loadStats() {
+    if (!this.siteId || !this.funnelId || !this.dateRange) return;
+    
+    this.loading.set(true);
+    this.analyticsService.getFunnelStats(this.siteId, this.funnelId, this.dateRange.from, this.dateRange.to).subscribe({
+      next: (data) => {
+        this.stats.set(data);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false)
+    });
+  }
+
+  conversionClass(rate: number): string {
+    const base = 'text-sm font-bold';
+    if (rate >= 70) return `${base} text-green-600 dark:text-green-400`;
+    if (rate >= 40) return `${base} text-yellow-600 dark:text-yellow-400`;
+    return `${base} text-red-600 dark:text-red-400`;
+  }
+
+  onHide() {
+    this.visible = false;
+    this.visibleChange.emit(false);
+    this.stats.set(null);
+  }
+}

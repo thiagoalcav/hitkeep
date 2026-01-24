@@ -1,0 +1,22 @@
+<div class="flex flex-wrap items-center justify-between gap-3 mb-6 -mx-4 md:-mx-8 px-4 md:px-8">
+  <div class="flex flex-wrap items-center gap-3">
+    <p-select [options]="timeRanges()"
+              [ngModel]="selectedRange()"
+              optionLabel="label"
+              (onChange)="handleRangeChange($event)"
+              class="w-40 md:w-48"
+              aria-label="Time Range Selector">
+    </p-select>
+
+    <p-button icon="pi pi-refresh"
+              loadingIcon="pi pi-refresh"
+              (onClick)="refresh.emit()"
+              [loading]="loading()"
+              class="p-button-rounded p-button-text p-button-secondary"
+              pTooltip="Refresh Data"
+              tooltipPosition="bottom">
+    </p-button>
+  </div>
+
+  <ng-content select="[toolbar-right]"></ng-content>
+</div>

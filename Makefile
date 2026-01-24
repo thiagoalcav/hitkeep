@@ -18,8 +18,20 @@ frontend-dashboard-build:
 	@echo "Copying dashboard to public directory..."
 	@cp -r frontend/dashboard/dist/dashboard/browser/* public/
 
-frontend-dev:
-	@echo "Starting Angular development server..."
+dev:
+	@echo "Starting development environment..."
+	@if ! command -v air > /dev/null; then \
+		echo "Air is not installed. Installing..."; \
+		go install github.com/air-verse/air@latest; \
+	fi
+	@make -j2 dev-backend dev-frontend
+
+dev-backend:
+	@echo "Starting Backend with Live Reload..."
+	@air
+
+dev-frontend:
+	@echo "Starting Angular with Hot Reload..."
 	@cd frontend/dashboard && npm install && npm start
 
 run: build

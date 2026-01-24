@@ -10,8 +10,10 @@ import (
 )
 
 const (
-	CookieName    = "hk_token"
-	TokenDuration = 24 * time.Hour
+	CookieName           = "hk_token"
+	RememberMeCookieName = "hk_remember_me"
+	TokenDuration        = 24 * time.Hour
+	RememberMeDuration   = 30 * 24 * time.Hour
 )
 
 type Claims struct {
@@ -67,6 +69,41 @@ func SetTokenCookie(w http.ResponseWriter, token string, secure bool) {
 		Value:    token,
 		Path:     "/",
 		Expires:  time.Now().Add(TokenDuration),
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+// SetRememberMeCookie attaches the remember me token to the response as an HTTP-only cookie.
+func SetRememberMeCookie(w http.ResponseWriter, token string, secure bool) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     RememberMeCookieName,
+		Value:    token,
+		Path:     "/",
+		Expires:  time.Now().Add(RememberMeDuration),
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+// ClearCookies removes both auth and remember me cookies.
+func ClearCookies(w http.ResponseWriter, secure bool) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     CookieName,
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     RememberMeCookieName,
+		Value:    "",
+		Path:     "/",
+		Expires:  time.Unix(0, 0),
 		HttpOnly: true,
 		Secure:   secure,
 		SameSite: http.SameSiteLaxMode,

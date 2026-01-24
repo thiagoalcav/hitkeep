@@ -6,8 +6,10 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -16,6 +18,7 @@ type Config struct {
 	ApiRateLimit           float64
 	AuthBurst              int
 	AuthRateLimit          float64
+	ArchivePath            string
 	BindAddr               string
 	DBPath                 string
 	Healthcheck            bool
@@ -39,6 +42,28 @@ type Config struct {
 	NSQTCPAddress          string
 	PublicURL              string
 	Version                string
+	DataRetentionDays      int
+	TrustedProxies         string
+	trustedProxyNets       []*net.IPNet
+}
+
+// GetTrustedProxyNetworks returns the parsed trusted proxy networks.
+func (c *Config) GetTrustedProxyNetworks() []*net.IPNet {
+	return c.trustedProxyNets
+}
+
+// IsTrustedProxy checks if an IP is in the trusted proxy list.
+func (c *Config) IsTrustedProxy(ip net.IP) bool {
+	if len(c.trustedProxyNets) == 0 {
+		return true
+	}
+
+	for _, network := range c.trustedProxyNets {
+		if network.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }
 
 func Load() *Config {
@@ -91,6 +116,7 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	}
 
 	defDB := getEnv("HITKEEP_DB_PATH", "hitkeep.db")
+	defArchive := getEnv("HITKEEP_ARCHIVE_PATH", "archive")
 	defHTTP := getEnv("HITKEEP_HTTP_ADDR", ":8080")
 	defBind := getEnv("HITKEEP_BIND_ADDR", "0.0.0.0:7946")
 	defJoin := getEnv("HITKEEP_JOIN_ADDR", "")
@@ -118,6 +144,9 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	defMailFrom := getEnv("HITKEEP_MAIL_FROM_ADDRESS", "hitkeep@localhost")
 	defMailName := getEnv("HITKEEP_MAIL_FROM_NAME", "HitKeep")
 
+	defRetention := getInt("HITKEEP_DATA_RETENTION_DAYS", 365)
+	defTrustedProxies := getEnv("HITKEEP_TRUSTED_PROXIES", "")
+
 	hostname, _ := os.Hostname()
 	defNodeName := getEnv("HITKEEP_NODE_NAME", fmt.Sprintf("%s-%d", hostname, time.Now().UnixNano()))
 
@@ -127,6 +156,7 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	fs.StringVar(&conf.PublicURL, "public-url", defPublicURL, "Public URL")
 
 	fs.StringVar(&conf.DBPath, "db", defDB, "Database file path")
+	fs.StringVar(&conf.ArchivePath, "archive-path", defArchive, "Data archive path")
 	fs.StringVar(&conf.LogLevel, "log-level", defLogLevel, "Log level")
 	fs.StringVar(&conf.JWTSecret, "jwt-secret", defJWT, "Secret key for JWT")
 
@@ -152,9 +182,12 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	fs.StringVar(&conf.MailFromAddress, "mail-from-address", defMailFrom, "From Email")
 	fs.StringVar(&conf.MailFromName, "mail-from-name", defMailName, "From Name")
 
+	fs.IntVar(&conf.DataRetentionDays, "retention-days", defRetention, "Default data retention in days")
+
+	fs.StringVar(&conf.TrustedProxies, "trusted-proxies", defTrustedProxies, "Trusted proxy CIDRs (comma-separated)")
+
 	fs.StringVar(&conf.NodeName, "name", defNodeName, "Unique node name")
 
-	// Tester
 	_ = fs.Parse(args)
 
 	if conf.JWTSecret == "" {
@@ -166,5 +199,40 @@ func load(args []string, getEnv func(string, string) string) *Config {
 		}
 	}
 
+	// Parse trusted proxies
+	if conf.TrustedProxies != "" {
+		conf.trustedProxyNets = parseTrustedProxies(conf.TrustedProxies)
+		if len(conf.trustedProxyNets) > 0 {
+			slog.Info("Loaded trusted proxy networks", "count", len(conf.trustedProxyNets))
+		}
+	}
+
 	return &conf
+}
+
+// parseTrustedProxies parses a comma-separated list of CIDR ranges.
+func parseTrustedProxies(cidrs string) []*net.IPNet {
+	if cidrs == "" {
+		return nil
+	}
+
+	parts := strings.Split(cidrs, ",")
+	networks := make([]*net.IPNet, 0, len(parts))
+
+	for _, cidr := range parts {
+		cidr = strings.TrimSpace(cidr)
+		if cidr == "" {
+			continue
+		}
+
+		_, network, err := net.ParseCIDR(cidr)
+		if err != nil {
+			slog.Warn("Invalid trusted proxy CIDR, skipping", "cidr", cidr, "error", err)
+			continue
+		}
+
+		networks = append(networks, network)
+	}
+
+	return networks
 }

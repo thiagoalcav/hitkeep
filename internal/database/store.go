@@ -4,13 +4,16 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"sync"
 
 	_ "github.com/duckdb/duckdb-go/v2"
 )
 
 type Store struct {
-	db   *sql.DB
-	path string
+	db                  *sql.DB
+	path                string
+	analyticsMu         sync.Mutex
+	analyticsStatements *analyticsStatements
 }
 
 func NewStore(path string) *Store {
@@ -37,6 +40,12 @@ func (s *Store) Connect() error {
 
 func (s *Store) Close() error {
 	slog.Debug("Closing database connection...")
+	s.analyticsMu.Lock()
+	if s.analyticsStatements != nil {
+		_ = s.analyticsStatements.close()
+		s.analyticsStatements = nil
+	}
+	s.analyticsMu.Unlock()
 	if s.db != nil {
 		return s.db.Close()
 	}

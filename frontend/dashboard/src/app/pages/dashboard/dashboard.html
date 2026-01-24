@@ -1,88 +1,163 @@
 <div class="flex flex-col h-full w-full bg-[var(--p-surface-ground)] transition-colors duration-200">
   <!-- Header & Controls -->
-  <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-    <div>
-      <div class="flex items-center gap-3">
-        @if (siteService.activeSite()) {
-          <app-site-favicon [site]="siteService.activeSite()"/>
-        }
-        <h1 class="text-2xl md:text-3xl font-bold text-[var(--p-text-color)]">Overview</h1>
-      </div>
-      <p class="text-sm text-[var(--p-text-muted-color)] mt-1">
-        {{ siteService.activeSite()?.domain || 'Select a Site' }}
-      </p>
+  <app-page-header>
+    <div header-left>
+      <app-page-breadcrumb [items]="breadcrumbItems()" />
     </div>
-    <div class="flex items-center gap-3">
-      <p-select [options]="timeRanges" [(ngModel)]="selectedRange" optionLabel="label"
-                (onChange)="onRangeChange($event)" class="w-40 md:w-48" aria-label="Time Range Selector">
-      </p-select>
+  </app-page-header>
 
-      <p-button icon="pi pi-code" (onClick)="openSnippetModal()"
-                class="p-button-rounded p-button-text p-button-secondary" pTooltip="Get Tracking Code"
-                tooltipPosition="bottom">
-      </p-button>
-
-      <p-button icon="pi pi-refresh" (onClick)="refreshAll()"
-                [loading]="statsService.isLoading()"
-                class="p-button-rounded p-button-text p-button-secondary" pTooltip="Refresh Data"
-                tooltipPosition="bottom">
-      </p-button>
+  <app-range-toolbar
+    [timeRanges]="timeRanges"
+    [selectedRange]="selectedRange()"
+    [loading]="statsService.isLoading()"
+    (selectedRangeChange)="selectedRange.set($event)"
+    (rangeChange)="onRangeChange($event)"
+    (refresh)="refreshAll()">
+  </app-range-toolbar>
+  @if (siteService.isLoading()) {
+    <div class="flex items-center gap-2 text-sm text-[var(--p-text-muted-color)]">
+      <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+      <span>Loading site data…</span>
     </div>
-  </div>
-  @if (siteService.activeSite()) {
+  } @else if (siteService.activeSite()) {
     <!-- KPI Cards -->
     <!-- TODO: Refactor for mobile, weird UX -->
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-6 mb-6">
-      <ng-container *ngTemplateOutlet="kpiCard; context: {
-        label: 'Live Visitors',
-        value: statsService.stats()?.live_visitors || 0,
-        loading: statsService.isLoading(),
-        valueClass: (statsService.stats()?.live_visitors || 0) > 0 ? 'text-green-600 dark:text-green-400 animate-pulse' : ''
-      }"></ng-container>
-      <ng-container
-        *ngTemplateOutlet="kpiCard; context: {label: 'Pageviews', value: statsService.stats()?.total_pageviews, loading: statsService.isLoading()}"></ng-container>
-      <ng-container
-        *ngTemplateOutlet="kpiCard; context: {label: 'Unique Sessions', value: statsService.stats()?.unique_sessions, loading: statsService.isLoading()}"></ng-container>
-      <ng-container
-        *ngTemplateOutlet="kpiCard; context: {label: 'Bounce Rate', value: (statsService.stats()?.bounce_rate | number:'1.0-1') + '%', loading: statsService.isLoading()}"></ng-container>
-      <ng-container
-        *ngTemplateOutlet="kpiCard; context: {label: 'Avg. Duration', value: formatDuration(statsService.stats()?.avg_session_duration || 0), loading: statsService.isLoading()}"></ng-container>
-      <ng-container
-        *ngTemplateOutlet="kpiCard; context: {label: 'Pages / Session', value: (statsService.stats()?.pages_per_session | number:'1.1-2'), loading: statsService.isLoading()}"></ng-container>
+    <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+      @for (card of kpiCards(); track card.label) {
+        <app-kpi-card
+          [label]="card.label"
+          [value]="card.value"
+          [loading]="card.loading"
+          [valueClass]="card.valueClass" />
+      }
     </div>
 
     <!-- Traffic Chart -->
     <div class="mb-6">
       <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card">
-
-        <h3 class="text-lg font-semibold mb-4">{{ chartTitle() }}</h3>
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <h3 class="text-lg font-semibold">{{ chartTitle() }}</h3>
+              @if (hasFilters()) {
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full border border-[var(--p-primary-color)] text-xs font-medium">
+                  Filtered
+                </span>
+              }
+            </div>
+        </div>
         <app-traffic-chart
           [data]="statsService.stats()?.chart_data || []"
           [isLoading]="statsService.isLoading()"
-          [isShortRange]="isShortRange()"
-          (snippetClicked)="openSnippetModal()"/>
+          [isShortRange]="isShortRange()"/>
       </p-card>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+        @let chips = filterChips();
+        <div class="flex flex-wrap items-center gap-2">
+          @if (chips.length) {
+            @for (filter of chips; track filter.type) {
+              <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--p-primary-color)] text-sm">
+                <span class="font-medium text-[var(--p-text-color)]">{{ filter.label }}</span>
+                <button type="button" class="text-muted-color hover:text-[var(--p-text-color)]"
+                        (click)="removeFilter(filter.type, filter.value)" aria-label="Remove filter">
+                  <i class="pi pi-times" aria-hidden="true"></i>
+                </button>
+              </span>
+            }
+            <button type="button" class="text-xs text-muted-color hover:text-[var(--p-text-color)] underline"
+                    (click)="clearFilter()">
+              Clear all
+            </button>
+          } @else {
+            <span class="text-sm text-[var(--p-text-muted-color)]">No active filter</span>
+          }
+        </div>
+        <div class="flex items-center gap-2">
+          <p-button icon="pi pi-download" label="Export CSV" size="small"
+                    (onClick)="exportFiltered()"
+                    [disabled]="!exportUrl()"
+                    styleClass="p-button-outlined p-button-sm"></p-button>
+        </div>
+      </div>
+
+     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
       <app-metric-list
         title="Top Pages"
         icon="pi-file"
         [data]="statsService.stats()?.top_pages || []"
-        [isLoading]="statsService.isLoading()"/>
+        [linkMode]="'path'"
+        [siteDomain]="siteService.activeSite()?.domain || null"
+        [isLoading]="statsService.isLoading()"
+        [isRowClickable]="true"
+        [activeValue]="activeFilterValue('path')"
+        (rowClicked)="applyMetricFilter('path', $event)"/>
 
       <app-metric-list
         title="Top Sources"
         icon="pi-link"
         [data]="statsService.stats()?.top_referrers || []"
-        [isLoading]="statsService.isLoading()"/>
+        [linkMode]="'url'"
+        [isLoading]="statsService.isLoading()"
+        [isRowClickable]="true"
+        [activeValue]="activeFilterValue('referrer')"
+        (rowClicked)="applyMetricFilter('referrer', $event)"/>
 
       <app-metric-list
         title="Devices"
         icon="pi-mobile"
         [data]="statsService.stats()?.top_devices || []"
-        [isLoading]="statsService.isLoading()"/>
+        [isLoading]="statsService.isLoading()"
+        [isRowClickable]="true"
+        [activeValue]="activeFilterValue('device')"
+        (rowClicked)="applyMetricFilter('device', $event)"/>
+
+      <app-metric-list
+        title="Countries"
+        icon="pi-globe"
+        [data]="statsService.stats()?.top_countries || []"
+        [isLoading]="statsService.isLoading()"
+        [isRowClickable]="true"
+        [showCountryFlags]="true"
+        [showCountryNames]="true"
+        [activeValue]="activeFilterValue('country')"
+        (rowClicked)="applyMetricFilter('country', $event)"/>
     </div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <app-goal-list 
+            [data]="statsService.stats()?.goals || []" 
+            [siteId]="siteService.activeSite()?.id || null"
+            [readOnly]="isShareMode()"
+            [isLoading]="statsService.isLoading()"
+            (refresh)="refreshAll()" />
+            
+        <!-- We pass summary=true (you need to add this input to funnel-list) to hide complexity -->
+        <app-funnel-list 
+            [funnels]="statsService.stats()?.funnels || []" 
+            [isLoading]="statsService.isLoading()"
+            [readOnly]="isShareMode()"
+            (manageClicked)="showFunnelManager.set(true)"
+            (funnelClicked)="openFunnelViewer($event)" />
+    </div>
+
+    @if (!isShareMode()) {
+      <app-funnel-manager
+        [visible]="showFunnelManager()"
+        (visibleChange)="showFunnelManager.set($event)"
+        [siteId]="siteService.activeSite()?.id || null"
+        (funnelsChanged)="refreshAll()"
+        (viewFunnel)="openFunnelViewer($event)"
+      />
+    }
+
+    <app-funnel-viewer
+      [visible]="showFunnelViewer()"
+      (visibleChange)="showFunnelViewer.set($event)"
+      [siteId]="siteService.activeSite()?.id || null"
+      [funnelId]="selectedFunnelId()"
+      [dateRange]="funnelDateRange()"
+    />
 
     <!-- Hits Table -->
     <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card">
@@ -116,9 +191,50 @@
 
         <ng-template pTemplate="body" let-hit>
           <tr class="text-sm hover:bg-[var(--p-surface-hover)]">
-            <td class="font-medium truncate max-w-[200px]" [title]="hit.path">{{ hit.path }}</td>
+            <td class="font-medium truncate max-w-[200px]" [title]="hit.path">
+              <div class="flex items-center gap-2 min-w-0">
+                @if (siteFaviconUrl(); as favicon) {
+                  <img [ngSrc]="favicon" class="size-4 shrink-0 rounded-full" [width]="16" [height]="16" alt="" />
+                }
+                @if (buildSiteUrl(hit.path); as pageUrl) {
+                  <span class="truncate" [title]="hit.path">{{ hit.path }}</span>
+                  <a class="shrink-0 text-muted-color hover:text-[var(--p-text-color)]"
+                     [href]="pageUrl"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                     aria-label="Open page in new tab">
+                    <i class="pi pi-external-link text-xs" aria-hidden="true"></i>
+                  </a>
+                } @else {
+                  <span class="truncate" [title]="hit.path">{{ hit.path }}</span>
+                }
+              </div>
+            </td>
             <td class="whitespace-nowrap text-muted-color">{{ hit.timestamp | date:'MMM d, h:mm a' }}</td>
-            <td class="truncate max-w-[200px] text-muted-color" [title]="hit.referrer">{{ hit.referrer || 'Direct' }}
+            <td class="truncate max-w-[200px] text-muted-color" [title]="hit.referrer">
+              @if (hit.referrer) {
+                <div class="flex items-center gap-2 min-w-0">
+                  @if (referrerDomain(hit.referrer); as domain) {
+                    @if (faviconUrlForDomain(domain); as favicon) {
+                      <img [ngSrc]="favicon" class="size-4 shrink-0 rounded-full" [width]="16" [height]="16" alt="" />
+                    }
+                  }
+                  @if (buildReferrerUrl(hit.referrer); as referrerUrl) {
+                    <span class="truncate" [title]="hit.referrer">{{ hit.referrer }}</span>
+                    <a class="shrink-0 text-muted-color hover:text-[var(--p-text-color)]"
+                       [href]="referrerUrl"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       aria-label="Open referrer in new tab">
+                      <i class="pi pi-external-link text-xs" aria-hidden="true"></i>
+                    </a>
+                  } @else {
+                    <span class="truncate">{{ hit.referrer }}</span>
+                  }
+                </div>
+              } @else {
+                <span>Direct</span>
+              }
             </td>
             <td>
                   <span
@@ -138,23 +254,6 @@
     </div>
   }
 </div>
-<!-- Reusable KPI Card Template -->
-<ng-template #kpiCard let-label="label" let-value="value" let-loading="loading">
-  <p-card class="shadow-sm h-full border border-surface-200 dark:border-surface-700 surface-card">
-    <div class="flex flex-col gap-2">
-      <span class="text-sm font-medium text-muted-color">{{ label }}</span>
-      <div class="text-2xl xl:text-3xl font-bold">
-        @if (loading) {
-          <p-skeleton width="60%" height="2rem"/>
-        } @else {
-          {{ value || 0 }}
-        }
-      </div>
-    </div>
-  </p-card>
-</ng-template>
-<!-- Tracking Code Component -->
-<app-tracking-code [(visible)]="isSnippetVisible"/>
 <!-- Date Range Dialog -->
 <p-dialog header="Select Date Range" [(visible)]="isCustomRangeVisible" [modal]="true">
   <p-datepicker [(ngModel)]="customRangeDates" selectionMode="range" [inline]="true" [showWeek]="false"/>

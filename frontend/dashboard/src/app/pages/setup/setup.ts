@@ -8,7 +8,7 @@ import {
   ReactiveFormsModule
 } from '@angular/forms';
 import { finalize } from 'rxjs/operators';
-import { CommonModule } from '@angular/common';
+
 
 // PrimeNG Imports
 import { PasswordModule } from 'primeng/password';
@@ -23,12 +23,11 @@ import { Brand } from '../../core/components/brand/brand';
   standalone: true,
   imports: [
     Brand,
-    CommonModule,
     ReactiveFormsModule,
     PasswordModule,
     ButtonModule,
     InputTextModule
-  ],
+],
   templateUrl: './setup.html',
   styleUrl: './setup.css',
 })

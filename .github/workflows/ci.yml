@@ -20,7 +20,7 @@ jobs:
     name: Lint Golang codebase
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
@@ -28,8 +28,26 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.6
+          version: v2.8
       - name: Test API
         run: | 
           go vet ./...
           go test ./...
+
+  lint-dashboard:
+    name: Lint Dashboard (Angular)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/dashboard/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend/dashboard
+        run: npm ci
+      - name: Lint dashboard
+        working-directory: frontend/dashboard
+        run: npm run lint

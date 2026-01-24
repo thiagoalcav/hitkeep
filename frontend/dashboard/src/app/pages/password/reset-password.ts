@@ -1,7 +1,7 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 
 // PrimeNG
@@ -17,13 +17,12 @@ import { AuthService } from '../../core/services/auth.service';
   selector: 'app-reset-password',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     Brand,
     ButtonModule,
     PasswordModule,
     MessageModule
-  ],
+],
   styles: [`
     :host ::ng-deep .p-password input { width: 100%; }
   `],

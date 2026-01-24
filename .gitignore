@@ -1,5 +1,7 @@
+tmp
 node_modules
 hitkeep
 hitkeep.db
+/archive
 /public
 !/public/embed.go

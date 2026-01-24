@@ -3,7 +3,7 @@
 > **Web Analytics in a single binary.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Version](https://img.shields.io/badge/Go-1.25.4-00ADD8?logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.25.5-00ADD8?logo=go)](https://go.dev/)
 [![Docker Image](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://github.com/pascalebeier/hitkeep/pkgs/container/hitkeep)
 [![Documentation](https://img.shields.io/badge/📖_Documentation-hitkeep.com-33d399)](https://hitkeep.com)
 
@@ -176,6 +176,19 @@ HitKeep is configured via command-line flags or environment variables. Flags tak
 | `-api-burst`    | `HITKEEP_API_BURST`         | `20`    | Burst size for general API.                        |
 | `-auth-rate`    | `HITKEEP_AUTH_RATE_LIMIT`   | `2.0`   | Rate limit for login/signup (req/sec/ip).          |
 | `-auth-burst`   | `HITKEEP_AUTH_BURST`        | `5`     | Burst size for login/signup.                       |
+
+### Trusted Proxies
+
+Use this when HitKeep is behind a reverse proxy or load balancer and you want to trust forwarded headers.
+This affects both **rate limiting** and **GeoIP** resolution.
+
+| Flag               | Environment Variable        | Default | Description                                                                  |
+|:-------------------|:----------------------------|:--------|:-----------------------------------------------------------------------------|
+| `-trusted-proxies` | `HITKEEP_TRUSTED_PROXIES`   | `""`    | Comma-separated list of trusted proxy CIDRs (e.g. `10.0.0.0/8,127.0.0.1/32`). |
+
+Behavior:
+- If empty, HitKeep trusts proxy headers from any direct peer.
+- If set, HitKeep only trusts proxy headers when the direct connection IP is in the trusted list.
 
 ### Clustering & Internals
 

@@ -1,7 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
-import {Router, RouterLink} from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {
   FormBuilder,
   FormGroup,
@@ -14,9 +13,11 @@ import { finalize } from 'rxjs/operators';
 import { PasswordModule } from 'primeng/password';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
+import { CheckboxModule } from 'primeng/checkbox';
 
 // Corrected path to Core
 import { Brand } from '../../core/components/brand/brand';
+import { AuthService } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -28,6 +29,7 @@ import { Brand } from '../../core/components/brand/brand';
     PasswordModule,
     ButtonModule,
     InputTextModule,
+    CheckboxModule,
     RouterLink
   ],
   templateUrl: './login.html',
@@ -35,8 +37,8 @@ import { Brand } from '../../core/components/brand/brand';
 })
 export class Login {
   private fb = inject(FormBuilder);
-  private http = inject(HttpClient);
   private router = inject(Router);
+  private auth = inject(AuthService);
 
   protected isLoading = false;
   protected errorMessage: string | null = null;
@@ -44,7 +46,8 @@ export class Login {
 
   protected loginForm: FormGroup = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required]]
+    password: ['', [Validators.required]],
+    rememberMe: [false]
   });
 
   onSubmit(): void {
@@ -56,9 +59,9 @@ export class Login {
     this.isLoading = true;
     this.errorMessage = null;
 
-    const { email, password } = this.loginForm.value;
+    const { email, password, rememberMe } = this.loginForm.value;
 
-    this.http.post('/api/login', { email, password })
+    this.auth.login({ email, password, remember_me: rememberMe })
       .pipe(
         finalize(() => this.isLoading = false)
       )

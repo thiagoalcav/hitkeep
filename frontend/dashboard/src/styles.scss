@@ -1,2 +1,43 @@
 @use './tailwind.css';
 @use "primeicons/primeicons.css";
+
+
+/* PrimeNG Overrides for cleaner look */
+.p-card .p-card-body {
+    padding: 1.25rem; 
+}
+
+.p-dialog .p-dialog-header {
+    padding: 1.25rem 1.5rem 0.5rem 1.5rem;
+}
+
+.p-dialog .p-dialog-content {
+    padding: 0 1.5rem 1.5rem 1.5rem;
+}
+
+/* Make tables denser in dashboard */
+.p-datatable-sm .p-datatable-tbody > tr > td {
+    padding: 0.5rem 0.75rem;
+}
+
+/* Custom scrollbar for cleaner UI */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--p-surface-300);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--p-surface-400);
+}
+.p-dark ::-webkit-scrollbar-thumb {
+    background: var(--p-surface-700);
+}
+.p-dark ::-webkit-scrollbar-thumb:hover {
+    background: var(--p-surface-600);
+}

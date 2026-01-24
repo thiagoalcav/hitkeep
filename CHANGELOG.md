@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.5.0](https://github.com/PascaleBeier/hitkeep/compare/v1.4.0...v1.5.0) (2026-01-24)
+
+
+### Features
+
+* Add Dashboard filters ([b4b25aa](https://github.com/PascaleBeier/hitkeep/commit/b4b25aa728bb8f44ce0404d7e22d9839cefe77a1))
+* Add share service ([b7f6572](https://github.com/PascaleBeier/hitkeep/commit/b7f65720fa43cb50aa96da700ae34a978967de75))
+
 ## [1.4.0](https://github.com/PascaleBeier/hitkeep/compare/v1.3.0...v1.4.0) (2025-11-24)
 
 

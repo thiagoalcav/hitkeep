@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.1](https://github.com/PascaleBeier/hitkeep/compare/v1.5.0...v1.5.1) (2026-01-25)
+
+
+### Bug Fixes
+
+* **frontend:** Wrong goal % denominator ([f3e7b6f](https://github.com/PascaleBeier/hitkeep/commit/f3e7b6f23fb6c42b80529a8ab8f6c091f28ffdfb))
+
 ## [1.5.0](https://github.com/PascaleBeier/hitkeep/compare/v1.4.0...v1.5.0) (2026-01-24)
 
 ### Features

@@ -10,6 +10,9 @@ go vet ./...
 echo "Running Go tests..."
 go test ./...
 
+echo "Running golangci-lint"
+golangci-lint run
+
 if [ -d "frontend/dashboard" ]; then
   echo "Running Angular lint..."
   (cd frontend/dashboard && npm run lint)

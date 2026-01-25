@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -126,8 +127,38 @@ func (s *Store) ListAllSites(ctx context.Context) ([]api.Site, error) {
 }
 
 func (s *Store) DeleteSite(ctx context.Context, siteID uuid.UUID) error {
-	_, err := s.db.ExecContext(ctx, "DELETE FROM sites WHERE id = ?", siteID)
+	if err := s.deleteSiteData(ctx, siteID); err != nil {
+		return err
+	}
+	return s.deleteSiteRow(ctx, siteID)
+}
+
+func (s *Store) deleteSiteData(ctx context.Context, siteID uuid.UUID) error {
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
+		return fmt.Errorf("could not begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if err := deleteSiteChildren(ctx, tx, siteID); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("could not commit transaction: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) deleteSiteRow(ctx context.Context, siteID uuid.UUID) error {
+	if _, err := s.db.ExecContext(ctx, "DELETE FROM sites WHERE id = ?", siteID); err != nil {
+		refs, refErr := findSiteReferences(ctx, s.db, siteID)
+		if refErr != nil {
+			return fmt.Errorf("could not delete site: %w (failed to resolve references: %v)", err, refErr)
+		}
+		if len(refs) > 0 {
+			return fmt.Errorf("could not delete site: %w (still referenced by: %s)", err, strings.Join(refs, ", "))
+		}
 		return fmt.Errorf("could not delete site: %w", err)
 	}
 	return nil

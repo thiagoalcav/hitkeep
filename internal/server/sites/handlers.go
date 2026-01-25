@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -33,6 +34,10 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleCreateSite()))
+	mux.HandleFunc("DELETE /api/sites/{id}", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteDelete,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleDeleteSite()))
 	mux.HandleFunc("GET /api/sites/{id}/stats", ctx.Handler(shared.HandlerConfig{
 		SitePerm:    authcore.PermSiteView,
 		RateLimiter: ctx.ApiLimiter,
@@ -142,6 +147,33 @@ func (h *handler) handleCreateSite() http.HandlerFunc {
 		slog.Info("Site created", "id", site.ID, "domain", domain, "user_id", userID)
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(site); err != nil {
+			slog.Error("Failed to encode response", "error", err)
+		}
+	}
+}
+
+func (h *handler) handleDeleteSite() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.ctx.Store == nil {
+			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
+			return
+		}
+
+		siteIDStr := r.PathValue("id")
+		siteID, err := uuid.Parse(siteIDStr)
+		if err != nil {
+			http.Error(w, "Invalid site_id", http.StatusBadRequest)
+			return
+		}
+
+		if err := h.ctx.Store.DeleteSite(r.Context(), siteID); err != nil {
+			slog.Error("Failed to delete site", "error", err, "site_id", siteID)
+			http.Error(w, "Failed to delete site", http.StatusInternalServerError)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
 			slog.Error("Failed to encode response", "error", err)
 		}
 	}
@@ -329,6 +361,14 @@ func (h *handler) handleExportSiteHits() http.HandlerFunc {
 			return
 		}
 
+		format := strings.ToLower(q.Get("format"))
+		switch format {
+		case "xlsx", "parquet", "csv":
+			// allowed
+		default:
+			format = "csv"
+		}
+
 		params := api.HitQueryParams{
 			SiteID:  siteID,
 			UserID:  userID,
@@ -338,13 +378,38 @@ func (h *handler) handleExportSiteHits() http.HandlerFunc {
 			Filters: filters,
 		}
 
-		filename := fmt.Sprintf("hits_%s_%d.csv", siteID, time.Now().Unix())
-		w.Header().Set("Content-Type", "text/csv")
-		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
+		if format == "csv" {
+			filename := fmt.Sprintf("hits_%s_%d.csv", siteID, time.Now().Unix())
+			w.Header().Set("Content-Type", "text/csv")
+			w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 
-		if err := h.ctx.Store.ExportHitsCSV(r.Context(), params, w); err != nil {
-			slog.Error("Failed to export hits", "error", err, "site_id", siteID, "user_id", userID)
+			if err := h.ctx.Store.ExportHitsCSV(r.Context(), params, w); err != nil {
+				slog.Error("Failed to export hits", "error", err, "site_id", siteID, "user_id", userID)
+			}
+			return
 		}
+
+		filename, err := h.ctx.Store.ExportHitsFile(r.Context(), params, format)
+		if err != nil {
+			slog.Error("Failed to export hits", "error", err, "site_id", siteID, "user_id", userID)
+			http.Error(w, "Failed to export hits", http.StatusInternalServerError)
+			return
+		}
+		downloadName := fmt.Sprintf("hits_%s_%d.%s", siteID, time.Now().Unix(), format)
+		w.Header().Set("Content-Disposition", "attachment; filename="+downloadName)
+		switch format {
+		case "xlsx":
+			w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+		case "parquet":
+			w.Header().Set("Content-Type", "application/octet-stream")
+		default:
+			w.Header().Set("Content-Type", "application/octet-stream")
+		}
+		http.ServeFile(w, r, filename)
+
+		go func() {
+			_ = os.Remove(filename)
+		}()
 	}
 }
 

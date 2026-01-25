@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -297,6 +298,14 @@ func (h *handler) handleExportShareHits() http.HandlerFunc {
 			return
 		}
 
+		format := strings.ToLower(q.Get("format"))
+		switch format {
+		case "xlsx", "parquet", "csv":
+			// allowed
+		default:
+			format = "csv"
+		}
+
 		params := api.HitQueryParams{
 			SiteID:  site.ID,
 			UserID:  site.UserID,
@@ -306,13 +315,38 @@ func (h *handler) handleExportShareHits() http.HandlerFunc {
 			Filters: filters,
 		}
 
-		filename := fmt.Sprintf("hits_%s_%d.csv", site.ID, time.Now().Unix())
-		w.Header().Set("Content-Type", "text/csv")
-		w.Header().Set("Content-Disposition", "attachment; filename="+filename)
+		if format == "csv" {
+			filename := fmt.Sprintf("hits_%s_%d.csv", site.ID, time.Now().Unix())
+			w.Header().Set("Content-Type", "text/csv")
+			w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 
-		if err := h.ctx.Store.ExportHitsCSV(r.Context(), params, w); err != nil {
-			slog.Error("Failed to export share hits", "error", err, "site_id", site.ID)
+			if err := h.ctx.Store.ExportHitsCSV(r.Context(), params, w); err != nil {
+				slog.Error("Failed to export share hits", "error", err, "site_id", site.ID)
+			}
+			return
 		}
+
+		filename, err := h.ctx.Store.ExportHitsFile(r.Context(), params, format)
+		if err != nil {
+			slog.Error("Failed to export share hits", "error", err, "site_id", site.ID)
+			http.Error(w, "Failed to export hits", http.StatusInternalServerError)
+			return
+		}
+		downloadName := fmt.Sprintf("hits_%s_%d.%s", site.ID, time.Now().Unix(), format)
+		w.Header().Set("Content-Disposition", "attachment; filename="+downloadName)
+		switch format {
+		case "xlsx":
+			w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+		case "parquet":
+			w.Header().Set("Content-Type", "application/octet-stream")
+		default:
+			w.Header().Set("Content-Type", "application/octet-stream")
+		}
+		http.ServeFile(w, r, filename)
+
+		go func() {
+			_ = os.Remove(filename)
+		}()
 	}
 }
 

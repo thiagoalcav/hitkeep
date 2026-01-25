@@ -4,13 +4,13 @@
 @custom-variant dark (&:where(.p-dark, .p-dark *));
 
 @theme {
-  --font-sans: 'Lexend Variable', ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    --font-sans: "Lexend Variable", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
 .p-datatable-mask {
-  @apply backdrop-blur-sm! bg-surface-0/20! dark:bg-surface-900/20!;
+    @apply backdrop-blur-sm! bg-surface-0/20! dark:bg-surface-900/20!;
 }
 
 .p-datatable-loading-icon {
-  @apply text-primary!;
+    @apply text-primary!;
 }

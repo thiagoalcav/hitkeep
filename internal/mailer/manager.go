@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"errors"
 	"fmt"
 	"html/template"
 	"time"
@@ -22,6 +23,8 @@ type Mailer struct {
 	driver Driver
 	conf   *config.Config
 }
+
+var ErrMailerDisabled = errors.New("mailer not configured")
 
 type templateContext struct {
 	Meta struct {
@@ -56,6 +59,10 @@ func New(conf *config.Config) (*Mailer, error) {
 // Send processes a Mailable (renders MJML) and dispatches via the driver.
 // Usage: mailer.Send(user.Email, mailables.NewWelcomeEmail(user))
 func (m *Mailer) Send(to string, email Mailable) error {
+	if m == nil || m.driver == nil {
+		return ErrMailerDisabled
+	}
+
 	tmpl, err := template.ParseFS(templateFS, "templates/layout.mjml", "templates/"+email.Template())
 	if err != nil {
 		return fmt.Errorf("failed to parse templates: %w", err)

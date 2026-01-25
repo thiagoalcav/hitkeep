@@ -23,13 +23,31 @@ func NewTakeoutService(store *database.Store, path string) *TakeoutService {
 		path:  path,
 	}
 }
-func (s *TakeoutService) ExportUserData(ctx context.Context, userID uuid.UUID) (string, error) {
+func (s *TakeoutService) ExportUserData(ctx context.Context, userID uuid.UUID, format string) (string, error) {
 	// Ensure export directory exists
 	if err := os.MkdirAll(s.path, 0755); err != nil {
 		return "", fmt.Errorf("failed to create export directory: %w", err)
 	}
 
-	filename := filepath.Join(s.path, fmt.Sprintf("user_takeout_%s_%d.xlsx", userID, time.Now().Unix()))
+	var ext, duckFormat string
+	allowFallback := false
+
+	switch format {
+	case "parquet":
+		ext = "parquet"
+		duckFormat = "PARQUET, COMPRESSION 'SNAPPY'"
+	case "csv":
+		ext = "csv"
+		duckFormat = "CSV, HEADER"
+	case "xlsx":
+		fallthrough
+	default:
+		ext = "xlsx"
+		duckFormat = "XLSX"
+		allowFallback = true
+	}
+
+	filename := filepath.Join(s.path, fmt.Sprintf("user_takeout_%s_%d.%s", userID, time.Now().Unix(), ext))
 
 	query := fmt.Sprintf(`
 	COPY (
@@ -40,10 +58,14 @@ func (s *TakeoutService) ExportUserData(ctx context.Context, userID uuid.UUID) (
 		SELECT 'goal' as record_type, * FROM goals WHERE site_id IN (SELECT site_id FROM site_members WHERE user_id = '%s')
 		UNION BY NAME
 		SELECT 'funnel' as record_type, * FROM funnels WHERE site_id IN (SELECT site_id FROM site_members WHERE user_id = '%s')
-	) TO '%s' (FORMAT XLSX);
-`, userID, userID, userID, userID, filename)
+	) TO '%s' (FORMAT %s);
+`, userID, userID, userID, userID, filename, duckFormat)
 
 	if _, err := s.store.DB().ExecContext(ctx, query); err != nil {
+		if !allowFallback {
+			return "", fmt.Errorf("failed to export user data: %w", err)
+		}
+
 		// Fallback to CSV if XLSX fails
 		csvFilename := filepath.Join(s.path, fmt.Sprintf("user_takeout_%s_%d.csv", userID, time.Now().Unix()))
 		query = fmt.Sprintf(`

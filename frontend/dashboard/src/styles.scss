@@ -1,10 +1,9 @@
-@use './tailwind.css';
+@use "./tailwind.css";
 @use "primeicons/primeicons.css";
-
 
 /* PrimeNG Overrides for cleaner look */
 .p-card .p-card-body {
-    padding: 1.25rem; 
+    padding: 1.25rem;
 }
 
 .p-dialog .p-dialog-header {

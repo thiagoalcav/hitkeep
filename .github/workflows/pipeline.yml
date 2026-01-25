@@ -38,9 +38,9 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
-      
+          cache: "npm"
+          cache-dependency-path: "**/package-lock.json"
+
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
@@ -71,7 +71,7 @@ jobs:
         run: |
           npm ci
           npm run build:prod
-      
+
       - name: Prepare Public Assets
         run: |
           mkdir -p public

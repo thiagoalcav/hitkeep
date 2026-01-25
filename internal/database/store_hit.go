@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -118,34 +119,7 @@ func (s *Store) GetHits(ctx context.Context, params api.HitQueryParams) (*api.Pa
 }
 
 func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w io.Writer) error {
-	baseQuery := `
-		FROM hits h
-		JOIN sites s ON h.site_id = s.id
-		WHERE h.site_id = ? 
-		  AND s.user_id = ? 
-		  AND h.timestamp >= ? 
-		  AND h.timestamp <= ?
-	`
-	args := []any{params.SiteID, params.UserID, params.Start, params.End}
-
-	filterSQL, filterArgs := buildHitFilters(params.Filters, "h")
-	baseQuery += filterSQL
-	args = append(args, filterArgs...)
-
-	if params.Query != "" {
-		baseQuery += ` AND (h.path ILIKE ? OR h.referrer ILIKE ? OR h.user_agent ILIKE ?)`
-		wildcard := "%" + params.Query + "%"
-		args = append(args, wildcard, wildcard, wildcard)
-	}
-
-	baseQuery += " ORDER BY h.timestamp DESC"
-
-	//nolint:gosec // baseQuery is built from fixed allowlists and parameter placeholders
-	selectQuery := `
-		SELECT
-            h.id, h.site_id, h.session_id, h.page_id, h.timestamp, h.path, h.referrer, h.user_agent,
-            h.viewport_width, h.viewport_height, h.screen_width, h.screen_height, h.language, h.country_code, h.is_unique
-	` + baseQuery
+	selectQuery, args := buildHitExportQuery(params)
 
 	rows, err := s.db.QueryContext(ctx, selectQuery, args...)
 	if err != nil {
@@ -233,6 +207,44 @@ func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w 
 	return nil
 }
 
+func (s *Store) ExportHitsFile(ctx context.Context, params api.HitQueryParams, format string) (string, error) {
+	var ext, duckFormat string
+
+	switch strings.ToLower(format) {
+	case "parquet":
+		ext = "parquet"
+		duckFormat = "PARQUET, COMPRESSION 'SNAPPY'"
+	case "xlsx":
+		ext = "xlsx"
+		duckFormat = "XLSX"
+	case "csv":
+		fallthrough
+	default:
+		ext = "csv"
+		duckFormat = "CSV, HEADER"
+	}
+
+	tmpFile, err := os.CreateTemp("", fmt.Sprintf("hitkeep_hits_*.%s", ext))
+	if err != nil {
+		return "", fmt.Errorf("failed to create export file: %w", err)
+	}
+	filename := tmpFile.Name()
+	if err := tmpFile.Close(); err != nil {
+		_ = os.Remove(filename)
+		return "", fmt.Errorf("failed to close export file: %w", err)
+	}
+
+	selectQuery, args := buildHitExportQuery(params)
+	//nolint:gosec // filename is generated locally; selectQuery uses parameter placeholders
+	copyQuery := fmt.Sprintf("COPY (%s) TO '%s' (FORMAT %s);", selectQuery, filename, duckFormat)
+	if _, err := s.db.ExecContext(ctx, copyQuery, args...); err != nil {
+		_ = os.Remove(filename)
+		return "", fmt.Errorf("failed to export hits: %w", err)
+	}
+
+	return filename, nil
+}
+
 func nullString(value sql.NullString) string {
 	if value.Valid {
 		return value.String
@@ -255,4 +267,37 @@ func nullBool(value sql.NullBool) string {
 		return "false"
 	}
 	return ""
+}
+
+func buildHitExportQuery(params api.HitQueryParams) (string, []any) {
+	baseQuery := `
+		FROM hits h
+		JOIN sites s ON h.site_id = s.id
+		WHERE h.site_id = ? 
+		  AND s.user_id = ? 
+		  AND h.timestamp >= ? 
+		  AND h.timestamp <= ?
+	`
+	args := []any{params.SiteID, params.UserID, params.Start, params.End}
+
+	filterSQL, filterArgs := buildHitFilters(params.Filters, "h")
+	baseQuery += filterSQL
+	args = append(args, filterArgs...)
+
+	if params.Query != "" {
+		baseQuery += ` AND (h.path ILIKE ? OR h.referrer ILIKE ? OR h.user_agent ILIKE ?)`
+		wildcard := "%" + params.Query + "%"
+		args = append(args, wildcard, wildcard, wildcard)
+	}
+
+	baseQuery += " ORDER BY h.timestamp DESC"
+
+	//nolint:gosec // baseQuery is built from fixed allowlists and parameter placeholders
+	selectQuery := `
+		SELECT
+            h.id, h.site_id, h.session_id, h.page_id, h.timestamp, h.path, h.referrer, h.user_agent,
+            h.viewport_width, h.viewport_height, h.screen_width, h.screen_height, h.language, h.country_code, h.is_unique
+	` + baseQuery
+
+	return selectQuery, args
 }

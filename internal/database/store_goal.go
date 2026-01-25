@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -54,13 +55,27 @@ func (s *Store) GetGoals(ctx context.Context, siteID uuid.UUID) ([]api.Goal, err
 }
 
 func (s *Store) DeleteGoal(ctx context.Context, id uuid.UUID, siteID uuid.UUID) error {
-	res, err := s.db.ExecContext(ctx, "DELETE FROM goals WHERE id = ? AND site_id = ?", id, siteID)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if err := deleteRollups(ctx, tx, siteID, id, goalRollupQueries); err != nil {
+		return err
+	}
+
+	res, err := tx.ExecContext(ctx, "DELETE FROM goals WHERE id = ? AND site_id = ?", id, siteID)
 	if err != nil {
 		return fmt.Errorf("failed to delete goal: %w", err)
 	}
 	rows, _ := res.RowsAffected()
 	if rows == 0 {
 		return fmt.Errorf("goal not found")
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
 	}
 	return nil
 }
@@ -117,13 +132,48 @@ func (s *Store) GetFunnels(ctx context.Context, siteID uuid.UUID) ([]api.Funnel,
 }
 
 func (s *Store) DeleteFunnel(ctx context.Context, id uuid.UUID, siteID uuid.UUID) error {
-	res, err := s.db.ExecContext(ctx, "DELETE FROM funnels WHERE id = ? AND site_id = ?", id, siteID)
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if err := deleteRollups(ctx, tx, siteID, id, funnelRollupQueries); err != nil {
+		return err
+	}
+
+	res, err := tx.ExecContext(ctx, "DELETE FROM funnels WHERE id = ? AND site_id = ?", id, siteID)
 	if err != nil {
 		return fmt.Errorf("failed to delete funnel: %w", err)
 	}
 	rows, _ := res.RowsAffected()
 	if rows == 0 {
 		return fmt.Errorf("funnel not found")
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	return nil
+}
+
+var goalRollupQueries = []string{
+	"DELETE FROM goal_rollups_hourly WHERE site_id = ? AND goal_id = ?",
+	"DELETE FROM goal_rollups_daily WHERE site_id = ? AND goal_id = ?",
+	"DELETE FROM goal_rollups_monthly WHERE site_id = ? AND goal_id = ?",
+}
+
+var funnelRollupQueries = []string{
+	"DELETE FROM funnel_rollups_hourly WHERE site_id = ? AND funnel_id = ?",
+	"DELETE FROM funnel_rollups_daily WHERE site_id = ? AND funnel_id = ?",
+	"DELETE FROM funnel_rollups_monthly WHERE site_id = ? AND funnel_id = ?",
+}
+
+func deleteRollups(ctx context.Context, tx *sql.Tx, siteID uuid.UUID, entityID uuid.UUID, queries []string) error {
+	for _, query := range queries {
+		if _, err := tx.ExecContext(ctx, query, siteID, entityID); err != nil {
+			return fmt.Errorf("failed to delete rollups: %w", err)
+		}
 	}
 	return nil
 }

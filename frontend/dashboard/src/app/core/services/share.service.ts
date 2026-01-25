@@ -1,38 +1,36 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs';
-import { Site } from '../models/analytics.types';
+import { Site } from '@models/analytics.types';
 
 interface ShareLinkResponse {
-  url: string;
-  token: string;
+    url: string;
+    token: string;
 }
 
 @Injectable({ providedIn: 'root' })
 export class ShareService {
-  private http = inject(HttpClient);
+    private http = inject(HttpClient);
 
-  readonly token = signal<string | null>(null);
-  readonly site = signal<Site | null>(null);
-  readonly isShareMode = computed(() => !!this.token());
+    readonly token = signal<string | null>(null);
+    readonly site = signal<Site | null>(null);
+    readonly isShareMode = computed(() => !!this.token());
 
-  setToken(token: string | null) {
-    this.token.set(token);
-  }
+    setToken(token: string | null) {
+        this.token.set(token);
+    }
 
-  clear() {
-    this.token.set(null);
-    this.site.set(null);
-  }
+    clear() {
+        this.token.set(null);
+        this.site.set(null);
+    }
 
-  loadShareSite(token: string) {
-    this.setToken(token);
-    return this.http.get<Site>(`/api/share/${token}/site`).pipe(
-      tap((site) => this.site.set(site))
-    );
-  }
+    loadShareSite(token: string) {
+        this.setToken(token);
+        return this.http.get<Site>(`/api/share/${token}/site`).pipe(tap((site) => this.site.set(site)));
+    }
 
-  createShareLink(siteId: string) {
-    return this.http.post<ShareLinkResponse>(`/api/sites/${siteId}/share`, {});
-  }
+    createShareLink(siteId: string) {
+        return this.http.post<ShareLinkResponse>(`/api/sites/${siteId}/share`, {});
+    }
 }

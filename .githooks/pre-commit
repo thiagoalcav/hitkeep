@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root_dir="$(git rev-parse --show-toplevel)"
+cd "$root_dir"
+
+echo "Running Go vet..."
+go vet ./...
+
+echo "Running Go tests..."
+go test ./...
+
+if [ -d "frontend/dashboard" ]; then
+  echo "Running Angular lint..."
+  (cd frontend/dashboard && npm run lint)
+
+  echo "Running Prettier check..."
+  (cd frontend/dashboard && npx prettier@3.4.2 --check .)
+fi

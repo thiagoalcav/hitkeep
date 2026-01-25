@@ -5,32 +5,32 @@ import { SelectModule } from 'primeng/select';
 import { TooltipModule } from 'primeng/tooltip';
 
 export interface RangeOption {
-  label: string;
-  value: string;
+    label: string;
+    value: string;
 }
 
 export interface RangeSelectEvent {
-  value: RangeOption;
+    value: RangeOption;
 }
 
 @Component({
-  selector: 'app-range-toolbar',
-  imports: [FormsModule, SelectModule, ButtonModule, TooltipModule],
-  templateUrl: './range-toolbar.html',
-  styleUrl: './range-toolbar.css',
-  changeDetection: ChangeDetectionStrategy.OnPush
+    selector: 'app-range-toolbar',
+    imports: [FormsModule, SelectModule, ButtonModule, TooltipModule],
+    templateUrl: './range-toolbar.html',
+    styleUrl: './range-toolbar.css',
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RangeToolbar {
-  timeRanges = input.required<RangeOption[]>();
-  selectedRange = input.required<RangeOption>();
-  loading = input<boolean>(false);
+    timeRanges = input.required<RangeOption[]>();
+    selectedRange = input.required<RangeOption>();
+    loading = input<boolean>(false);
 
-  selectedRangeChange = output<RangeOption>();
-  rangeChange = output<RangeSelectEvent>();
-  refresh = output<void>();
+    selectedRangeChange = output<RangeOption>();
+    rangeChange = output<RangeSelectEvent>();
+    refresh = output<void>();
 
-  protected handleRangeChange(event: RangeSelectEvent) {
-    this.selectedRangeChange.emit(event.value);
-    this.rangeChange.emit(event);
-  }
+    protected handleRangeChange(event: RangeSelectEvent) {
+        this.selectedRangeChange.emit(event.value);
+        this.rangeChange.emit(event);
+    }
 }

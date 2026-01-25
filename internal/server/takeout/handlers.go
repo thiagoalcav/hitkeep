@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -42,7 +43,15 @@ func (h *TakeoutHandler) handleUserTakeout() http.HandlerFunc {
 			return
 		}
 
-		filename, err := h.service.ExportUserData(r.Context(), userID)
+		format := strings.ToLower(r.URL.Query().Get("format"))
+		switch format {
+		case "csv", "parquet":
+			// allowed
+		default:
+			format = "xlsx"
+		}
+
+		filename, err := h.service.ExportUserData(r.Context(), userID, format)
 		if err != nil {
 			http.Error(w, "Failed to export user data", http.StatusInternalServerError)
 			return

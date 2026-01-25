@@ -30,7 +30,7 @@ jobs:
         with:
           version: v2.8
       - name: Test API
-        run: | 
+        run: |
           go vet ./...
           go test ./...
 
@@ -48,6 +48,9 @@ jobs:
       - name: Install dependencies
         working-directory: frontend/dashboard
         run: npm ci
+      - name: Prettier check
+        working-directory: frontend/dashboard
+        run: npx --yes prettier@3.4.2 --check .
       - name: Lint dashboard
         working-directory: frontend/dashboard
         run: npm run lint

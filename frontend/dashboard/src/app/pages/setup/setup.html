@@ -1,34 +1,30 @@
 <div class="setup-container">
-  <div class="setup-card border border-surface-200 dark:border-surface-700">
-    <div class="flex flex-col items-center justify-center mb-8 text-center">
-      <app-brand size="large" class="mb-3"></app-brand>
-      <p>Create your administrator account to get started.</p>
+    <div class="setup-card border border-surface-200 dark:border-surface-700">
+        <div class="flex flex-col items-center justify-center mb-8 text-center">
+            <app-brand size="large" class="mb-3"></app-brand>
+            <p>Create your administrator account to get started.</p>
+        </div>
+
+        <form [formGroup]="setupForm" (ngSubmit)="onSubmit()">
+            <!-- Error Banner -->
+            @if (errorMessage) {
+                <div class="error-banner animate-scalein">
+                    <i class="pi pi-exclamation-circle"></i>
+                    <span>{{ errorMessage }}</span>
+                </div>
+            }
+
+            <div class="field">
+                <label for="email">Email Address</label>
+                <input pInputText id="email" formControlName="email" class="p-inputtext-lg w-full" placeholder="admin@example.com" />
+            </div>
+
+            <div class="field">
+                <label for="password">Password</label>
+                <p-password id="password" formControlName="password" [toggleMask]="true" class="w-full" inputclass="w-full p-inputtext-lg" [feedback]="true" placeholder="••••••••"> </p-password>
+            </div>
+
+            <p-button label="Create Admin Account" type="submit" [loading]="isLoading" class="w-full" size="large"> </p-button>
+        </form>
     </div>
-
-    <form [formGroup]="setupForm" (ngSubmit)="onSubmit()">
-      <!-- Error Banner -->
-      @if (errorMessage) {
-      <div class="error-banner animate-scalein">
-        <i class="pi pi-exclamation-circle"></i>
-        <span>{{ errorMessage }}</span>
-      </div>
-      }
-
-      <div class="field">
-        <label for="email">Email Address</label>
-        <input pInputText id="email" formControlName="email" class="p-inputtext-lg w-full"
-          placeholder="admin@example.com" />
-      </div>
-
-      <div class="field">
-        <label for="password">Password</label>
-        <p-password id="password" formControlName="password" [toggleMask]="true" class="w-full"
-          inputclass="w-full p-inputtext-lg" [feedback]="true" placeholder="••••••••">
-        </p-password>
-      </div>
-
-      <p-button label="Create Admin Account" type="submit" [loading]="isLoading" class="w-full" size="large">
-      </p-button>
-    </form>
-  </div>
 </div>

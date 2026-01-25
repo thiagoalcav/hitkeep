@@ -5,24 +5,20 @@ import Aura from '@primeuix/themes/aura';
 
 import { routes } from './app.routes';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
-import { authInterceptor } from './core/interceptors/auth.interceptor';
-import { shareInterceptor } from './core/interceptors/share.interceptor';
-
+import { authInterceptor } from '@core/interceptors/auth.interceptor';
+import { shareInterceptor } from '@core/interceptors/share.interceptor';
 
 export const appConfig: ApplicationConfig = {
-  providers: [
-    provideBrowserGlobalErrorListeners(),
-    provideZonelessChangeDetection(),
-    provideHttpClient(
-      withFetch(),
-      withInterceptors([shareInterceptor, authInterceptor])
-    ),
-    provideRouter(routes),
-    providePrimeNG({
-      theme: {
-        preset: Aura,
-        options: { darkModeSelector: '.p-dark' },
-      }
-    })
-  ]
+    providers: [
+        provideBrowserGlobalErrorListeners(),
+        provideZonelessChangeDetection(),
+        provideHttpClient(withFetch(), withInterceptors([shareInterceptor, authInterceptor])),
+        provideRouter(routes),
+        providePrimeNG({
+            theme: {
+                preset: Aura,
+                options: { darkModeSelector: '.p-dark' }
+            }
+        })
+    ]
 };

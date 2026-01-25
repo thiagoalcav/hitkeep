@@ -1,0 +1,21 @@
+:host {
+    --site-settings-drawer-width: 600px;
+}
+
+@media (min-width: 1024px) {
+    :host {
+        --site-settings-drawer-width: 720px;
+    }
+}
+
+@media (min-width: 1280px) {
+    :host {
+        --site-settings-drawer-width: 820px;
+    }
+}
+
+@media (min-width: 1536px) {
+    :host {
+        --site-settings-drawer-width: 900px;
+    }
+}

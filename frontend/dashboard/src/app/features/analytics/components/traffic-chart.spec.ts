@@ -1,36 +1,36 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { TrafficChart } from './traffic-chart';
+import { TrafficChart } from '@features/analytics/components/traffic-chart';
 import { By } from '@angular/platform-browser';
 
 describe('TrafficChart', () => {
-  let component: TrafficChart;
-  let fixture: ComponentFixture<TrafficChart>;
+    let component: TrafficChart;
+    let fixture: ComponentFixture<TrafficChart>;
 
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [TrafficChart]
-    }).compileComponents();
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            imports: [TrafficChart]
+        }).compileComponents();
 
-    fixture = TestBed.createComponent(TrafficChart);
-    component = fixture.componentInstance;
-    fixture.componentRef.setInput('data', []);
-    fixture.detectChanges();
-  });
+        fixture = TestBed.createComponent(TrafficChart);
+        component = fixture.componentInstance;
+        fixture.componentRef.setInput('data', []);
+        fixture.detectChanges();
+    });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
-  });
+    it('should create', () => {
+        expect(component).toBeTruthy();
+    });
 
-  it('A11Y: container should have img role and accessible label', () => {
-    const container = fixture.debugElement.query(By.css('div[role="img"]'));
-    expect(container).toBeTruthy();
-    expect(container.nativeElement.getAttribute('aria-label')).toContain('Traffic chart');
-  });
+    it('A11Y: container should have img role and accessible label', () => {
+        const container = fixture.debugElement.query(By.css('div[role="img"]'));
+        expect(container).toBeTruthy();
+        expect(container.nativeElement.getAttribute('aria-label')).toContain('Traffic chart');
+    });
 
-  it('A11Y: loading state should be polite aria-live', () => {
-    fixture.componentRef.setInput('isLoading', true);
-    fixture.detectChanges();
-    const loader = fixture.debugElement.query(By.css('[aria-live="polite"]'));
-    expect(loader).toBeTruthy();
-  });
+    it('A11Y: loading state should be polite aria-live', () => {
+        fixture.componentRef.setInput('isLoading', true);
+        fixture.detectChanges();
+        const loader = fixture.debugElement.query(By.css('[aria-live="polite"]'));
+        expect(loader).toBeTruthy();
+    });
 });

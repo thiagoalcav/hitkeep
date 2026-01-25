@@ -1,10 +1,10 @@
 :host {
-display: block;
+    display: block;
 }
 /*
 Force the inner input of the PrimeNG password component
 to fill the container width
 */
 :host ::ng-deep .p-password input {
-width: 100%;
+    width: 100%;
 }

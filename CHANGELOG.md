@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.3](https://github.com/PascaleBeier/hitkeep/compare/v1.5.2...v1.5.3) (2026-01-26)
+
+
+### Miscellaneous Chores
+
+* release 1.5.3 ([4a40f71](https://github.com/PascaleBeier/hitkeep/commit/4a40f71235fdf0314dc6377569abd0f5247d3320))
+
 ## [1.5.2](https://github.com/PascaleBeier/hitkeep/compare/v1.5.1...v1.5.2) (2026-01-26)
 
 

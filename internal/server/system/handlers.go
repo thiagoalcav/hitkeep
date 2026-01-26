@@ -15,6 +15,7 @@ type handler struct {
 func Register(mux *http.ServeMux, ctx *shared.Context) {
 	h := &handler{ctx: ctx}
 	mux.HandleFunc("GET /healthz", h.handleHealthz())
+	mux.HandleFunc("GET /readyz", h.handleReadyz())
 	mux.HandleFunc("GET /api/status", h.handleGetStatus())
 }
 
@@ -32,6 +33,27 @@ func (h *handler) handleHealthz() http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		if _, err := w.Write([]byte("ok")); err != nil {
 			slog.Error("Failed to write healthcheck response", "error", err)
+		}
+	}
+}
+
+// handleReadyz checks if the node is ready to serve traffic.
+func (h *handler) handleReadyz() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.ctx.Store == nil {
+			http.Error(w, "Service not ready", http.StatusServiceUnavailable)
+			return
+		}
+
+		if err := h.ctx.Store.DB().Ping(); err != nil {
+			slog.Error("Readiness check failed: database unreachable", "error", err)
+			http.Error(w, "Database unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte("ok")); err != nil {
+			slog.Error("Failed to write readiness response", "error", err)
 		}
 	}
 }

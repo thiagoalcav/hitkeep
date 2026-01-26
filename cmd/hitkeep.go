@@ -71,7 +71,7 @@ func Run() {
 
 	g, gCtx := errgroup.WithContext(ctx)
 
-	clusterManager, err := cluster.NewManager(conf)
+	clusterManager, err := cluster.NewManager(conf, logger)
 	check(err)
 	defer func() {
 		if err := clusterManager.Shutdown(); err != nil {

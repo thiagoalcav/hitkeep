@@ -21,9 +21,43 @@ func (w Writer) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
+// LevelParsingWriter forwards log lines to slog, inferring level from a prefix.
+type LevelParsingWriter struct {
+	Logger        *slog.Logger
+	DefaultLevel  slog.Level
+	ComponentName string
+}
+
+func (w LevelParsingWriter) Write(p []byte) (int, error) {
+	msg := string(bytes.TrimRight(p, "\n"))
+	level := w.DefaultLevel
+
+	trimmed := strings.TrimSpace(msg)
+	level, trimmed = parseLevelPrefix(level, trimmed)
+	if strings.HasPrefix(trimmed, "memberlist:") {
+		trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "memberlist:"))
+	}
+
+	logger := w.Logger
+	if w.ComponentName != "" {
+		logger = logger.With("component", w.ComponentName)
+	}
+	logger.Log(context.Background(), level, trimmed)
+	return len(p), nil
+}
+
 // StdLogger returns a *log.Logger that writes to the provided slog.Logger at the given level.
 func StdLogger(l *slog.Logger, level slog.Level) *log.Logger {
 	return log.New(Writer{Logger: l, Level: level}, "", 0)
+}
+
+// MemberlistLogger returns a *log.Logger that maps memberlist log levels to slog.
+func MemberlistLogger(l *slog.Logger) *log.Logger {
+	return log.New(LevelParsingWriter{
+		Logger:        l,
+		DefaultLevel:  slog.LevelInfo,
+		ComponentName: "memberlist",
+	}, "", 0)
 }
 
 // ParseLevel parses a user-provided string into a slog.Level.
@@ -41,5 +75,24 @@ func ParseLevel(s string) (slog.Level, error) {
 		return slog.LevelError, nil
 	default:
 		return slog.LevelInfo, fmt.Errorf("unknown log level: %q", s)
+	}
+}
+
+func parseLevelPrefix(defaultLevel slog.Level, msg string) (slog.Level, string) {
+	switch {
+	case strings.HasPrefix(msg, "[DEBUG]"):
+		return slog.LevelDebug, strings.TrimSpace(strings.TrimPrefix(msg, "[DEBUG]"))
+	case strings.HasPrefix(msg, "[INFO]"):
+		return slog.LevelInfo, strings.TrimSpace(strings.TrimPrefix(msg, "[INFO]"))
+	case strings.HasPrefix(msg, "[WARN]"):
+		return slog.LevelWarn, strings.TrimSpace(strings.TrimPrefix(msg, "[WARN]"))
+	case strings.HasPrefix(msg, "[WARNING]"):
+		return slog.LevelWarn, strings.TrimSpace(strings.TrimPrefix(msg, "[WARNING]"))
+	case strings.HasPrefix(msg, "[ERR]"):
+		return slog.LevelError, strings.TrimSpace(strings.TrimPrefix(msg, "[ERR]"))
+	case strings.HasPrefix(msg, "[ERROR]"):
+		return slog.LevelError, strings.TrimSpace(strings.TrimPrefix(msg, "[ERROR]"))
+	default:
+		return defaultLevel, msg
 	}
 }

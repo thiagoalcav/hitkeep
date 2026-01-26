@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "hitkeep.fullname" . }}-headless
+  labels:
+    {{- include "hitkeep.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  ports:
+    - name: gossip-tcp
+      port: 7946
+      protocol: TCP
+      targetPort: gossip-tcp
+    - name: gossip-udp
+      port: 7946
+      protocol: UDP
+      targetPort: gossip-udp
+  selector:
+    {{- include "hitkeep.selectorLabels" . | nindent 4 }}

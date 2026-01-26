@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, effect } from '@angular/core';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 
 import { FormsModule } from '@angular/forms';
@@ -11,6 +11,7 @@ import { PermissionService } from '@services/permission.service';
 import { UserProfileService } from '@services/user-profile.service';
 import { UserControls } from '@components/user-controls/user-controls';
 import { ShareService } from '@services/share.service';
+import { SiteSettingsService } from '@services/site-settings.service';
 // PrimeNG
 import { DrawerModule } from 'primeng/drawer';
 
@@ -89,7 +90,7 @@ import { DrawerModule } from 'primeng/drawer';
             </main>
 
             <!-- Mobile Drawer -->
-            <p-drawer [(visible)]="isMobileDrawerOpen">
+            <p-drawer [visible]="isMobileDrawerOpen()" (visibleChange)="isMobileDrawerOpen.set($event)">
                 <div class="flex flex-col gap-6 h-full">
                     <app-brand size="small" class="px-2" />
 
@@ -99,6 +100,8 @@ import { DrawerModule } from 'primeng/drawer';
                         [loading]="siteService.isLoading()"
                         (siteSelected)="siteService.selectSite($event); isMobileDrawerOpen.set(false)"
                         (addClicked)="isAddSiteVisible.set(true)"
+                        (settingsClicked)="openSiteSettings('0'); isMobileDrawerOpen.set(false)"
+                        (trackingClicked)="openSiteSettings('1'); isMobileDrawerOpen.set(false)"
                     />
 
                     <nav class="flex-1">
@@ -116,10 +119,10 @@ import { DrawerModule } from 'primeng/drawer';
             </p-drawer>
 
             <!-- Add Site Dialog -->
-            <app-add-site-dialog [(visible)]="isAddSiteVisible" />
+            <app-add-site-dialog [visible]="isAddSiteVisible()" (visibleChange)="isAddSiteVisible.set($event)" />
 
             <!-- Site Settings Drawer -->
-            <app-site-settings-drawer [(visible)]="isSiteSettingsVisible" [(activeTab)]="siteSettingsTab" [site]="siteService.activeSite()" />
+            <app-site-settings-drawer [visible]="isSiteSettingsVisible()" (visibleChange)="isSiteSettingsVisible.set($event)" [activeTab]="siteSettingsTab()" (activeTabChange)="siteSettingsTab.set($event)" [site]="siteService.activeSite()" />
         </div>
     `
 })
@@ -127,6 +130,7 @@ export class MainLayout {
     private router = inject(Router);
     protected siteService = inject(SiteService);
     protected shareService = inject(ShareService);
+    private siteSettings = inject(SiteSettingsService);
     protected perms = inject(PermissionService);
     protected profile = inject(UserProfileService);
 
@@ -159,5 +163,12 @@ export class MainLayout {
         this.siteService.loadSites();
         this.perms.loadPermissions().subscribe();
         this.profile.loadProfile().subscribe();
+
+        effect(() => {
+            const tab = this.siteSettings.request();
+            if (!tab) return;
+            this.openSiteSettings(tab);
+            this.siteSettings.clear();
+        });
     }
 }

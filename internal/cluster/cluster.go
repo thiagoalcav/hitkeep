@@ -2,13 +2,17 @@ package cluster
 
 import (
 	"log/slog"
+	"net"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/hashicorp/memberlist"
 
 	"hitkeep/internal/config"
+	"hitkeep/internal/hklog"
 )
 
 type Manager struct {
@@ -37,7 +41,7 @@ func (d *eventDelegate) NotifyLeave(node *memberlist.Node) {
 
 func (d *eventDelegate) NotifyUpdate(node *memberlist.Node) {}
 
-func NewManager(conf *config.Config) (*Manager, error) {
+func NewManager(conf *config.Config, logger *slog.Logger) (*Manager, error) {
 	m := &Manager{
 		self:  conf.NodeName,
 		peers: make(map[string]string),
@@ -45,7 +49,28 @@ func NewManager(conf *config.Config) (*Manager, error) {
 
 	mlConfig := memberlist.DefaultWANConfig()
 	mlConfig.Name = conf.NodeName
-	mlConfig.BindAddr = conf.BindAddr
+	mlConfig.Logger = hklog.MemberlistLogger(logger)
+	bindAddr := conf.BindAddr
+	bindPort := mlConfig.BindPort
+
+	if host, port, err := net.SplitHostPort(conf.BindAddr); err == nil {
+		if host != "" {
+			bindAddr = host
+		}
+		if parsed, err := strconv.Atoi(port); err == nil && parsed > 0 {
+			bindPort = parsed
+		}
+	} else if strings.Contains(conf.BindAddr, ":") {
+		// Likely an IPv6 address without a port; keep as-is.
+		bindAddr = conf.BindAddr
+	}
+
+	mlConfig.BindAddr = bindAddr
+	mlConfig.BindPort = bindPort
+	if bindAddr != "" && bindAddr != "0.0.0.0" {
+		mlConfig.AdvertiseAddr = bindAddr
+		mlConfig.AdvertisePort = bindPort
+	}
 	mlConfig.Events = &eventDelegate{m: m}
 
 	list, err := memberlist.Create(mlConfig)

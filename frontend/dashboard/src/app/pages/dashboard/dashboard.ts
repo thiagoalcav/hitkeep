@@ -32,6 +32,7 @@ import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/
 import { KpiCard } from '@features/analytics/components/kpi-card';
 import { ShareService } from '@services/share.service';
 import { RangeToolbar } from '@components/range-toolbar/range-toolbar';
+import { SiteSettingsService } from '@services/site-settings.service';
 
 interface RangeSelectEvent {
     value: {
@@ -92,6 +93,7 @@ export class Dashboard {
     protected statsService = inject(StatsService);
     protected hitService = inject(HitService);
     private shareService = inject(ShareService);
+    private siteSettings = inject(SiteSettingsService);
     private datePipe = inject(DatePipe);
     private decimalPipe = inject(DecimalPipe);
     protected timeRanges = [
@@ -193,6 +195,13 @@ export class Dashboard {
             }
         ];
     });
+
+    protected openTrackingSettings() {
+        if (!this.siteService.activeSite()) {
+            return;
+        }
+        this.siteSettings.open('1');
+    }
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         const site = this.siteService.activeSite();
         if (!site) {

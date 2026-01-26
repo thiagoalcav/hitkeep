@@ -33,7 +33,7 @@
                         }
                     </div>
                 </div>
-                <app-traffic-chart [data]="statsService.stats()?.chart_data || []" [isLoading]="statsService.isLoading()" [isShortRange]="isShortRange()" />
+                <app-traffic-chart [data]="statsService.stats()?.chart_data || []" [isLoading]="statsService.isLoading()" [isShortRange]="isShortRange()" (snippetClicked)="openTrackingSettings()" />
             </p-card>
         </div>
 

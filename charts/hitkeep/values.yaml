@@ -1,0 +1,57 @@
+# Default to 1 (single node). Set to 2+ for clustering.
+replicaCount: 1
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  repository: ghcr.io/pascalebeier/hitkeep
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+
+serviceAccount:
+  create: false
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+# Quick-start domain helper (used when ingress.hosts is empty)
+domain: "hitkeep.local"
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  path: "/"
+  pathType: Prefix
+  hosts: []
+  tls: []
+
+resources: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+persistence:
+  enabled: true
+  size: 10Gi
+  accessMode: ReadWriteOnce
+  storageClass: ""
+  mountPath: /var/lib/hitkeep/data
+  annotations: {}
+
+env:
+  HITKEEP_HTTP_ADDR: ":8080"
+  HITKEEP_PUBLIC_URL: "http://localhost:8080"
+
+extraEnv: []
+extraArgs: []

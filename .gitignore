@@ -5,3 +5,6 @@ hitkeep.db
 /archive
 /public
 !/public/embed.go
+!/charts/
+!/charts/hitkeep/
+!/charts/hitkeep/**

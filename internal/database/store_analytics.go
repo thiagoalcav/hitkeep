@@ -24,12 +24,17 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 	}
 
 	stats := &api.SiteStats{
-		ChartData:    []api.ChartDataPoint{},
-		TopPages:     []api.MetricStat{},
-		TopReferrers: []api.MetricStat{},
-		TopDevices:   []api.MetricStat{},
-		TopCountries: []api.MetricStat{},
-		Goals:        []api.GoalStats{},
+		ChartData:       []api.ChartDataPoint{},
+		TopPages:        []api.MetricStat{},
+		TopReferrers:    []api.MetricStat{},
+		TopDevices:      []api.MetricStat{},
+		TopCountries:    []api.MetricStat{},
+		TopUTMCampaigns: []api.MetricStat{},
+		TopUTMContents:  []api.MetricStat{},
+		TopUTMMediums:   []api.MetricStat{},
+		TopUTMSources:   []api.MetricStat{},
+		TopUTMTerms:     []api.MetricStat{},
+		Goals:           []api.GoalStats{},
 	}
 
 	filterSQL, filterArgs := buildHitFilters(params.Filters, "h")
@@ -169,7 +174,12 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 				h.path AS path,
 				hk_referrer(h.referrer) AS referrer,
 				hk_device(h.viewport_width) AS device,
-				hk_country(h.country_code) AS country
+				hk_country(h.country_code) AS country,
+				COALESCE(NULLIF(TRIM(h.utm_campaign), ''), '(Unspecified)') AS utm_campaign,
+				COALESCE(NULLIF(TRIM(h.utm_content), ''), '(Unspecified)') AS utm_content,
+				COALESCE(NULLIF(TRIM(h.utm_medium), ''), '(Unspecified)') AS utm_medium,
+				COALESCE(NULLIF(TRIM(h.utm_source), ''), '(Unspecified)') AS utm_source,
+				COALESCE(NULLIF(TRIM(h.utm_term), ''), '(Unspecified)') AS utm_term
 			FROM hits h
 			WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
 		),
@@ -180,11 +190,26 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 					WHEN GROUPING(referrer) = 0 THEN 'referrer'
 					WHEN GROUPING(device) = 0 THEN 'device'
 					WHEN GROUPING(country) = 0 THEN 'country'
+					WHEN GROUPING(utm_campaign) = 0 THEN 'utm_campaign'
+					WHEN GROUPING(utm_content) = 0 THEN 'utm_content'
+					WHEN GROUPING(utm_medium) = 0 THEN 'utm_medium'
+					WHEN GROUPING(utm_source) = 0 THEN 'utm_source'
+					WHEN GROUPING(utm_term) = 0 THEN 'utm_term'
 				END AS dim,
-				COALESCE(path, referrer, device, country) AS name,
+				COALESCE(path, referrer, device, country, utm_campaign, utm_content, utm_medium, utm_source, utm_term) AS name,
 				COUNT(*) AS val
 			FROM base
-			GROUP BY GROUPING SETS ((path), (referrer), (device), (country))
+			GROUP BY GROUPING SETS (
+				(path),
+				(referrer),
+				(device),
+				(country),
+				(utm_campaign),
+				(utm_content),
+				(utm_medium),
+				(utm_source),
+				(utm_term)
+			)
 		),
 		ranked AS (
 			SELECT
@@ -221,6 +246,16 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 			stats.TopDevices = append(stats.TopDevices, m)
 		case "country":
 			stats.TopCountries = append(stats.TopCountries, m)
+		case "utm_campaign":
+			stats.TopUTMCampaigns = append(stats.TopUTMCampaigns, m)
+		case "utm_content":
+			stats.TopUTMContents = append(stats.TopUTMContents, m)
+		case "utm_medium":
+			stats.TopUTMMediums = append(stats.TopUTMMediums, m)
+		case "utm_source":
+			stats.TopUTMSources = append(stats.TopUTMSources, m)
+		case "utm_term":
+			stats.TopUTMTerms = append(stats.TopUTMTerms, m)
 		}
 	}
 

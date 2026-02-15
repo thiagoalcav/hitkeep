@@ -138,6 +138,11 @@ type SiteStats struct {
 	TopReferrers       []MetricStat     `json:"top_referrers"`
 	TopDevices         []MetricStat     `json:"top_devices"`
 	TopCountries       []MetricStat     `json:"top_countries"`
+	TopUTMCampaigns    []MetricStat     `json:"top_utm_campaigns"`
+	TopUTMContents     []MetricStat     `json:"top_utm_contents"`
+	TopUTMMediums      []MetricStat     `json:"top_utm_mediums"`
+	TopUTMSources      []MetricStat     `json:"top_utm_sources"`
+	TopUTMTerms        []MetricStat     `json:"top_utm_terms"`
 	UTMCampaignHits    int              `json:"utm_campaign_hits"`
 	UTMContentHits     int              `json:"utm_content_hits"`
 	UTMMediumHits      int              `json:"utm_medium_hits"`

@@ -544,7 +544,7 @@ func validateFilter(filterType, filterValue string) error {
 	}
 
 	switch filterType {
-	case "path", "referrer", "device", "country":
+	case "path", "referrer", "device", "country", "utm_campaign", "utm_content", "utm_medium", "utm_source", "utm_term":
 		return nil
 	default:
 		return fmt.Errorf("invalid filter_type")

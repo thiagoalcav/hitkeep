@@ -56,6 +56,21 @@ func buildHitFilter(filterType, filterValue, alias string) (string, []any) {
 		}
 		expr := fmt.Sprintf("hk_country(%scountry_code)", prefix)
 		return " AND " + expr + " = ?", []any{normalized}
+	case "utm_campaign":
+		expr := fmt.Sprintf("COALESCE(NULLIF(TRIM(%sutm_campaign), ''), '(Unspecified)')", prefix)
+		return " AND " + expr + " = ?", []any{normalizeUnspecified(filterValue)}
+	case "utm_content":
+		expr := fmt.Sprintf("COALESCE(NULLIF(TRIM(%sutm_content), ''), '(Unspecified)')", prefix)
+		return " AND " + expr + " = ?", []any{normalizeUnspecified(filterValue)}
+	case "utm_medium":
+		expr := fmt.Sprintf("COALESCE(NULLIF(TRIM(%sutm_medium), ''), '(Unspecified)')", prefix)
+		return " AND " + expr + " = ?", []any{normalizeUnspecified(filterValue)}
+	case "utm_source":
+		expr := fmt.Sprintf("COALESCE(NULLIF(TRIM(%sutm_source), ''), '(Unspecified)')", prefix)
+		return " AND " + expr + " = ?", []any{normalizeUnspecified(filterValue)}
+	case "utm_term":
+		expr := fmt.Sprintf("COALESCE(NULLIF(TRIM(%sutm_term), ''), '(Unspecified)')", prefix)
+		return " AND " + expr + " = ?", []any{normalizeUnspecified(filterValue)}
 	default:
 		return "", nil
 	}
@@ -69,4 +84,12 @@ func isDirectReferrer(value string) bool {
 func isUnknownCountry(value string) bool {
 	normalized := strings.ToLower(strings.TrimSpace(value))
 	return normalized == "unknown" || normalized == "(unknown)"
+}
+
+func normalizeUnspecified(value string) string {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	if normalized == "unspecified" || normalized == "(unspecified)" {
+		return "(Unspecified)"
+	}
+	return value
 }

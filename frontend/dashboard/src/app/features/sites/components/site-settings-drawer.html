@@ -1,16 +1,16 @@
 <p-drawer [visible]="visible()" (visibleChange)="onVisibleChange($event)" position="right" [style]="{ width: 'var(--site-settings-drawer-width)', maxWidth: '90vw' }">
     <div class="flex flex-col h-full">
         <div class="flex items-center gap-2 text-sm text-muted-color mb-4">
-            <span>{{ 'sites.settings.breadcrumb.sites' | transloco }}</span>
+            <span>{{ "sites.settings.breadcrumb.sites" | transloco }}</span>
             <i class="pi pi-angle-right"></i>
             <span class="font-medium text-primary">{{ site()?.domain }}</span>
             <i class="pi pi-angle-right"></i>
-            <span>{{ 'sites.settings.breadcrumb.settings' | transloco }}</span>
+            <span>{{ "sites.settings.breadcrumb.settings" | transloco }}</span>
         </div>
 
         <div class="flex items-center justify-between mb-6">
             <div>
-                <h2 class="text-xl font-bold">{{ 'sites.settings.title' | transloco }}</h2>
+                <h2 class="text-xl font-bold">{{ "sites.settings.title" | transloco }}</h2>
             </div>
         </div>
 
@@ -19,31 +19,31 @@
                 <p-tab value="0">
                     <div class="flex items-center gap-2">
                         <i class="pi pi-cog"></i>
-                        <span>{{ 'sites.settings.tabs.general' | transloco }}</span>
+                        <span>{{ "sites.settings.tabs.general" | transloco }}</span>
                     </div>
                 </p-tab>
                 <p-tab value="1">
                     <div class="flex items-center gap-2">
                         <i class="pi pi-code"></i>
-                        <span>{{ 'sites.settings.tabs.tracking' | transloco }}</span>
+                        <span>{{ "sites.settings.tabs.tracking" | transloco }}</span>
                     </div>
                 </p-tab>
                 <p-tab value="2">
                     <div class="flex items-center gap-2">
                         <i class="pi pi-history"></i>
-                        <span>{{ 'sites.settings.tabs.retention' | transloco }}</span>
+                        <span>{{ "sites.settings.tabs.retention" | transloco }}</span>
                     </div>
                 </p-tab>
                 <p-tab value="3">
                     <div class="flex items-center gap-2">
                         <i class="pi pi-users"></i>
-                        <span>{{ 'sites.settings.tabs.team' | transloco }}</span>
+                        <span>{{ "sites.settings.tabs.team" | transloco }}</span>
                     </div>
                 </p-tab>
                 <p-tab value="4">
                     <div class="flex items-center gap-2">
                         <i class="pi pi-exclamation-triangle"></i>
-                        <span>{{ 'sites.settings.tabs.dangerZone' | transloco }}</span>
+                        <span>{{ "sites.settings.tabs.dangerZone" | transloco }}</span>
                     </div>
                 </p-tab>
             </p-tablist>

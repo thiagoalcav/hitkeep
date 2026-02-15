@@ -2,7 +2,7 @@
     <div class="setup-card border border-surface-200 dark:border-surface-700">
         <div class="flex flex-col items-center justify-center mb-8 text-center">
             <app-brand size="large" class="mb-3"></app-brand>
-            <p>{{ 'setup.description' | transloco }}</p>
+            <p>{{ "setup.description" | transloco }}</p>
         </div>
 
         <form (submit)="onSubmit($event)" novalidate>
@@ -15,12 +15,12 @@
             }
 
             <div class="field">
-                <label for="email">{{ 'common.emailAddress' | transloco }}</label>
+                <label for="email">{{ "common.emailAddress" | transloco }}</label>
                 <input pInputText id="email" [formControl]="setupForm.email().control()" class="p-inputtext-lg w-full" [placeholder]="'setup.emailPlaceholder' | transloco" />
             </div>
 
             <div class="field">
-                <label for="password">{{ 'common.password' | transloco }}</label>
+                <label for="password">{{ "common.password" | transloco }}</label>
                 <p-password id="password" [formControl]="setupForm.password().control()" [toggleMask]="true" class="w-full" inputclass="w-full p-inputtext-lg" [feedback]="true" [placeholder]="'common.passwordPlaceholder' | transloco"> </p-password>
             </div>
 

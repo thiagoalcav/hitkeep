@@ -740,7 +740,7 @@ export const ANGULAR_LOCALE_IDS = [
     'zh-Hant-MO',
     'zh-Hant-MY',
     'zh-Latn',
-    'zu',
+    'zu'
 ] as const;
 
 export type AngularLocaleId = (typeof ANGULAR_LOCALE_IDS)[number];

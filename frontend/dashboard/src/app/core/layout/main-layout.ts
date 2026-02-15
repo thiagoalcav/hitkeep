@@ -115,13 +115,7 @@ import { DrawerModule } from 'primeng/drawer';
                         >
                             <i class="pi pi-chart-bar"></i> <span>{{ 'nav.dashboard' | transloco }}</span>
                         </a>
-                        <a
-                            routerLink="/goals"
-                            (click)="isMobileDrawerOpen.set(false)"
-                            routerLinkActive="bg-primary-50 text-primary-700"
-                            class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
-                            [attr.aria-label]="'nav.goalsAria' | transloco"
-                        >
+                        <a routerLink="/goals" (click)="isMobileDrawerOpen.set(false)" routerLinkActive="bg-primary-50 text-primary-700" class="flex items-center gap-3 px-3 py-2 rounded-md font-medium" [attr.aria-label]="'nav.goalsAria' | transloco">
                             <i class="pi pi-flag"></i> <span>{{ 'nav.goals' | transloco }}</span>
                         </a>
                         <a

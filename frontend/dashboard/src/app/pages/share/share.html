@@ -2,7 +2,7 @@
     @if (loading()) {
         <div class="share-state">
             <i class="pi pi-spin pi-spinner text-2xl"></i>
-            <p class="text-sm text-muted-color">{{ 'share.page.loading' | transloco }}</p>
+            <p class="text-sm text-muted-color">{{ "share.page.loading" | transloco }}</p>
         </div>
     } @else if (error()) {
         <div class="share-state">

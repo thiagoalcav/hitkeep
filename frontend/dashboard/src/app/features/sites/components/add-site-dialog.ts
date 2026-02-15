@@ -26,7 +26,16 @@ import { SiteService } from '@features/sites/services/site.service';
 
                 <div class="flex flex-col gap-2">
                     <label for="domain" class="font-semibold text-sm text-[var(--p-text-color)]">{{ 'sites.addDialog.domainLabel' | transloco }}</label>
-                    <input pInputText id="domain" [formControl]="form.domain().control()" [placeholder]="'sites.addDialog.domainPlaceholder' | transloco" class="w-full" (blur)="sanitizeInput()" [class.ng-invalid]="isInvalid()" [class.ng-dirty]="form.domain().dirty()" />
+                    <input
+                        pInputText
+                        id="domain"
+                        [formControl]="form.domain().control()"
+                        [placeholder]="'sites.addDialog.domainPlaceholder' | transloco"
+                        class="w-full"
+                        (blur)="sanitizeInput()"
+                        [class.ng-invalid]="isInvalid()"
+                        [class.ng-dirty]="form.domain().dirty()"
+                    />
 
                     <!-- Validation Messages -->
                     @if (isInvalid()) {

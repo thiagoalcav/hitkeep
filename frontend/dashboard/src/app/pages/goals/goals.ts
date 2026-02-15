@@ -311,7 +311,7 @@ export class Goals {
         }
     }
 
-    private buildTimeRanges(): Array<{ label: string; value: string }> {
+    private buildTimeRanges(): { label: string; value: string }[] {
         return [
             { label: this.transloco.translate('common.timeRanges.last24Hours'), value: '24h' },
             { label: this.transloco.translate('common.timeRanges.last7Days'), value: '7d' },

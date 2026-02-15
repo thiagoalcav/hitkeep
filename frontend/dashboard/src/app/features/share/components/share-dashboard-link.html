@@ -1,7 +1,7 @@
 @if (!isShareMode()) {
     <p-dialog [header]="'share.dialog.title' | transloco" [(visible)]="showShareDialog" [modal]="true" [style]="{ width: '520px', maxWidth: '92vw' }" [draggable]="false" [resizable]="false" (onHide)="resetShareDialog()">
         <div class="flex flex-col gap-4">
-            <p class="text-sm text-[var(--p-text-muted-color)]">{{ 'share.dialog.description' | transloco }}</p>
+            <p class="text-sm text-[var(--p-text-muted-color)]">{{ "share.dialog.description" | transloco }}</p>
             @if (shareError()) {
                 <div class="text-sm text-red-600">{{ shareError() | transloco }}</div>
             }
@@ -9,7 +9,7 @@
                 <p-button [label]="'share.dialog.generateAction' | transloco" icon="pi pi-link" (onClick)="generateShareLink()" [loading]="shareLoading()" [disabled]="!siteService.activeSite()" styleClass="p-button-sm" />
             } @else {
                 <div class="flex flex-col gap-2">
-                    <span class="text-xs font-medium text-[var(--p-text-muted-color)]">{{ 'share.dialog.shareUrlLabel' | transloco }}</span>
+                    <span class="text-xs font-medium text-[var(--p-text-muted-color)]">{{ "share.dialog.shareUrlLabel" | transloco }}</span>
                     <div class="flex flex-col sm:flex-row gap-2">
                         <input pInputText readonly [value]="shareLinkUrl()" class="flex-1" />
                         <p-button [label]="shareCopyLabel() | transloco" [icon]="shareCopyIcon()" (onClick)="copyShareLink()" styleClass="p-button-outlined p-button-sm" />

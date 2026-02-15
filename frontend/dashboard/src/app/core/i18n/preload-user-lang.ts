@@ -28,13 +28,7 @@ function resolveTranslationLang(locale: string, available: string[], fallback: s
 function browserLocaleCandidates(): string[] {
     if (typeof navigator === 'undefined') return [];
     const candidates = [...(navigator.languages ?? []), navigator.language];
-    return Array.from(
-        new Set(
-            candidates
-                .map((entry) => normalizeLocaleTag(entry ?? ''))
-                .filter((entry): entry is string => Boolean(entry))
-        )
-    );
+    return Array.from(new Set(candidates.map((entry) => normalizeLocaleTag(entry ?? '')).filter((entry): entry is string => Boolean(entry))));
 }
 
 function applyDocumentLocale(locale: string): void {

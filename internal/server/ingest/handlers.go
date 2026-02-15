@@ -54,7 +54,7 @@ func (h *handler) handleIngest() http.HandlerFunc {
 			return
 		}
 
-		if h.ctx.Cluster.IsLeader() || !h.ctx.Cluster.HasPeers() {
+		if h.ctx.Cluster.IsLeader() {
 			h.handleIngestLeader(w, r)
 		} else {
 			h.handleIngestFollower(w, r)
@@ -143,8 +143,8 @@ func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) forwardToLeader(w http.ResponseWriter, r *http.Request, targetPath string) {
-	leaderIP := h.ctx.Cluster.GetLeaderAddr()
-	if leaderIP == "" {
+	leaderHost := normalizeLeaderHost(h.ctx.Cluster.GetLeaderAddr())
+	if leaderHost == "" {
 		http.Error(w, "No leader available", http.StatusServiceUnavailable)
 		return
 	}
@@ -154,7 +154,8 @@ func (h *handler) forwardToLeader(w http.ResponseWriter, r *http.Request, target
 		port = "8080"
 	}
 
-	forwardURL := fmt.Sprintf("http://%s:%s%s", leaderIP, port, targetPath)
+	forwardHost := net.JoinHostPort(leaderHost, port)
+	forwardURL := fmt.Sprintf("http://%s%s", forwardHost, targetPath)
 	bodyBytes := new(bytes.Buffer)
 	if _, err := bodyBytes.ReadFrom(r.Body); err != nil {
 		http.Error(w, "Failed to read request body", http.StatusInternalServerError)
@@ -201,7 +202,7 @@ func (h *handler) handleIngestEvent() http.HandlerFunc {
 			return
 		}
 
-		if h.ctx.Cluster.IsLeader() || !h.ctx.Cluster.HasPeers() {
+		if h.ctx.Cluster.IsLeader() {
 			h.handleIngestEventLeader(w, r)
 		} else {
 			h.handleIngestEventFollower(w, r)
@@ -266,4 +267,17 @@ func (h *handler) handleIngestEventLeader(w http.ResponseWriter, r *http.Request
 
 func (h *handler) handleIngestEventFollower(w http.ResponseWriter, r *http.Request) {
 	h.forwardToLeader(w, r, "/ingest/event")
+}
+
+func normalizeLeaderHost(addr string) string {
+	if addr == "" {
+		return ""
+	}
+
+	host, _, err := net.SplitHostPort(addr)
+	if err == nil {
+		return host
+	}
+
+	return addr
 }

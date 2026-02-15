@@ -52,13 +52,34 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            {{- $flags := dict "hasJoin" false "hasBind" false -}}
+            {{- if hasKey .Values.env "HITKEEP_JOIN_ADDR" }}
+            {{- $_ := set $flags "hasJoin" true }}
+            {{- end }}
+            {{- if hasKey .Values.env "HITKEEP_BIND_ADDR" }}
+            {{- $_ := set $flags "hasBind" true }}
+            {{- end }}
+            {{- range .Values.extraEnv }}
+            {{- if and (hasKey . "name") (eq .name "HITKEEP_JOIN_ADDR") }}
+            {{- $_ := set $flags "hasJoin" true }}
+            {{- end }}
+            {{- if and (hasKey . "name") (eq .name "HITKEEP_BIND_ADDR") }}
+            {{- $_ := set $flags "hasBind" true }}
+            {{- end }}
+            {{- end }}
             {{- if gt (.Values.replicaCount | int) 1 }}
-            - name: HITKEEP_BIND_ADDR
+            {{- if not $flags.hasBind }}
+            - name: POD_IP
               valueFrom:
                 fieldRef:
                   fieldPath: status.podIP
+            - name: HITKEEP_BIND_ADDR
+              value: "$(POD_IP):7946"
+            {{- end }}
+            {{- if not $flags.hasJoin }}
             - name: HITKEEP_JOIN_ADDR
               value: "{{ include "hitkeep.fullname" . }}-headless.{{ .Release.Namespace }}.svc.cluster.local:7946"
+            {{- end }}
             {{- end }}
             {{- range $key, $value := .Values.env }}
             - name: {{ $key }}

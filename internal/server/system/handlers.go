@@ -40,6 +40,11 @@ func (h *handler) handleHealthz() http.HandlerFunc {
 // handleReadyz checks if the node is ready to serve traffic.
 func (h *handler) handleReadyz() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !h.ctx.Cluster.IsLeader() {
+			http.Error(w, "Service not ready", http.StatusServiceUnavailable)
+			return
+		}
+
 		if h.ctx.Store == nil {
 			http.Error(w, "Service not ready", http.StatusServiceUnavailable)
 			return

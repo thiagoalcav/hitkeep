@@ -6,6 +6,7 @@ metadata:
     {{- include "hitkeep.labels" . | nindent 4 }}
 spec:
   clusterIP: None
+  publishNotReadyAddresses: true
   ports:
     - name: gossip-tcp
       port: 7946

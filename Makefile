@@ -28,7 +28,7 @@ dev:
 
 dev-backend:
 	@echo "Starting Backend with Live Reload..."
-	@air
+	@HITKEEP_JWT_SECRET=$${HITKEEP_JWT_SECRET:-hitkeep-dev-jwt-secret} air
 
 dev-frontend:
 	@echo "Starting Angular with Hot Reload..."

@@ -31,7 +31,9 @@
                                 "output": "flags"
                             }
                         ],
-                        "styles": ["src/styles.scss"]
+                        "styles": [
+                            "src/styles.scss"
+                        ]
                     },
                     "configurations": {
                         "production": {
@@ -91,20 +93,33 @@
                                 "output": "flags"
                             }
                         ],
-                        "styles": ["src/styles.scss"]
+                        "styles": [
+                            "src/styles.scss"
+                        ]
                     }
                 },
                 "lint": {
                     "builder": "@angular-eslint/builder:lint",
                     "options": {
-                        "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"]
+                        "lintFilePatterns": [
+                            "src/**/*.ts",
+                            "src/**/*.html"
+                        ]
                     }
+                }
+            },
+            "i18n": {
+                "sourceLocale": "en-US",
+                "locales": {
+                    "de": "src/locale/messages.de.xlf"
                 }
             }
         }
     },
     "cli": {
         "analytics": false,
-        "schematicCollections": ["angular-eslint"]
+        "schematicCollections": [
+            "angular-eslint"
+        ]
     }
 }

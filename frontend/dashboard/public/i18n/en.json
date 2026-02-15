@@ -217,6 +217,26 @@
     },
     "utm": {
         "noSiteDescription": "Select or create a site to view UTM metrics.",
+        "series": {
+            "title": "UTM performance",
+            "description": "Track UTM-driven traffic over time.",
+            "emptyTitle": "No UTM activity yet",
+            "emptyDescription": "Tag campaign links with UTM parameters to see their performance."
+        },
+        "metrics": {
+            "topCampaigns": "Top campaigns",
+            "topContents": "Top contents",
+            "topMediums": "Top mediums",
+            "topSources": "Top sources",
+            "topTerms": "Top terms"
+        },
+        "filters": {
+            "campaign": "Campaign: {{value}}",
+            "content": "Content: {{value}}",
+            "medium": "Medium: {{value}}",
+            "source": "Source: {{value}}",
+            "term": "Term: {{value}}"
+        },
         "kpis": {
             "campaign": "Campaign",
             "content": "Content",

@@ -217,6 +217,26 @@
     },
     "utm": {
         "noSiteDescription": "Selecciona o crea un sitio para ver metricas UTM.",
+        "series": {
+            "title": "Rendimiento UTM",
+            "description": "Sigue el trafico impulsado por UTM a lo largo del tiempo.",
+            "emptyTitle": "Todavia no hay actividad UTM",
+            "emptyDescription": "Etiqueta enlaces de campana con parametros UTM para ver su rendimiento."
+        },
+        "metrics": {
+            "topCampaigns": "Principales campanas",
+            "topContents": "Principales contenidos",
+            "topMediums": "Principales medios",
+            "topSources": "Principales fuentes",
+            "topTerms": "Principales terminos"
+        },
+        "filters": {
+            "campaign": "Campana: {{value}}",
+            "content": "Contenido: {{value}}",
+            "medium": "Medio: {{value}}",
+            "source": "Fuente: {{value}}",
+            "term": "Termino: {{value}}"
+        },
         "kpis": {
             "campaign": "Campana",
             "content": "Contenido",

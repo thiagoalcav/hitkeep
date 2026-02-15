@@ -135,13 +135,7 @@ import { DrawerModule } from 'primeng/drawer';
                         >
                             <i class="pi pi-filter"></i> <span>{{ 'nav.funnels' | transloco }}</span>
                         </a>
-                        <a
-                            routerLink="/utm"
-                            (click)="isMobileDrawerOpen.set(false)"
-                            routerLinkActive="bg-primary-50 text-primary-700"
-                            class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
-                            [attr.aria-label]="'nav.utmAria' | transloco"
-                        >
+                        <a routerLink="/utm" (click)="isMobileDrawerOpen.set(false)" routerLinkActive="bg-primary-50 text-primary-700" class="flex items-center gap-3 px-3 py-2 rounded-md font-medium" [attr.aria-label]="'nav.utmAria' | transloco">
                             <i class="pi pi-tags"></i> <span>{{ 'nav.utm' | transloco }}</span>
                         </a>
                     </nav>

@@ -65,6 +65,11 @@ export interface SiteStats {
     top_referrers: MetricStat[];
     top_devices: MetricStat[];
     top_countries: MetricStat[];
+    top_utm_campaigns: MetricStat[];
+    top_utm_contents: MetricStat[];
+    top_utm_mediums: MetricStat[];
+    top_utm_sources: MetricStat[];
+    top_utm_terms: MetricStat[];
     utm_campaign_hits: number;
     utm_content_hits: number;
     utm_medium_hits: number;

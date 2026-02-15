@@ -6,12 +6,15 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { DatePickerModule } from 'primeng/datepicker';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
 import { SiteService } from '@features/sites/services/site.service';
 import { StatsService } from '@features/analytics/services/stats.service';
 import { PageHeader } from '@components/page-header/page-header';
 import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
 import { KpiCard } from '@features/analytics/components/kpi-card';
 import { RangeToolbar } from '@components/range-toolbar/range-toolbar';
+import { MetricList } from '@features/analytics/components/metric-list';
+import { SeriesChart, SeriesChartPoint, SeriesDefinition } from '@features/analytics/components/series-chart';
 
 interface RangeSelectEvent {
     value: {
@@ -20,10 +23,16 @@ interface RangeSelectEvent {
     };
 }
 
+type MetricFilterType = 'utm_campaign' | 'utm_content' | 'utm_medium' | 'utm_source' | 'utm_term';
+interface MetricFilter {
+    type: MetricFilterType;
+    value: string;
+}
+
 @Component({
     selector: 'app-utm-dashboard',
     standalone: true,
-    imports: [ReactiveFormsModule, TranslocoPipe, DatePickerModule, DialogModule, ButtonModule, PageHeader, PageBreadcrumb, RangeToolbar, KpiCard],
+    imports: [ReactiveFormsModule, TranslocoPipe, DatePickerModule, DialogModule, ButtonModule, CardModule, PageHeader, PageBreadcrumb, RangeToolbar, KpiCard, MetricList, SeriesChart],
     templateUrl: './utm.html',
     styleUrl: './utm.css',
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -43,10 +52,31 @@ export class UtmDashboard {
     ]);
     protected selectedRange = signal({ label: '', value: '30d' });
     protected isCustomRangeVisible = signal(false);
+    protected isRefreshing = computed(() => this.statsService.isLoading());
     private readonly rangeFormModel = signal({
         customRangeDates: new FormControl<Date[] | null>(null)
     });
     protected readonly rangeForm = compatForm(this.rangeFormModel);
+    protected isShortRange = computed(() => {
+        if (this.selectedRange().value === '24h') return true;
+        const customRangeDates = this.rangeForm.customRangeDates().value();
+        if (this.selectedRange().value === 'custom' && customRangeDates) {
+            const d = customRangeDates;
+            if (d.length === 2 && d[0] && d[1]) {
+                const diff = d[1].getTime() - d[0].getTime();
+                return diff < 48 * 60 * 60 * 1000;
+            }
+        }
+        return false;
+    });
+    protected activeFilters = signal<MetricFilter[]>([]);
+    protected hasFilters = computed(() => this.activeFilters().length > 0);
+    protected filterChips = computed(() =>
+        this.activeFilters().map((filter) => ({
+            ...filter,
+            label: this.filterLabel(filter)
+        }))
+    );
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         this.activeLanguage();
         const site = this.siteService.activeSite();
@@ -56,6 +86,33 @@ export class UtmDashboard {
         return [
             { label: site.domain, favicon: site, routerLink: '/dashboard' },
             { label: this.transloco.translate('nav.utm'), isCurrent: true }
+        ];
+    });
+    protected readonly utmSeriesData = computed<SeriesChartPoint[]>(() => {
+        const chartData = this.statsService.stats()?.chart_data ?? [];
+        return chartData.map((point) => ({
+            time: point.time,
+            pageviews: point.pageviews,
+            visitors: point.visitors
+        }));
+    });
+    protected readonly utmSeriesConfig = computed<SeriesDefinition[]>(() => {
+        this.activeLanguage();
+        return [
+            {
+                key: 'pageviews',
+                label: this.transloco.translate('dashboard.kpis.pageviews'),
+                color: '#6366f1',
+                gradientFrom: 'rgba(99, 102, 241, 0.5)',
+                gradientTo: 'rgba(99, 102, 241, 0.0)'
+            },
+            {
+                key: 'visitors',
+                label: this.transloco.translate('dashboard.traffic.visitors'),
+                color: '#14b8a6',
+                gradientFrom: 'rgba(20, 184, 166, 0.5)',
+                gradientTo: 'rgba(20, 184, 166, 0.0)'
+            }
         ];
     });
     protected readonly utmKpis = computed(() => {
@@ -110,10 +167,11 @@ export class UtmDashboard {
         effect(() => {
             const site = this.siteService.activeSite();
             const dates = this.getCurrentDateRange();
+            const filters = this.activeFilters();
             if (!site || !dates) {
                 return;
             }
-            this.statsService.loadStats(site.id, dates.from, dates.to);
+            this.statsService.loadStats(site.id, dates.from, dates.to, filters);
         });
     }
 
@@ -123,7 +181,53 @@ export class UtmDashboard {
         if (!site || !dates) {
             return;
         }
-        this.statsService.loadStats(site.id, dates.from, dates.to);
+        this.statsService.loadStats(site.id, dates.from, dates.to, this.activeFilters());
+    }
+
+    protected applyMetricFilter(type: MetricFilterType, metric: { name: string }) {
+        if (!metric.name) return;
+        this.activeFilters.update((filters) => {
+            const existingIndex = filters.findIndex((filter) => filter.type === type);
+            if (existingIndex >= 0) {
+                const existing = filters[existingIndex];
+                if (existing.value === metric.name) {
+                    return filters.filter((_, idx) => idx !== existingIndex);
+                }
+                const next = [...filters];
+                next[existingIndex] = { type, value: metric.name };
+                return next;
+            }
+            return [...filters, { type, value: metric.name }];
+        });
+    }
+
+    protected clearFilter() {
+        this.activeFilters.set([]);
+    }
+
+    protected removeFilter(type: MetricFilterType, value: string) {
+        this.activeFilters.update((filters) => filters.filter((filter) => !(filter.type === type && filter.value === value)));
+    }
+
+    protected activeFilterValue(type: MetricFilterType): string | null {
+        return this.activeFilters().find((filter) => filter.type === type)?.value ?? null;
+    }
+
+    private filterLabel(filter: MetricFilter): string {
+        switch (filter.type) {
+            case 'utm_campaign':
+                return this.transloco.translate('utm.filters.campaign', { value: filter.value });
+            case 'utm_content':
+                return this.transloco.translate('utm.filters.content', { value: filter.value });
+            case 'utm_medium':
+                return this.transloco.translate('utm.filters.medium', { value: filter.value });
+            case 'utm_source':
+                return this.transloco.translate('utm.filters.source', { value: filter.value });
+            case 'utm_term':
+                return this.transloco.translate('utm.filters.term', { value: filter.value });
+            default:
+                return `${filter.type}: ${filter.value}`;
+        }
     }
 
     protected onRangeChange(event: RangeSelectEvent) {

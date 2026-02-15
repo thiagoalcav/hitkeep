@@ -248,13 +248,53 @@
     "settings": {
         "security": {
             "title": "Security",
+            "loading": "Loading security settings...",
             "changePasswordTitle": "Change password",
             "passwordUpdated": "Password updated successfully.",
             "currentPasswordLabel": "Current password",
             "newPasswordLabel": "New password",
             "minimumLengthHint": "Minimum 8 characters",
             "updatePassword": "Update password",
+            "twoFactor": {
+                "title": "Two-factor authentication",
+                "description": "Protect your account with a one-time code from an authenticator app.",
+                "setupDescription": "Start setup to generate a secret and verify a 6-digit TOTP code.",
+                "enabledDescription": "Two-factor authentication is currently enabled on your account.",
+                "secretLabel": "Manual setup key",
+                "otpauthLabel": "OTPAuth URI",
+                "verifyCodeLabel": "Verification code",
+                "disableCodeLabel": "Current authenticator code",
+                "disableHint": "Enter a valid 6-digit code to disable two-factor authentication.",
+                "startSetupAction": "Start setup",
+                "verifyAction": "Enable two-factor",
+                "disableAction": "Disable two-factor",
+                "enabled": "Two-factor authentication enabled.",
+                "disabled": "Two-factor authentication disabled.",
+                "errors": {
+                    "startFailed": "Failed to start two-factor setup. Please try again.",
+                    "verifyFailed": "Verification failed. Check your code and try again.",
+                    "disableFailed": "Failed to disable two-factor authentication."
+                }
+            },
+            "passkeys": {
+                "title": "Passkeys",
+                "description": "Register a passkey to use device-based authentication.",
+                "empty": "No passkeys registered yet.",
+                "nameLabel": "Passkey name",
+                "namePlaceholder": "e.g. Work laptop",
+                "nameHint": "Optional label to identify the device.",
+                "addAction": "Add passkey",
+                "removeAction": "Remove",
+                "registered": "Passkey registered.",
+                "deleted": "Passkey removed.",
+                "errors": {
+                    "notSupported": "This browser does not support passkey registration.",
+                    "registrationFailed": "Passkey registration failed. Please try again.",
+                    "deleteFailed": "Unable to remove this passkey right now."
+                }
+            },
             "errors": {
+                "loadFailed": "Failed to load security settings.",
                 "invalidCurrentPassword": "Incorrect current password.",
                 "updateFailed": "Failed to update password. Please try again."
             }
@@ -457,9 +497,18 @@
         "forgotPassword": "Forgot password?",
         "rememberMe": "Remember me",
         "signIn": "Sign in",
+        "or": "or",
+        "signInWithPasskey": "Sign in with passkey",
+        "mfaTitle": "Two-factor verification",
+        "mfaSubtitle": "Complete sign-in with your authenticator code or a passkey.",
+        "totpCodeLabel": "Authenticator code",
+        "verifyTotp": "Verify code",
         "footerRights": "HitKeep. All rights reserved.",
         "errors": {
             "invalidCredentials": "Invalid email or password.",
+            "passkeyNotSupported": "Passkey login is not supported on this device.",
+            "passkeyFailed": "Passkey login failed. Please try again.",
+            "invalidTotp": "Invalid authenticator code.",
             "unexpected": "An unexpected error occurred. Please try again."
         }
     },

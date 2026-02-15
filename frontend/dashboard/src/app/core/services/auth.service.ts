@@ -4,14 +4,46 @@ import { Observable, finalize, tap } from 'rxjs';
 
 export type AuthStatus = 'unknown' | 'authenticated' | 'unauthenticated';
 
+export interface PasskeyLoginStartResponse {
+    challenge_token: string;
+    publicKey: {
+        challenge: string;
+        rpId: string;
+        timeout: number;
+        userVerification: UserVerificationRequirement;
+    };
+}
+
+export interface PasskeyLoginFinishRequest {
+    challenge_token: string;
+    credential_id: string;
+    client_data_json: string;
+    authenticator_data: string;
+    signature: string;
+    remember_me?: boolean;
+}
+
+export interface LoginResponse {
+    status: 'ok' | 'mfa_required';
+    challenge_token?: string;
+    factors?: ('totp' | 'passkey')[];
+    passkey?: PasskeyLoginStartResponse['publicKey'];
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
     private http = inject(HttpClient);
     readonly status = signal<AuthStatus>('unknown');
     readonly isAuthenticated = computed(() => this.status() === 'authenticated');
 
-    login(credentials: { email: string; password: string; remember_me?: boolean }): Observable<void> {
-        return this.http.post<void>('/api/login', credentials).pipe(tap(() => this.status.set('authenticated')));
+    login(credentials: { email: string; password: string; remember_me?: boolean }): Observable<LoginResponse> {
+        return this.http.post<LoginResponse>('/api/login', credentials).pipe(
+            tap((resp) => {
+                if (resp.status === 'ok') {
+                    this.status.set('authenticated');
+                }
+            })
+        );
     }
 
     logout(): Observable<void> {
@@ -31,6 +63,23 @@ export class AuthService {
             current_password: current,
             new_password: newPass
         });
+    }
+
+    startPasskeyLogin(): Observable<PasskeyLoginStartResponse> {
+        return this.http.post<PasskeyLoginStartResponse>('/api/auth/passkey/login/start', {});
+    }
+
+    finishPasskeyLogin(payload: PasskeyLoginFinishRequest): Observable<void> {
+        return this.http.post<void>('/api/auth/passkey/login/finish', payload).pipe(tap(() => this.status.set('authenticated')));
+    }
+
+    verifyMfaTotp(challengeToken: string, code: string): Observable<void> {
+        return this.http
+            .post<void>('/api/auth/mfa/totp/verify', {
+                challenge_token: challengeToken,
+                code
+            })
+            .pipe(tap(() => this.status.set('authenticated')));
     }
 
     markAuthenticated() {

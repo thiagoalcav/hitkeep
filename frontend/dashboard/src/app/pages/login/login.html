@@ -19,57 +19,111 @@
                     </div>
                 }
 
-                <!-- Email Field -->
-                <div class="flex flex-col gap-2">
-                    <label for="email" class="text-sm font-medium text-[var(--p-text-color)]">{{ "login.emailLabel" | transloco }}</label>
-                    <input
-                        pInputText
-                        id="email"
-                        [formControl]="loginForm.email().control()"
-                        autocomplete="username"
-                        class="w-full"
-                        [class.ng-invalid]="loginForm.email().touched() && loginForm.email().invalid()"
-                        [class.ng-dirty]="loginForm.email().dirty()"
-                        [placeholder]="'login.emailPlaceholder' | transloco"
-                    />
-                    @if (loginForm.email().touched() && loginForm.email().invalid()) {
-                        <small class="text-red-500 text-xs">{{ "login.emailInvalid" | transloco }}</small>
-                    }
-                </div>
-
-                <!-- Password Field -->
-                <div class="flex flex-col gap-2">
-                    <div class="flex items-center justify-between">
-                        <label for="password" class="text-sm font-medium text-[var(--p-text-color)]">{{ "login.passwordLabel" | transloco }}</label>
-                        <a routerLink="/forgot-password" class="text-xs font-medium text-[var(--p-primary-color)] hover:underline" tabindex="-1">
-                            {{ "login.forgotPassword" | transloco }}
-                        </a>
+                @if (!isMfaRequired()) {
+                    <!-- Email Field -->
+                    <div class="flex flex-col gap-2">
+                        <label for="email" class="text-sm font-medium text-[var(--p-text-color)]">{{ "login.emailLabel" | transloco }}</label>
+                        <input
+                            pInputText
+                            id="email"
+                            [formControl]="loginForm.email().control()"
+                            autocomplete="username webauthn"
+                            class="w-full"
+                            [class.ng-invalid]="loginForm.email().touched() && loginForm.email().invalid()"
+                            [class.ng-dirty]="loginForm.email().dirty()"
+                            [placeholder]="'login.emailPlaceholder' | transloco"
+                        />
+                        @if (loginForm.email().touched() && loginForm.email().invalid()) {
+                            <small class="text-red-500 text-xs">{{ "login.emailInvalid" | transloco }}</small>
+                        }
                     </div>
-                    <p-password
-                        id="password"
-                        [formControl]="loginForm.password().control()"
-                        autocomplete="current-password"
-                        [toggleMask]="true"
-                        [feedback]="false"
-                        class="w-full"
-                        inputclass="w-full"
-                        [placeholder]="'login.passwordPlaceholder' | transloco"
-                        [class.ng-invalid]="loginForm.password().touched() && loginForm.password().invalid()"
-                        [class.ng-dirty]="loginForm.password().dirty()"
-                    ></p-password>
-                    @if (loginForm.password().touched() && loginForm.password().invalid()) {
-                        <small class="text-red-500 text-xs">{{ "login.passwordRequired" | transloco }}</small>
+
+                    <!-- Password Field -->
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center justify-between">
+                            <label for="password" class="text-sm font-medium text-[var(--p-text-color)]">{{ "login.passwordLabel" | transloco }}</label>
+                            <a routerLink="/forgot-password" class="text-xs font-medium text-[var(--p-primary-color)] hover:underline" tabindex="-1">
+                                {{ "login.forgotPassword" | transloco }}
+                            </a>
+                        </div>
+                        <p-password
+                            id="password"
+                            [formControl]="loginForm.password().control()"
+                            autocomplete="current-password"
+                            [toggleMask]="true"
+                            [feedback]="false"
+                            class="w-full"
+                            inputclass="w-full"
+                            [placeholder]="'login.passwordPlaceholder' | transloco"
+                            [class.ng-invalid]="loginForm.password().touched() && loginForm.password().invalid()"
+                            [class.ng-dirty]="loginForm.password().dirty()"
+                        ></p-password>
+                        @if (loginForm.password().touched() && loginForm.password().invalid()) {
+                            <small class="text-red-500 text-xs">{{ "login.passwordRequired" | transloco }}</small>
+                        }
+                    </div>
+
+                    <!-- Remember Me -->
+                    <div class="flex items-center gap-2">
+                        <p-checkbox [formControl]="loginForm.rememberMe().control()" [binary]="true" inputId="rememberMe"></p-checkbox>
+                        <label for="rememberMe" class="text-sm text-[var(--p-text-color)] cursor-pointer select-none">{{ "login.rememberMe" | transloco }}</label>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <p-button [label]="'login.signIn' | transloco" type="submit" [loading]="isLoading()" class="w-full" [disabled]="isLoading() || loginForm.email().invalid() || loginForm.password().invalid()"> </p-button>
+
+                    @if (isPasskeySupported()) {
+                        <div class="flex items-center gap-3 my-1">
+                            <span class="h-px flex-1 bg-surface-300"></span>
+                            <span class="text-xs uppercase tracking-wide text-[var(--p-text-muted-color)]">{{ "login.or" | transloco }}</span>
+                            <span class="h-px flex-1 bg-surface-300"></span>
+                        </div>
+
+                        <p-button
+                            [label]="'login.signInWithPasskey' | transloco"
+                            type="button"
+                            icon="pi pi-key"
+                            severity="secondary"
+                            [outlined]="true"
+                            [loading]="isPasskeyLoading()"
+                            class="w-full"
+                            [disabled]="isLoading() || isPasskeyLoading()"
+                            (onClick)="onPasskeyLogin()"
+                        />
                     }
-                </div>
+                } @else {
+                    <div class="flex flex-col gap-2">
+                        <h3 class="text-base font-semibold text-[var(--p-text-color)]">{{ "login.mfaTitle" | transloco }}</h3>
+                        <p class="text-sm text-[var(--p-text-muted-color)]">{{ "login.mfaSubtitle" | transloco }}</p>
+                    </div>
 
-                <!-- Remember Me -->
-                <div class="flex items-center gap-2">
-                    <p-checkbox [formControl]="loginForm.rememberMe().control()" [binary]="true" inputId="rememberMe"></p-checkbox>
-                    <label for="rememberMe" class="text-sm text-[var(--p-text-color)] cursor-pointer select-none">{{ "login.rememberMe" | transloco }}</label>
-                </div>
+                    <div class="flex flex-col gap-2">
+                        <label for="mfaCode" class="text-sm font-medium text-[var(--p-text-color)]">{{ "login.totpCodeLabel" | transloco }}</label>
+                        <p-inputotp inputId="mfaCode" [formControl]="loginForm.mfaCode().control()" [length]="6" [integerOnly]="true" [invalid]="loginForm.mfaCode().touched() && loginForm.mfaCode().invalid()" />
+                    </div>
 
-                <!-- Submit Button -->
-                <p-button [label]="'login.signIn' | transloco" type="submit" [loading]="isLoading()" class="w-full" [disabled]="isLoading() || loginForm().invalid()"> </p-button>
+                    <p-button [label]="'login.verifyTotp' | transloco" type="submit" [loading]="isLoading()" class="w-full" [disabled]="isLoading() || loginForm.mfaCode().invalid()"> </p-button>
+
+                    @if (isPasskeySupported() && mfaFactors().includes("passkey")) {
+                        <div class="flex items-center gap-3 my-1">
+                            <span class="h-px flex-1 bg-surface-300"></span>
+                            <span class="text-xs uppercase tracking-wide text-[var(--p-text-muted-color)]">{{ "login.or" | transloco }}</span>
+                            <span class="h-px flex-1 bg-surface-300"></span>
+                        </div>
+
+                        <p-button
+                            [label]="'login.signInWithPasskey' | transloco"
+                            type="button"
+                            icon="pi pi-key"
+                            severity="secondary"
+                            [outlined]="true"
+                            [loading]="isPasskeyLoading()"
+                            class="w-full"
+                            [disabled]="isLoading() || isPasskeyLoading()"
+                            (onClick)="onPasskeyLogin()"
+                        />
+                    }
+                }
             </form>
         </div>
 

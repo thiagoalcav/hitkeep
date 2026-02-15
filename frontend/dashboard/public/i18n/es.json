@@ -248,13 +248,53 @@
     "settings": {
         "security": {
             "title": "Seguridad",
+            "loading": "Cargando configuracion de seguridad...",
             "changePasswordTitle": "Cambiar contrasena",
             "passwordUpdated": "Contrasena actualizada correctamente.",
             "currentPasswordLabel": "Contrasena actual",
             "newPasswordLabel": "Nueva contrasena",
             "minimumLengthHint": "Minimo 8 caracteres",
             "updatePassword": "Actualizar contrasena",
+            "twoFactor": {
+                "title": "Autenticacion en dos pasos",
+                "description": "Protege tu cuenta con un codigo de un solo uso de una app autenticadora.",
+                "setupDescription": "Inicia la configuracion para generar un secreto y verificar un codigo TOTP de 6 digitos.",
+                "enabledDescription": "La autenticacion en dos pasos esta activada en tu cuenta.",
+                "secretLabel": "Clave de configuracion manual",
+                "otpauthLabel": "URI de OTPAuth",
+                "verifyCodeLabel": "Codigo de verificacion",
+                "disableCodeLabel": "Codigo actual del autenticador",
+                "disableHint": "Ingresa un codigo valido de 6 digitos para desactivar la autenticacion en dos pasos.",
+                "startSetupAction": "Iniciar configuracion",
+                "verifyAction": "Activar autenticacion en dos pasos",
+                "disableAction": "Desactivar autenticacion en dos pasos",
+                "enabled": "Autenticacion en dos pasos activada.",
+                "disabled": "Autenticacion en dos pasos desactivada.",
+                "errors": {
+                    "startFailed": "No se pudo iniciar la configuracion de autenticacion en dos pasos. Intentalo de nuevo.",
+                    "verifyFailed": "La verificacion fallo. Revisa tu codigo e intentalo de nuevo.",
+                    "disableFailed": "No se pudo desactivar la autenticacion en dos pasos."
+                }
+            },
+            "passkeys": {
+                "title": "Passkeys",
+                "description": "Registra una passkey para usar autenticacion del dispositivo.",
+                "empty": "Aun no hay passkeys registradas.",
+                "nameLabel": "Nombre de la passkey",
+                "namePlaceholder": "p. ej. Portatil del trabajo",
+                "nameHint": "Etiqueta opcional para identificar el dispositivo.",
+                "addAction": "Agregar passkey",
+                "removeAction": "Eliminar",
+                "registered": "Passkey registrada.",
+                "deleted": "Passkey eliminada.",
+                "errors": {
+                    "notSupported": "Este navegador no admite el registro de passkeys.",
+                    "registrationFailed": "No se pudo registrar la passkey. Intentalo de nuevo.",
+                    "deleteFailed": "No se puede eliminar esta passkey en este momento."
+                }
+            },
             "errors": {
+                "loadFailed": "No se pudo cargar la configuracion de seguridad.",
                 "invalidCurrentPassword": "Contrasena actual incorrecta.",
                 "updateFailed": "No se pudo actualizar la contrasena. Intentalo de nuevo."
             }
@@ -457,9 +497,18 @@
         "forgotPassword": "Olvidaste tu contrasena?",
         "rememberMe": "Recordarme",
         "signIn": "Iniciar sesion",
+        "or": "o",
+        "signInWithPasskey": "Iniciar sesion con passkey",
+        "mfaTitle": "Verificacion en dos pasos",
+        "mfaSubtitle": "Completa el acceso con tu codigo del autenticador o con una passkey.",
+        "totpCodeLabel": "Codigo del autenticador",
+        "verifyTotp": "Verificar codigo",
         "footerRights": "HitKeep. Todos los derechos reservados.",
         "errors": {
             "invalidCredentials": "Correo o contrasena invalidos.",
+            "passkeyNotSupported": "El inicio de sesion con passkey no esta disponible en este dispositivo.",
+            "passkeyFailed": "Error al iniciar sesion con passkey. Intentalo de nuevo.",
+            "invalidTotp": "Codigo del autenticador no valido.",
             "unexpected": "Ocurrio un error inesperado. Intentalo de nuevo."
         }
     },

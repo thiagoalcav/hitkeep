@@ -248,13 +248,53 @@
     "settings": {
         "security": {
             "title": "Sicherheit",
+            "loading": "Sicherheitseinstellungen werden geladen...",
             "changePasswordTitle": "Passwort ändern",
             "passwordUpdated": "Passwort erfolgreich aktualisiert.",
             "currentPasswordLabel": "Aktuelles Passwort",
             "newPasswordLabel": "Neues Passwort",
             "minimumLengthHint": "Mindestens 8 Zeichen",
             "updatePassword": "Passwort aktualisieren",
+            "twoFactor": {
+                "title": "Zwei-Faktor-Authentifizierung",
+                "description": "Schutzen Sie Ihr Konto mit einem Einmalcode aus einer Authenticator-App.",
+                "setupDescription": "Starten Sie die Einrichtung, um einen geheimen Schlussel zu erstellen und einen 6-stelligen TOTP-Code zu bestaetigen.",
+                "enabledDescription": "Die Zwei-Faktor-Authentifizierung ist fur Ihr Konto derzeit aktiviert.",
+                "secretLabel": "Manueller Einrichtungs-Schlussel",
+                "otpauthLabel": "OTPAuth-URI",
+                "verifyCodeLabel": "Bestaetigungscode",
+                "disableCodeLabel": "Aktueller Authenticator-Code",
+                "disableHint": "Geben Sie einen gueltigen 6-stelligen Code ein, um die Zwei-Faktor-Authentifizierung zu deaktivieren.",
+                "startSetupAction": "Einrichtung starten",
+                "verifyAction": "Zwei-Faktor aktivieren",
+                "disableAction": "Zwei-Faktor deaktivieren",
+                "enabled": "Zwei-Faktor-Authentifizierung aktiviert.",
+                "disabled": "Zwei-Faktor-Authentifizierung deaktiviert.",
+                "errors": {
+                    "startFailed": "Die Einrichtung der Zwei-Faktor-Authentifizierung konnte nicht gestartet werden. Bitte versuchen Sie es erneut.",
+                    "verifyFailed": "Verifizierung fehlgeschlagen. Prufen Sie Ihren Code und versuchen Sie es erneut.",
+                    "disableFailed": "Die Zwei-Faktor-Authentifizierung konnte nicht deaktiviert werden."
+                }
+            },
+            "passkeys": {
+                "title": "Passkeys",
+                "description": "Registrieren Sie einen Passkey fur die geraetebasierte Anmeldung.",
+                "empty": "Noch keine Passkeys registriert.",
+                "nameLabel": "Passkey-Name",
+                "namePlaceholder": "z. B. Arbeitslaptop",
+                "nameHint": "Optionale Bezeichnung zur Identifizierung des Geraets.",
+                "addAction": "Passkey hinzufugen",
+                "removeAction": "Entfernen",
+                "registered": "Passkey registriert.",
+                "deleted": "Passkey entfernt.",
+                "errors": {
+                    "notSupported": "Dieser Browser unterstutzt die Passkey-Registrierung nicht.",
+                    "registrationFailed": "Passkey-Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+                    "deleteFailed": "Dieser Passkey kann derzeit nicht entfernt werden."
+                }
+            },
             "errors": {
+                "loadFailed": "Sicherheitseinstellungen konnten nicht geladen werden.",
                 "invalidCurrentPassword": "Aktuelles Passwort ist falsch.",
                 "updateFailed": "Passwort konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut."
             }
@@ -457,9 +497,18 @@
         "forgotPassword": "Passwort vergessen?",
         "rememberMe": "Angemeldet bleiben",
         "signIn": "Anmelden",
+        "or": "oder",
+        "signInWithPasskey": "Mit Passkey anmelden",
+        "mfaTitle": "Zwei-Faktor-Verifizierung",
+        "mfaSubtitle": "Schließen Sie die Anmeldung mit Ihrem Authenticator-Code oder einem Passkey ab.",
+        "totpCodeLabel": "Authenticator-Code",
+        "verifyTotp": "Code verifizieren",
         "footerRights": "HitKeep. Alle Rechte vorbehalten.",
         "errors": {
             "invalidCredentials": "Ungültige E-Mail-Adresse oder Passwort.",
+            "passkeyNotSupported": "Passkey-Anmeldung wird auf diesem Gerät nicht unterstützt.",
+            "passkeyFailed": "Passkey-Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+            "invalidTotp": "Ungültiger Authenticator-Code.",
             "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
         }
     },

@@ -248,13 +248,53 @@
     "settings": {
         "security": {
             "title": "Sicurezza",
+            "loading": "Caricamento impostazioni di sicurezza...",
             "changePasswordTitle": "Cambia password",
             "passwordUpdated": "Password aggiornata con successo.",
             "currentPasswordLabel": "Password attuale",
             "newPasswordLabel": "Nuova password",
             "minimumLengthHint": "Minimo 8 caratteri",
             "updatePassword": "Aggiorna password",
+            "twoFactor": {
+                "title": "Autenticazione a due fattori",
+                "description": "Proteggi il tuo account con un codice monouso da un'app di autenticazione.",
+                "setupDescription": "Avvia la configurazione per generare un segreto e verificare un codice TOTP a 6 cifre.",
+                "enabledDescription": "L'autenticazione a due fattori e attualmente attiva sul tuo account.",
+                "secretLabel": "Chiave di configurazione manuale",
+                "otpauthLabel": "URI OTPAuth",
+                "verifyCodeLabel": "Codice di verifica",
+                "disableCodeLabel": "Codice attuale dell'app autenticatore",
+                "disableHint": "Inserisci un codice valido di 6 cifre per disattivare l'autenticazione a due fattori.",
+                "startSetupAction": "Avvia configurazione",
+                "verifyAction": "Attiva autenticazione a due fattori",
+                "disableAction": "Disattiva autenticazione a due fattori",
+                "enabled": "Autenticazione a due fattori attivata.",
+                "disabled": "Autenticazione a due fattori disattivata.",
+                "errors": {
+                    "startFailed": "Impossibile avviare la configurazione dell'autenticazione a due fattori. Riprova.",
+                    "verifyFailed": "Verifica non riuscita. Controlla il codice e riprova.",
+                    "disableFailed": "Impossibile disattivare l'autenticazione a due fattori."
+                }
+            },
+            "passkeys": {
+                "title": "Passkeys",
+                "description": "Registra una passkey per usare l'autenticazione del dispositivo.",
+                "empty": "Nessuna passkey registrata.",
+                "nameLabel": "Nome passkey",
+                "namePlaceholder": "es. Portatile lavoro",
+                "nameHint": "Etichetta opzionale per identificare il dispositivo.",
+                "addAction": "Aggiungi passkey",
+                "removeAction": "Rimuovi",
+                "registered": "Passkey registrata.",
+                "deleted": "Passkey rimossa.",
+                "errors": {
+                    "notSupported": "Questo browser non supporta la registrazione delle passkey.",
+                    "registrationFailed": "Registrazione passkey non riuscita. Riprova.",
+                    "deleteFailed": "Impossibile rimuovere questa passkey in questo momento."
+                }
+            },
             "errors": {
+                "loadFailed": "Impossibile caricare le impostazioni di sicurezza.",
                 "invalidCurrentPassword": "Password attuale non corretta.",
                 "updateFailed": "Aggiornamento password non riuscito. Riprova."
             }
@@ -457,9 +497,18 @@
         "forgotPassword": "Password dimenticata?",
         "rememberMe": "Ricordami",
         "signIn": "Accedi",
+        "or": "o",
+        "signInWithPasskey": "Accedi con passkey",
+        "mfaTitle": "Verifica a due fattori",
+        "mfaSubtitle": "Completa l'accesso con il codice dell'autenticatore o con una passkey.",
+        "totpCodeLabel": "Codice autenticatore",
+        "verifyTotp": "Verifica codice",
         "footerRights": "HitKeep. Tutti i diritti riservati.",
         "errors": {
             "invalidCredentials": "Email o password non validi.",
+            "passkeyNotSupported": "L'accesso con passkey non e supportato su questo dispositivo.",
+            "passkeyFailed": "Accesso con passkey non riuscito. Riprova.",
+            "invalidTotp": "Codice autenticatore non valido.",
             "unexpected": "Si e verificato un errore imprevisto. Riprova."
         }
     },

@@ -248,13 +248,53 @@
     "settings": {
         "security": {
             "title": "Securite",
+            "loading": "Chargement des parametres de securite...",
             "changePasswordTitle": "Changer le mot de passe",
             "passwordUpdated": "Mot de passe mis a jour avec succes.",
             "currentPasswordLabel": "Mot de passe actuel",
             "newPasswordLabel": "Nouveau mot de passe",
             "minimumLengthHint": "Minimum 8 caracteres",
             "updatePassword": "Mettre a jour le mot de passe",
+            "twoFactor": {
+                "title": "Authentification a deux facteurs",
+                "description": "Protegez votre compte avec un code a usage unique depuis une application d'authentification.",
+                "setupDescription": "Demarrez la configuration pour generer un secret et verifier un code TOTP a 6 chiffres.",
+                "enabledDescription": "L'authentification a deux facteurs est actuellement activee sur votre compte.",
+                "secretLabel": "Cle de configuration manuelle",
+                "otpauthLabel": "URI OTPAuth",
+                "verifyCodeLabel": "Code de verification",
+                "disableCodeLabel": "Code actuel de l'application d'authentification",
+                "disableHint": "Entrez un code valide a 6 chiffres pour desactiver l'authentification a deux facteurs.",
+                "startSetupAction": "Demarrer la configuration",
+                "verifyAction": "Activer l'authentification a deux facteurs",
+                "disableAction": "Desactiver l'authentification a deux facteurs",
+                "enabled": "Authentification a deux facteurs activee.",
+                "disabled": "Authentification a deux facteurs desactivee.",
+                "errors": {
+                    "startFailed": "Impossible de demarrer la configuration de l'authentification a deux facteurs. Veuillez reessayer.",
+                    "verifyFailed": "La verification a echoue. Verifiez votre code puis reessayez.",
+                    "disableFailed": "Impossible de desactiver l'authentification a deux facteurs."
+                }
+            },
+            "passkeys": {
+                "title": "Passkeys",
+                "description": "Enregistrez une passkey pour utiliser l'authentification de l'appareil.",
+                "empty": "Aucune passkey enregistree pour le moment.",
+                "nameLabel": "Nom de la passkey",
+                "namePlaceholder": "ex. Ordinateur pro",
+                "nameHint": "Libelle facultatif pour identifier l'appareil.",
+                "addAction": "Ajouter une passkey",
+                "removeAction": "Supprimer",
+                "registered": "Passkey enregistree.",
+                "deleted": "Passkey supprimee.",
+                "errors": {
+                    "notSupported": "Ce navigateur ne prend pas en charge l'enregistrement de passkeys.",
+                    "registrationFailed": "L'enregistrement de la passkey a echoue. Veuillez reessayer.",
+                    "deleteFailed": "Impossible de supprimer cette passkey pour le moment."
+                }
+            },
             "errors": {
+                "loadFailed": "Impossible de charger les parametres de securite.",
                 "invalidCurrentPassword": "Mot de passe actuel incorrect.",
                 "updateFailed": "Echec de la mise a jour du mot de passe. Veuillez reessayer."
             }
@@ -457,9 +497,18 @@
         "forgotPassword": "Mot de passe oublie?",
         "rememberMe": "Se souvenir de moi",
         "signIn": "Se connecter",
+        "or": "ou",
+        "signInWithPasskey": "Se connecter avec une passkey",
+        "mfaTitle": "Verification a deux facteurs",
+        "mfaSubtitle": "Terminez la connexion avec votre code d'authentification ou une passkey.",
+        "totpCodeLabel": "Code d'authentification",
+        "verifyTotp": "Verifier le code",
         "footerRights": "HitKeep. Tous droits reserves.",
         "errors": {
             "invalidCredentials": "E-mail ou mot de passe invalide.",
+            "passkeyNotSupported": "La connexion par passkey n'est pas prise en charge sur cet appareil.",
+            "passkeyFailed": "Echec de la connexion par passkey. Veuillez reessayer.",
+            "invalidTotp": "Code d'authentification invalide.",
             "unexpected": "Une erreur inattendue est survenue. Veuillez reessayer."
         }
     },

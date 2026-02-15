@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.6.0](https://github.com/PascaleBeier/hitkeep/compare/v1.5.4...v1.6.0) (2026-02-15)
+
+
+### Features
+
+* **frontend:** Add trend lines ([e362c85](https://github.com/PascaleBeier/hitkeep/commit/e362c856941a7b72205380a8af9d780797ca20bc))
+* **i18n:** add transloco localization and user locale preferences ([bb65797](https://github.com/PascaleBeier/hitkeep/commit/bb65797dc7c9cf298d6e3f8219a6b200969a0754))
+
+
+### Bug Fixes
+
+* **cluster:** route traffic and readiness to leader ([b14dac0](https://github.com/PascaleBeier/hitkeep/commit/b14dac085140294703daa96edcdac8abebdb0bb3))
+* **dev:** set default jwt secret for local backend ([ea6cc20](https://github.com/PascaleBeier/hitkeep/commit/ea6cc20fb133a7804a4457962b82d55d3b38a6a9))
+
 ## [1.5.4](https://github.com/PascaleBeier/hitkeep/compare/v1.5.3...v1.5.4) (2026-01-26)
 
 

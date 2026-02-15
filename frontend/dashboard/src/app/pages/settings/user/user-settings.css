@@ -1,0 +1,29 @@
+.settings-content {
+    container-type: inline-size;
+}
+
+.settings-grid {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.settings-card-action {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.35rem;
+}
+
+.settings-status {
+    font-size: 0.75rem;
+    line-height: 1rem;
+}
+
+:host ::ng-deep .settings-action-btn {
+    min-width: 11rem;
+    justify-content: center;
+}
+
+:host ::ng-deep .settings-action-split {
+    width: fit-content;
+}

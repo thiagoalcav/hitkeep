@@ -1,1 +1,468 @@
-{}
+{
+    "nav": {
+        "mainSidebarAria": "Barra lateral principal",
+        "primaryNavigationAria": "Navegacion principal",
+        "contentAreaAria": "Area de contenido",
+        "analytics": "Analiticas",
+        "dashboardAria": "Ir al panel",
+        "goalsAria": "Ir a objetivos",
+        "funnelsAria": "Ir a embudos",
+        "utmAria": "Ir al panel UTM",
+        "dashboard": "Panel",
+        "goals": "Objetivos",
+        "funnels": "Embudos",
+        "utm": "UTM"
+    },
+    "common": {
+        "actions": {
+            "apply": "Aplicar",
+            "cancel": "Cancelar",
+            "clearAll": "Limpiar todo",
+            "close": "Cerrar",
+            "downloadXlsx": "Descargar XLSX",
+            "exportCsv": "Exportar CSV"
+        },
+        "columns": {
+            "actions": "Acciones",
+            "added": "Agregado",
+            "created": "Creado",
+            "device": "Dispositivo",
+            "domain": "Dominio",
+            "email": "Correo",
+            "name": "Nombre",
+            "path": "Ruta",
+            "referrer": "Referencia",
+            "role": "Rol",
+            "time": "Hora",
+            "type": "Tipo",
+            "value": "Valor"
+        },
+        "devices": {
+            "desktop": "Escritorio",
+            "mobile": "Movil"
+        },
+        "direct": "Directo",
+        "durationMinutesSeconds": "{{minutes}}m {{seconds}}s",
+        "durationSeconds": "{{seconds}}s",
+        "emailAddress": "Correo electronico",
+        "emailPlaceholder": "you@example.com",
+        "empty": {
+            "noDataDescription": "No hay datos para este rango de tiempo.",
+            "noDataTitle": "Aun no hay datos"
+        },
+        "exportFormats": {
+            "csv": "CSV",
+            "xlsx": "XLSX",
+            "parquet": "Parquet"
+        },
+        "filters": {
+            "country": "Pais: {{value}}",
+            "device": "Dispositivo: {{value}}",
+            "page": "Pagina: {{value}}",
+            "source": "Fuente: {{value}}"
+        },
+        "kpis": {
+            "conversionRate": "Tasa de conversion"
+        },
+        "loadingSiteData": "Cargando datos del sitio...",
+        "metrics": {
+            "countries": "Paises",
+            "devices": "Dispositivos",
+            "topPages": "Paginas principales",
+            "topSources": "Fuentes principales"
+        },
+        "noActiveFilter": "Sin filtros activos",
+        "noSiteSelected": "Ningun sitio seleccionado",
+        "openInNewTabAria": "Abrir en una nueva pestaña",
+        "openUserMenuAria": "Abrir menu de usuario",
+        "password": "Contrasena",
+        "passwordPlaceholder": "••••••••",
+        "preparing": "Preparando...",
+        "refreshDataTooltip": "Actualizar datos",
+        "removeFilterAria": "Quitar filtro",
+        "searchPlaceholder": "Buscar...",
+        "selectDateRange": "Seleccionar rango de fechas",
+        "seriesChartAria": "Grafico de series temporales con datos de los ultimos {{count}} intervalos",
+        "switchToDarkModeAria": "Cambiar a modo oscuro",
+        "switchToLightModeAria": "Cambiar a modo claro",
+        "timeRangeSelectorAria": "Selector de rango de tiempo",
+        "timeRanges": {
+            "last24Hours": "Ultimas 24 horas",
+            "last7Days": "Ultimos 7 dias",
+            "last30Days": "Ultimos 30 dias",
+            "lastYear": "Ultimo ano",
+            "customRange": "Rango personalizado"
+        },
+        "unknownError": "Error desconocido",
+        "unspecified": "Sin especificar",
+        "visitors": "visitantes",
+        "copyLink": "Copiar enlace",
+        "copied": "Copiado"
+    },
+    "dashboard": {
+        "breadcrumbOverview": "Resumen",
+        "filteredBadge": "Filtrado",
+        "rawHitsTitle": "Hits sin procesar",
+        "noSiteDescription": "Selecciona o crea un sitio para ver analiticas.",
+        "openPageInNewTabAria": "Abrir pagina en una nueva pestaña",
+        "openReferrerInNewTabAria": "Abrir referencia en una nueva pestaña",
+        "chartTitleWithRange": "Trafico: {{range}}",
+        "chartTitleCustomRange": "Trafico: {{start}} - {{end}}",
+        "chartTitleOverview": "Resumen de trafico",
+        "trafficChartAria": "Grafico de trafico con datos de los ultimos {{count}} intervalos",
+        "traffic": {
+            "visitors": "Visitantes",
+            "trendLine": "Linea de tendencia"
+        },
+        "kpis": {
+            "liveVisitors": "Visitantes en vivo",
+            "pageviews": "Vistas de pagina",
+            "uniqueSessions": "Sesiones unicas",
+            "bounceRate": "Tasa de rebote",
+            "avgDuration": "Duracion promedio",
+            "pagesPerSession": "Paginas / sesion"
+        },
+        "empty": {
+            "noTrafficTitle": "Aun no hay trafico registrado",
+            "noTrafficDescription": "Instala el snippet de seguimiento en tu sitio web para empezar a recopilar datos de analitica.",
+            "getTrackingCode": "Obtener codigo de seguimiento"
+        }
+    },
+    "goals": {
+        "manageAction": "Administrar objetivos",
+        "noSiteDescription": "Selecciona o crea un sitio para ver objetivos.",
+        "series": {
+            "title": "Objetivos",
+            "description": "Filtra la serie por objetivo.",
+            "addFilterPlaceholder": "Agregar filtro de objetivo",
+            "emptyTitle": "Aun no hay conversiones de objetivos",
+            "emptyDescription": "Crea un objetivo y genera trafico para ver conversiones a lo largo del tiempo."
+        },
+        "kpis": {
+            "totalGoals": "Objetivos totales",
+            "conversions": "Conversiones"
+        },
+        "list": {
+            "title": "Objetivos",
+            "manageTooltip": "Administrar objetivos",
+            "emptyTitle": "Aun no hay objetivos",
+            "emptyDescription": "Haz seguimiento de eventos de conversion especificos como registros o compras.",
+            "createAction": "Crear objetivo",
+            "conversionsSuffix": "conversiones",
+            "conversionRateShort": "CR"
+        },
+        "manager": {
+            "dialogTitle": "Administrar objetivos",
+            "dialogDescription": "Define objetivos de conversion para seguir acciones de usuario o visitas de pagina especificas.",
+            "empty": "Aun no hay objetivos definidos.",
+            "addTitle": "Agregar nuevo objetivo",
+            "namePlaceholder": "p. ej. Registro exitoso",
+            "typePagePath": "Ruta de pagina",
+            "typeCustomEvent": "Evento personalizado",
+            "urlPathLabel": "Ruta URL",
+            "eventNameLabel": "Nombre del evento",
+            "urlPathPlaceholder": "/gracias",
+            "eventNamePlaceholder": "signup_completed",
+            "urlPathHelp": "Se activa cuando un usuario visita una URL especifica.",
+            "eventNameHelpPrefix": "Se activa cuando llamas",
+            "eventNameHelpSuffix": ".",
+            "createAction": "Crear objetivo"
+        }
+    },
+    "funnels": {
+        "createAction": "Crear embudo",
+        "noSiteDescription": "Selecciona o crea un sitio para ver embudos.",
+        "series": {
+            "title": "Embudos",
+            "description": "Filtra la serie por embudo.",
+            "addFilterPlaceholder": "Agregar filtro de embudo",
+            "emptyTitle": "Aun no hay actividad de embudo",
+            "emptyDescription": "Crea un embudo y genera trafico para ver entradas y completaciones a lo largo del tiempo."
+        },
+        "kpis": {
+            "funnels": "Embudos",
+            "entries": "Entradas",
+            "completions": "Completaciones",
+            "completionRate": "Tasa de completacion"
+        },
+        "list": {
+            "title": "Embudos",
+            "manageTooltip": "Administrar embudos",
+            "emptyTitle": "Aun no hay embudos",
+            "emptyDescription": "Construye un flujo de eventos para medir abandonos y conversiones.",
+            "createAction": "Crear embudo",
+            "stepsCount": "{{count}} pasos"
+        },
+        "manager": {
+            "dialogTitle": "Administrar embudos",
+            "dialogDescription": "Haz seguimiento de recorridos de usuario a traves de multiples pasos.",
+            "stepsLabel": "Pasos",
+            "viewStats": "Ver estadisticas",
+            "empty": "Aun no hay embudos definidos.",
+            "createTitle": "Crear nuevo embudo",
+            "namePlaceholder": "p. ej. Flujo de checkout",
+            "stepPathPlaceholder": "/ruta",
+            "stepEventPlaceholder": "event_name",
+            "addStep": "Agregar paso",
+            "createAction": "Crear embudo",
+            "typePagePath": "Ruta de pagina",
+            "typeCustomEvent": "Evento personalizado"
+        },
+        "viewer": {
+            "dialogTitle": "Analisis de embudo",
+            "droppedSuffix": "abandono",
+            "retention": "retencion",
+            "entry": "Entrada"
+        }
+    },
+    "utm": {
+        "noSiteDescription": "Selecciona o crea un sitio para ver metricas UTM.",
+        "kpis": {
+            "campaign": "Campana",
+            "content": "Contenido",
+            "medium": "Medio",
+            "source": "Fuente",
+            "term": "Termino"
+        }
+    },
+    "settings": {
+        "security": {
+            "title": "Seguridad",
+            "changePasswordTitle": "Cambiar contrasena",
+            "passwordUpdated": "Contrasena actualizada correctamente.",
+            "currentPasswordLabel": "Contrasena actual",
+            "newPasswordLabel": "Nueva contrasena",
+            "minimumLengthHint": "Minimo 8 caracteres",
+            "updatePassword": "Actualizar contrasena",
+            "errors": {
+                "invalidCurrentPassword": "Contrasena actual incorrecta.",
+                "updateFailed": "No se pudo actualizar la contrasena. Intentalo de nuevo."
+            }
+        },
+        "user": {
+            "breadcrumb": "Configuracion de usuario",
+            "subtitle": "Administra la seguridad y las preferencias de tu cuenta.",
+            "dataExportTitle": "Exportacion de datos",
+            "exportAllTitle": "Exportar todos los datos",
+            "exportAllDescription": "Descarga todos tus datos de todos los sitios como CSV, XLSX o Parquet."
+        }
+    },
+    "setup": {
+        "description": "Crea tu cuenta de administrador para comenzar.",
+        "emailPlaceholder": "admin@example.com",
+        "createAdminAction": "Crear cuenta de administrador",
+        "errors": {
+            "unexpected": "Ocurrio un error inesperado. Intentalo de nuevo."
+        }
+    },
+    "password": {
+        "forgot": {
+            "title": "Restablecer contrasena",
+            "description": "Ingresa tu correo electronico y te enviaremos un enlace para restablecer tu contrasena.",
+            "successTitle": "Revisa tu bandeja de entrada",
+            "successDescription": "Si existe una cuenta para {{email}}, hemos enviado un enlace de restablecimiento.",
+            "returnToSignIn": "Volver a iniciar sesion",
+            "sendResetLink": "Enviar enlace de restablecimiento",
+            "backToSignIn": "Volver a iniciar sesion",
+            "errors": {
+                "unexpected": "Algo salio mal. Intentalo de nuevo mas tarde."
+            }
+        },
+        "reset": {
+            "title": "Establecer nueva contrasena",
+            "success": "Contrasena actualizada correctamente",
+            "signInNow": "Iniciar sesion ahora",
+            "newPasswordLabel": "Nueva contrasena",
+            "minimumLength": "Debe tener al menos 8 caracteres.",
+            "submit": "Restablecer contrasena",
+            "errors": {
+                "tokenMissing": "Enlace invalido. Falta el token.",
+                "invalidLink": "Enlace de restablecimiento invalido.",
+                "expiredOrInvalid": "Este enlace ha expirado o es invalido.",
+                "resetFailed": "No se pudo restablecer la contrasena. Intentalo de nuevo."
+            }
+        }
+    },
+    "share": {
+        "dialog": {
+            "title": "Compartir panel",
+            "description": "Cualquiera con este enlace puede ver el panel en modo solo lectura.",
+            "generateAction": "Generar enlace",
+            "shareUrlLabel": "URL compartida",
+            "tokenHintLabel": "Token",
+            "urlUnavailable": "URL oculta para enlaces existentes",
+            "empty": "Aun no hay enlaces compartidos.",
+            "generateFailed": "No se puede crear un enlace compartido ahora. Intentalo de nuevo.",
+            "loadFailed": "No se pueden cargar enlaces compartidos ahora. Intentalo de nuevo.",
+            "deleteAction": "Eliminar",
+            "deleteConfirmTitle": "Eliminar enlace compartido",
+            "deleteConfirmMessage": "Cualquiera que use este enlace perdera acceso de inmediato.",
+            "createSuccess": "Enlace compartido creado.",
+            "deleteSuccess": "Enlace compartido eliminado.",
+            "deleteFailed": "No se puede eliminar el enlace compartido ahora.",
+            "copySuccess": "URL compartida copiada.",
+            "copyFailed": "No se puede copiar la URL compartida.",
+            "copyUnavailable": "Solo los enlaces recien creados se pueden copiar desde esta sesion."
+        },
+        "page": {
+            "loading": "Cargando panel compartido...",
+            "missingToken": "Falta el token compartido.",
+            "invalidOrExpired": "El enlace compartido es invalido o ha expirado."
+        }
+    },
+    "sites": {
+        "addDialog": {
+            "title": "Agregar sitio",
+            "instructionsLine1": "Ingresa tu dominio raiz o subdominio (p. ej., {{apex}}, {{subdomain}}).",
+            "instructionsLine2": "Rastreamos automaticamente {{www}} con tu dominio raiz.",
+            "domainLabel": "Nombre de dominio",
+            "domainPlaceholder": "example.com",
+            "addAction": "Agregar sitio",
+            "errors": {
+                "domainRequired": "El dominio es obligatorio.",
+                "domainInvalid": "Formato de dominio invalido.",
+                "removeProtocol": "Elimina http:// o https://",
+                "removeWww": "Elimina 'www.'. Ingresa solo el dominio raiz.",
+                "createFailed": "No se pudo crear el sitio. El dominio puede existir ya."
+            }
+        },
+        "danger": {
+            "deleteTitle": "Eliminar sitio",
+            "deleteDescription": "Elimina permanentemente este sitio y todos los datos de analitica asociados.",
+            "confirmLabel": "Escribe \"{{domain}}\" para confirmar",
+            "confirmPlaceholder": "example.com",
+            "deleteAction": "Eliminar sitio",
+            "deleteFailed": "No se pudo eliminar el sitio."
+        },
+        "retention": {
+            "infoTitle": "Como funciona la retencion",
+            "infoDescription": "Los hits sin procesar anteriores al periodo de retencion se archivan en archivos Parquet para almacenamiento a largo plazo y se eliminan de la base de datos activa para mejorar el rendimiento.",
+            "periodLabel": "Periodo de retencion (dias)",
+            "hotDataSuffix": "dias de datos activos",
+            "defaultHint": "El valor predeterminado es 365 dias.",
+            "savePolicy": "Guardar politica"
+        },
+        "selector": {
+            "regionAria": "Seleccion de sitio",
+            "sitesLabel": "Sitios",
+            "addSiteAria": "Agregar un nuevo sitio",
+            "selectPlaceholder": "Seleccionar sitio",
+            "selectSiteAria": "Selecciona un sitio para ver estadisticas",
+            "siteSettingsAria": "Configuracion del sitio",
+            "trackingCodeAria": "Codigo de seguimiento",
+            "shareDashboardAria": "Compartir panel"
+        },
+        "settings": {
+            "breadcrumb": {
+                "sites": "Sitios",
+                "settings": "Configuracion"
+            },
+            "title": "Configuracion del sitio",
+            "tabs": {
+                "general": "General",
+                "tracking": "Seguimiento",
+                "retention": "Retencion",
+                "team": "Equipo",
+                "dangerZone": "Zona de peligro"
+            },
+            "general": {
+                "title": "Configuracion general",
+                "domainLabel": "Dominio",
+                "dataExportTitle": "Exportacion de datos",
+                "exportSiteDataTitle": "Exportar datos del sitio",
+                "exportSiteDataDescription": "Descarga todos los hits y eventos de este sitio como CSV, XLSX o Parquet."
+            },
+            "unsavedChangesConfirm": "Tienes cambios sin guardar. Deseas descartarlos?"
+        },
+        "team": {
+            "emailPlaceholder": "user@example.com",
+            "addMemberAction": "Agregar miembro",
+            "confirmRemove": "Quitar a {{email}} del sitio?",
+            "errors": {
+                "addFailed": "No se pudo agregar el miembro. Asegurate de que el usuario exista.",
+                "removeFailed": "No se pudo quitar el miembro: {{error}}"
+            }
+        },
+        "tracking": {
+            "description": "Copia y pega el siguiente codigo en el HTML de tu sitio web.",
+            "trackingCodeConfiguration": "Configuracion del codigo de seguimiento",
+            "collectDntLabel": "Recopilar DNT",
+            "collectDntDescription": "Rastrear usuarios incluso si \"Do Not Track\" esta habilitado en su navegador.",
+            "disableBeaconLabel": "Desactivar sendBeacon",
+            "disableBeaconDescription": "Usar solicitudes fetch estandar en lugar de navigator.sendBeacon.",
+            "htmlLabel": "HTML",
+            "copyCode": "Copiar codigo"
+        }
+    },
+    "admin": {
+        "breadcrumb": "Administracion de la instancia",
+        "tabs": {
+            "users": "Usuarios",
+            "sites": "Sitios"
+        },
+        "users": {
+            "title": "Usuarios"
+        },
+        "sites": {
+            "title": "Sitios"
+        },
+        "roles": {
+            "instanceOwner": "Propietario de la instancia",
+            "instanceAdmin": "Administrador de la instancia",
+            "user": "Usuario"
+        },
+        "confirmDeleteUser": "Eliminar usuario {{email}}?",
+        "confirmDeleteSite": "Eliminar sitio {{domain}}? Esta accion no se puede deshacer."
+    },
+    "roles": {
+        "owner": "Propietario",
+        "admin": "Administrador",
+        "editor": "Editor",
+        "viewer": "Visualizador"
+    },
+    "userMenu": {
+        "administration": "Administracion",
+        "userSettings": "Configuracion de usuario",
+        "preferences": "Preferencias",
+        "signOut": "Cerrar sesion"
+    },
+    "login": {
+        "subtitle": "Inicia sesion en tu panel",
+        "emailLabel": "Correo electronico",
+        "emailPlaceholder": "you@example.com",
+        "emailInvalid": "Ingresa una direccion de correo valida.",
+        "passwordLabel": "Contrasena",
+        "passwordPlaceholder": "••••••••",
+        "passwordRequired": "La contrasena es obligatoria.",
+        "forgotPassword": "Olvidaste tu contrasena?",
+        "rememberMe": "Recordarme",
+        "signIn": "Iniciar sesion",
+        "footerRights": "HitKeep. Todos los derechos reservados.",
+        "errors": {
+            "invalidCredentials": "Correo o contrasena invalidos.",
+            "unexpected": "Ocurrio un error inesperado. Intentalo de nuevo."
+        }
+    },
+    "preferences": {
+        "breadcrumb": "Preferencias",
+        "subtitle": "Administra las preferencias de tu aplicacion.",
+        "actions": {
+            "saveChanges": "Guardar cambios"
+        },
+        "status": {
+            "saved": "Guardado",
+            "saveFailed": "Error al guardar"
+        },
+        "errors": {
+            "loadFailed": "No se pudieron cargar las preferencias. Actualiza e intentalo de nuevo."
+        },
+        "language": {
+            "heading": "Preferencias de idioma",
+            "description": "El idioma de tu navegador se usa por defecto hasta que personalices esta configuracion.",
+            "defaultLabel": "Idioma predeterminado",
+            "defaultPlaceholder": "Selecciona un idioma predeterminado",
+            "defaultHint": "Este es el idioma principal de la interfaz del panel.",
+            "rtlBadge": "RTL"
+        }
+    }
+}

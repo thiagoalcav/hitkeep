@@ -26,10 +26,13 @@ export const appConfig: ApplicationConfig = {
         }),
         provideTransloco({
             config: {
-                availableLangs: ['en', 'de'],
+                availableLangs: ['en', 'de', 'es', 'fr', 'it'],
                 defaultLang: 'en',
                 fallbackLang: 'en',
                 reRenderOnLangChange: true,
+                flatten: {
+                    aot: !isDevMode()
+                },
                 prodMode: !isDevMode()
             },
             loader: TranslocoHttpLoader
@@ -39,8 +42,14 @@ export const appConfig: ApplicationConfig = {
             langToLocaleMapping: {
                 en: 'en-US',
                 de: 'de-DE',
+                es: 'es-ES',
+                fr: 'fr-FR',
+                it: 'it-IT',
                 'en-US': 'en-US',
-                'de-DE': 'de-DE'
+                'de-DE': 'de-DE',
+                'es-ES': 'es-ES',
+                'fr-FR': 'fr-FR',
+                'it-IT': 'it-IT'
             }
         }),
         providePreloadUserLang()

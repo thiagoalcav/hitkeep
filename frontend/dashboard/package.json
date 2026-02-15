@@ -6,7 +6,8 @@
         "ng": "ng",
         "start": "ng serve",
         "build": "ng build",
-        "build:prod": "ng build --configuration production --output-hashing=none",
+        "transloco:optimize": "transloco-optimize dist/dashboard/browser/i18n",
+        "build:prod": "ng build --configuration production --output-hashing=none && npm run transloco:optimize",
         "watch": "ng build --watch --configuration development",
         "test": "ng test",
         "lint": "ng lint"
@@ -39,6 +40,7 @@
         "@angular/cli": "^21.1.4",
         "@angular/compiler-cli": "^21.1.4",
         "@jsverse/transloco": "^8.2.1",
+        "@jsverse/transloco-optimize": "^8.2.1",
         "@types/jasmine": "~5.1.15",
         "angular-eslint": "21.1.0",
         "baseline-browser-mapping": "^2.9.19",

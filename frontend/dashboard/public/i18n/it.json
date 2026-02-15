@@ -1,0 +1,468 @@
+{
+    "nav": {
+        "mainSidebarAria": "Barra laterale principale",
+        "primaryNavigationAria": "Navigazione principale",
+        "contentAreaAria": "Area contenuti",
+        "analytics": "Analitiche",
+        "dashboardAria": "Vai alla dashboard",
+        "goalsAria": "Vai agli obiettivi",
+        "funnelsAria": "Vai ai funnel",
+        "utmAria": "Vai alla dashboard UTM",
+        "dashboard": "Dashboard",
+        "goals": "Obiettivi",
+        "funnels": "Funnel",
+        "utm": "UTM"
+    },
+    "common": {
+        "actions": {
+            "apply": "Applica",
+            "cancel": "Annulla",
+            "clearAll": "Cancella tutto",
+            "close": "Chiudi",
+            "downloadXlsx": "Scarica XLSX",
+            "exportCsv": "Esporta CSV"
+        },
+        "columns": {
+            "actions": "Azioni",
+            "added": "Aggiunto",
+            "created": "Creato",
+            "device": "Dispositivo",
+            "domain": "Dominio",
+            "email": "Email",
+            "name": "Nome",
+            "path": "Percorso",
+            "referrer": "Referrer",
+            "role": "Ruolo",
+            "time": "Ora",
+            "type": "Tipo",
+            "value": "Valore"
+        },
+        "devices": {
+            "desktop": "Desktop",
+            "mobile": "Mobile"
+        },
+        "direct": "Diretto",
+        "durationMinutesSeconds": "{{minutes}}m {{seconds}}s",
+        "durationSeconds": "{{seconds}}s",
+        "emailAddress": "Indirizzo email",
+        "emailPlaceholder": "you@example.com",
+        "empty": {
+            "noDataDescription": "Non ci sono dati per questo intervallo di tempo.",
+            "noDataTitle": "Nessun dato al momento"
+        },
+        "exportFormats": {
+            "csv": "CSV",
+            "xlsx": "XLSX",
+            "parquet": "Parquet"
+        },
+        "filters": {
+            "country": "Paese: {{value}}",
+            "device": "Dispositivo: {{value}}",
+            "page": "Pagina: {{value}}",
+            "source": "Sorgente: {{value}}"
+        },
+        "kpis": {
+            "conversionRate": "Tasso di conversione"
+        },
+        "loadingSiteData": "Caricamento dati sito...",
+        "metrics": {
+            "countries": "Paesi",
+            "devices": "Dispositivi",
+            "topPages": "Pagine principali",
+            "topSources": "Sorgenti principali"
+        },
+        "noActiveFilter": "Nessun filtro attivo",
+        "noSiteSelected": "Nessun sito selezionato",
+        "openInNewTabAria": "Apri in una nuova scheda",
+        "openUserMenuAria": "Apri menu utente",
+        "password": "Password",
+        "passwordPlaceholder": "••••••••",
+        "preparing": "Preparazione...",
+        "refreshDataTooltip": "Aggiorna dati",
+        "removeFilterAria": "Rimuovi filtro",
+        "searchPlaceholder": "Cerca...",
+        "selectDateRange": "Seleziona intervallo date",
+        "seriesChartAria": "Grafico serie temporale con dati per gli ultimi {{count}} intervalli",
+        "switchToDarkModeAria": "Passa alla modalita scura",
+        "switchToLightModeAria": "Passa alla modalita chiara",
+        "timeRangeSelectorAria": "Selettore intervallo temporale",
+        "timeRanges": {
+            "last24Hours": "Ultime 24 ore",
+            "last7Days": "Ultimi 7 giorni",
+            "last30Days": "Ultimi 30 giorni",
+            "lastYear": "Ultimo anno",
+            "customRange": "Intervallo personalizzato"
+        },
+        "unknownError": "Errore sconosciuto",
+        "unspecified": "Non specificato",
+        "visitors": "visitatori",
+        "copyLink": "Copia link",
+        "copied": "Copiato"
+    },
+    "dashboard": {
+        "breadcrumbOverview": "Panoramica",
+        "filteredBadge": "Filtrato",
+        "rawHitsTitle": "Hit grezzi",
+        "noSiteDescription": "Seleziona o crea un sito per visualizzare le analitiche.",
+        "openPageInNewTabAria": "Apri pagina in una nuova scheda",
+        "openReferrerInNewTabAria": "Apri referrer in una nuova scheda",
+        "chartTitleWithRange": "Traffico: {{range}}",
+        "chartTitleCustomRange": "Traffico: {{start}} - {{end}}",
+        "chartTitleOverview": "Panoramica traffico",
+        "trafficChartAria": "Grafico traffico con dati per gli ultimi {{count}} intervalli",
+        "traffic": {
+            "visitors": "Visitatori",
+            "trendLine": "Linea di tendenza"
+        },
+        "kpis": {
+            "liveVisitors": "Visitatori live",
+            "pageviews": "Visualizzazioni pagina",
+            "uniqueSessions": "Sessioni uniche",
+            "bounceRate": "Frequenza di rimbalzo",
+            "avgDuration": "Durata media",
+            "pagesPerSession": "Pagine / sessione"
+        },
+        "empty": {
+            "noTrafficTitle": "Nessun traffico registrato al momento",
+            "noTrafficDescription": "Installa lo snippet di tracciamento sul tuo sito per iniziare a raccogliere dati analitici.",
+            "getTrackingCode": "Ottieni codice di tracciamento"
+        }
+    },
+    "goals": {
+        "manageAction": "Gestisci obiettivi",
+        "noSiteDescription": "Seleziona o crea un sito per vedere gli obiettivi.",
+        "series": {
+            "title": "Obiettivi",
+            "description": "Filtra la serie per obiettivo.",
+            "addFilterPlaceholder": "Aggiungi filtro obiettivo",
+            "emptyTitle": "Nessuna conversione obiettivo al momento",
+            "emptyDescription": "Crea un obiettivo e porta traffico per vedere le conversioni nel tempo."
+        },
+        "kpis": {
+            "totalGoals": "Obiettivi totali",
+            "conversions": "Conversioni"
+        },
+        "list": {
+            "title": "Obiettivi",
+            "manageTooltip": "Gestisci obiettivi",
+            "emptyTitle": "Nessun obiettivo al momento",
+            "emptyDescription": "Monitora eventi di conversione specifici come registrazioni o acquisti.",
+            "createAction": "Crea obiettivo",
+            "conversionsSuffix": "conversioni",
+            "conversionRateShort": "CR"
+        },
+        "manager": {
+            "dialogTitle": "Gestisci obiettivi",
+            "dialogDescription": "Definisci obiettivi di conversione per tracciare azioni utente o visite pagina specifiche.",
+            "empty": "Nessun obiettivo definito al momento.",
+            "addTitle": "Aggiungi nuovo obiettivo",
+            "namePlaceholder": "es. Registrazione completata",
+            "typePagePath": "Percorso pagina",
+            "typeCustomEvent": "Evento personalizzato",
+            "urlPathLabel": "Percorso URL",
+            "eventNameLabel": "Nome evento",
+            "urlPathPlaceholder": "/grazie",
+            "eventNamePlaceholder": "signup_completed",
+            "urlPathHelp": "Si attiva quando un utente visita un URL specifico.",
+            "eventNameHelpPrefix": "Si attiva quando chiami",
+            "eventNameHelpSuffix": ".",
+            "createAction": "Crea obiettivo"
+        }
+    },
+    "funnels": {
+        "createAction": "Crea funnel",
+        "noSiteDescription": "Seleziona o crea un sito per vedere i funnel.",
+        "series": {
+            "title": "Funnel",
+            "description": "Filtra la serie per funnel.",
+            "addFilterPlaceholder": "Aggiungi filtro funnel",
+            "emptyTitle": "Nessuna attivita funnel al momento",
+            "emptyDescription": "Crea un funnel e porta traffico per vedere ingressi e completamenti nel tempo."
+        },
+        "kpis": {
+            "funnels": "Funnel",
+            "entries": "Ingressi",
+            "completions": "Completamenti",
+            "completionRate": "Tasso di completamento"
+        },
+        "list": {
+            "title": "Funnel",
+            "manageTooltip": "Gestisci funnel",
+            "emptyTitle": "Nessun funnel al momento",
+            "emptyDescription": "Crea un percorso di eventi per misurare abbandoni e conversioni.",
+            "createAction": "Crea funnel",
+            "stepsCount": "{{count}} passaggi"
+        },
+        "manager": {
+            "dialogTitle": "Gestisci funnel",
+            "dialogDescription": "Traccia i percorsi utente attraverso piu passaggi.",
+            "stepsLabel": "Passaggi",
+            "viewStats": "Visualizza statistiche",
+            "empty": "Nessun funnel definito al momento.",
+            "createTitle": "Crea nuovo funnel",
+            "namePlaceholder": "es. Flusso checkout",
+            "stepPathPlaceholder": "/percorso",
+            "stepEventPlaceholder": "event_name",
+            "addStep": "Aggiungi passaggio",
+            "createAction": "Crea funnel",
+            "typePagePath": "Percorso pagina",
+            "typeCustomEvent": "Evento personalizzato"
+        },
+        "viewer": {
+            "dialogTitle": "Analisi funnel",
+            "droppedSuffix": "abbandonati",
+            "retention": "retention",
+            "entry": "Ingresso"
+        }
+    },
+    "utm": {
+        "noSiteDescription": "Seleziona o crea un sito per vedere le metriche UTM.",
+        "kpis": {
+            "campaign": "Campagna",
+            "content": "Contenuto",
+            "medium": "Medium",
+            "source": "Sorgente",
+            "term": "Termine"
+        }
+    },
+    "settings": {
+        "security": {
+            "title": "Sicurezza",
+            "changePasswordTitle": "Cambia password",
+            "passwordUpdated": "Password aggiornata con successo.",
+            "currentPasswordLabel": "Password attuale",
+            "newPasswordLabel": "Nuova password",
+            "minimumLengthHint": "Minimo 8 caratteri",
+            "updatePassword": "Aggiorna password",
+            "errors": {
+                "invalidCurrentPassword": "Password attuale non corretta.",
+                "updateFailed": "Aggiornamento password non riuscito. Riprova."
+            }
+        },
+        "user": {
+            "breadcrumb": "Impostazioni utente",
+            "subtitle": "Gestisci sicurezza e preferenze del tuo account.",
+            "dataExportTitle": "Esportazione dati",
+            "exportAllTitle": "Esporta tutti i dati",
+            "exportAllDescription": "Scarica tutti i tuoi dati su tutti i siti in CSV, XLSX o Parquet."
+        }
+    },
+    "setup": {
+        "description": "Crea il tuo account amministratore per iniziare.",
+        "emailPlaceholder": "admin@example.com",
+        "createAdminAction": "Crea account amministratore",
+        "errors": {
+            "unexpected": "Si e verificato un errore imprevisto. Riprova."
+        }
+    },
+    "password": {
+        "forgot": {
+            "title": "Reimposta password",
+            "description": "Inserisci il tuo indirizzo email e ti invieremo un link per reimpostare la password.",
+            "successTitle": "Controlla la tua casella di posta",
+            "successDescription": "Se esiste un account per {{email}}, abbiamo inviato un link di reset.",
+            "returnToSignIn": "Torna al login",
+            "sendResetLink": "Invia link di reset",
+            "backToSignIn": "Torna al login",
+            "errors": {
+                "unexpected": "Qualcosa e andato storto. Riprova piu tardi."
+            }
+        },
+        "reset": {
+            "title": "Imposta nuova password",
+            "success": "Password aggiornata con successo",
+            "signInNow": "Accedi ora",
+            "newPasswordLabel": "Nuova password",
+            "minimumLength": "Deve contenere almeno 8 caratteri.",
+            "submit": "Reimposta password",
+            "errors": {
+                "tokenMissing": "Link non valido. Token mancante.",
+                "invalidLink": "Link di reset password non valido.",
+                "expiredOrInvalid": "Questo link e scaduto o non valido.",
+                "resetFailed": "Reimpostazione password non riuscita. Riprova."
+            }
+        }
+    },
+    "share": {
+        "dialog": {
+            "title": "Condividi dashboard",
+            "description": "Chiunque abbia questo link puo visualizzare la dashboard in sola lettura.",
+            "generateAction": "Genera link",
+            "shareUrlLabel": "URL condiviso",
+            "tokenHintLabel": "Token",
+            "urlUnavailable": "URL nascosto per link esistenti",
+            "empty": "Nessun link condiviso al momento.",
+            "generateFailed": "Impossibile creare un link condiviso ora. Riprova.",
+            "loadFailed": "Impossibile caricare i link condivisi ora. Riprova.",
+            "deleteAction": "Elimina",
+            "deleteConfirmTitle": "Elimina link condiviso",
+            "deleteConfirmMessage": "Chiunque usi questo link perdera subito l'accesso.",
+            "createSuccess": "Link condiviso creato.",
+            "deleteSuccess": "Link condiviso eliminato.",
+            "deleteFailed": "Impossibile eliminare il link condiviso ora.",
+            "copySuccess": "URL condiviso copiato.",
+            "copyFailed": "Impossibile copiare l'URL condiviso.",
+            "copyUnavailable": "Solo i link appena creati possono essere copiati da questa sessione."
+        },
+        "page": {
+            "loading": "Caricamento dashboard condivisa...",
+            "missingToken": "Token condiviso mancante.",
+            "invalidOrExpired": "Il link condiviso e non valido o scaduto."
+        }
+    },
+    "sites": {
+        "addDialog": {
+            "title": "Aggiungi sito",
+            "instructionsLine1": "Inserisci il dominio root o sottodominio (es. {{apex}}, {{subdomain}}).",
+            "instructionsLine2": "Tracciamo automaticamente {{www}} con il tuo dominio root.",
+            "domainLabel": "Nome dominio",
+            "domainPlaceholder": "example.com",
+            "addAction": "Aggiungi sito",
+            "errors": {
+                "domainRequired": "Il dominio e obbligatorio.",
+                "domainInvalid": "Formato dominio non valido.",
+                "removeProtocol": "Rimuovi http:// o https://",
+                "removeWww": "Rimuovi 'www.'. Inserisci solo il dominio root.",
+                "createFailed": "Creazione sito non riuscita. Il dominio potrebbe gia esistere."
+            }
+        },
+        "danger": {
+            "deleteTitle": "Elimina sito",
+            "deleteDescription": "Elimina definitivamente questo sito e tutti i dati analitici associati.",
+            "confirmLabel": "Digita \"{{domain}}\" per confermare",
+            "confirmPlaceholder": "example.com",
+            "deleteAction": "Elimina sito",
+            "deleteFailed": "Impossibile eliminare il sito."
+        },
+        "retention": {
+            "infoTitle": "Come funziona la retention",
+            "infoDescription": "Gli hit grezzi piu vecchi del periodo di retention vengono archiviati in file Parquet per storage a lungo termine e rimossi dal database hot per migliorare le prestazioni.",
+            "periodLabel": "Periodo di retention (giorni)",
+            "hotDataSuffix": "giorni di dati hot",
+            "defaultHint": "Predefinito: 365 giorni.",
+            "savePolicy": "Salva policy"
+        },
+        "selector": {
+            "regionAria": "Selezione sito",
+            "sitesLabel": "Siti",
+            "addSiteAria": "Aggiungi un nuovo sito",
+            "selectPlaceholder": "Seleziona sito",
+            "selectSiteAria": "Seleziona un sito per vedere le statistiche",
+            "siteSettingsAria": "Impostazioni sito",
+            "trackingCodeAria": "Codice di tracciamento",
+            "shareDashboardAria": "Condividi dashboard"
+        },
+        "settings": {
+            "breadcrumb": {
+                "sites": "Siti",
+                "settings": "Impostazioni"
+            },
+            "title": "Impostazioni sito",
+            "tabs": {
+                "general": "Generale",
+                "tracking": "Tracking",
+                "retention": "Retention",
+                "team": "Team",
+                "dangerZone": "Zona pericolo"
+            },
+            "general": {
+                "title": "Impostazioni generali",
+                "domainLabel": "Dominio",
+                "dataExportTitle": "Esportazione dati",
+                "exportSiteDataTitle": "Esporta dati sito",
+                "exportSiteDataDescription": "Scarica tutti gli hit e gli eventi di questo sito in CSV, XLSX o Parquet."
+            },
+            "unsavedChangesConfirm": "Hai modifiche non salvate. Vuoi annullarle?"
+        },
+        "team": {
+            "emailPlaceholder": "user@example.com",
+            "addMemberAction": "Aggiungi membro",
+            "confirmRemove": "Rimuovere {{email}} dal sito?",
+            "errors": {
+                "addFailed": "Impossibile aggiungere il membro. Assicurati che l'utente esista.",
+                "removeFailed": "Impossibile rimuovere il membro: {{error}}"
+            }
+        },
+        "tracking": {
+            "description": "Copia e incolla il codice qui sotto nell'HTML del tuo sito.",
+            "trackingCodeConfiguration": "Configurazione codice di tracciamento",
+            "collectDntLabel": "Raccogli DNT",
+            "collectDntDescription": "Traccia gli utenti anche se \"Do Not Track\" e attivo nel browser.",
+            "disableBeaconLabel": "Disabilita sendBeacon",
+            "disableBeaconDescription": "Usa richieste fetch standard invece di navigator.sendBeacon.",
+            "htmlLabel": "HTML",
+            "copyCode": "Copia codice"
+        }
+    },
+    "admin": {
+        "breadcrumb": "Amministrazione istanza",
+        "tabs": {
+            "users": "Utenti",
+            "sites": "Siti"
+        },
+        "users": {
+            "title": "Utenti"
+        },
+        "sites": {
+            "title": "Siti"
+        },
+        "roles": {
+            "instanceOwner": "Proprietario istanza",
+            "instanceAdmin": "Amministratore istanza",
+            "user": "Utente"
+        },
+        "confirmDeleteUser": "Eliminare l'utente {{email}}?",
+        "confirmDeleteSite": "Eliminare il sito {{domain}}? Questa azione non puo essere annullata."
+    },
+    "roles": {
+        "owner": "Owner",
+        "admin": "Admin",
+        "editor": "Editor",
+        "viewer": "Viewer"
+    },
+    "userMenu": {
+        "administration": "Amministrazione",
+        "userSettings": "Impostazioni utente",
+        "preferences": "Preferenze",
+        "signOut": "Disconnetti"
+    },
+    "login": {
+        "subtitle": "Accedi alla tua dashboard",
+        "emailLabel": "Indirizzo email",
+        "emailPlaceholder": "you@example.com",
+        "emailInvalid": "Inserisci un indirizzo email valido.",
+        "passwordLabel": "Password",
+        "passwordPlaceholder": "••••••••",
+        "passwordRequired": "La password e obbligatoria.",
+        "forgotPassword": "Password dimenticata?",
+        "rememberMe": "Ricordami",
+        "signIn": "Accedi",
+        "footerRights": "HitKeep. Tutti i diritti riservati.",
+        "errors": {
+            "invalidCredentials": "Email o password non validi.",
+            "unexpected": "Si e verificato un errore imprevisto. Riprova."
+        }
+    },
+    "preferences": {
+        "breadcrumb": "Preferenze",
+        "subtitle": "Gestisci le preferenze dell'applicazione.",
+        "actions": {
+            "saveChanges": "Salva modifiche"
+        },
+        "status": {
+            "saved": "Salvato",
+            "saveFailed": "Salvataggio non riuscito"
+        },
+        "errors": {
+            "loadFailed": "Impossibile caricare le preferenze. Aggiorna la pagina e riprova."
+        },
+        "language": {
+            "heading": "Preferenze lingua",
+            "description": "La lingua del browser viene usata come predefinita finche non personalizzi queste impostazioni.",
+            "defaultLabel": "Lingua predefinita",
+            "defaultPlaceholder": "Seleziona una lingua predefinita",
+            "defaultHint": "Questa e la lingua principale dell'interfaccia della dashboard.",
+            "rtlBadge": "RTL"
+        }
+    }
+}

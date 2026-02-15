@@ -1,7 +1,9 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
 import { finalize } from 'rxjs';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 // PrimeNG
 import { ButtonModule } from 'primeng/button';
@@ -14,7 +16,7 @@ import { AuthService } from '@services/auth.service';
 @Component({
     selector: 'app-settings-security',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, ButtonModule, PasswordModule, MessageModule],
+    imports: [CommonModule, ReactiveFormsModule, ButtonModule, PasswordModule, MessageModule, TranslocoPipe],
     styles: [
         `
             :host ::ng-deep .p-password input {
@@ -24,79 +26,86 @@ import { AuthService } from '@services/auth.service';
     ],
     template: `
         <div class="bg-[var(--p-surface-card)] border border-surface-200 dark:border-surface-700 rounded-xl shadow-sm p-6">
-            <h2 class="text-lg font-semibold mb-4 flex items-center gap-2"><i class="pi pi-shield text-primary"></i> Security</h2>
+            <h2 class="text-lg font-semibold mb-4 flex items-center gap-2"><i class="pi pi-shield text-primary"></i> {{ 'settings.security.title' | transloco }}</h2>
 
-            <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
-                <h3 class="text-sm font-medium text-muted-color uppercase tracking-wider mb-2">Change Password</h3>
+            <form (submit)="onSubmit($event)" class="flex flex-col gap-4" novalidate>
+                <h3 class="text-sm font-medium text-muted-color uppercase tracking-wider mb-2">{{ 'settings.security.changePasswordTitle' | transloco }}</h3>
 
                 @if (error()) {
-                    <p-message severity="error" styleClass="w-full">{{ error()! }}</p-message>
+                    <p-message severity="error" styleClass="w-full">{{ error()! | transloco }}</p-message>
                 }
                 @if (success()) {
-                    <p-message severity="success" styleClass="w-full">Password updated successfully.</p-message>
+                    <p-message severity="success" styleClass="w-full">{{ 'settings.security.passwordUpdated' | transloco }}</p-message>
                 }
 
                 <div class="flex flex-col gap-2">
-                    <label for="currentPassword" class="text-sm font-medium">Current Password</label>
+                    <label for="currentPassword" class="text-sm font-medium">{{ 'settings.security.currentPasswordLabel' | transloco }}</label>
                     <p-password
                         id="currentPassword"
-                        formControlName="currentPassword"
+                        [formControl]="form.currentPassword().control()"
                         [toggleMask]="true"
                         [feedback]="false"
                         class="w-full"
-                        placeholder="••••••••"
-                        [class.ng-invalid]="form.get('currentPassword')?.touched && form.get('currentPassword')?.invalid"
-                        [class.ng-dirty]="form.get('currentPassword')?.dirty"
+                        [placeholder]="'common.passwordPlaceholder' | transloco"
+                        [class.ng-invalid]="form.currentPassword().touched() && form.currentPassword().invalid()"
+                        [class.ng-dirty]="form.currentPassword().dirty()"
                     ></p-password>
                 </div>
 
                 <div class="flex flex-col gap-2">
-                    <label for="newPassword" class="text-sm font-medium">New Password</label>
-                    <p-password id="newPassword" formControlName="newPassword" [toggleMask]="true" [feedback]="true" class="w-full" placeholder="••••••••"></p-password>
-                    <small class="text-xs text-muted-color">Minimum 8 characters</small>
+                    <label for="newPassword" class="text-sm font-medium">{{ 'settings.security.newPasswordLabel' | transloco }}</label>
+                    <p-password id="newPassword" [formControl]="form.newPassword().control()" [toggleMask]="true" [feedback]="true" class="w-full" [placeholder]="'common.passwordPlaceholder' | transloco"></p-password>
+                    <small class="text-xs text-muted-color">{{ 'settings.security.minimumLengthHint' | transloco }}</small>
                 </div>
 
                 <div class="flex justify-end mt-4">
-                    <p-button label="Update Password" type="submit" [loading]="isLoading()" [disabled]="form.invalid"></p-button>
+                    <p-button [label]="'settings.security.updatePassword' | transloco" type="submit" [loading]="isLoading()" [disabled]="isLoading() || form().invalid()"></p-button>
                 </div>
             </form>
         </div>
     `
 })
 export class SettingsSecurity {
-    private fb = inject(FormBuilder);
     private authService = inject(AuthService);
 
     protected isLoading = signal(false);
     protected error = signal<string | null>(null);
     protected success = signal(false);
 
-    protected form = this.fb.group({
-        currentPassword: ['', [Validators.required]],
-        newPassword: ['', [Validators.required, Validators.minLength(8)]]
+    private readonly formModel = signal({
+        currentPassword: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+        newPassword: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(8)] })
     });
+    protected readonly form = compatForm(this.formModel);
 
-    onSubmit() {
-        if (this.form.invalid) return;
+    onSubmit(event?: Event) {
+        event?.preventDefault();
+        if (this.form().invalid()) {
+            this.form.currentPassword().markAsTouched();
+            this.form.newPassword().markAsTouched();
+            return;
+        }
 
         this.isLoading.set(true);
         this.error.set(null);
         this.success.set(false);
 
-        const { currentPassword, newPassword } = this.form.value;
+        const currentPassword = this.form.currentPassword().value();
+        const newPassword = this.form.newPassword().value();
 
         this.authService
-            .changePassword(currentPassword!, newPassword!)
+            .changePassword(currentPassword, newPassword)
             .pipe(finalize(() => this.isLoading.set(false)))
             .subscribe({
                 next: () => {
                     this.success.set(true);
-                    this.form.reset();
+                    this.form.currentPassword().control().reset('');
+                    this.form.newPassword().control().reset('');
                 },
                 error: (err) => {
                     // 403 is returned by backend for invalid current password
                     // TODO: adhere to RESTFUL
-                    const msg = err.status === 403 ? 'Incorrect current password.' : 'Failed to update password. Please try again.';
+                    const msg = err.status === 403 ? 'settings.security.errors.invalidCurrentPassword' : 'settings.security.errors.updateFailed';
                     this.error.set(msg);
                 }
             });

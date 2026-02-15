@@ -1,5 +1,7 @@
-import { Component, input, signal, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, signal, inject, ChangeDetectionStrategy, computed } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
 import { SplitButtonModule } from 'primeng/splitbutton';
 import { MenuItem } from 'primeng/api';
@@ -10,7 +12,7 @@ type ExportFormat = 'csv' | 'xlsx' | 'parquet';
 @Component({
     selector: 'app-site-general-settings',
     standalone: true,
-    imports: [SplitButtonModule],
+    imports: [SplitButtonModule, TranslocoPipe],
     changeDetection: ChangeDetectionStrategy.OnPush,
     templateUrl: './site-general-settings.html',
     styleUrl: './site-general-settings.css'
@@ -18,12 +20,17 @@ type ExportFormat = 'csv' | 'xlsx' | 'parquet';
 export class SiteGeneralSettings {
     site = input.required<Site | null>();
     protected isExporting = signal(false);
-    protected readonly exportMenuItems: MenuItem[] = [
-        { label: 'CSV', icon: 'pi pi-file', command: () => this.downloadData('csv') },
-        { label: 'XLSX', icon: 'pi pi-file-excel', command: () => this.downloadData('xlsx') },
-        { label: 'Parquet', icon: 'pi pi-database', command: () => this.downloadData('parquet') }
-    ];
     private http = inject(HttpClient);
+    private transloco = inject(TranslocoService);
+    private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+    protected readonly exportMenuItems = computed<MenuItem[]>(() => {
+        this.activeLanguage();
+        return [
+            { label: this.transloco.translate('common.exportFormats.csv'), icon: 'pi pi-file', command: () => this.downloadData('csv') },
+            { label: this.transloco.translate('common.exportFormats.xlsx'), icon: 'pi pi-file-excel', command: () => this.downloadData('xlsx') },
+            { label: this.transloco.translate('common.exportFormats.parquet'), icon: 'pi pi-database', command: () => this.downloadData('parquet') }
+        ];
+    });
 
     downloadData(format: ExportFormat = 'xlsx') {
         const site = this.site();

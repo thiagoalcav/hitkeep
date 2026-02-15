@@ -7,71 +7,86 @@
         <div class="bg-[var(--p-surface-card)] border border-surface-200 dark:border-surface-700 rounded-xl shadow-sm p-6 md:p-8">
             <div class="mb-8 flex flex-col items-center justify-center gap-2">
                 <app-brand size="large"></app-brand>
-                <p class="text-sm text-[var(--p-text-muted-color)] mt-1">Sign in to your dashboard</p>
+                <p class="text-sm text-[var(--p-text-muted-color)] mt-1">{{ 'login.subtitle' | transloco }}</p>
             </div>
 
-            <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
+            <form (submit)="onSubmit($event)" class="flex flex-col gap-4" novalidate>
                 <!-- Error Alert -->
-                @if (errorMessage) {
+                @if (errorMessage(); as errorMessageKey) {
                     <div class="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-center gap-3 mb-2">
                         <i class="pi pi-exclamation-circle text-red-500"></i>
-                        <span class="text-sm text-red-500 font-medium">{{ errorMessage }}</span>
+                        <span class="text-sm text-red-500 font-medium">{{ errorMessageKey | transloco }}</span>
                     </div>
                 }
 
                 <!-- Email Field -->
                 <div class="flex flex-col gap-2">
-                    <label for="email" class="text-sm font-medium text-[var(--p-text-color)]">Email Address</label>
+                    <label for="email" class="text-sm font-medium text-[var(--p-text-color)]">{{ 'login.emailLabel' | transloco }}</label>
                     <input
                         pInputText
                         id="email"
-                        formControlName="email"
+                        [formControl]="loginForm.email().control()"
+                        autocomplete="username"
                         class="w-full"
-                        [class.ng-invalid]="loginForm.get('email')?.touched && loginForm.get('email')?.invalid"
-                        [class.ng-dirty]="loginForm.get('email')?.dirty"
-                        placeholder="you@example.com"
+                        [class.ng-invalid]="loginForm.email().touched() && loginForm.email().invalid()"
+                        [class.ng-dirty]="loginForm.email().dirty()"
+                        [placeholder]="'login.emailPlaceholder' | transloco"
                     />
-                    @if (loginForm.get("email")?.touched && loginForm.get("email")?.invalid) {
-                        <small class="text-red-500 text-xs">Please enter a valid email address.</small>
+                    @if (loginForm.email().touched() && loginForm.email().invalid()) {
+                        <small class="text-red-500 text-xs">{{ 'login.emailInvalid' | transloco }}</small>
                     }
                 </div>
 
                 <!-- Password Field -->
                 <div class="flex flex-col gap-2">
                     <div class="flex items-center justify-between">
-                        <label for="password" class="text-sm font-medium text-[var(--p-text-color)]">Password</label>
-                        <a routerLink="/forgot-password" class="text-xs font-medium text-[var(--p-primary-color)] hover:underline" tabindex="-1"> Forgot password? </a>
+                        <label for="password" class="text-sm font-medium text-[var(--p-text-color)]">{{ 'login.passwordLabel' | transloco }}</label>
+                        <a routerLink="/forgot-password" class="text-xs font-medium text-[var(--p-primary-color)] hover:underline" tabindex="-1">
+                            {{ 'login.forgotPassword' | transloco }}
+                        </a>
                     </div>
                     <p-password
                         id="password"
-                        formControlName="password"
+                        [formControl]="loginForm.password().control()"
+                        autocomplete="current-password"
                         [toggleMask]="true"
                         [feedback]="false"
                         class="w-full"
                         inputclass="w-full"
-                        placeholder="••••••••"
-                        [class.ng-invalid]="loginForm.get('password')?.touched && loginForm.get('password')?.invalid"
-                        [class.ng-dirty]="loginForm.get('password')?.dirty"
+                        [placeholder]="'login.passwordPlaceholder' | transloco"
+                        [class.ng-invalid]="loginForm.password().touched() && loginForm.password().invalid()"
+                        [class.ng-dirty]="loginForm.password().dirty()"
                     ></p-password>
-                    @if (loginForm.get("password")?.touched && loginForm.get("password")?.invalid) {
-                        <small class="text-red-500 text-xs">Password is required.</small>
+                    @if (loginForm.password().touched() && loginForm.password().invalid()) {
+                        <small class="text-red-500 text-xs">{{ 'login.passwordRequired' | transloco }}</small>
                     }
                 </div>
 
                 <!-- Remember Me -->
                 <div class="flex items-center gap-2">
-                    <p-checkbox formControlName="rememberMe" [binary]="true" inputId="rememberMe"></p-checkbox>
-                    <label for="rememberMe" class="text-sm text-[var(--p-text-color)] cursor-pointer select-none">Remember me</label>
+                    <p-checkbox [formControl]="loginForm.rememberMe().control()" [binary]="true" inputId="rememberMe"></p-checkbox>
+                    <label for="rememberMe" class="text-sm text-[var(--p-text-color)] cursor-pointer select-none">{{ 'login.rememberMe' | transloco }}</label>
                 </div>
 
                 <!-- Submit Button -->
-                <p-button label="Sign In" type="submit" [loading]="isLoading" class="w-full" [disabled]="loginForm.invalid && loginForm.touched"> </p-button>
+                <p-button
+                    [label]="'login.signIn' | transloco"
+                    type="submit"
+                    [loading]="isLoading()"
+                    class="w-full"
+                    [disabled]="isLoading() || loginForm().invalid()"
+                >
+                </p-button>
             </form>
         </div>
 
         <!-- Footer -->
         <div class="mt-8 text-center">
-            <p class="text-xs text-[var(--p-text-muted-color)]">&copy; {{ currentYear }} HitKeep. All rights reserved.</p>
+            <p class="text-xs text-[var(--p-text-muted-color)]">
+                <span aria-hidden="true">&copy;</span>
+                <span>{{ currentYear }}</span>
+                <span>{{ 'login.footerRights' | transloco }}</span>
+            </p>
         </div>
     </div>
 </div>

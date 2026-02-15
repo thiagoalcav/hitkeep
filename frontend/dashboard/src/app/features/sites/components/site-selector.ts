@@ -1,6 +1,8 @@
-import { Component, input, output, ChangeDetectionStrategy, ViewChild, inject } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, ViewChild, inject, effect, signal } from '@angular/core';
 
-import { FormsModule } from '@angular/forms';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { SelectModule } from 'primeng/select';
 import { SkeletonModule } from 'primeng/skeleton';
 import { ButtonModule } from 'primeng/button';
@@ -12,18 +14,18 @@ import { ShareService } from '@services/share.service';
 @Component({
     selector: 'app-site-selector',
     standalone: true,
-    imports: [FormsModule, SelectModule, SkeletonModule, ButtonModule, ButtonGroup, SiteFavicon, ShareDashboardLink],
+    imports: [ReactiveFormsModule, SelectModule, SkeletonModule, ButtonModule, ButtonGroup, SiteFavicon, ShareDashboardLink, TranslocoPipe],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
-        <div class="flex flex-col gap-2 w-full" role="region" aria-label="Site Selection">
+        <div class="flex flex-col gap-2 w-full" role="region" [attr.aria-label]="'sites.selector.regionAria' | transloco">
             <div class="flex items-center justify-between">
-                <label for="site-dropdown" class="text-xs font-semibold text-[var(--p-text-muted-color)] uppercase"> Sites </label>
+                <label for="site-dropdown" class="text-xs font-semibold text-[var(--p-text-muted-color)] uppercase"> {{ 'sites.selector.sitesLabel' | transloco }} </label>
                 @if (!shareService.isShareMode()) {
                     <button
                         type="button"
                         (click)="addClicked.emit()"
                         class="cursor-pointer flex items-center justify-center size-6 rounded-md border border-surface-200 dark:border-surface-700 text-muted-color hover:text-[var(--p-text-color)] hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        aria-label="Add a new Site"
+                        [attr.aria-label]="'sites.selector.addSiteAria' | transloco"
                     >
                         <i class="pi pi-plus text-xs" aria-hidden="true"></i>
                     </button>
@@ -38,14 +40,15 @@ import { ShareService } from '@services/share.service';
                         <p-select
                             inputId="site-dropdown"
                             [options]="sites()"
-                            [ngModel]="current()"
+                            [formControl]="siteForm.selectedSite().control()"
                             [filter]="true"
                             filterBy="domain"
-                            (ngModelChange)="siteSelected.emit($event)"
+                            dataKey="id"
+                            (onChange)="onSiteChange($event.value)"
                             optionLabel="domain"
-                            placeholder="Select Site"
+                            [placeholder]="'sites.selector.selectPlaceholder' | transloco"
                             class="w-full text-sm"
-                            aria-label="Select a Site to view stats"
+                            [attr.aria-label]="'sites.selector.selectSiteAria' | transloco"
                         >
                             <ng-template pTemplate="selectedItem" let-selected>
                                 <div class="flex items-center shrink-0 grow-0 gap-2">
@@ -66,9 +69,9 @@ import { ShareService } from '@services/share.service';
                     @if (sites().length > 0) {
                         @if (!shareService.isShareMode()) {
                             <p-buttonGroup>
-                                <p-button icon="pi pi-cog" ariaLabel="Site settings" [text]="true" size="small" (onClick)="settingsClicked.emit()" />
-                                <p-button icon="pi pi-code" ariaLabel="Tracking code" [text]="true" size="small" (onClick)="trackingClicked.emit()" />
-                                <p-button icon="pi pi-share-alt" ariaLabel="Share dashboard" [text]="true" size="small" (onClick)="openShareDialog()" [disabled]="!current()" />
+                                <p-button icon="pi pi-cog" [ariaLabel]="'sites.selector.siteSettingsAria' | transloco" [text]="true" size="small" (onClick)="settingsClicked.emit()" />
+                                <p-button icon="pi pi-code" [ariaLabel]="'sites.selector.trackingCodeAria' | transloco" [text]="true" size="small" (onClick)="trackingClicked.emit()" />
+                                <p-button icon="pi pi-share-alt" [ariaLabel]="'sites.selector.shareDashboardAria' | transloco" [text]="true" size="small" (onClick)="openShareDialog()" [disabled]="!current()" />
                             </p-buttonGroup>
                             <app-share-dashboard-link />
                         }
@@ -81,6 +84,10 @@ import { ShareService } from '@services/share.service';
 export class SiteSelector {
     protected shareService = inject(ShareService);
     @ViewChild(ShareDashboardLink) private shareDialog?: ShareDashboardLink;
+    private readonly siteFormModel = signal({
+        selectedSite: new FormControl<Site | null>(null)
+    });
+    protected readonly siteForm = compatForm(this.siteFormModel);
 
     sites = input.required<Site[]>();
     current = input<Site | null>(null);
@@ -89,6 +96,19 @@ export class SiteSelector {
     addClicked = output<void>();
     settingsClicked = output<void>();
     trackingClicked = output<void>();
+
+    constructor() {
+        effect(() => {
+            this.siteForm.selectedSite().control().setValue(this.current(), { emitEvent: false });
+        });
+    }
+
+    protected onSiteChange(site: Site | null): void {
+        if (!site) {
+            return;
+        }
+        this.siteSelected.emit(site);
+    }
 
     protected openShareDialog() {
         this.shareDialog?.open();

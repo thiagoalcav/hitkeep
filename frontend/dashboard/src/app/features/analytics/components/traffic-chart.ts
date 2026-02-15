@@ -1,7 +1,10 @@
 import { Component, input, output, computed, inject, ChangeDetectionStrategy } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 import { ChartModule } from 'primeng/chart';
 import { ButtonModule } from 'primeng/button';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoLocaleService } from '@jsverse/transloco-locale';
 import { ChartDataPoint } from '@models/analytics.types';
 import { PreferencesService } from '@services/preferences.service';
 
@@ -14,7 +17,7 @@ interface ChartContext {
 @Component({
     selector: 'app-traffic-chart',
     standalone: true,
-    imports: [ChartModule, ButtonModule],
+    imports: [ChartModule, ButtonModule, TranslocoPipe],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <div class="h-80 w-full relative" role="img" [attr.aria-label]="accessibilityLabel()">
@@ -26,9 +29,9 @@ interface ChartContext {
                 <p-chart type="line" [data]="chartPayload()" [options]="chartOptions()" height="100%" />
             } @else {
                 <div class="absolute inset-0 flex flex-col items-center justify-center text-[var(--p-text-muted-color)] bg-[var(--p-surface-ground)]/50 rounded-lg border-2 border-dashed border-[var(--p-surface-border)] p-6 text-center">
-                    <h3 class="font-semibold text-[var(--p-text-color)] text-lg mb-1">No traffic recorded yet</h3>
-                    <p class="text-sm mb-4 max-w-xs">Install the tracking snippet on your website to start collecting analytics data.</p>
-                    <p-button label="Get Tracking Code" icon="pi pi-code" size="small" (onClick)="snippetClicked.emit()"></p-button>
+                    <h3 class="font-semibold text-[var(--p-text-color)] text-lg mb-1">{{ 'dashboard.empty.noTrafficTitle' | transloco }}</h3>
+                    <p class="text-sm mb-4 max-w-xs">{{ 'dashboard.empty.noTrafficDescription' | transloco }}</p>
+                    <p-button [label]="'dashboard.empty.getTrackingCode' | transloco" icon="pi pi-code" size="small" (onClick)="snippetClicked.emit()"></p-button>
                 </div>
             }
         </div>
@@ -42,6 +45,9 @@ export class TrafficChart {
     snippetClicked = output<void>();
 
     private prefs = inject(PreferencesService);
+    private localeService = inject(TranslocoLocaleService);
+    private transloco = inject(TranslocoService);
+    private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
     protected hasTraffic = computed(() => {
         const d = this.data();
@@ -50,24 +56,26 @@ export class TrafficChart {
     });
 
     protected accessibilityLabel = computed(() => {
+        this.activeLanguage();
         const count = this.data()?.length || 0;
-        return `Traffic chart showing data for the last ${count} intervals`;
+        return this.transloco.translate('dashboard.trafficChartAria', { count });
     });
 
     protected chartPayload = computed(() => {
+        this.activeLanguage();
         const raw = this.data() || [];
 
         const labels = raw.map((d) => {
             const date = new Date(d.time);
-            if (this.isShortRange()) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            if (this.isShortRange()) return this.localeService.localizeDate(date, undefined, { hour: 'numeric', minute: '2-digit' });
+            return this.localeService.localizeDate(date, undefined, { month: 'short', day: 'numeric' });
         });
 
         return {
             labels,
             datasets: [
                 {
-                    label: 'Pageviews',
+                    label: this.transloco.translate('dashboard.kpis.pageviews'),
                     data: raw.map((d) => d.pageviews),
                     fill: true,
                     backgroundColor: (ctx: ChartContext) => this.getGradient(ctx, 'rgba(99, 102, 241, 0.5)', 'rgba(99, 102, 241, 0.0)'),
@@ -79,7 +87,7 @@ export class TrafficChart {
                     pointHoverRadius: 4
                 },
                 {
-                    label: 'Visitors',
+                    label: this.transloco.translate('dashboard.traffic.visitors'),
                     data: raw.map((d) => d.visitors),
                     fill: true,
                     backgroundColor: (ctx: ChartContext) => this.getGradient(ctx, 'rgba(20, 184, 166, 0.5)', 'rgba(20, 184, 166, 0.0)'),

@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
@@ -8,7 +9,7 @@ import { SiteService } from '@features/sites/services/site.service';
 
 @Component({
     selector: 'app-share-dashboard-link',
-    imports: [CommonModule, ButtonModule, DialogModule, InputTextModule],
+    imports: [CommonModule, ButtonModule, DialogModule, InputTextModule, TranslocoPipe],
     templateUrl: './share-dashboard-link.html',
     styleUrl: './share-dashboard-link.css',
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -22,7 +23,7 @@ export class ShareDashboardLink {
     protected shareLinkUrl = signal<string | null>(null);
     protected shareLoading = signal(false);
     protected shareError = signal<string | null>(null);
-    protected shareCopyLabel = signal('Copy Link');
+    protected shareCopyLabel = signal('common.copyLink');
     protected shareCopyIcon = signal('pi pi-copy');
     private shareSiteId = signal<string | null>(null);
 
@@ -61,7 +62,7 @@ export class ShareDashboardLink {
                 this.resetShareCopyState();
             },
             error: () => {
-                this.shareError.set('Unable to create a share link right now. Please try again.');
+                this.shareError.set('share.dialog.generateFailed');
                 this.shareLoading.set(false);
             }
         });
@@ -72,7 +73,7 @@ export class ShareDashboardLink {
         if (!url) return;
 
         navigator.clipboard.writeText(url).then(() => {
-            this.shareCopyLabel.set('Copied!');
+            this.shareCopyLabel.set('common.copied');
             this.shareCopyIcon.set('pi pi-check');
             setTimeout(() => this.resetShareCopyState(), 2000);
         });
@@ -91,7 +92,7 @@ export class ShareDashboardLink {
     }
 
     private resetShareCopyState() {
-        this.shareCopyLabel.set('Copy Link');
+        this.shareCopyLabel.set('common.copyLink');
         this.shareCopyIcon.set('pi pi-copy');
     }
 }

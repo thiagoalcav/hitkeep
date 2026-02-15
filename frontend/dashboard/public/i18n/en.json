@@ -1,0 +1,442 @@
+{
+    "nav": {
+        "mainSidebarAria": "Main sidebar",
+        "primaryNavigationAria": "Primary navigation",
+        "contentAreaAria": "Content area",
+        "analytics": "Analytics",
+        "dashboardAria": "Go to dashboard",
+        "goalsAria": "Go to goals",
+        "funnelsAria": "Go to funnels",
+        "dashboard": "Dashboard",
+        "goals": "Goals",
+        "funnels": "Funnels"
+    },
+    "common": {
+        "actions": {
+            "apply": "Apply",
+            "cancel": "Cancel",
+            "clearAll": "Clear all",
+            "close": "Close",
+            "downloadXlsx": "Download XLSX",
+            "exportCsv": "Export CSV"
+        },
+        "columns": {
+            "actions": "Actions",
+            "added": "Added",
+            "created": "Created",
+            "device": "Device",
+            "domain": "Domain",
+            "email": "Email",
+            "name": "Name",
+            "path": "Path",
+            "referrer": "Referrer",
+            "role": "Role",
+            "time": "Time",
+            "type": "Type",
+            "value": "Value"
+        },
+        "devices": {
+            "desktop": "Desktop",
+            "mobile": "Mobile"
+        },
+        "direct": "Direct",
+        "durationMinutesSeconds": "{{minutes}}m {{seconds}}s",
+        "durationSeconds": "{{seconds}}s",
+        "emailAddress": "Email address",
+        "emailPlaceholder": "you@example.com",
+        "empty": {
+            "noDataDescription": "There is no data for this time range.",
+            "noDataTitle": "No data yet"
+        },
+        "exportFormats": {
+            "csv": "CSV",
+            "xlsx": "XLSX",
+            "parquet": "Parquet"
+        },
+        "filters": {
+            "country": "Country: {{value}}",
+            "device": "Device: {{value}}",
+            "page": "Page: {{value}}",
+            "source": "Source: {{value}}"
+        },
+        "kpis": {
+            "conversionRate": "Conversion rate"
+        },
+        "loadingSiteData": "Loading site data...",
+        "metrics": {
+            "countries": "Countries",
+            "devices": "Devices",
+            "topPages": "Top pages",
+            "topSources": "Top sources"
+        },
+        "noActiveFilter": "No active filter",
+        "noSiteSelected": "No site selected",
+        "openInNewTabAria": "Open in new tab",
+        "openUserMenuAria": "Open user menu",
+        "password": "Password",
+        "passwordPlaceholder": "••••••••",
+        "preparing": "Preparing...",
+        "refreshDataTooltip": "Refresh data",
+        "removeFilterAria": "Remove filter",
+        "searchPlaceholder": "Search...",
+        "selectDateRange": "Select date range",
+        "seriesChartAria": "Time series chart with data for the last {{count}} intervals",
+        "switchToDarkModeAria": "Switch to dark mode",
+        "switchToLightModeAria": "Switch to light mode",
+        "timeRangeSelectorAria": "Time range selector",
+        "timeRanges": {
+            "last24Hours": "Last 24 hours",
+            "last7Days": "Last 7 days",
+            "last30Days": "Last 30 days",
+            "lastYear": "Last year",
+            "customRange": "Custom range"
+        },
+        "unknownError": "Unknown error",
+        "unspecified": "Unspecified",
+        "visitors": "visitors",
+        "copyLink": "Copy link",
+        "copied": "Copied!"
+    },
+    "dashboard": {
+        "breadcrumbOverview": "Overview",
+        "filteredBadge": "Filtered",
+        "rawHitsTitle": "Raw hits",
+        "noSiteDescription": "Select or create a site to view analytics.",
+        "openPageInNewTabAria": "Open page in new tab",
+        "openReferrerInNewTabAria": "Open referrer in new tab",
+        "chartTitleWithRange": "Traffic: {{range}}",
+        "chartTitleCustomRange": "Traffic: {{start}} - {{end}}",
+        "chartTitleOverview": "Traffic overview",
+        "trafficChartAria": "Traffic chart with data for the last {{count}} intervals",
+        "traffic": {
+            "visitors": "Visitors"
+        },
+        "kpis": {
+            "liveVisitors": "Live visitors",
+            "pageviews": "Pageviews",
+            "uniqueSessions": "Unique sessions",
+            "bounceRate": "Bounce rate",
+            "avgDuration": "Avg. duration",
+            "pagesPerSession": "Pages / session"
+        },
+        "empty": {
+            "noTrafficTitle": "No traffic recorded yet",
+            "noTrafficDescription": "Install the tracking snippet on your website to start collecting analytics data.",
+            "getTrackingCode": "Get tracking code"
+        }
+    },
+    "goals": {
+        "manageAction": "Manage goals",
+        "noSiteDescription": "Select or create a site to view goals.",
+        "series": {
+            "title": "Goals",
+            "description": "Filter the series by goal.",
+            "addFilterPlaceholder": "Add goal filter",
+            "emptyTitle": "No goal conversions yet",
+            "emptyDescription": "Create a goal and drive traffic to see conversions over time."
+        },
+        "kpis": {
+            "totalGoals": "Total goals",
+            "conversions": "Conversions"
+        },
+        "list": {
+            "title": "Goals",
+            "manageTooltip": "Manage goals",
+            "emptyTitle": "No goals yet",
+            "emptyDescription": "Track specific conversion events like signups or purchases.",
+            "createAction": "Create goal",
+            "conversionsSuffix": "conversions",
+            "conversionRateShort": "CR"
+        },
+        "manager": {
+            "dialogTitle": "Manage goals",
+            "dialogDescription": "Define conversion goals to track specific user actions or page visits.",
+            "empty": "No goals defined yet.",
+            "addTitle": "Add new goal",
+            "namePlaceholder": "e.g. Signup Success",
+            "typePagePath": "Page path",
+            "typeCustomEvent": "Custom event",
+            "urlPathLabel": "URL path",
+            "eventNameLabel": "Event name",
+            "urlPathPlaceholder": "/thank-you",
+            "eventNamePlaceholder": "signup_completed",
+            "urlPathHelp": "Triggers when a user visits a specific URL.",
+            "eventNameHelpPrefix": "Triggers when you call",
+            "eventNameHelpSuffix": ".",
+            "createAction": "Create goal"
+        }
+    },
+    "funnels": {
+        "createAction": "Create funnel",
+        "noSiteDescription": "Select or create a site to view funnels.",
+        "series": {
+            "title": "Funnels",
+            "description": "Filter the series by funnel.",
+            "addFilterPlaceholder": "Add funnel filter",
+            "emptyTitle": "No funnel activity yet",
+            "emptyDescription": "Create a funnel and drive traffic to see entries and completions over time."
+        },
+        "kpis": {
+            "funnels": "Funnels",
+            "entries": "Entries",
+            "completions": "Completions",
+            "completionRate": "Completion rate"
+        },
+        "list": {
+            "title": "Funnels",
+            "manageTooltip": "Manage funnels",
+            "emptyTitle": "No funnels yet",
+            "emptyDescription": "Build a path of events to measure drop-off and conversions.",
+            "createAction": "Create funnel",
+            "stepsCount": "{{count}} steps"
+        },
+        "manager": {
+            "dialogTitle": "Manage funnels",
+            "dialogDescription": "Track user journeys across multiple steps.",
+            "stepsLabel": "Steps",
+            "viewStats": "View stats",
+            "empty": "No funnels defined yet.",
+            "createTitle": "Create new funnel",
+            "namePlaceholder": "e.g. Checkout Flow",
+            "stepPathPlaceholder": "/path",
+            "stepEventPlaceholder": "event_name",
+            "addStep": "Add step",
+            "createAction": "Create funnel",
+            "typePagePath": "Page path",
+            "typeCustomEvent": "Custom event"
+        },
+        "viewer": {
+            "dialogTitle": "Funnel analysis",
+            "droppedSuffix": "dropped",
+            "retention": "retention",
+            "entry": "Entry"
+        }
+    },
+    "settings": {
+        "security": {
+            "title": "Security",
+            "changePasswordTitle": "Change password",
+            "passwordUpdated": "Password updated successfully.",
+            "currentPasswordLabel": "Current password",
+            "newPasswordLabel": "New password",
+            "minimumLengthHint": "Minimum 8 characters",
+            "updatePassword": "Update password",
+            "errors": {
+                "invalidCurrentPassword": "Incorrect current password.",
+                "updateFailed": "Failed to update password. Please try again."
+            }
+        },
+        "user": {
+            "breadcrumb": "User settings",
+            "subtitle": "Manage your account security and preferences.",
+            "dataExportTitle": "Data export",
+            "exportAllTitle": "Export all data",
+            "exportAllDescription": "Download all your data across all sites as CSV, XLSX, or Parquet."
+        }
+    },
+    "setup": {
+        "description": "Create your administrator account to get started.",
+        "emailPlaceholder": "admin@example.com",
+        "createAdminAction": "Create admin account",
+        "errors": {
+            "unexpected": "An unexpected error occurred. Please try again."
+        }
+    },
+    "password": {
+        "forgot": {
+            "title": "Reset password",
+            "description": "Enter your email address and we'll send you a link to reset your password.",
+            "successTitle": "Check your inbox!",
+            "successDescription": "If an account exists for {{email}}, we have sent a reset link.",
+            "returnToSignIn": "Return to sign in",
+            "sendResetLink": "Send reset link",
+            "backToSignIn": "Back to sign in",
+            "errors": {
+                "unexpected": "Something went wrong. Please try again later."
+            }
+        },
+        "reset": {
+            "title": "Set new password",
+            "success": "Password updated successfully!",
+            "signInNow": "Sign in now",
+            "newPasswordLabel": "New password",
+            "minimumLength": "Must be at least 8 characters.",
+            "submit": "Reset password",
+            "errors": {
+                "tokenMissing": "Invalid link. The token is missing.",
+                "invalidLink": "Invalid password reset link.",
+                "expiredOrInvalid": "This link has expired or is invalid.",
+                "resetFailed": "Failed to reset password. Please try again."
+            }
+        }
+    },
+    "share": {
+        "dialog": {
+            "title": "Share dashboard",
+            "description": "Anyone with this link can view the dashboard in read-only mode.",
+            "generateAction": "Generate link",
+            "shareUrlLabel": "Share URL",
+            "generateFailed": "Unable to create a share link right now. Please try again."
+        },
+        "page": {
+            "loading": "Loading shared dashboard...",
+            "missingToken": "Missing share token.",
+            "invalidOrExpired": "Share link is invalid or expired."
+        }
+    },
+    "sites": {
+        "addDialog": {
+            "title": "Add site",
+            "instructionsLine1": "Enter your root or subdomain (e.g., {{apex}}, {{subdomain}}).",
+            "instructionsLine2": "We automatically track {{www}} with your apex domain.",
+            "domainLabel": "Domain name",
+            "domainPlaceholder": "example.com",
+            "addAction": "Add site",
+            "errors": {
+                "domainRequired": "Domain is required.",
+                "domainInvalid": "Invalid domain format.",
+                "removeProtocol": "Please remove http:// or https://",
+                "removeWww": "Please remove 'www.'. Enter the root domain only.",
+                "createFailed": "Failed to create site. Domain might already exist."
+            }
+        },
+        "danger": {
+            "deleteTitle": "Delete site",
+            "deleteDescription": "Permanently deletes this site and all associated analytics data.",
+            "confirmLabel": "Type \"{{domain}}\" to confirm",
+            "confirmPlaceholder": "example.com",
+            "deleteAction": "Delete site",
+            "deleteFailed": "Failed to delete site."
+        },
+        "retention": {
+            "infoTitle": "How retention works",
+            "infoDescription": "Raw hits older than the retention period are archived to Parquet files for long-term storage and removed from the hot database to improve performance.",
+            "periodLabel": "Retention period (days)",
+            "hotDataSuffix": "days of hot data",
+            "defaultHint": "Default is 365 days.",
+            "savePolicy": "Save policy"
+        },
+        "selector": {
+            "regionAria": "Site selection",
+            "sitesLabel": "Sites",
+            "addSiteAria": "Add a new site",
+            "selectPlaceholder": "Select site",
+            "selectSiteAria": "Select a site to view stats",
+            "siteSettingsAria": "Site settings",
+            "trackingCodeAria": "Tracking code",
+            "shareDashboardAria": "Share dashboard"
+        },
+        "settings": {
+            "breadcrumb": {
+                "sites": "Sites",
+                "settings": "Settings"
+            },
+            "title": "Site settings",
+            "tabs": {
+                "general": "General",
+                "tracking": "Tracking",
+                "retention": "Retention",
+                "team": "Team",
+                "dangerZone": "Danger zone"
+            },
+            "general": {
+                "title": "General settings",
+                "domainLabel": "Domain",
+                "dataExportTitle": "Data export",
+                "exportSiteDataTitle": "Export site data",
+                "exportSiteDataDescription": "Download all hits and events for this site as CSV, XLSX, or Parquet."
+            },
+            "unsavedChangesConfirm": "You have unsaved changes. Discard them?"
+        },
+        "team": {
+            "emailPlaceholder": "user@example.com",
+            "addMemberAction": "Add member",
+            "confirmRemove": "Remove {{email}} from site?",
+            "errors": {
+                "addFailed": "Failed to add member. Ensure user exists.",
+                "removeFailed": "Failed to remove member: {{error}}"
+            }
+        },
+        "tracking": {
+            "description": "Copy and paste the code below into your website's HTML.",
+            "trackingCodeConfiguration": "Tracking code configuration",
+            "collectDntLabel": "Collect DNT",
+            "collectDntDescription": "Track users even if \"Do Not Track\" is enabled in their browser.",
+            "disableBeaconLabel": "Disable sendBeacon",
+            "disableBeaconDescription": "Use standard fetch requests instead of navigator.sendBeacon.",
+            "htmlLabel": "HTML",
+            "copyCode": "Copy code"
+        }
+    },
+    "admin": {
+        "breadcrumb": "Instance administration",
+        "tabs": {
+            "users": "Users",
+            "sites": "Sites"
+        },
+        "users": {
+            "title": "Users"
+        },
+        "sites": {
+            "title": "Sites"
+        },
+        "roles": {
+            "instanceOwner": "Instance owner",
+            "instanceAdmin": "Instance admin",
+            "user": "User"
+        },
+        "confirmDeleteUser": "Delete user {{email}}?",
+        "confirmDeleteSite": "Delete site {{domain}}? This action cannot be undone."
+    },
+    "roles": {
+        "owner": "Owner",
+        "admin": "Admin",
+        "editor": "Editor",
+        "viewer": "Viewer"
+    },
+    "userMenu": {
+        "administration": "Administration",
+        "userSettings": "User settings",
+        "preferences": "Preferences",
+        "signOut": "Sign out"
+    },
+    "login": {
+        "subtitle": "Sign in to your dashboard",
+        "emailLabel": "Email address",
+        "emailPlaceholder": "you@example.com",
+        "emailInvalid": "Please enter a valid email address.",
+        "passwordLabel": "Password",
+        "passwordPlaceholder": "••••••••",
+        "passwordRequired": "Password is required.",
+        "forgotPassword": "Forgot password?",
+        "rememberMe": "Remember me",
+        "signIn": "Sign in",
+        "footerRights": "HitKeep. All rights reserved.",
+        "errors": {
+            "invalidCredentials": "Invalid email or password.",
+            "unexpected": "An unexpected error occurred. Please try again."
+        }
+    },
+    "preferences": {
+        "breadcrumb": "Preferences",
+        "subtitle": "Manage your application preferences.",
+        "actions": {
+            "saveChanges": "Save changes"
+        },
+        "status": {
+            "saved": "Saved",
+            "saveFailed": "Save failed"
+        },
+        "errors": {
+            "loadFailed": "Failed to load preferences. Please refresh and try again."
+        },
+        "language": {
+            "heading": "Language preferences",
+            "description": "Your browser language is used by default until you customize these settings.",
+            "defaultLabel": "Default language",
+            "defaultPlaceholder": "Select a default language",
+            "defaultHint": "This is the primary language for the dashboard UI.",
+            "rtlBadge": "RTL"
+        }
+    }
+}

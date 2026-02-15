@@ -1,0 +1,442 @@
+{
+    "nav": {
+        "mainSidebarAria": "Hauptseitenleiste",
+        "primaryNavigationAria": "Hauptnavigation",
+        "contentAreaAria": "Inhaltsbereich",
+        "analytics": "Analysen",
+        "dashboardAria": "Zum Dashboard",
+        "goalsAria": "Zu den Zielen",
+        "funnelsAria": "Zu den Funnels",
+        "dashboard": "Dashboard",
+        "goals": "Ziele",
+        "funnels": "Funnels"
+    },
+    "common": {
+        "actions": {
+            "apply": "Anwenden",
+            "cancel": "Abbrechen",
+            "clearAll": "Alle entfernen",
+            "close": "Schließen",
+            "downloadXlsx": "XLSX herunterladen",
+            "exportCsv": "CSV exportieren"
+        },
+        "columns": {
+            "actions": "Aktionen",
+            "added": "Hinzugefügt",
+            "created": "Erstellt",
+            "device": "Gerät",
+            "domain": "Domain",
+            "email": "E-Mail",
+            "name": "Name",
+            "path": "Pfad",
+            "referrer": "Referrer",
+            "role": "Rolle",
+            "time": "Zeit",
+            "type": "Typ",
+            "value": "Wert"
+        },
+        "devices": {
+            "desktop": "Desktop",
+            "mobile": "Mobil"
+        },
+        "direct": "Direkt",
+        "durationMinutesSeconds": "{{minutes}}m {{seconds}}s",
+        "durationSeconds": "{{seconds}}s",
+        "emailAddress": "E-Mail-Adresse",
+        "emailPlaceholder": "you@example.com",
+        "empty": {
+            "noDataDescription": "Für diesen Zeitraum liegen keine Daten vor.",
+            "noDataTitle": "Noch keine Daten"
+        },
+        "exportFormats": {
+            "csv": "CSV",
+            "xlsx": "XLSX",
+            "parquet": "Parquet"
+        },
+        "filters": {
+            "country": "Land: {{value}}",
+            "device": "Gerät: {{value}}",
+            "page": "Seite: {{value}}",
+            "source": "Quelle: {{value}}"
+        },
+        "kpis": {
+            "conversionRate": "Conversion-Rate"
+        },
+        "loadingSiteData": "Seitendaten werden geladen...",
+        "metrics": {
+            "countries": "Länder",
+            "devices": "Geräte",
+            "topPages": "Top-Seiten",
+            "topSources": "Top-Quellen"
+        },
+        "noActiveFilter": "Kein aktiver Filter",
+        "noSiteSelected": "Keine Seite ausgewählt",
+        "openInNewTabAria": "In neuem Tab öffnen",
+        "openUserMenuAria": "Benutzermenü öffnen",
+        "password": "Passwort",
+        "passwordPlaceholder": "••••••••",
+        "preparing": "Wird vorbereitet...",
+        "refreshDataTooltip": "Daten aktualisieren",
+        "removeFilterAria": "Filter entfernen",
+        "searchPlaceholder": "Suchen...",
+        "selectDateRange": "Datumsbereich auswählen",
+        "seriesChartAria": "Zeitreihendiagramm mit Daten für die letzten {{count}} Intervalle",
+        "switchToDarkModeAria": "In den dunklen Modus wechseln",
+        "switchToLightModeAria": "In den hellen Modus wechseln",
+        "timeRangeSelectorAria": "Zeitraumauswahl",
+        "timeRanges": {
+            "last24Hours": "Letzte 24 Stunden",
+            "last7Days": "Letzte 7 Tage",
+            "last30Days": "Letzte 30 Tage",
+            "lastYear": "Letztes Jahr",
+            "customRange": "Benutzerdefiniert"
+        },
+        "unknownError": "Unbekannter Fehler",
+        "unspecified": "Nicht angegeben",
+        "visitors": "Besucher",
+        "copyLink": "Link kopieren",
+        "copied": "Kopiert!"
+    },
+    "dashboard": {
+        "breadcrumbOverview": "Übersicht",
+        "filteredBadge": "Gefiltert",
+        "rawHitsTitle": "Rohdaten (Hits)",
+        "noSiteDescription": "Wählen Sie eine Seite aus oder erstellen Sie eine, um Analysen zu sehen.",
+        "openPageInNewTabAria": "Seite in neuem Tab öffnen",
+        "openReferrerInNewTabAria": "Referrer in neuem Tab öffnen",
+        "chartTitleWithRange": "Traffic: {{range}}",
+        "chartTitleCustomRange": "Traffic: {{start}} - {{end}}",
+        "chartTitleOverview": "Traffic-Übersicht",
+        "trafficChartAria": "Traffic-Diagramm mit Daten für die letzten {{count}} Intervalle",
+        "traffic": {
+            "visitors": "Besucher"
+        },
+        "kpis": {
+            "liveVisitors": "Live-Besucher",
+            "pageviews": "Seitenaufrufe",
+            "uniqueSessions": "Eindeutige Sitzungen",
+            "bounceRate": "Absprungrate",
+            "avgDuration": "Durchschn. Dauer",
+            "pagesPerSession": "Seiten / Sitzung"
+        },
+        "empty": {
+            "noTrafficTitle": "Noch kein Traffic erfasst",
+            "noTrafficDescription": "Installieren Sie das Tracking-Snippet auf Ihrer Website, um Analytics-Daten zu sammeln.",
+            "getTrackingCode": "Tracking-Code anzeigen"
+        }
+    },
+    "goals": {
+        "manageAction": "Ziele verwalten",
+        "noSiteDescription": "Wählen Sie eine Seite aus oder erstellen Sie eine, um Ziele zu sehen.",
+        "series": {
+            "title": "Ziele",
+            "description": "Filtern Sie die Zeitreihe nach Zielen.",
+            "addFilterPlaceholder": "Zielfilter hinzufügen",
+            "emptyTitle": "Noch keine Ziel-Conversions",
+            "emptyDescription": "Erstellen Sie ein Ziel und generieren Sie Traffic, um Conversions über die Zeit zu sehen."
+        },
+        "kpis": {
+            "totalGoals": "Gesamtzahl Ziele",
+            "conversions": "Conversions"
+        },
+        "list": {
+            "title": "Ziele",
+            "manageTooltip": "Ziele verwalten",
+            "emptyTitle": "Noch keine Ziele",
+            "emptyDescription": "Verfolgen Sie konkrete Conversion-Events wie Registrierungen oder Käufe.",
+            "createAction": "Ziel erstellen",
+            "conversionsSuffix": "Conversions",
+            "conversionRateShort": "CR"
+        },
+        "manager": {
+            "dialogTitle": "Ziele verwalten",
+            "dialogDescription": "Definieren Sie Conversion-Ziele, um bestimmte Nutzeraktionen oder Seitenaufrufe zu verfolgen.",
+            "empty": "Noch keine Ziele definiert.",
+            "addTitle": "Neues Ziel hinzufügen",
+            "namePlaceholder": "z. B. Erfolgreiche Registrierung",
+            "typePagePath": "Seitenpfad",
+            "typeCustomEvent": "Benutzerdefiniertes Event",
+            "urlPathLabel": "URL-Pfad",
+            "eventNameLabel": "Event-Name",
+            "urlPathPlaceholder": "/danke",
+            "eventNamePlaceholder": "signup_completed",
+            "urlPathHelp": "Wird ausgelöst, wenn ein Nutzer eine bestimmte URL besucht.",
+            "eventNameHelpPrefix": "Wird ausgelöst, wenn Sie",
+            "eventNameHelpSuffix": "aufrufen.",
+            "createAction": "Ziel erstellen"
+        }
+    },
+    "funnels": {
+        "createAction": "Funnel erstellen",
+        "noSiteDescription": "Wählen Sie eine Seite aus oder erstellen Sie eine, um Funnels zu sehen.",
+        "series": {
+            "title": "Funnels",
+            "description": "Filtern Sie die Zeitreihe nach Funnels.",
+            "addFilterPlaceholder": "Funnel-Filter hinzufügen",
+            "emptyTitle": "Noch keine Funnel-Aktivität",
+            "emptyDescription": "Erstellen Sie einen Funnel und generieren Sie Traffic, um Einstiege und Abschlüsse über die Zeit zu sehen."
+        },
+        "kpis": {
+            "funnels": "Funnels",
+            "entries": "Einstiege",
+            "completions": "Abschlüsse",
+            "completionRate": "Abschlussrate"
+        },
+        "list": {
+            "title": "Funnels",
+            "manageTooltip": "Funnels verwalten",
+            "emptyTitle": "Noch keine Funnels",
+            "emptyDescription": "Erstellen Sie eine Event-Abfolge, um Abbrüche und Conversions zu messen.",
+            "createAction": "Funnel erstellen",
+            "stepsCount": "{{count}} Schritte"
+        },
+        "manager": {
+            "dialogTitle": "Funnels verwalten",
+            "dialogDescription": "Verfolgen Sie Nutzerpfade über mehrere Schritte.",
+            "stepsLabel": "Schritte",
+            "viewStats": "Statistik anzeigen",
+            "empty": "Noch keine Funnels definiert.",
+            "createTitle": "Neuen Funnel erstellen",
+            "namePlaceholder": "z. B. Checkout-Ablauf",
+            "stepPathPlaceholder": "/pfad",
+            "stepEventPlaceholder": "event_name",
+            "addStep": "Schritt hinzufügen",
+            "createAction": "Funnel erstellen",
+            "typePagePath": "Seitenpfad",
+            "typeCustomEvent": "Benutzerdefiniertes Event"
+        },
+        "viewer": {
+            "dialogTitle": "Funnel-Analyse",
+            "droppedSuffix": "abgesprungen",
+            "retention": "Bindung",
+            "entry": "Einstieg"
+        }
+    },
+    "settings": {
+        "security": {
+            "title": "Sicherheit",
+            "changePasswordTitle": "Passwort ändern",
+            "passwordUpdated": "Passwort erfolgreich aktualisiert.",
+            "currentPasswordLabel": "Aktuelles Passwort",
+            "newPasswordLabel": "Neues Passwort",
+            "minimumLengthHint": "Mindestens 8 Zeichen",
+            "updatePassword": "Passwort aktualisieren",
+            "errors": {
+                "invalidCurrentPassword": "Aktuelles Passwort ist falsch.",
+                "updateFailed": "Passwort konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut."
+            }
+        },
+        "user": {
+            "breadcrumb": "Benutzereinstellungen",
+            "subtitle": "Verwalten Sie die Sicherheit und Einstellungen Ihres Kontos.",
+            "dataExportTitle": "Datenexport",
+            "exportAllTitle": "Alle Daten exportieren",
+            "exportAllDescription": "Laden Sie alle Ihre Daten über alle Seiten hinweg als CSV, XLSX oder Parquet herunter."
+        }
+    },
+    "setup": {
+        "description": "Erstellen Sie Ihr Administratorkonto, um zu starten.",
+        "emailPlaceholder": "admin@example.com",
+        "createAdminAction": "Admin-Konto erstellen",
+        "errors": {
+            "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
+        }
+    },
+    "password": {
+        "forgot": {
+            "title": "Passwort zurücksetzen",
+            "description": "Geben Sie Ihre E-Mail-Adresse ein. Wir senden Ihnen einen Link zum Zurücksetzen Ihres Passworts.",
+            "successTitle": "Posteingang prüfen!",
+            "successDescription": "Falls ein Konto für {{email}} existiert, haben wir einen Link zum Zurücksetzen gesendet.",
+            "returnToSignIn": "Zurück zur Anmeldung",
+            "sendResetLink": "Link zum Zurücksetzen senden",
+            "backToSignIn": "Zurück zur Anmeldung",
+            "errors": {
+                "unexpected": "Etwas ist schiefgelaufen. Bitte versuchen Sie es später erneut."
+            }
+        },
+        "reset": {
+            "title": "Neues Passwort setzen",
+            "success": "Passwort erfolgreich aktualisiert!",
+            "signInNow": "Jetzt anmelden",
+            "newPasswordLabel": "Neues Passwort",
+            "minimumLength": "Mindestens 8 Zeichen erforderlich.",
+            "submit": "Passwort zurücksetzen",
+            "errors": {
+                "tokenMissing": "Ungültiger Link. Das Token fehlt.",
+                "invalidLink": "Ungültiger Link zum Zurücksetzen des Passworts.",
+                "expiredOrInvalid": "Dieser Link ist abgelaufen oder ungültig.",
+                "resetFailed": "Passwort konnte nicht zurückgesetzt werden. Bitte versuchen Sie es erneut."
+            }
+        }
+    },
+    "share": {
+        "dialog": {
+            "title": "Dashboard teilen",
+            "description": "Jeder mit diesem Link kann das Dashboard im Nur-Lese-Modus sehen.",
+            "generateAction": "Link erstellen",
+            "shareUrlLabel": "Freigabe-URL",
+            "generateFailed": "Freigabelink konnte momentan nicht erstellt werden. Bitte versuchen Sie es erneut."
+        },
+        "page": {
+            "loading": "Geteiltes Dashboard wird geladen...",
+            "missingToken": "Freigabe-Token fehlt.",
+            "invalidOrExpired": "Freigabelink ist ungültig oder abgelaufen."
+        }
+    },
+    "sites": {
+        "addDialog": {
+            "title": "Seite hinzufügen",
+            "instructionsLine1": "Geben Sie Ihre Hauptdomain oder Subdomain ein (z. B. {{apex}}, {{subdomain}}).",
+            "instructionsLine2": "{{www}} wird bei Ihrer Hauptdomain automatisch mit erfasst.",
+            "domainLabel": "Domainname",
+            "domainPlaceholder": "example.com",
+            "addAction": "Seite hinzufügen",
+            "errors": {
+                "domainRequired": "Domain ist erforderlich.",
+                "domainInvalid": "Ungültiges Domain-Format.",
+                "removeProtocol": "Bitte entfernen Sie http:// oder https://",
+                "removeWww": "Bitte entfernen Sie 'www.'. Geben Sie nur die Hauptdomain ein.",
+                "createFailed": "Seite konnte nicht erstellt werden. Die Domain existiert möglicherweise bereits."
+            }
+        },
+        "danger": {
+            "deleteTitle": "Seite löschen",
+            "deleteDescription": "Löscht diese Seite und alle zugehörigen Analytics-Daten dauerhaft.",
+            "confirmLabel": "Geben Sie \"{{domain}}\" zur Bestätigung ein",
+            "confirmPlaceholder": "example.com",
+            "deleteAction": "Seite löschen",
+            "deleteFailed": "Seite konnte nicht gelöscht werden."
+        },
+        "retention": {
+            "infoTitle": "So funktioniert Aufbewahrung",
+            "infoDescription": "Rohdaten, die älter als der Aufbewahrungszeitraum sind, werden als Parquet-Dateien archiviert und aus der aktiven Datenbank entfernt, um die Performance zu verbessern.",
+            "periodLabel": "Aufbewahrungszeitraum (Tage)",
+            "hotDataSuffix": "Tage Hot-Data",
+            "defaultHint": "Standardwert ist 365 Tage.",
+            "savePolicy": "Richtlinie speichern"
+        },
+        "selector": {
+            "regionAria": "Seitenauswahl",
+            "sitesLabel": "Seiten",
+            "addSiteAria": "Neue Seite hinzufügen",
+            "selectPlaceholder": "Seite auswählen",
+            "selectSiteAria": "Wählen Sie eine Seite, um Statistiken zu sehen",
+            "siteSettingsAria": "Seiteneinstellungen",
+            "trackingCodeAria": "Tracking-Code",
+            "shareDashboardAria": "Dashboard teilen"
+        },
+        "settings": {
+            "breadcrumb": {
+                "sites": "Seiten",
+                "settings": "Einstellungen"
+            },
+            "title": "Seiteneinstellungen",
+            "tabs": {
+                "general": "Allgemein",
+                "tracking": "Tracking",
+                "retention": "Aufbewahrung",
+                "team": "Team",
+                "dangerZone": "Gefahrenzone"
+            },
+            "general": {
+                "title": "Allgemeine Einstellungen",
+                "domainLabel": "Domain",
+                "dataExportTitle": "Datenexport",
+                "exportSiteDataTitle": "Seitendaten exportieren",
+                "exportSiteDataDescription": "Laden Sie alle Hits und Events für diese Seite als CSV, XLSX oder Parquet herunter."
+            },
+            "unsavedChangesConfirm": "Sie haben ungespeicherte Änderungen. Verwerfen?"
+        },
+        "team": {
+            "emailPlaceholder": "user@example.com",
+            "addMemberAction": "Mitglied hinzufügen",
+            "confirmRemove": "{{email}} von der Seite entfernen?",
+            "errors": {
+                "addFailed": "Mitglied konnte nicht hinzugefügt werden. Stellen Sie sicher, dass der Benutzer existiert.",
+                "removeFailed": "Mitglied konnte nicht entfernt werden: {{error}}"
+            }
+        },
+        "tracking": {
+            "description": "Kopieren Sie den folgenden Code und fügen Sie ihn in das HTML Ihrer Website ein.",
+            "trackingCodeConfiguration": "Tracking-Code-Konfiguration",
+            "collectDntLabel": "DNT erfassen",
+            "collectDntDescription": "Nutzer erfassen, auch wenn im Browser \"Do Not Track\" aktiviert ist.",
+            "disableBeaconLabel": "sendBeacon deaktivieren",
+            "disableBeaconDescription": "Standard-Fetch-Anfragen statt navigator.sendBeacon verwenden.",
+            "htmlLabel": "HTML",
+            "copyCode": "Code kopieren"
+        }
+    },
+    "admin": {
+        "breadcrumb": "Instanzverwaltung",
+        "tabs": {
+            "users": "Benutzer",
+            "sites": "Seiten"
+        },
+        "users": {
+            "title": "Benutzer"
+        },
+        "sites": {
+            "title": "Seiten"
+        },
+        "roles": {
+            "instanceOwner": "Instanz-Eigentümer",
+            "instanceAdmin": "Instanz-Admin",
+            "user": "Benutzer"
+        },
+        "confirmDeleteUser": "Benutzer {{email}} löschen?",
+        "confirmDeleteSite": "Seite {{domain}} löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+    },
+    "roles": {
+        "owner": "Eigentümer",
+        "admin": "Admin",
+        "editor": "Editor",
+        "viewer": "Betrachter"
+    },
+    "userMenu": {
+        "administration": "Verwaltung",
+        "userSettings": "Benutzereinstellungen",
+        "preferences": "Einstellungen",
+        "signOut": "Abmelden"
+    },
+    "login": {
+        "subtitle": "Melden Sie sich an, um Ihr Dashboard zu öffnen.",
+        "emailLabel": "E-Mail-Adresse",
+        "emailPlaceholder": "you@example.com",
+        "emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+        "passwordLabel": "Passwort",
+        "passwordPlaceholder": "••••••••",
+        "passwordRequired": "Passwort ist erforderlich.",
+        "forgotPassword": "Passwort vergessen?",
+        "rememberMe": "Angemeldet bleiben",
+        "signIn": "Anmelden",
+        "footerRights": "HitKeep. Alle Rechte vorbehalten.",
+        "errors": {
+            "invalidCredentials": "Ungültige E-Mail-Adresse oder Passwort.",
+            "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
+        }
+    },
+    "preferences": {
+        "breadcrumb": "Einstellungen",
+        "subtitle": "Verwalten Sie Ihre Anwendungseinstellungen.",
+        "actions": {
+            "saveChanges": "Änderungen speichern"
+        },
+        "status": {
+            "saved": "Gespeichert",
+            "saveFailed": "Speichern fehlgeschlagen"
+        },
+        "errors": {
+            "loadFailed": "Einstellungen konnten nicht geladen werden. Bitte aktualisieren Sie die Seite und versuchen Sie es erneut."
+        },
+        "language": {
+            "heading": "Spracheinstellungen",
+            "description": "Die Sprache Ihres Browsers wird standardmäßig verwendet, bis Sie diese Einstellungen anpassen.",
+            "defaultLabel": "Standardsprache",
+            "defaultPlaceholder": "Standardsprache auswählen",
+            "defaultHint": "Dies ist die primäre Sprache für die Dashboard-Oberfläche.",
+            "rtlBadge": "RTL"
+        }
+    }
+}

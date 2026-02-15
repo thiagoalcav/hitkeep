@@ -77,6 +77,10 @@ type UserProfile struct {
 	AvatarURL   string    `json:"avatar_url"`
 }
 
+type UserPreferences struct {
+	DefaultLocale string `json:"default_locale"`
+}
+
 type AnalyticsParams struct {
 	SiteID    uuid.UUID
 	UserID    uuid.UUID

@@ -1,5 +1,7 @@
 import { Component, Input, Output, EventEmitter, inject, signal, OnChanges } from '@angular/core';
-import { CommonModule, DecimalPipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
+import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoDecimalPipe } from '@jsverse/transloco-locale';
 import { DialogModule } from 'primeng/dialog';
 import { SkeletonModule } from 'primeng/skeleton';
 import { AnalyticsService } from '@services/analytics.service';
@@ -8,9 +10,9 @@ import { FunnelStats } from '@models/analytics.types';
 @Component({
     selector: 'app-funnel-viewer',
     standalone: true,
-    imports: [CommonModule, DialogModule, SkeletonModule, DecimalPipe],
+    imports: [CommonModule, DialogModule, SkeletonModule, TranslocoPipe, TranslocoDecimalPipe],
     template: `
-        <p-dialog [header]="stats()?.name || 'Funnel Analysis'" [(visible)]="visible" [modal]="true" [style]="{ width: '900px', maxWidth: '95vw' }" [draggable]="false" [resizable]="false" (onHide)="onHide()">
+        <p-dialog [header]="stats()?.name || ('funnels.viewer.dialogTitle' | transloco)" [(visible)]="visible" [modal]="true" [style]="{ width: '900px', maxWidth: '95vw' }" [draggable]="false" [resizable]="false" (onHide)="onHide()">
             @if (loading()) {
                 <div class="flex flex-col gap-4 p-4">
                     <p-skeleton height="200px" styleClass="w-full" />
@@ -24,16 +26,16 @@ import { FunnelStats } from '@models/analytics.types';
                     <!-- Top Summary Cards -->
                     <div class="grid grid-cols-3 gap-4">
                         <div class="p-4 bg-surface-50 dark:bg-surface-900 rounded border border-surface-200 dark:border-surface-700 text-center">
-                            <div class="text-sm text-muted-color mb-1">Entries</div>
-                            <div class="text-2xl font-bold">{{ stats()!.total_entries | number }}</div>
+                            <div class="text-sm text-muted-color mb-1">{{ 'funnels.kpis.entries' | transloco }}</div>
+                            <div class="text-2xl font-bold">{{ stats()!.total_entries | translocoDecimal }}</div>
                         </div>
                         <div class="p-4 bg-surface-50 dark:bg-surface-900 rounded border border-surface-200 dark:border-surface-700 text-center">
-                            <div class="text-sm text-muted-color mb-1">Completions</div>
-                            <div class="text-2xl font-bold">{{ stats()!.total_completions | number }}</div>
+                            <div class="text-sm text-muted-color mb-1">{{ 'funnels.kpis.completions' | transloco }}</div>
+                            <div class="text-2xl font-bold">{{ stats()!.total_completions | translocoDecimal }}</div>
                         </div>
                         <div class="p-4 bg-surface-50 dark:bg-surface-900 rounded border border-surface-200 dark:border-surface-700 text-center">
-                            <div class="text-sm text-muted-color mb-1">Conversion Rate</div>
-                            <div class="text-2xl font-bold text-primary">{{ stats()!.overall_conversion_rate | number: '1.1-2' }}%</div>
+                            <div class="text-sm text-muted-color mb-1">{{ 'common.kpis.conversionRate' | transloco }}</div>
+                            <div class="text-2xl font-bold text-primary">{{ stats()!.overall_conversion_rate | translocoDecimal: { minimumFractionDigits: 1, maximumFractionDigits: 2 } }}%</div>
                         </div>
                     </div>
 
@@ -45,7 +47,7 @@ import { FunnelStats } from '@models/analytics.types';
                                 <div class="h-8 ml-8 border-l-2 border-dashed border-surface-300 dark:border-surface-600 relative">
                                     <!-- Dropoff Pill -->
                                     <div class="absolute top-1/2 left-4 -translate-y-1/2 text-xs font-medium text-red-500 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-full border border-red-200 dark:border-red-900/50">
-                                        -{{ step.dropoff | number }} dropped
+                                        -{{ step.dropoff | translocoDecimal }} {{ 'funnels.viewer.droppedSuffix' | transloco }}
                                     </div>
                                 </div>
                             }
@@ -59,17 +61,17 @@ import { FunnelStats } from '@models/analytics.types';
                                 <!-- Info -->
                                 <div class="flex-1 min-w-0">
                                     <div class="font-semibold truncate" [title]="step.name">{{ step.name }}</div>
-                                    <div class="text-sm text-muted-color">{{ step.visitors | number }} visitors</div>
+                                    <div class="text-sm text-muted-color">{{ step.visitors | translocoDecimal }} {{ 'common.visitors' | transloco }}</div>
                                 </div>
 
                                 <!-- Step Conversion -->
                                 @if (!first) {
                                     <div class="flex flex-col items-end shrink-0">
-                                        <div [class]="conversionClass(step.conversion_rate)">{{ step.conversion_rate | number: '1.1-1' }}%</div>
-                                        <div class="text-xs text-muted-color">retention</div>
+                                        <div [class]="conversionClass(step.conversion_rate)">{{ step.conversion_rate | translocoDecimal: { minimumFractionDigits: 1, maximumFractionDigits: 1 } }}%</div>
+                                        <div class="text-xs text-muted-color">{{ 'funnels.viewer.retention' | transloco }}</div>
                                     </div>
                                 } @else {
-                                    <div class="text-xs font-medium text-muted-color uppercase tracking-wider px-2">Entry</div>
+                                    <div class="text-xs font-medium text-muted-color uppercase tracking-wider px-2">{{ 'funnels.viewer.entry' | transloco }}</div>
                                 }
                             </div>
                         }

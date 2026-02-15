@@ -1,8 +1,10 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
 import { finalize } from 'rxjs/operators';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 // PrimeNG Imports
 import { PasswordModule } from 'primeng/password';
@@ -13,55 +15,71 @@ import { CheckboxModule } from 'primeng/checkbox';
 // Corrected path to Core
 import { Brand } from '@components/brand/brand';
 import { AuthService } from '@services/auth.service';
+import { UserPreferencesService } from '@services/user-preferences.service';
 
 @Component({
     selector: 'app-login',
     standalone: true,
-    imports: [Brand, CommonModule, ReactiveFormsModule, PasswordModule, ButtonModule, InputTextModule, CheckboxModule, RouterLink],
+    imports: [Brand, CommonModule, ReactiveFormsModule, PasswordModule, ButtonModule, InputTextModule, CheckboxModule, RouterLink, TranslocoPipe],
     templateUrl: './login.html',
     styleUrl: './login.css'
 })
 export class Login {
-    private fb = inject(FormBuilder);
     private router = inject(Router);
     private auth = inject(AuthService);
-
-    protected isLoading = false;
-    protected errorMessage: string | null = null;
+    private preferences = inject(UserPreferencesService);
+    protected isLoading = signal(false);
+    protected errorMessage = signal<string | null>(null);
     protected currentYear = new Date().getFullYear();
 
-    protected loginForm: FormGroup = this.fb.group({
-        email: ['', [Validators.required, Validators.email]],
-        password: ['', [Validators.required]],
-        rememberMe: [false]
+    private readonly loginModel = signal({
+        email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
+        password: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+        rememberMe: new FormControl(false, { nonNullable: true })
     });
+    protected readonly loginForm = compatForm(this.loginModel);
 
-    onSubmit(): void {
-        if (this.loginForm.invalid) {
-            this.loginForm.markAllAsTouched();
+    onSubmit(event?: Event): void {
+        event?.preventDefault();
+        if (this.loginForm().invalid()) {
+            this.loginForm.email().markAsTouched();
+            this.loginForm.password().markAsTouched();
             return;
         }
 
-        this.isLoading = true;
-        this.errorMessage = null;
+        this.isLoading.set(true);
+        this.errorMessage.set(null);
 
-        const { email, password, rememberMe } = this.loginForm.value;
+        const email = this.loginForm.email().value();
+        const password = this.loginForm.password().value();
+        const rememberMe = this.loginForm.rememberMe().value();
 
         this.auth
             .login({ email, password, remember_me: rememberMe })
-            .pipe(finalize(() => (this.isLoading = false)))
+            .pipe(finalize(() => this.isLoading.set(false)))
             .subscribe({
                 next: () => {
-                    this.router.navigate(['/dashboard']);
+                    this.redirectAfterLogin();
                 },
                 error: (err) => {
                     console.error('Login failed:', err);
                     if (err.status === 401) {
-                        this.errorMessage = 'Invalid email or password.';
+                        this.errorMessage.set('login.errors.invalidCredentials');
                     } else {
-                        this.errorMessage = 'An unexpected error occurred. Please try again.';
+                        this.errorMessage.set('login.errors.unexpected');
                     }
                 }
             });
+    }
+
+    private redirectAfterLogin() {
+        this.preferences.load().subscribe({
+            next: () => {
+                this.router.navigate(['/dashboard']);
+            },
+            error: () => {
+                this.router.navigate(['/dashboard']);
+            }
+        });
     }
 }

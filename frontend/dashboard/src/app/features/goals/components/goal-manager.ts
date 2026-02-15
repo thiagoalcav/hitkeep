@@ -1,6 +1,9 @@
-import { Component, Input, Output, EventEmitter, inject, signal, OnChanges } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, signal, OnChanges, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -12,18 +15,18 @@ import { Goal } from '@models/analytics.types';
 @Component({
     selector: 'app-goal-manager',
     standalone: true,
-    imports: [CommonModule, FormsModule, DialogModule, ButtonModule, InputTextModule, SelectModule, TableModule],
+    imports: [CommonModule, ReactiveFormsModule, DialogModule, ButtonModule, InputTextModule, SelectModule, TableModule, TranslocoPipe],
     template: `
-        <p-dialog header="Manage Goals" [(visible)]="visible" [modal]="true" [style]="{ width: '600px', maxWidth: '90vw' }" [draggable]="false" [resizable]="false" (onHide)="onHide()">
-            <p class="text-sm text-muted-color mb-4">Define conversion goals to track specific user actions or page visits.</p>
+        <p-dialog [header]="'goals.manager.dialogTitle' | transloco" [(visible)]="visible" [modal]="true" [style]="{ width: '600px', maxWidth: '90vw' }" [draggable]="false" [resizable]="false" (onHide)="onHide()">
+            <p class="text-sm text-muted-color mb-4">{{ 'goals.manager.dialogDescription' | transloco }}</p>
 
             <!-- List Goals -->
             <p-table [value]="goals()" [loading]="loading()" styleClass="p-datatable-sm mb-6" [rowHover]="true">
                 <ng-template pTemplate="header">
                     <tr>
-                        <th>Name</th>
-                        <th style="width: 100px">Type</th>
-                        <th>Value</th>
+                        <th>{{ 'common.columns.name' | transloco }}</th>
+                        <th style="width: 100px">{{ 'common.columns.type' | transloco }}</th>
+                        <th>{{ 'common.columns.value' | transloco }}</th>
                         <th style="width: 4rem"></th>
                     </tr>
                 </ng-template>
@@ -32,7 +35,7 @@ import { Goal } from '@models/analytics.types';
                         <td class="font-medium">{{ goal.name }}</td>
                         <td>
                             <span [class]="goalTypeClass(goal.type)">
-                                {{ goal.type }}
+                                {{ goalTypeLabel(goal.type) }}
                             </span>
                         </td>
                         <td class="font-mono text-sm text-muted-color truncate max-w-[150px]" [title]="goal.value">{{ goal.value }}</td>
@@ -43,7 +46,7 @@ import { Goal } from '@models/analytics.types';
                 </ng-template>
                 <ng-template pTemplate="emptymessage">
                     <tr>
-                        <td colspan="4" class="text-center text-muted-color py-4">No goals defined yet.</td>
+                        <td colspan="4" class="text-center text-muted-color py-4">{{ 'goals.manager.empty' | transloco }}</td>
                     </tr>
                 </ng-template>
             </p-table>
@@ -51,32 +54,38 @@ import { Goal } from '@models/analytics.types';
             <!-- Add Goal Form -->
             <div class="flex flex-col gap-4 p-4 border border-surface-200 dark:border-surface-700 rounded-lg bg-surface-50 dark:bg-surface-900">
                 <div class="flex items-center justify-between">
-                    <h4 class="font-semibold text-sm m-0">Add New Goal</h4>
+                    <h4 class="font-semibold text-sm m-0">{{ 'goals.manager.addTitle' | transloco }}</h4>
                 </div>
 
                 <div class="grid grid-cols-1 gap-3">
                     <div class="flex flex-col gap-1">
-                        <label for="g-name" class="text-xs font-medium">Name</label>
-                        <input pInputText id="g-name" [(ngModel)]="newGoal.name" placeholder="e.g. Signup Success" class="p-inputtext-sm w-full" />
+                        <label for="g-name" class="text-xs font-medium">{{ 'common.columns.name' | transloco }}</label>
+                        <input pInputText id="g-name" [formControl]="newGoalForm.name().control()" [placeholder]="'goals.manager.namePlaceholder' | transloco" class="p-inputtext-sm w-full" />
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div class="flex flex-col gap-1">
-                            <label for="g-type" class="text-xs font-medium">Type</label>
-                            <p-select [options]="types" [(ngModel)]="newGoal.type" optionLabel="label" optionValue="value" styleClass="w-full p-inputtext-sm" appendTo="body" />
+                            <label for="g-type" class="text-xs font-medium">{{ 'common.columns.type' | transloco }}</label>
+                            <p-select [options]="types()" [formControl]="newGoalForm.type().control()" optionLabel="label" optionValue="value" styleClass="w-full p-inputtext-sm" appendTo="body" />
                         </div>
                         <div class="flex flex-col gap-1 md:col-span-2">
                             <label for="g-value" class="text-xs font-medium">
-                                {{ newGoal.type === 'path' ? 'URL Path' : 'Event Name' }}
+                                {{ newGoalForm.type().value() === 'path' ? ('goals.manager.urlPathLabel' | transloco) : ('goals.manager.eventNameLabel' | transloco) }}
                             </label>
                             <div class="relative">
-                                <input pInputText id="g-value" [(ngModel)]="newGoal.value" [placeholder]="newGoal.type === 'path' ? '/thank-you' : 'signup_completed'" class="p-inputtext-sm w-full" />
+                                <input
+                                    pInputText
+                                    id="g-value"
+                                    [formControl]="newGoalForm.value().control()"
+                                    [placeholder]="newGoalForm.type().value() === 'path' ? ('goals.manager.urlPathPlaceholder' | transloco) : ('goals.manager.eventNamePlaceholder' | transloco)"
+                                    class="p-inputtext-sm w-full"
+                                />
                             </div>
                             <small class="text-xs text-muted-color">
-                                @if (newGoal.type === 'path') {
-                                    Triggers when a user visits a specific URL.
+                                @if (newGoalForm.type().value() === 'path') {
+                                    {{ 'goals.manager.urlPathHelp' | transloco }}
                                 } @else {
-                                    Triggers when you call <code>hk.event('name')</code>.
+                                    {{ 'goals.manager.eventNameHelpPrefix' | transloco }} <code>hk.event('name')</code>{{ 'goals.manager.eventNameHelpSuffix' | transloco }}
                                 }
                             </small>
                         </div>
@@ -84,7 +93,7 @@ import { Goal } from '@models/analytics.types';
                 </div>
 
                 <div class="flex justify-end mt-2">
-                    <p-button label="Create Goal" icon="pi pi-plus" (onClick)="createGoal()" [loading]="creating()" [disabled]="!isValid()" size="small"></p-button>
+                    <p-button [label]="'goals.manager.createAction' | transloco" icon="pi pi-plus" (onClick)="createGoal()" [loading]="creating()" [disabled]="newGoalForm().invalid() || !isValid()" size="small"></p-button>
                 </div>
             </div>
         </p-dialog>
@@ -97,24 +106,38 @@ export class GoalManager implements OnChanges {
     @Output() goalsChanged = new EventEmitter<void>();
 
     private analyticsService = inject(AnalyticsService);
+    private transloco = inject(TranslocoService);
+    private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
     goals = signal<Goal[]>([]);
     loading = signal(false);
     creating = signal(false);
 
-    types = [
-        { label: 'Page Path', value: 'path' },
-        { label: 'Custom Event', value: 'event' }
-    ];
+    protected readonly types = computed(() => {
+        this.activeLanguage();
+        return [
+            { label: this.transloco.translate('goals.manager.typePagePath'), value: 'path' },
+            { label: this.transloco.translate('goals.manager.typeCustomEvent'), value: 'event' }
+        ];
+    });
 
-    newGoal: { name: string; type: 'path' | 'event'; value: string } = {
-        name: '',
-        type: 'path',
-        value: ''
-    };
+    private readonly newGoalModel = signal({
+        name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+        type: new FormControl<'path' | 'event'>('path', { nonNullable: true, validators: [Validators.required] }),
+        value: new FormControl('', { nonNullable: true, validators: [Validators.required] })
+    });
+    protected readonly newGoalForm = compatForm(this.newGoalModel);
+
     protected goalTypeClass(type: Goal['type']) {
         const base = 'text-xs font-bold px-2 py-1 rounded';
         return type === 'event' ? `${base} bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300` : `${base} bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300`;
+    }
+
+    protected goalTypeLabel(type: Goal['type']): string {
+        if (type === 'event') {
+            return this.transloco.translate('goals.manager.typeCustomEvent');
+        }
+        return this.transloco.translate('goals.manager.typePagePath');
     }
 
     ngOnChanges() {
@@ -137,12 +160,19 @@ export class GoalManager implements OnChanges {
 
     createGoal() {
         if (!this.siteId || !this.isValid()) return;
+        const payload = {
+            name: this.newGoalForm.name().value().trim(),
+            type: this.newGoalForm.type().value(),
+            value: this.newGoalForm.value().value().trim()
+        };
 
         this.creating.set(true);
-        this.analyticsService.createGoal(this.siteId, this.newGoal).subscribe({
+        this.analyticsService.createGoal(this.siteId, payload).subscribe({
             next: () => {
                 this.creating.set(false);
-                this.newGoal = { name: '', type: 'path', value: '' };
+                this.newGoalForm.name().control().reset('');
+                this.newGoalForm.type().control().reset('path');
+                this.newGoalForm.value().control().reset('');
                 this.loadGoals();
                 this.goalsChanged.emit();
             },
@@ -162,7 +192,7 @@ export class GoalManager implements OnChanges {
     }
 
     isValid() {
-        return this.newGoal.name.length > 0 && this.newGoal.value.length > 0;
+        return this.newGoalForm.name().value().trim().length > 0 && this.newGoalForm.value().value().trim().length > 0;
     }
 
     onHide() {

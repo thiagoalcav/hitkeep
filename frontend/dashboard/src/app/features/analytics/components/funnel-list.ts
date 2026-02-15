@@ -1,4 +1,5 @@
 import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
@@ -10,17 +11,17 @@ import { EmptyState } from '@components/molecules/empty-state';
 @Component({
     selector: 'app-funnel-list',
     standalone: true,
-    imports: [CardModule, ButtonModule, SkeletonModule, TooltipModule, EmptyState],
+    imports: [CardModule, ButtonModule, SkeletonModule, TooltipModule, EmptyState, TranslocoPipe],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <p-card class="shadow-sm h-full border border-surface-200 dark:border-surface-700 surface-card">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-2">
                     <i class="pi pi-filter text-[var(--p-primary-color)]" aria-hidden="true"></i>
-                    <h3 class="font-semibold text-lg">Funnels</h3>
+                    <h3 class="font-semibold text-lg">{{ 'funnels.list.title' | transloco }}</h3>
                 </div>
                 @if (!readOnly() && !isLoading() && funnels() && funnels().length > 0) {
-                    <p-button icon="pi pi-plus" (onClick)="manageClicked.emit()" [rounded]="true" [text]="true" pTooltip="Manage Funnels" styleClass="w-8 h-8" />
+                    <p-button icon="pi pi-plus" (onClick)="manageClicked.emit()" [rounded]="true" [text]="true" [pTooltip]="'funnels.list.manageTooltip' | transloco" styleClass="w-8 h-8" />
                 }
             </div>
 
@@ -31,7 +32,13 @@ import { EmptyState } from '@components/molecules/empty-state';
                     }
                 </div>
             } @else if (!funnels() || funnels().length === 0) {
-                <app-empty-state icon="pi-filter" title="No funnels yet" description="Build a path of events to measure drop-off and conversions." [actionLabel]="readOnly() ? '' : 'Create Funnel'" (actionClicked)="manageClicked.emit()" />
+                <app-empty-state
+                    icon="pi-filter"
+                    [title]="'funnels.list.emptyTitle' | transloco"
+                    [description]="'funnels.list.emptyDescription' | transloco"
+                    [actionLabel]="readOnly() ? '' : ('funnels.list.createAction' | transloco)"
+                    (actionClicked)="manageClicked.emit()"
+                />
             } @else {
                 <ul class="flex flex-col gap-3 m-0 p-0 list-none">
                     @for (funnel of funnels(); track funnel.id) {
@@ -44,7 +51,7 @@ import { EmptyState } from '@components/molecules/empty-state';
                                 <div class="flex flex-col gap-1 min-w-0">
                                     <span class="font-medium truncate">{{ funnel.name }}</span>
                                     <div class="flex items-center gap-1 text-xs text-muted-color">
-                                        <span>{{ funnel.steps.length }} steps</span>
+                                        <span>{{ 'funnels.list.stepsCount' | transloco: { count: funnel.steps.length } }}</span>
                                     </div>
                                 </div>
                                 <i class="pi pi-chevron-right text-muted-color" aria-hidden="true"></i>

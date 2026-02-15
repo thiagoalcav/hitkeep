@@ -1,5 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, input, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ChartModule } from 'primeng/chart';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoLocaleService } from '@jsverse/transloco-locale';
 import { PreferencesService } from '@services/preferences.service';
 
 export type SeriesChartPoint = Record<string, number | string> & { time: string };
@@ -21,7 +24,7 @@ interface ChartContext {
 @Component({
     selector: 'app-series-chart',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [ChartModule],
+    imports: [ChartModule, TranslocoPipe],
     template: `
         <div class="h-80 w-full relative" role="img" [attr.aria-label]="accessibilityLabel()">
             @if (isLoading()) {
@@ -32,8 +35,8 @@ interface ChartContext {
                 <p-chart type="line" [data]="chartPayload()" [options]="chartOptions()" height="100%" />
             } @else {
                 <div class="absolute inset-0 flex flex-col items-center justify-center text-[var(--p-text-muted-color)] bg-[var(--p-surface-ground)]/50 rounded-lg border-2 border-dashed border-[var(--p-surface-border)] p-6 text-center">
-                    <h3 class="font-semibold text-[var(--p-text-color)] text-lg mb-1">{{ emptyTitle() }}</h3>
-                    <p class="text-sm max-w-xs">{{ emptyDescription() }}</p>
+                    <h3 class="font-semibold text-[var(--p-text-color)] text-lg mb-1">{{ emptyTitle() || ('common.empty.noDataTitle' | transloco) }}</h3>
+                    <p class="text-sm max-w-xs">{{ emptyDescription() || ('common.empty.noDataDescription' | transloco) }}</p>
                 </div>
             }
         </div>
@@ -44,10 +47,13 @@ export class SeriesChart {
     series = input.required<SeriesDefinition[]>();
     isLoading = input<boolean>(false);
     isShortRange = input<boolean>(false);
-    emptyTitle = input<string>('No data yet');
-    emptyDescription = input<string>('There is no data for this time range.');
+    emptyTitle = input<string>('');
+    emptyDescription = input<string>('');
 
     private prefs = inject(PreferencesService);
+    private localeService = inject(TranslocoLocaleService);
+    private transloco = inject(TranslocoService);
+    private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
     protected hasData = computed(() => {
         const data = this.data() || [];
@@ -57,8 +63,9 @@ export class SeriesChart {
     });
 
     protected accessibilityLabel = computed(() => {
+        this.activeLanguage();
         const count = this.data()?.length || 0;
-        return `Time series chart showing data for the last ${count} intervals`;
+        return this.transloco.translate('common.seriesChartAria', { count });
     });
 
     protected chartPayload = computed(() => {
@@ -67,8 +74,8 @@ export class SeriesChart {
 
         const labels = raw.map((d) => {
             const date = new Date(d.time);
-            if (this.isShortRange()) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            if (this.isShortRange()) return this.localeService.localizeDate(date, undefined, { hour: 'numeric', minute: '2-digit' });
+            return this.localeService.localizeDate(date, undefined, { month: 'short', day: 'numeric' });
         });
 
         return {

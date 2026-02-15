@@ -1,7 +1,6 @@
 import { Component, inject, signal, effect } from '@angular/core';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 
-import { FormsModule } from '@angular/forms';
 import { Brand } from '@components/brand/brand';
 import { SiteSelector } from '@features/sites/components/site-selector';
 import { AddSiteDialog } from '@features/sites/components/add-site-dialog';
@@ -9,9 +8,11 @@ import { SiteSettingsDrawer } from '@features/sites/components/site-settings-dra
 import { SiteService } from '@features/sites/services/site.service';
 import { PermissionService } from '@services/permission.service';
 import { UserProfileService } from '@services/user-profile.service';
+import { UserPreferencesService } from '@services/user-preferences.service';
 import { UserControls } from '@components/user-controls/user-controls';
 import { ShareService } from '@services/share.service';
 import { SiteSettingsService } from '@services/site-settings.service';
+import { TranslocoPipe } from '@jsverse/transloco';
 // PrimeNG
 import { DrawerModule } from 'primeng/drawer';
 
@@ -21,11 +22,11 @@ import { DrawerModule } from 'primeng/drawer';
     host: {
         '(document:keydown)': 'handleKeyboard($event)'
     },
-    imports: [FormsModule, RouterOutlet, RouterLink, RouterLinkActive, Brand, SiteSelector, AddSiteDialog, SiteSettingsDrawer, UserControls, DrawerModule],
+    imports: [RouterOutlet, RouterLink, RouterLinkActive, Brand, SiteSelector, AddSiteDialog, SiteSettingsDrawer, UserControls, DrawerModule, TranslocoPipe],
     template: `
         <div class="flex h-screen w-full bg-[var(--p-surface-ground)]">
             <!-- Sidebar (Desktop) -->
-            <aside class="hidden md:flex w-64 flex-col bg-[var(--p-surface-card)] border-r border-surface-200 dark:border-surface-700 p-4 gap-6" aria-label="Main Sidebar">
+            <aside class="hidden md:flex w-64 flex-col bg-[var(--p-surface-card)] border-r border-surface-200 dark:border-surface-700 p-4 gap-6" [attr.aria-label]="'nav.mainSidebarAria' | transloco">
                 <app-brand size="small" class="px-2" />
 
                 <div class="flex items-center gap-2">
@@ -41,38 +42,38 @@ import { DrawerModule } from 'primeng/drawer';
                     />
                 </div>
 
-                <nav class="flex-1 flex flex-col gap-1" aria-label="Primary Navigation">
-                    <div class="text-xs font-semibold text-muted-color uppercase px-2 mb-2" role="presentation">Analytics</div>
+                <nav class="flex-1 flex flex-col gap-1" [attr.aria-label]="'nav.primaryNavigationAria' | transloco">
+                    <div class="text-xs font-semibold text-muted-color uppercase px-2 mb-2" role="presentation">{{ 'nav.analytics' | transloco }}</div>
 
                     <a
                         routerLink="/dashboard"
                         routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                         class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        aria-label="Go to Dashboard"
+                        [attr.aria-label]="'nav.dashboardAria' | transloco"
                     >
-                        <i class="pi pi-chart-bar" aria-hidden="true"></i> <span>Dashboard</span>
+                        <i class="pi pi-chart-bar" aria-hidden="true"></i> <span>{{ 'nav.dashboard' | transloco }}</span>
                     </a>
                     <a
                         routerLink="/goals"
                         routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                         class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        aria-label="Go to Goals"
+                        [attr.aria-label]="'nav.goalsAria' | transloco"
                     >
-                        <i class="pi pi-flag" aria-hidden="true"></i> <span>Goals</span>
+                        <i class="pi pi-flag" aria-hidden="true"></i> <span>{{ 'nav.goals' | transloco }}</span>
                     </a>
                     <a
                         routerLink="/funnels"
                         routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                         class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        aria-label="Go to Funnels"
+                        [attr.aria-label]="'nav.funnelsAria' | transloco"
                     >
-                        <i class="pi pi-filter" aria-hidden="true"></i> <span>Funnels</span>
+                        <i class="pi pi-filter" aria-hidden="true"></i> <span>{{ 'nav.funnels' | transloco }}</span>
                     </a>
                 </nav>
             </aside>
 
             <!-- Main Content -->
-            <main class="flex-1 flex flex-col h-full overflow-hidden relative" role="main" aria-label="Content Area">
+            <main class="flex-1 flex flex-col h-full overflow-hidden relative" role="main" [attr.aria-label]="'nav.contentAreaAria' | transloco">
                 <!-- Mobile Header -->
                 <div class="md:hidden flex items-center justify-between p-4 bg-surface-card border-b border-surface-200 dark:border-surface-700">
                     <app-brand size="small" />
@@ -105,14 +106,32 @@ import { DrawerModule } from 'primeng/drawer';
                     />
 
                     <nav class="flex-1">
-                        <a routerLink="/dashboard" (click)="isMobileDrawerOpen.set(false)" routerLinkActive="bg-primary-50 text-primary-700" class="flex items-center gap-3 px-3 py-2 rounded-md font-medium">
-                            <i class="pi pi-chart-bar"></i> <span>Dashboard</span>
+                        <a
+                            routerLink="/dashboard"
+                            (click)="isMobileDrawerOpen.set(false)"
+                            routerLinkActive="bg-primary-50 text-primary-700"
+                            class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
+                            [attr.aria-label]="'nav.dashboardAria' | transloco"
+                        >
+                            <i class="pi pi-chart-bar"></i> <span>{{ 'nav.dashboard' | transloco }}</span>
                         </a>
-                        <a routerLink="/goals" (click)="isMobileDrawerOpen.set(false)" routerLinkActive="bg-primary-50 text-primary-700" class="flex items-center gap-3 px-3 py-2 rounded-md font-medium">
-                            <i class="pi pi-flag"></i> <span>Goals</span>
+                        <a
+                            routerLink="/goals"
+                            (click)="isMobileDrawerOpen.set(false)"
+                            routerLinkActive="bg-primary-50 text-primary-700"
+                            class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
+                            [attr.aria-label]="'nav.goalsAria' | transloco"
+                        >
+                            <i class="pi pi-flag"></i> <span>{{ 'nav.goals' | transloco }}</span>
                         </a>
-                        <a routerLink="/funnels" (click)="isMobileDrawerOpen.set(false)" routerLinkActive="bg-primary-50 text-primary-700" class="flex items-center gap-3 px-3 py-2 rounded-md font-medium">
-                            <i class="pi pi-filter"></i> <span>Funnels</span>
+                        <a
+                            routerLink="/funnels"
+                            (click)="isMobileDrawerOpen.set(false)"
+                            routerLinkActive="bg-primary-50 text-primary-700"
+                            class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
+                            [attr.aria-label]="'nav.funnelsAria' | transloco"
+                        >
+                            <i class="pi pi-filter"></i> <span>{{ 'nav.funnels' | transloco }}</span>
                         </a>
                     </nav>
                 </div>
@@ -133,6 +152,7 @@ export class MainLayout {
     private siteSettings = inject(SiteSettingsService);
     protected perms = inject(PermissionService);
     protected profile = inject(UserProfileService);
+    protected preferences = inject(UserPreferencesService);
 
     // UI State
     protected isMobileDrawerOpen = signal(false);
@@ -161,8 +181,9 @@ export class MainLayout {
             return;
         }
         this.siteService.loadSites();
-        this.perms.loadPermissions().subscribe();
-        this.profile.loadProfile().subscribe();
+        this.perms.loadPermissions().subscribe({ error: () => undefined });
+        this.profile.loadProfile().subscribe({ error: () => undefined });
+        this.preferences.load().subscribe({ error: () => undefined });
 
         effect(() => {
             const tab = this.siteSettings.request();

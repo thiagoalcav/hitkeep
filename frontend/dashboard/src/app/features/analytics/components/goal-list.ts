@@ -1,5 +1,7 @@
 import { Component, input, output, signal, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule, DecimalPipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
+import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoDecimalPipe } from '@jsverse/transloco-locale';
 import { CardModule } from 'primeng/card';
 import { ButtonModule } from 'primeng/button';
 import { SkeletonModule } from 'primeng/skeleton';
@@ -13,7 +15,7 @@ import { GoalManager } from '@features/goals/components/goal-manager';
 @Component({
     selector: 'app-goal-list',
     standalone: true,
-    imports: [CommonModule, CardModule, SkeletonModule, DecimalPipe, ButtonModule, TooltipModule, EmptyState, GoalManager],
+    imports: [CommonModule, CardModule, SkeletonModule, TranslocoPipe, TranslocoDecimalPipe, ButtonModule, TooltipModule, EmptyState, GoalManager],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <p-card class="shadow-sm h-full border border-surface-200 dark:border-surface-700 surface-card">
@@ -21,11 +23,11 @@ import { GoalManager } from '@features/goals/components/goal-manager';
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-2">
                     <i class="pi pi-flag text-[var(--p-primary-color)]" aria-hidden="true"></i>
-                    <h3 class="font-semibold text-lg">Goals</h3>
+                    <h3 class="font-semibold text-lg">{{ 'goals.list.title' | transloco }}</h3>
                 </div>
                 <!-- Only show header add button if we have data (otherwise EmptyState handles it) -->
                 @if (!readOnly() && !isLoading() && data() && data().length > 0) {
-                    <p-button icon="pi pi-plus" (onClick)="showManager.set(true)" [rounded]="true" [text]="true" pTooltip="Manage Goals" styleClass="w-8 h-8" />
+                    <p-button icon="pi pi-plus" (onClick)="showManager.set(true)" [rounded]="true" [text]="true" [pTooltip]="'goals.list.manageTooltip' | transloco" styleClass="w-8 h-8" />
                 }
             </div>
 
@@ -37,7 +39,13 @@ import { GoalManager } from '@features/goals/components/goal-manager';
                 </div>
             } @else if (!data() || data().length === 0) {
                 <!-- Reusable Empty State -->
-                <app-empty-state icon="pi-flag" title="No goals yet" description="Track specific conversion events like signups or purchases." [actionLabel]="readOnly() ? '' : 'Create Goal'" (actionClicked)="showManager.set(true)" />
+                <app-empty-state
+                    icon="pi-flag"
+                    [title]="'goals.list.emptyTitle' | transloco"
+                    [description]="'goals.list.emptyDescription' | transloco"
+                    [actionLabel]="readOnly() ? '' : ('goals.list.createAction' | transloco)"
+                    (actionClicked)="showManager.set(true)"
+                />
             } @else {
                 <!-- List Data -->
                 <ul class="flex flex-col gap-3 m-0 p-0 list-none">
@@ -45,11 +53,11 @@ import { GoalManager } from '@features/goals/components/goal-manager';
                         <li class="flex items-center justify-between text-sm p-3 border border-surface-100 dark:border-surface-800 rounded hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors">
                             <div class="flex flex-col gap-1">
                                 <span class="font-medium truncate" [title]="item.name">{{ item.name }}</span>
-                                <span class="text-xs text-muted-color">{{ item.conversions | number }} conversions</span>
+                                <span class="text-xs text-muted-color">{{ item.conversions | translocoDecimal }} {{ 'goals.list.conversionsSuffix' | transloco }}</span>
                             </div>
                             <div class="flex flex-col items-end">
-                                <span class="font-bold text-[var(--p-primary-color)]">{{ item.conversion_rate | number: '1.1-2' }}%</span>
-                                <span class="text-xs text-muted-color">CR</span>
+                                <span class="font-bold text-[var(--p-primary-color)]">{{ item.conversion_rate | translocoDecimal: { minimumFractionDigits: 1, maximumFractionDigits: 2 } }}%</span>
+                                <span class="text-xs text-muted-color">{{ 'goals.list.conversionRateShort' | transloco }}</span>
                             </div>
                         </li>
                     }

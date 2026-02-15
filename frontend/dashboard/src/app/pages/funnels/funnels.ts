@@ -1,6 +1,10 @@
-import { Component, inject, signal, effect, computed } from '@angular/core';
+import { Component, inject, signal, effect, computed, untracked } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 
-import { FormsModule } from '@angular/forms';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoLocaleService } from '@jsverse/transloco-locale';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { SelectModule } from 'primeng/select';
@@ -38,7 +42,7 @@ interface MetricFilter {
 @Component({
     selector: 'app-funnels',
     standalone: true,
-    imports: [FormsModule, ButtonModule, CardModule, SelectModule, DatePickerModule, DialogModule, PageHeader, PageBreadcrumb, RangeToolbar, SeriesChart, KpiCard, MetricList, FunnelList, FunnelManager, FunnelViewer],
+    imports: [ReactiveFormsModule, ButtonModule, CardModule, SelectModule, DatePickerModule, DialogModule, PageHeader, PageBreadcrumb, RangeToolbar, SeriesChart, KpiCard, MetricList, FunnelList, FunnelManager, FunnelViewer, TranslocoPipe],
     templateUrl: './funnels.html',
     styleUrl: './funnels.css'
 })
@@ -46,21 +50,29 @@ export class Funnels {
     protected siteService = inject(SiteService);
     protected analyticsService = inject(AnalyticsService);
     protected statsService = inject(StatsService);
+    private localeService = inject(TranslocoLocaleService);
+    private transloco = inject(TranslocoService);
+    private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
-    protected timeRanges = [
-        { label: 'Last 24 Hours', value: '24h' },
-        { label: 'Last 7 Days', value: '7d' },
-        { label: 'Last 30 Days', value: '30d' },
-        { label: 'Last Year', value: '1y' },
-        { label: 'Custom Range', value: 'custom' }
-    ];
-    protected selectedRange = signal(this.timeRanges[2]);
+    protected timeRanges = signal([
+        { label: '', value: '24h' },
+        { label: '', value: '7d' },
+        { label: '', value: '30d' },
+        { label: '', value: '1y' },
+        { label: '', value: 'custom' }
+    ]);
+    protected selectedRange = signal({ label: '', value: '30d' });
     protected isCustomRangeVisible = signal(false);
-    protected customRangeDates = signal<Date[] | null>(null);
+    private readonly funnelFilterFormModel = signal({
+        funnelFilter: new FormControl<{ id: string; name: string } | null>(null),
+        customRangeDates: new FormControl<Date[] | null>(null)
+    });
+    protected readonly funnelFilterForm = compatForm(this.funnelFilterFormModel);
     protected isShortRange = computed(() => {
         if (this.selectedRange().value === '24h') return true;
-        if (this.selectedRange().value === 'custom' && this.customRangeDates()) {
-            const d = this.customRangeDates()!;
+        const customRangeDates = this.funnelFilterForm.customRangeDates().value();
+        if (this.selectedRange().value === 'custom' && customRangeDates) {
+            const d = customRangeDates;
             if (d.length === 2 && d[0] && d[1]) {
                 const diff = d[1].getTime() - d[0].getTime();
                 return diff < 48 * 60 * 60 * 1000;
@@ -95,6 +107,7 @@ export class Funnels {
         }))
     );
     protected readonly funnelKpis = computed(() => {
+        this.activeLanguage();
         const activeIds = new Set(this.activeFunnelFilters().map((filter) => filter.id));
         const funnelsCount = activeIds.size > 0 ? this.funnels().filter((funnel) => activeIds.has(funnel.id)).length : this.funnels().length;
         const entries = this.funnelSeries().reduce((sum, point) => sum + point.entries, 0);
@@ -103,59 +116,72 @@ export class Funnels {
 
         return [
             {
-                label: 'Funnels',
+                label: this.transloco.translate('funnels.kpis.funnels'),
                 value: funnelsCount,
                 loading: this.loading(),
                 valueClass: 'text-2xl xl:text-3xl font-bold'
             },
             {
-                label: 'Entries',
+                label: this.transloco.translate('funnels.kpis.entries'),
                 value: entries,
                 loading: this.isFunnelSeriesLoading(),
                 valueClass: 'text-2xl xl:text-3xl font-bold'
             },
             {
-                label: 'Completions',
+                label: this.transloco.translate('funnels.kpis.completions'),
                 value: completions,
                 loading: this.isFunnelSeriesLoading(),
                 valueClass: 'text-2xl xl:text-3xl font-bold'
             },
             {
-                label: 'Completion Rate',
-                value: `${completionRate.toFixed(1)}%`,
+                label: this.transloco.translate('funnels.kpis.completionRate'),
+                value: `${this.localeService.localizeNumber(completionRate, 'decimal', undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
                 loading: this.isFunnelSeriesLoading(),
                 valueClass: 'text-2xl xl:text-3xl font-bold'
             }
         ];
     });
-    protected readonly funnelSeriesConfig: SeriesDefinition[] = [
-        {
-            key: 'entries',
-            label: 'Entries',
-            color: '#6366f1',
-            gradientFrom: 'rgba(99, 102, 241, 0.5)',
-            gradientTo: 'rgba(99, 102, 241, 0.0)'
-        },
-        {
-            key: 'completions',
-            label: 'Completions',
-            color: '#14b8a6',
-            gradientFrom: 'rgba(20, 184, 166, 0.5)',
-            gradientTo: 'rgba(20, 184, 166, 0.0)'
-        }
-    ];
+    protected readonly funnelSeriesConfig = computed<SeriesDefinition[]>(() => {
+        this.activeLanguage();
+        return [
+            {
+                key: 'entries',
+                label: this.transloco.translate('funnels.kpis.entries'),
+                color: '#6366f1',
+                gradientFrom: 'rgba(99, 102, 241, 0.5)',
+                gradientTo: 'rgba(99, 102, 241, 0.0)'
+            },
+            {
+                key: 'completions',
+                label: this.transloco.translate('funnels.kpis.completions'),
+                color: '#14b8a6',
+                gradientFrom: 'rgba(20, 184, 166, 0.5)',
+                gradientTo: 'rgba(20, 184, 166, 0.0)'
+            }
+        ];
+    });
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
+        this.activeLanguage();
         const site = this.siteService.activeSite();
         if (!site) {
-            return [{ label: 'Funnels', isCurrent: true }];
+            return [{ label: this.transloco.translate('nav.funnels'), isCurrent: true }];
         }
         return [
             { label: site.domain, favicon: site, routerLink: '/dashboard' },
-            { label: 'Funnels', isCurrent: true }
+            { label: this.transloco.translate('nav.funnels'), isCurrent: true }
         ];
     });
 
     constructor() {
+        effect(() => {
+            this.activeLanguage();
+            const ranges = this.buildTimeRanges();
+            const selectedValue = untracked(() => this.selectedRange().value);
+            const nextSelected = ranges.find((range) => range.value === selectedValue) ?? ranges[2]!;
+            this.timeRanges.set(ranges);
+            this.selectedRange.set(nextSelected);
+        });
+
         effect(() => {
             const site = this.siteService.activeSite();
             if (site) {
@@ -220,6 +246,11 @@ export class Funnels {
         this.activeFunnelFilters.set([...active, filter]);
     }
 
+    protected onFunnelFilterSelect(filter: { id: string; name: string } | null): void {
+        this.addFunnelFilter(filter);
+        this.funnelFilterForm.funnelFilter().control().setValue(null, { emitEvent: false });
+    }
+
     protected removeFunnelFilter(id: string) {
         this.activeFunnelFilters.update((list) => list.filter((item) => item.id !== id));
     }
@@ -268,16 +299,26 @@ export class Funnels {
     private filterLabel(filter: MetricFilter): string {
         switch (filter.type) {
             case 'path':
-                return `Page: ${filter.value}`;
+                return this.transloco.translate('common.filters.page', { value: filter.value });
             case 'referrer':
-                return `Source: ${filter.value}`;
+                return this.transloco.translate('common.filters.source', { value: filter.value });
             case 'device':
-                return `Device: ${filter.value}`;
+                return this.transloco.translate('common.filters.device', { value: filter.value });
             case 'country':
-                return `Country: ${filter.value}`;
+                return this.transloco.translate('common.filters.country', { value: filter.value });
             default:
                 return `${filter.type}: ${filter.value}`;
         }
+    }
+
+    private buildTimeRanges(): Array<{ label: string; value: string }> {
+        return [
+            { label: this.transloco.translate('common.timeRanges.last24Hours'), value: '24h' },
+            { label: this.transloco.translate('common.timeRanges.last7Days'), value: '7d' },
+            { label: this.transloco.translate('common.timeRanges.last30Days'), value: '30d' },
+            { label: this.transloco.translate('common.timeRanges.lastYear'), value: '1y' },
+            { label: this.transloco.translate('common.timeRanges.customRange'), value: 'custom' }
+        ];
     }
 
     private loadFunnelSeries(siteId: string, from: string, to: string, funnelIds: string[]) {
@@ -329,7 +370,7 @@ export class Funnels {
         const start = new Date();
 
         if (range.value === 'custom') {
-            const d = this.customRangeDates();
+            const d = this.funnelFilterForm.customRangeDates().value();
             if (d && d.length === 2 && d[0] && d[1]) {
                 return { from: d[0].toISOString(), to: d[1].toISOString() };
             }

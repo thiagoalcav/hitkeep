@@ -1,24 +1,24 @@
 @if (!isShareMode()) {
-    <p-dialog header="Share Dashboard" [(visible)]="showShareDialog" [modal]="true" [style]="{ width: '520px', maxWidth: '92vw' }" [draggable]="false" [resizable]="false" (onHide)="resetShareDialog()">
+    <p-dialog [header]="'share.dialog.title' | transloco" [(visible)]="showShareDialog" [modal]="true" [style]="{ width: '520px', maxWidth: '92vw' }" [draggable]="false" [resizable]="false" (onHide)="resetShareDialog()">
         <div class="flex flex-col gap-4">
-            <p class="text-sm text-[var(--p-text-muted-color)]">Anyone with this link can view the dashboard in read-only mode.</p>
+            <p class="text-sm text-[var(--p-text-muted-color)]">{{ 'share.dialog.description' | transloco }}</p>
             @if (shareError()) {
-                <div class="text-sm text-red-600">{{ shareError() }}</div>
+                <div class="text-sm text-red-600">{{ shareError() | transloco }}</div>
             }
             @if (!shareLinkUrl()) {
-                <p-button label="Generate Link" icon="pi pi-link" (onClick)="generateShareLink()" [loading]="shareLoading()" [disabled]="!siteService.activeSite()" styleClass="p-button-sm" />
+                <p-button [label]="'share.dialog.generateAction' | transloco" icon="pi pi-link" (onClick)="generateShareLink()" [loading]="shareLoading()" [disabled]="!siteService.activeSite()" styleClass="p-button-sm" />
             } @else {
                 <div class="flex flex-col gap-2">
-                    <span class="text-xs font-medium text-[var(--p-text-muted-color)]">Share URL</span>
+                    <span class="text-xs font-medium text-[var(--p-text-muted-color)]">{{ 'share.dialog.shareUrlLabel' | transloco }}</span>
                     <div class="flex flex-col sm:flex-row gap-2">
                         <input pInputText readonly [value]="shareLinkUrl()" class="flex-1" />
-                        <p-button [label]="shareCopyLabel()" [icon]="shareCopyIcon()" (onClick)="copyShareLink()" styleClass="p-button-outlined p-button-sm" />
+                        <p-button [label]="shareCopyLabel() | transloco" [icon]="shareCopyIcon()" (onClick)="copyShareLink()" styleClass="p-button-outlined p-button-sm" />
                     </div>
                 </div>
             }
         </div>
         <ng-template pTemplate="footer">
-            <p-button label="Close" (onClick)="showShareDialog.set(false)" styleClass="p-button-text" />
+            <p-button [label]="'common.actions.close' | transloco" (onClick)="showShareDialog.set(false)" styleClass="p-button-text" />
         </ng-template>
     </p-dialog>
 }

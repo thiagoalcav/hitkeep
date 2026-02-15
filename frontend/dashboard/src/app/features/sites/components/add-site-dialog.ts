@@ -1,6 +1,8 @@
 import { Component, inject, model, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
+import { ReactiveFormsModule, FormControl, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -9,60 +11,60 @@ import { SiteService } from '@features/sites/services/site.service';
 @Component({
     selector: 'app-add-site-dialog',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, DialogModule, ButtonModule, InputTextModule, MessageModule],
+    imports: [CommonModule, ReactiveFormsModule, DialogModule, ButtonModule, InputTextModule, MessageModule, TranslocoPipe],
     template: `
-        <p-dialog header="Add Site" [(visible)]="visible" [modal]="true" [style]="{ width: '450px', maxWidth: '90vw' }" (onHide)="resetForm()">
-            <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex flex-col gap-6 pt-2">
+        <p-dialog [header]="'sites.addDialog.title' | transloco" [(visible)]="visible" [modal]="true" [style]="{ width: '450px', maxWidth: '90vw' }" (onHide)="resetForm()">
+            <form (submit)="onSubmit($event)" class="flex flex-col gap-6 pt-2" novalidate>
                 <!-- Instructions -->
                 <div class="bg-[var(--p-surface-50)] dark:bg-[var(--p-surface-800)] p-3 rounded-md border border-[var(--p-surface-border)] flex gap-3">
                     <i class="pi pi-info-circle text-[var(--p-primary-color)] mt-0.5"></i>
                     <div class="text-sm text-[var(--p-text-muted-color)] leading-relaxed">
-                        Enter your root or subdomain (e.g., <strong>example.com</strong>, <strong>blog.example.com</strong>).<br />
-                        We automatically track <strong>www</strong> with your apex domain.
+                        {{ 'sites.addDialog.instructionsLine1' | transloco: { apex: 'example.com', subdomain: 'blog.example.com' } }}<br />
+                        {{ 'sites.addDialog.instructionsLine2' | transloco: { www: 'www' } }}
                     </div>
                 </div>
 
                 <div class="flex flex-col gap-2">
-                    <label for="domain" class="font-semibold text-sm text-[var(--p-text-color)]">Domain Name</label>
-                    <input pInputText id="domain" formControlName="domain" placeholder="example.com" class="w-full" (blur)="sanitizeInput()" [class.ng-invalid]="isInvalid()" [class.ng-dirty]="form.get('domain')?.dirty" />
+                    <label for="domain" class="font-semibold text-sm text-[var(--p-text-color)]">{{ 'sites.addDialog.domainLabel' | transloco }}</label>
+                    <input pInputText id="domain" [formControl]="form.domain().control()" [placeholder]="'sites.addDialog.domainPlaceholder' | transloco" class="w-full" (blur)="sanitizeInput()" [class.ng-invalid]="isInvalid()" [class.ng-dirty]="form.domain().dirty()" />
 
                     <!-- Validation Messages -->
                     @if (isInvalid()) {
-                        @if (form.get('domain')?.hasError('required')) {
-                            <small class="text-red-500">Domain is required.</small>
+                        @if (form.domain().control().hasError('required')) {
+                            <small class="text-red-500">{{ 'sites.addDialog.errors.domainRequired' | transloco }}</small>
                         }
-                        @if (form.get('domain')?.hasError('pattern')) {
-                            <small class="text-red-500">Invalid domain format.</small>
+                        @if (form.domain().control().hasError('pattern')) {
+                            <small class="text-red-500">{{ 'sites.addDialog.errors.domainInvalid' | transloco }}</small>
                         }
-                        @if (form.get('domain')?.hasError('containsProtocol')) {
-                            <small class="text-red-500">Please remove http:// or https://</small>
+                        @if (form.domain().control().hasError('containsProtocol')) {
+                            <small class="text-red-500">{{ 'sites.addDialog.errors.removeProtocol' | transloco }}</small>
                         }
-                        @if (form.get('domain')?.hasError('containsWww')) {
-                            <small class="text-red-500">Please remove 'www.'. Enter the root domain only.</small>
+                        @if (form.domain().control().hasError('containsWww')) {
+                            <small class="text-red-500">{{ 'sites.addDialog.errors.removeWww' | transloco }}</small>
                         }
                     }
                     @if (createError()) {
-                        <small class="text-red-500">{{ createError() }}</small>
+                        <small class="text-red-500">{{ createError() | transloco }}</small>
                     }
                 </div>
             </form>
 
             <ng-template pTemplate="footer">
-                <p-button label="Cancel" (onClick)="visible.set(false)" styleClass="p-button-text" />
-                <p-button label="Add Site" (onClick)="onSubmit()" [loading]="isSubmitting()" [disabled]="form.invalid" />
+                <p-button [label]="'common.actions.cancel' | transloco" (onClick)="visible.set(false)" styleClass="p-button-text" />
+                <p-button [label]="'sites.addDialog.addAction' | transloco" (onClick)="onSubmit()" [loading]="isSubmitting()" [disabled]="isSubmitting() || form().invalid()" />
             </ng-template>
         </p-dialog>
     `
 })
 export class AddSiteDialog {
     visible = model<boolean>(false);
-    private fb = inject(FormBuilder);
     private siteService = inject(SiteService);
     protected isSubmitting = signal(false);
     protected createError = signal<string | null>(null);
-    protected form = this.fb.group({
-        domain: ['', [Validators.required, this.domainValidator]]
+    private readonly formModel = signal({
+        domain: new FormControl('', { nonNullable: true, validators: [Validators.required, this.domainValidator] })
     });
+    protected readonly form = compatForm(this.formModel);
     private domainValidator(control: AbstractControl): ValidationErrors | null {
         const value = control.value as string;
         if (!value) return null;
@@ -83,30 +85,30 @@ export class AddSiteDialog {
         return null;
     }
     sanitizeInput() {
-        let val = this.form.get('domain')?.value || '';
+        let val = this.form.domain().value();
         val = val.toLowerCase().trim();
 
         val = val.replace(/^https?:\/\//, '');
         val = val.replace(/\/$/, '');
 
-        this.form.get('domain')?.setValue(val);
+        this.form.domain().control().setValue(val);
     }
     protected isInvalid() {
-        return this.form.get('domain')?.invalid && (this.form.get('domain')?.dirty || this.form.get('domain')?.touched);
+        return this.form.domain().invalid() && (this.form.domain().dirty() || this.form.domain().touched());
     }
     resetForm() {
-        this.form.reset();
+        this.form.domain().control().reset('');
         this.createError.set(null);
         this.isSubmitting.set(false);
     }
-    onSubmit() {
-        if (this.form.invalid) {
-            this.form.markAllAsTouched();
+    onSubmit(event?: Event) {
+        event?.preventDefault();
+        if (this.form().invalid()) {
+            this.form.domain().markAsTouched();
             return;
         }
 
-        const domainControl = this.form.get('domain');
-        const domain = domainControl?.value ?? '';
+        const domain = this.form.domain().value();
         if (!domain) {
             this.isSubmitting.set(false);
             return;
@@ -119,7 +121,7 @@ export class AddSiteDialog {
                 this.visible.set(false);
             },
             error: () => {
-                this.createError.set('Failed to create site. Domain might already exist.');
+                this.createError.set('sites.addDialog.errors.createFailed');
                 this.isSubmitting.set(false);
             }
         });

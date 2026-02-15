@@ -1,6 +1,10 @@
-import { Component, inject, signal, effect, computed } from '@angular/core';
+import { Component, inject, signal, effect, computed, untracked } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 
-import { FormsModule } from '@angular/forms';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoLocaleService } from '@jsverse/transloco-locale';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { SelectModule } from 'primeng/select';
@@ -36,7 +40,7 @@ interface MetricFilter {
 @Component({
     selector: 'app-goals',
     standalone: true,
-    imports: [FormsModule, ButtonModule, CardModule, SelectModule, DatePickerModule, DialogModule, PageHeader, PageBreadcrumb, RangeToolbar, SeriesChart, KpiCard, MetricList, GoalList, GoalManager],
+    imports: [ReactiveFormsModule, ButtonModule, CardModule, SelectModule, DatePickerModule, DialogModule, PageHeader, PageBreadcrumb, RangeToolbar, SeriesChart, KpiCard, MetricList, GoalList, GoalManager, TranslocoPipe],
     templateUrl: './goals.html',
     styleUrl: './goals.css'
 })
@@ -44,21 +48,29 @@ export class Goals {
     protected siteService = inject(SiteService);
     protected statsService = inject(StatsService);
     private analyticsService = inject(AnalyticsService);
+    private localeService = inject(TranslocoLocaleService);
+    private transloco = inject(TranslocoService);
+    private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
-    protected timeRanges = [
-        { label: 'Last 24 Hours', value: '24h' },
-        { label: 'Last 7 Days', value: '7d' },
-        { label: 'Last 30 Days', value: '30d' },
-        { label: 'Last Year', value: '1y' },
-        { label: 'Custom Range', value: 'custom' }
-    ];
-    protected selectedRange = signal(this.timeRanges[2]);
+    protected timeRanges = signal([
+        { label: '', value: '24h' },
+        { label: '', value: '7d' },
+        { label: '', value: '30d' },
+        { label: '', value: '1y' },
+        { label: '', value: 'custom' }
+    ]);
+    protected selectedRange = signal({ label: '', value: '30d' });
     protected isCustomRangeVisible = signal(false);
-    protected customRangeDates = signal<Date[] | null>(null);
+    private readonly goalFilterFormModel = signal({
+        goalFilter: new FormControl<{ id: string; name: string } | null>(null),
+        customRangeDates: new FormControl<Date[] | null>(null)
+    });
+    protected readonly goalFilterForm = compatForm(this.goalFilterFormModel);
     protected isShortRange = computed(() => {
         if (this.selectedRange().value === '24h') return true;
-        if (this.selectedRange().value === 'custom' && this.customRangeDates()) {
-            const d = this.customRangeDates()!;
+        const customRangeDates = this.goalFilterForm.customRangeDates().value();
+        if (this.selectedRange().value === 'custom' && customRangeDates) {
+            const d = customRangeDates;
             if (d.length === 2 && d[0] && d[1]) {
                 const diff = d[1].getTime() - d[0].getTime();
                 return diff < 48 * 60 * 60 * 1000;
@@ -90,6 +102,7 @@ export class Goals {
         }))
     );
     protected readonly goalKpis = computed(() => {
+        this.activeLanguage();
         const activeIds = new Set(this.activeGoalFilters().map((filter) => filter.id));
         const goals = this.goals();
         const totalGoals = activeIds.size > 0 ? goals.filter((goal) => activeIds.has(goal.id)).length : goals.length;
@@ -101,52 +114,65 @@ export class Goals {
 
         return [
             {
-                label: 'Total Goals',
+                label: this.transloco.translate('goals.kpis.totalGoals'),
                 value: totalGoals,
                 loading: isLoading,
                 valueClass: 'text-2xl xl:text-3xl font-bold'
             },
             {
-                label: 'Conversions',
+                label: this.transloco.translate('goals.kpis.conversions'),
                 value: totalConversions,
                 loading: isLoading,
                 valueClass: 'text-2xl xl:text-3xl font-bold'
             },
             {
-                label: 'Conversion Rate',
-                value: `${conversionRate.toFixed(1)}%`,
+                label: this.transloco.translate('common.kpis.conversionRate'),
+                value: `${this.localeService.localizeNumber(conversionRate, 'decimal', undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
                 loading: isLoading,
                 valueClass: 'text-2xl xl:text-3xl font-bold'
             },
             {
-                label: 'Unique Sessions',
+                label: this.transloco.translate('dashboard.kpis.uniqueSessions'),
                 value: totalSessions,
                 loading: isLoading,
                 valueClass: 'text-2xl xl:text-3xl font-bold'
             }
         ];
     });
-    protected readonly goalSeriesConfig: SeriesDefinition[] = [
-        {
-            key: 'conversions',
-            label: 'Conversions',
-            color: '#6366f1',
-            gradientFrom: 'rgba(99, 102, 241, 0.5)',
-            gradientTo: 'rgba(99, 102, 241, 0.0)'
-        }
-    ];
+    protected readonly goalSeriesConfig = computed<SeriesDefinition[]>(() => {
+        this.activeLanguage();
+        return [
+            {
+                key: 'conversions',
+                label: this.transloco.translate('goals.kpis.conversions'),
+                color: '#6366f1',
+                gradientFrom: 'rgba(99, 102, 241, 0.5)',
+                gradientTo: 'rgba(99, 102, 241, 0.0)'
+            }
+        ];
+    });
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
+        this.activeLanguage();
         const site = this.siteService.activeSite();
         if (!site) {
-            return [{ label: 'Goals', isCurrent: true }];
+            return [{ label: this.transloco.translate('nav.goals'), isCurrent: true }];
         }
         return [
             { label: site.domain, favicon: site, routerLink: '/dashboard' },
-            { label: 'Goals', isCurrent: true }
+            { label: this.transloco.translate('nav.goals'), isCurrent: true }
         ];
     });
 
     constructor() {
+        effect(() => {
+            this.activeLanguage();
+            const ranges = this.buildTimeRanges();
+            const selectedValue = untracked(() => this.selectedRange().value);
+            const nextSelected = ranges.find((range) => range.value === selectedValue) ?? ranges[2]!;
+            this.timeRanges.set(ranges);
+            this.selectedRange.set(nextSelected);
+        });
+
         effect(() => {
             const site = this.siteService.activeSite();
             if (site) {
@@ -196,6 +222,11 @@ export class Goals {
         const active = this.activeGoalFilters();
         if (active.some((existing) => existing.id === filter.id)) return;
         this.activeGoalFilters.set([...active, filter]);
+    }
+
+    protected onGoalFilterSelect(filter: { id: string; name: string } | null): void {
+        this.addGoalFilter(filter);
+        this.goalFilterForm.goalFilter().control().setValue(null, { emitEvent: false });
     }
 
     protected removeGoalFilter(id: string) {
@@ -268,16 +299,26 @@ export class Goals {
     private filterLabel(filter: MetricFilter): string {
         switch (filter.type) {
             case 'path':
-                return `Page: ${filter.value}`;
+                return this.transloco.translate('common.filters.page', { value: filter.value });
             case 'referrer':
-                return `Source: ${filter.value}`;
+                return this.transloco.translate('common.filters.source', { value: filter.value });
             case 'device':
-                return `Device: ${filter.value}`;
+                return this.transloco.translate('common.filters.device', { value: filter.value });
             case 'country':
-                return `Country: ${filter.value}`;
+                return this.transloco.translate('common.filters.country', { value: filter.value });
             default:
                 return `${filter.type}: ${filter.value}`;
         }
+    }
+
+    private buildTimeRanges(): Array<{ label: string; value: string }> {
+        return [
+            { label: this.transloco.translate('common.timeRanges.last24Hours'), value: '24h' },
+            { label: this.transloco.translate('common.timeRanges.last7Days'), value: '7d' },
+            { label: this.transloco.translate('common.timeRanges.last30Days'), value: '30d' },
+            { label: this.transloco.translate('common.timeRanges.lastYear'), value: '1y' },
+            { label: this.transloco.translate('common.timeRanges.customRange'), value: 'custom' }
+        ];
     }
 
     private loadGoalSeries(siteId: string, from: string, to: string, goalIds: string[]) {
@@ -306,7 +347,7 @@ export class Goals {
         const start = new Date();
 
         if (range.value === 'custom') {
-            const d = this.customRangeDates();
+            const d = this.goalFilterForm.customRangeDates().value();
             if (d && d.length === 2 && d[0] && d[1]) {
                 return { from: d[0].toISOString(), to: d[1].toISOString() };
             }

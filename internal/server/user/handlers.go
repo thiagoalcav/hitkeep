@@ -32,6 +32,14 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleGetUserAvatar()))
+	mux.HandleFunc("GET /api/user/preferences", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetUserPreferences()))
+	mux.HandleFunc("PUT /api/user/preferences", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleUpdateUserPreferences()))
 }
 
 const gravatarBaseURL = "https://www.gravatar.com/avatar/"
@@ -118,6 +126,80 @@ func (h *handler) handleGetUserAvatar() http.HandlerFunc {
 		w.WriteHeader(resp.StatusCode)
 		if _, err := io.Copy(w, resp.Body); err != nil {
 			slog.Warn("Failed to proxy gravatar response", "error", err, "user_id", userID)
+		}
+	}
+}
+
+func (h *handler) handleGetUserPreferences() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := shared.GetUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		prefs, err := h.ctx.Store.GetUserPreferences(r.Context(), userID)
+		if err != nil {
+			slog.Error("Failed to load user preferences", "error", err, "user_id", userID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		if prefs == nil {
+			fallback := defaultPreferencesFromHeader(r.Header.Get("Accept-Language"))
+			prefs = &fallback
+		} else {
+			normalized := normalizeLocaleTag(prefs.DefaultLocale)
+			if normalized == "" {
+				fallback := defaultPreferencesFromHeader(r.Header.Get("Accept-Language"))
+				prefs = &fallback
+			} else {
+				prefs.DefaultLocale = normalized
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(prefs); err != nil {
+			slog.Error("Failed to encode user preferences", "error", err, "user_id", userID)
+		}
+	}
+}
+
+func (h *handler) handleUpdateUserPreferences() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := shared.GetUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		var payload api.UserPreferences
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&payload); err != nil {
+			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			return
+		}
+		if err := decoder.Decode(&struct{}{}); err != io.EOF {
+			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			return
+		}
+
+		prefs, err := validateUserPreferences(payload.DefaultLocale)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if err := h.ctx.Store.UpsertUserPreferences(r.Context(), userID, prefs); err != nil {
+			slog.Error("Failed to update user preferences", "error", err, "user_id", userID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(prefs); err != nil {
+			slog.Error("Failed to encode user preferences", "error", err, "user_id", userID)
 		}
 	}
 }

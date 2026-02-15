@@ -1,4 +1,5 @@
-import { Component, input, model } from '@angular/core';
+import { Component, input, model, inject } from '@angular/core';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
 import { Site } from '@models/analytics.types';
 
@@ -17,11 +18,13 @@ import { SiteTeamSettings } from '@features/sites/components/site-team-settings'
 @Component({
     selector: 'app-site-settings-drawer',
     standalone: true,
-    imports: [DrawerModule, TabsModule, ButtonModule, SiteGeneralSettings, SiteTrackingSettings, SiteDangerZone, SiteRetentionSettings, SiteTeamSettings],
+    imports: [DrawerModule, TabsModule, ButtonModule, SiteGeneralSettings, SiteTrackingSettings, SiteDangerZone, SiteRetentionSettings, SiteTeamSettings, TranslocoPipe],
     templateUrl: './site-settings-drawer.html',
     styleUrl: './site-settings-drawer.css'
 })
 export class SiteSettingsDrawer {
+    private transloco = inject(TranslocoService);
+
     visible = model<boolean>(false);
     site = input.required<Site | null>();
     activeTab = model<string>('0');
@@ -39,7 +42,7 @@ export class SiteSettingsDrawer {
 
     canDeactivate(): boolean {
         if (this.hasUnsavedChanges()) {
-            return confirm('You have unsaved changes. Discard them?');
+            return confirm(this.transloco.translate('sites.settings.unsavedChangesConfirm'));
         }
         return true;
     }

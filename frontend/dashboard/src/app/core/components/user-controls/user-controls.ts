@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { AvatarModule } from 'primeng/avatar';
 import { MenuModule } from 'primeng/menu';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { PreferencesService } from '@services/preferences.service';
 import { UserMenuService } from '@services/user-menu.service';
 import { UserProfileService } from '@services/user-profile.service';
@@ -8,7 +9,7 @@ import { UserProfileService } from '@services/user-profile.service';
 @Component({
     selector: 'app-user-controls',
     standalone: true,
-    imports: [AvatarModule, MenuModule],
+    imports: [AvatarModule, MenuModule, TranslocoPipe],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <div class="flex items-center gap-2">
@@ -16,7 +17,7 @@ import { UserProfileService } from '@services/user-profile.service';
                 type="button"
                 (click)="prefs.toggleTheme()"
                 class="cursor-pointer p-2 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 text-muted-color focus:outline-none focus:ring-2 focus:ring-primary-500"
-                [attr.aria-label]="prefs.isDarkMode() ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
+                [attr.aria-label]="prefs.isDarkMode() ? ('common.switchToLightModeAria' | transloco) : ('common.switchToDarkModeAria' | transloco)"
             >
                 <i class="pi" [class]="prefs.isDarkMode() ? 'pi-moon' : 'pi-sun'" aria-hidden="true"></i>
             </button>
@@ -27,7 +28,7 @@ import { UserProfileService } from '@services/user-profile.service';
                     (click)="profileMenu.toggle($event)"
                     class="cursor-pointer flex items-center gap-2 px-2 py-1.5 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     aria-haspopup="true"
-                    aria-label="Open user menu"
+                    [attr.aria-label]="'common.openUserMenuAria' | transloco"
                 >
                     @if (profile.avatarUrl()) {
                         <p-avatar [image]="profile.avatarUrl()" shape="circle" styleClass="bg-surface-200 dark:bg-surface-700" aria-hidden="true" />

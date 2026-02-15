@@ -1,7 +1,12 @@
-import { Component, effect, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule, DatePipe, DecimalPipe, NgOptimizedImage } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { Component, effect, inject, signal, computed, ChangeDetectionStrategy, untracked } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { CommonModule, NgOptimizedImage } from '@angular/common';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
 import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
+import { TranslocoService } from '@jsverse/transloco';
+import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoDatePipe, TranslocoLocaleService } from '@jsverse/transloco-locale';
 // PrimeNG
 import { CardModule } from 'primeng/card';
 import { TableModule, TableLazyLoadEvent } from 'primeng/table';
@@ -58,8 +63,9 @@ interface KpiCardData {
     standalone: true,
     imports: [
         CommonModule,
-        FormsModule,
-        DatePipe,
+        ReactiveFormsModule,
+        TranslocoPipe,
+        TranslocoDatePipe,
         CardModule,
         TableModule,
         SelectModule,
@@ -85,8 +91,7 @@ interface KpiCardData {
     ],
     templateUrl: './dashboard.html',
     styleUrl: './dashboard.css',
-    changeDetection: ChangeDetectionStrategy.OnPush,
-    providers: [DatePipe, DecimalPipe]
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Dashboard {
     protected siteService = inject(SiteService);
@@ -94,20 +99,24 @@ export class Dashboard {
     protected hitService = inject(HitService);
     private shareService = inject(ShareService);
     private siteSettings = inject(SiteSettingsService);
-    private datePipe = inject(DatePipe);
-    private decimalPipe = inject(DecimalPipe);
-    protected timeRanges = [
-        { label: 'Last 24 Hours', value: '24h' },
-        { label: 'Last 7 Days', value: '7d' },
-        { label: 'Last 30 Days', value: '30d' },
-        { label: 'Last Year', value: '1y' },
-        { label: 'Custom Range', value: 'custom' }
-    ];
-    protected selectedRange = signal(this.timeRanges[2]);
+    private localeService = inject(TranslocoLocaleService);
+    private transloco = inject(TranslocoService);
+    private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+    protected timeRanges = signal([
+        { label: '', value: '24h' },
+        { label: '', value: '7d' },
+        { label: '', value: '30d' },
+        { label: '', value: '1y' },
+        { label: '', value: 'custom' }
+    ]);
+    protected selectedRange = signal({ label: '', value: '30d' });
     private readonly autoRefreshIntervalMs = 30000;
     protected isShareMode = computed(() => this.shareService.isShareMode());
     protected isCustomRangeVisible = signal(false);
-    protected customRangeDates = signal<Date[] | null>(null);
+    private readonly rangeFormModel = signal({
+        customRangeDates: new FormControl<Date[] | null>(null)
+    });
+    protected readonly rangeForm = compatForm(this.rangeFormModel);
     protected showFunnelManager = signal(false);
     protected showFunnelViewer = signal(false);
     protected selectedFunnelId = signal<string | null>(null);
@@ -119,11 +128,14 @@ export class Dashboard {
     });
     protected activeFilters = signal<MetricFilter[]>([]);
     protected hasFilters = computed(() => this.activeFilters().length > 0);
-    protected readonly exportMenuItems: MenuItem[] = [
-        { label: 'CSV', icon: 'pi pi-file', command: () => this.exportFiltered('csv') },
-        { label: 'XLSX', icon: 'pi pi-file-excel', command: () => this.exportFiltered('xlsx') },
-        { label: 'Parquet', icon: 'pi pi-database', command: () => this.exportFiltered('parquet') }
-    ];
+    protected readonly exportMenuItems = computed<MenuItem[]>(() => {
+        this.activeLanguage();
+        return [
+            { label: this.transloco.translate('common.exportFormats.csv'), icon: 'pi pi-file', command: () => this.exportFiltered('csv') },
+            { label: this.transloco.translate('common.exportFormats.xlsx'), icon: 'pi pi-file-excel', command: () => this.exportFiltered('xlsx') },
+            { label: this.transloco.translate('common.exportFormats.parquet'), icon: 'pi pi-database', command: () => this.exportFiltered('parquet') }
+        ];
+    });
     protected filterChips = computed(() =>
         this.activeFilters().map((filter) => ({
             ...filter,
@@ -149,46 +161,53 @@ export class Dashboard {
         return `/api/sites/${site.id}/hits/export?${params.toString()}`;
     });
     protected readonly kpiCards = computed<KpiCardData[]>(() => {
+        this.activeLanguage();
         const stats = this.statsService.stats();
         const loading = this.statsService.isLoading();
         const baseClass = 'text-2xl xl:text-3xl font-bold';
         const liveVisitors = stats?.live_visitors ?? 0;
-        const bounceValue = this.decimalPipe.transform(stats?.bounce_rate ?? 0, '1.0-1') ?? '0';
-        const pagesValue = this.decimalPipe.transform(stats?.pages_per_session ?? 0, '1.1-2') ?? '0';
+        const bounceValue = this.localeService.localizeNumber(stats?.bounce_rate ?? 0, 'decimal', undefined, {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1
+        });
+        const pagesValue = this.localeService.localizeNumber(stats?.pages_per_session ?? 0, 'decimal', undefined, {
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 2
+        });
 
         return [
             {
-                label: 'Live Visitors',
+                label: this.transloco.translate('dashboard.kpis.liveVisitors'),
                 value: liveVisitors,
                 loading,
                 valueClass: liveVisitors > 0 ? `${baseClass} text-green-600 dark:text-green-400 animate-pulse` : baseClass
             },
             {
-                label: 'Pageviews',
+                label: this.transloco.translate('dashboard.kpis.pageviews'),
                 value: stats?.total_pageviews ?? 0,
                 loading,
                 valueClass: baseClass
             },
             {
-                label: 'Unique Sessions',
+                label: this.transloco.translate('dashboard.kpis.uniqueSessions'),
                 value: stats?.unique_sessions ?? 0,
                 loading,
                 valueClass: baseClass
             },
             {
-                label: 'Bounce Rate',
+                label: this.transloco.translate('dashboard.kpis.bounceRate'),
                 value: `${bounceValue}%`,
                 loading,
                 valueClass: baseClass
             },
             {
-                label: 'Avg. Duration',
+                label: this.transloco.translate('dashboard.kpis.avgDuration'),
                 value: this.formatDuration(stats?.avg_session_duration || 0),
                 loading,
                 valueClass: baseClass
             },
             {
-                label: 'Pages / Session',
+                label: this.transloco.translate('dashboard.kpis.pagesPerSession'),
                 value: pagesValue,
                 loading,
                 valueClass: baseClass
@@ -203,9 +222,10 @@ export class Dashboard {
         this.siteSettings.open('1');
     }
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
+        this.activeLanguage();
         const site = this.siteService.activeSite();
         if (!site) {
-            return [{ label: 'Overview', isCurrent: true }];
+            return [{ label: this.transloco.translate('dashboard.breadcrumbOverview'), isCurrent: true }];
         }
         return [{ label: site.domain, favicon: site, isCurrent: true }];
     });
@@ -215,8 +235,9 @@ export class Dashboard {
     private lastTableEvent: TableLazyLoadEvent | null = null;
     protected isShortRange = computed(() => {
         if (this.selectedRange().value === '24h') return true;
-        if (this.selectedRange().value === 'custom' && this.customRangeDates()) {
-            const d = this.customRangeDates()!;
+        const customRangeDates = this.rangeForm.customRangeDates().value();
+        if (this.selectedRange().value === 'custom' && customRangeDates) {
+            const d = customRangeDates;
             if (d.length === 2 && d[0] && d[1]) {
                 const diff = d[1].getTime() - d[0].getTime();
                 return diff < 48 * 60 * 60 * 1000;
@@ -225,22 +246,32 @@ export class Dashboard {
         return false;
     });
     protected chartTitle = computed(() => {
+        this.activeLanguage();
         const range = this.selectedRange();
 
         if (range.value !== 'custom') {
-            return `Traffic: ${range.label}`;
+            return this.transloco.translate('dashboard.chartTitleWithRange', { range: range.label });
         }
 
-        const dates = this.customRangeDates();
+        const dates = this.rangeForm.customRangeDates().value();
         if (dates && dates.length === 2 && dates[0] && dates[1]) {
-            const start = this.datePipe.transform(dates[0], 'MMM d');
-            const end = this.datePipe.transform(dates[1], 'MMM d, y');
-            return `Traffic: ${start} - ${end}`;
+            const start = this.localeService.localizeDate(dates[0], undefined, { month: 'short', day: 'numeric' });
+            const end = this.localeService.localizeDate(dates[1], undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+            return this.transloco.translate('dashboard.chartTitleCustomRange', { start, end });
         }
 
-        return 'Traffic Overview';
+        return this.transloco.translate('dashboard.chartTitleOverview');
     });
     constructor() {
+        effect(() => {
+            this.activeLanguage();
+            const ranges = this.buildTimeRanges();
+            const selectedValue = untracked(() => this.selectedRange().value);
+            const nextSelected = ranges.find((range) => range.value === selectedValue) ?? ranges[2]!;
+            this.timeRanges.set(ranges);
+            this.selectedRange.set(nextSelected);
+        });
+
         this.searchSubject.pipe(debounceTime(400), distinctUntilChanged()).subscribe((q) => {
             this.searchQuery.set(q);
             this.refreshHits();
@@ -322,7 +353,7 @@ export class Dashboard {
         const start = new Date();
 
         if (range.value === 'custom') {
-            const d = this.customRangeDates();
+            const d = this.rangeForm.customRangeDates().value();
             if (d && d.length === 2 && d[0] && d[1]) {
                 return { from: d[0].toISOString(), to: d[1].toISOString() };
             }
@@ -347,10 +378,13 @@ export class Dashboard {
     }
 
     protected formatDuration(seconds: number): string {
-        if (!seconds) return '0s';
+        if (!seconds) return this.transloco.translate('common.durationSeconds', { seconds: 0 });
         const m = Math.floor(seconds / 60);
         const s = Math.floor(seconds % 60);
-        return m > 0 ? `${m}m ${s}s` : `${s}s`;
+        if (m > 0) {
+            return this.transloco.translate('common.durationMinutesSeconds', { minutes: m, seconds: s });
+        }
+        return this.transloco.translate('common.durationSeconds', { seconds: s });
     }
 
     protected openFunnelViewer(funnel: Funnel) {
@@ -390,16 +424,26 @@ export class Dashboard {
     private filterLabel(filter: MetricFilter): string {
         switch (filter.type) {
             case 'path':
-                return `Page: ${filter.value}`;
+                return this.transloco.translate('common.filters.page', { value: filter.value });
             case 'referrer':
-                return `Source: ${filter.value}`;
+                return this.transloco.translate('common.filters.source', { value: filter.value });
             case 'device':
-                return `Device: ${filter.value}`;
+                return this.transloco.translate('common.filters.device', { value: filter.value });
             case 'country':
-                return `Country: ${filter.value}`;
+                return this.transloco.translate('common.filters.country', { value: filter.value });
             default:
                 return `${filter.type}: ${filter.value}`;
         }
+    }
+
+    private buildTimeRanges(): Array<{ label: string; value: string }> {
+        return [
+            { label: this.transloco.translate('common.timeRanges.last24Hours'), value: '24h' },
+            { label: this.transloco.translate('common.timeRanges.last7Days'), value: '7d' },
+            { label: this.transloco.translate('common.timeRanges.last30Days'), value: '30d' },
+            { label: this.transloco.translate('common.timeRanges.lastYear'), value: '1y' },
+            { label: this.transloco.translate('common.timeRanges.customRange'), value: 'custom' }
+        ];
     }
 
     protected exportFiltered(format: ExportFormat = 'csv') {

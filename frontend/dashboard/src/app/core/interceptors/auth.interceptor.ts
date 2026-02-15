@@ -1,9 +1,11 @@
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { HttpContextToken, HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { AuthService } from '@services/auth.service';
 import { ShareService } from '@services/share.service';
+
+export const SKIP_AUTH_REDIRECT = new HttpContextToken<boolean>(() => false);
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
     const router = inject(Router);
@@ -18,6 +20,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
     return next(authReq).pipe(
         catchError((error: HttpErrorResponse) => {
+            if (req.context.get(SKIP_AUTH_REDIRECT)) {
+                return throwError(() => error);
+            }
+
             // If we receive a 401 Unauthorized, it means the cookie is missing or invalid.
             if (error.status === 401 && !share.isShareMode()) {
                 auth.markUnauthenticated();

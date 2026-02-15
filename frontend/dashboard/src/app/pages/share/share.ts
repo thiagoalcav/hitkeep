@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { TranslocoPipe } from '@jsverse/transloco';
 import { Dashboard } from '@pages/dashboard/dashboard';
 import { ShareService } from '@services/share.service';
 import { SiteService } from '@features/sites/services/site.service';
@@ -8,7 +9,7 @@ import { SiteService } from '@features/sites/services/site.service';
 @Component({
     selector: 'app-share-dashboard',
     standalone: true,
-    imports: [CommonModule, Dashboard],
+    imports: [CommonModule, Dashboard, TranslocoPipe],
     templateUrl: './share.html',
     styleUrl: './share.css',
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -24,7 +25,7 @@ export class ShareDashboard {
     constructor() {
         const token = this.route.snapshot.paramMap.get('token');
         if (!token) {
-            this.error.set('Missing share token.');
+            this.error.set('share.page.missingToken');
             this.loading.set(false);
             return;
         }
@@ -36,7 +37,7 @@ export class ShareDashboard {
                 this.loading.set(false);
             },
             error: () => {
-                this.error.set('Share link is invalid or expired.');
+                this.error.set('share.page.invalidOrExpired');
                 this.loading.set(false);
             }
         });

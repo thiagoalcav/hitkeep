@@ -1,8 +1,8 @@
 <div class="flex flex-col w-full">
     <app-page-header>
         <div header-left>
-            <app-page-breadcrumb [items]="breadcrumbItems" />
-            <p class="text-sm text-[var(--p-text-muted-color)]">Manage your account security and preferences.</p>
+            <app-page-breadcrumb [items]="breadcrumbItems()" />
+            <p class="text-sm text-[var(--p-text-muted-color)]">{{ 'settings.user.subtitle' | transloco }}</p>
         </div>
     </app-page-header>
 
@@ -11,13 +11,13 @@
             <app-settings-security />
 
             <div class="p-6 border rounded-xl bg-surface-0 dark:bg-surface-900 border-surface-200 dark:border-surface-700">
-                <h2 class="text-lg font-semibold mb-4 text-[var(--p-text-color)]">Data Export</h2>
+                <h2 class="text-lg font-semibold mb-4 text-[var(--p-text-color)]">{{ 'settings.user.dataExportTitle' | transloco }}</h2>
                 <div class="flex items-center justify-between">
                     <div>
-                        <div class="font-medium text-[var(--p-text-color)]">Export All Data</div>
-                        <div class="text-sm text-[var(--p-text-muted-color)]">Download all your data across all sites as CSV, XLSX, or Parquet.</div>
+                        <div class="font-medium text-[var(--p-text-color)]">{{ 'settings.user.exportAllTitle' | transloco }}</div>
+                        <div class="text-sm text-[var(--p-text-muted-color)]">{{ 'settings.user.exportAllDescription' | transloco }}</div>
                     </div>
-                    <p-splitButton label="Download XLSX" icon="pi pi-download" [outlined]="true" [model]="exportMenuItems" (onClick)="downloadData('xlsx')" />
+                    <p-splitButton [label]="'common.actions.downloadXlsx' | transloco" icon="pi pi-download" [outlined]="true" [model]="exportMenuItems()" (onClick)="downloadData('xlsx')" />
                 </div>
             </div>
         </div>

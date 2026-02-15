@@ -1,5 +1,7 @@
-import { Component, input, computed, output, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule, DecimalPipe, NgOptimizedImage } from '@angular/common';
+import { Component, input, computed, output, ChangeDetectionStrategy, inject } from '@angular/core';
+import { CommonModule, NgOptimizedImage } from '@angular/common';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoDecimalPipe } from '@jsverse/transloco-locale';
 import { CardModule } from 'primeng/card';
 import { SkeletonModule } from 'primeng/skeleton';
 import { MetricStat } from '@models/analytics.types';
@@ -7,7 +9,7 @@ import { MetricStat } from '@models/analytics.types';
 @Component({
     selector: 'app-metric-list',
     standalone: true,
-    imports: [CommonModule, CardModule, SkeletonModule, DecimalPipe, NgOptimizedImage],
+    imports: [CommonModule, CardModule, SkeletonModule, TranslocoPipe, TranslocoDecimalPipe, NgOptimizedImage],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <p-card class="shadow-sm h-full border border-surface-200 dark:border-surface-700 surface-card">
@@ -26,7 +28,7 @@ import { MetricStat } from '@models/analytics.types';
                 <ul class="flex flex-col gap-3 m-0 p-0 list-none">
                     <li class="relative flex items-center justify-between text-sm text-muted-color">
                         <div class="absolute left-0 top-0 h-full w-full bg-[var(--p-surface-100)] dark:bg-[var(--p-surface-800)] rounded-r"></div>
-                        <span class="relative z-10 truncate font-medium px-2 py-1">Unspecified</span>
+                        <span class="relative z-10 truncate font-medium px-2 py-1">{{ 'common.unspecified' | transloco }}</span>
                         <span class="relative z-10 font-semibold px-2">0</span>
                     </li>
                 </ul>
@@ -56,7 +58,14 @@ import { MetricStat } from '@models/analytics.types';
                                     <span class="truncate font-medium text-[var(--p-text-color)]" [title]="titleForItem(item)">
                                         {{ displayLabel(item) }}
                                     </span>
-                                    <a class="shrink-0 text-muted-color hover:text-[var(--p-text-color)]" [href]="info.href" target="_blank" rel="noopener noreferrer" (click)="$event.stopPropagation()" aria-label="Open in new tab">
+                                    <a
+                                        class="shrink-0 text-muted-color hover:text-[var(--p-text-color)]"
+                                        [href]="info.href"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        (click)="$event.stopPropagation()"
+                                        [attr.aria-label]="'common.openInNewTabAria' | transloco"
+                                    >
                                         <i class="pi pi-external-link text-xs" aria-hidden="true"></i>
                                     </a>
                                 } @else {
@@ -64,7 +73,7 @@ import { MetricStat } from '@models/analytics.types';
                                 }
                             </div>
                             <span class="relative z-10 font-semibold text-[var(--p-text-color)] px-2">
-                                {{ item.value | number }}
+                                {{ item.value | translocoDecimal }}
                             </span>
                         </li>
                     }
@@ -74,6 +83,8 @@ import { MetricStat } from '@models/analytics.types';
     `
 })
 export class MetricList {
+    private transloco = inject(TranslocoService);
+
     title = input.required<string>();
     icon = input<string>('pi-list');
     data = input.required<MetricStat[]>();
@@ -155,7 +166,8 @@ export class MetricList {
         const code = value.trim().toUpperCase();
         if (!/^[A-Z]{2}$/.test(code)) return null;
         try {
-            const displayNames = new Intl.DisplayNames(['en'], { type: 'region' });
+            const language = this.transloco.getActiveLang();
+            const displayNames = new Intl.DisplayNames([language], { type: 'region' });
             return displayNames.of(code) ?? null;
         } catch {
             return null;

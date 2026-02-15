@@ -1,11 +1,15 @@
-import { Component, inject, input, signal, effect } from '@angular/core';
+import { Component, inject, input, signal, effect, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
 import { HttpClient } from '@angular/common/http';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
 import { InputTextModule } from 'primeng/inputtext';
+import { TranslocoDatePipe } from '@jsverse/transloco-locale';
 import { Site } from '@models/analytics.types';
 
 interface SiteMember {
@@ -19,30 +23,30 @@ interface SiteMember {
 @Component({
     selector: 'app-site-team-settings',
     standalone: true,
-    imports: [CommonModule, FormsModule, TableModule, ButtonModule, SelectModule, InputTextModule],
+    imports: [CommonModule, ReactiveFormsModule, TableModule, ButtonModule, SelectModule, InputTextModule, TranslocoPipe, TranslocoDatePipe],
     template: `
         <div class="flex flex-col gap-4">
             <div class="flex items-end gap-2">
                 <div class="flex-1">
-                    <label for="member-email" class="text-sm font-medium mb-2 block">Email Address</label>
-                    <input id="member-email" pInputText [(ngModel)]="newMemberEmail" placeholder="user@example.com" class="w-full" />
+                    <label for="member-email" class="text-sm font-medium mb-2 block">{{ 'common.emailAddress' | transloco }}</label>
+                    <input id="member-email" pInputText [formControl]="memberForm.email().control()" [placeholder]="'sites.team.emailPlaceholder' | transloco" class="w-full" />
                 </div>
 
                 <div class="w-40">
-                    <label for="member-role" class="text-sm font-medium mb-2 block">Role</label>
-                    <p-select inputId="member-role" [options]="roleOptions" [(ngModel)]="newMemberRole" optionLabel="label" optionValue="value" class="w-full" />
+                    <label for="member-role" class="text-sm font-medium mb-2 block">{{ 'common.columns.role' | transloco }}</label>
+                    <p-select inputId="member-role" [options]="roleOptions()" [formControl]="memberForm.role().control()" optionLabel="label" optionValue="value" class="w-full" />
                 </div>
 
-                <p-button label="Add Member" icon="pi pi-plus" (onClick)="addMember()" [loading]="isAdding()" />
+                <p-button [label]="'sites.team.addMemberAction' | transloco" icon="pi pi-plus" (onClick)="addMember()" [loading]="isAdding()" [disabled]="isAdding() || memberForm().invalid()" />
             </div>
 
             <p-table [value]="members()" [loading]="isLoading()">
                 <ng-template pTemplate="header">
                     <tr>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Added</th>
-                        <th>Actions</th>
+                        <th>{{ 'common.columns.email' | transloco }}</th>
+                        <th>{{ 'common.columns.role' | transloco }}</th>
+                        <th>{{ 'common.columns.added' | transloco }}</th>
+                        <th>{{ 'common.columns.actions' | transloco }}</th>
                     </tr>
                 </ng-template>
 
@@ -54,7 +58,7 @@ interface SiteMember {
                                 {{ getRoleLabel(member.role) }}
                             </span>
                         </td>
-                        <td>{{ member.added_at | date: 'short' }}</td>
+                        <td>{{ member.added_at | translocoDate: { dateStyle: 'short', timeStyle: 'short' } }}</td>
                         <td>
                             <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="removeMember(member)" />
                         </td>
@@ -67,6 +71,8 @@ interface SiteMember {
 export class SiteTeamSettings {
     // Removed implements OnInit
     private http = inject(HttpClient);
+    private transloco = inject(TranslocoService);
+    private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
     site = input.required<Site | null>();
 
@@ -74,15 +80,21 @@ export class SiteTeamSettings {
     protected isLoading = signal(false);
     protected isAdding = signal(false);
 
-    protected newMemberEmail = '';
-    protected newMemberRole = 'viewer';
+    private readonly memberFormModel = signal({
+        email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
+        role: new FormControl('viewer', { nonNullable: true, validators: [Validators.required] })
+    });
+    protected readonly memberForm = compatForm(this.memberFormModel);
 
-    protected roleOptions = [
-        { label: 'Owner', value: 'owner' },
-        { label: 'Admin', value: 'admin' },
-        { label: 'Editor', value: 'editor' },
-        { label: 'Viewer', value: 'viewer' }
-    ];
+    protected roleOptions = computed(() => {
+        this.activeLanguage();
+        return [
+            { label: this.transloco.translate('roles.owner'), value: 'owner' },
+            { label: this.transloco.translate('roles.admin'), value: 'admin' },
+            { label: this.transloco.translate('roles.editor'), value: 'editor' },
+            { label: this.transloco.translate('roles.viewer'), value: 'viewer' }
+        ];
+    });
 
     constructor() {
         // Automatically reload members whenever the 'site' input signal changes
@@ -112,24 +124,26 @@ export class SiteTeamSettings {
 
     addMember() {
         const siteId = this.site()?.id;
-        if (!siteId || !this.newMemberEmail) return;
+        const email = this.memberForm.email().value().trim();
+        const role = this.memberForm.role().value();
+        if (!siteId || !email) return;
 
         this.isAdding.set(true);
         this.http
             .post(`/api/sites/${siteId}/members`, {
-                email: this.newMemberEmail,
-                role: this.newMemberRole
+                email,
+                role
             })
             .subscribe({
                 next: () => {
-                    this.newMemberEmail = '';
+                    this.memberForm.email().control().reset('');
                     this.isAdding.set(false);
                     this.loadMembers(siteId);
                 },
                 error: (err) => {
                     console.error('Failed to add member', err);
                     this.isAdding.set(false);
-                    alert('Failed to add member. Ensure user exists.');
+                    alert(this.transloco.translate('sites.team.errors.addFailed'));
                 }
             });
     }
@@ -138,19 +152,19 @@ export class SiteTeamSettings {
         const siteId = this.site()?.id;
         if (!siteId) return;
 
-        if (confirm(`Remove ${member.email} from site?`)) {
+        if (confirm(this.transloco.translate('sites.team.confirmRemove', { email: member.email }))) {
             this.http.delete(`/api/sites/${siteId}/members/${member.user_id}`).subscribe({
                 next: () => this.loadMembers(siteId),
                 error: (err) => {
                     console.error('Failed to remove member', err);
-                    alert('Failed to remove member: ' + (err.error || 'Unknown error'));
+                    alert(this.transloco.translate('sites.team.errors.removeFailed', { error: err.error || this.transloco.translate('common.unknownError') }));
                 }
             });
         }
     }
 
     getRoleLabel(role: string): string {
-        return this.roleOptions.find((r) => r.value === role)?.label || role;
+        return this.roleOptions().find((r) => r.value === role)?.label || role;
     }
 
     getRoleBadgeClass(role: string): string {

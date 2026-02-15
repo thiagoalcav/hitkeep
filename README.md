@@ -3,7 +3,7 @@
 > **Web Analytics in a single binary.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Version](https://img.shields.io/badge/Go-1.25.6-00ADD8?logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.26.0-00ADD8?logo=go)](https://go.dev/)
 [![Docker Image](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://github.com/pascalebeier/hitkeep/pkgs/container/hitkeep)
 [![Documentation](https://img.shields.io/badge/📖_Documentation-hitkeep.com-33d399)](https://hitkeep.com)
 
@@ -230,7 +230,7 @@ HitKeep bridges the gap between simple log analyzers (like GoAccess) and enterpr
 ## Development
 
 ### Prerequisites
-*   Go 1.25+
+*   Go 1.26+
 *   Node.js 22+
 *   Make
 

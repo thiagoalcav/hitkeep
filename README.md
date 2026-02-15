@@ -31,44 +31,26 @@ Visit **[hitkeep.com](https://hitkeep.com)** for the complete documentation, inc
 
 ## Features
 
-- **Zero External Dependencies:** No database server to provision. No Redis to manage. Just download and run.
-- **Embedded DuckDB:** Utilizes a high-performance, column-oriented SQL database optimized for analytical queries.
-- **High-Throughput Ingestion:** Uses an embedded, in-process NSQ instance to buffer high volumes of traffic efficiently.
-- **Privacy First:** Cookie-less tracking, respects Do Not Track (DNT), and fully self-hosted data sovereignty.
-- **Cluster Ready:** Architecture supports Leader/Follower replication using HashiCorp Memberlist for high availability (optional).
-- **Modern Dashboard:** Fast, responsive UI built with Angular and PrimeNG.
-- **Goals & Funnels:** Define conversion goals and multi-step funnels with timeseries breakdowns.
-- **Shareable Dashboards:** Create read-only share links for stakeholders.
-- **Team & Admin Controls:** Instance roles, site roles, and team member management.
-- **Retention & Takeout:** Per-site retention policies and exportable data archives.
-
-## Library State
-
-This is a heavy WIP, just past PoC and MVP - it is already being used in production but lacks vital features.
-
-### Roadmap
-
-- [x] endpoint rate limiting through nsq
-- [ ] Raw hit pruning
-- [x] better OLAP integration - no more Adhoc buckets
-- [x] Allow users to opt out of sendBeacon
-- [x] User management
-- [x] Settings management
-- [x] More Metrics - currently it only shows the last 30 days
-- [ ] Helm chart
-- [x] Data retention and archival with parquets
-- [x] Takeout - also with parquets to csv with duckdb
-- [x] Events integration
-- [x] Goals and funnels
+- **Single Binary Runtime:** No external database, queue, or cache to provision.
+- **Embedded DuckDB + NSQ:** Columnar analytics storage with in-process burst buffering.
+- **Privacy-First Tracking:** Cookie-less by default, bot filtering, DNT support, optional `sendBeacon` disable.
+- **Analytics Coverage:** Traffic overview, raw hits, events, goals, funnels, and UTM attribution fields.
+- **Security & Auth:** JWT sessions, remember-me tokens, password reset, TOTP MFA, and WebAuthn passkeys.
+- **RBAC & Team Management:** Instance roles and per-site roles with delegated permissions.
+- **API Clients:** Create scoped API tokens for automation and integrations.
+- **Share Links:** Read-only dashboard sharing for stakeholders.
+- **Data Lifecycle:** Per-site retention, scheduled archival to Parquet, and on-demand user/site takeout exports.
+- **Ops Endpoints:** Health/readiness probes and versioned OpenAPI endpoint.
+- **Cluster Support:** Optional leader/follower topology via memberlist gossip.
 
 ## Quick Start
 
 ### Binary
 
-Head over to [Releases](https://github.com/PascaleBeier/hitkeep/releases) and download the Binary for your system, for example:
+Head over to [Releases](https://github.com/PascaleBeier/hitkeep/releases) and download the binary for your system, for example:
 
 ```bash
-$ wget https://github.com/PascaleBeier/hitkeep/releases/download/v1.2.0/hitkeep-linux-arm64
+$ wget https://github.com/PascaleBeier/hitkeep/releases/latest/download/hitkeep-linux-arm64
 $ chmod +x hitkeep-linux-arm64
 ```
 
@@ -152,19 +134,47 @@ To use fetch over navigator.sendBeacon:
 ></script>
 ```
 
+### Custom events
+
+Emit custom events from your app:
+
+```html
+<script>
+  window.hk = window.hk || {};
+  window.hk.event?.("signup", { plan: "pro", source: "landing-page" });
+</script>
+```
+
 ## Configuration
 
 HitKeep is configured via command-line flags or environment variables. Flags take precedence.
 
+### Most Relevant Production Settings
+
+| Flag               | Environment Variable      | Why it matters most in production |
+| :----------------- | :------------------------ | :-------------------------------- |
+| `-public-url`      | `HITKEEP_PUBLIC_URL`      | Used for JWT issuer/audience and CORS behavior. |
+| `-jwt-secret`      | `HITKEEP_JWT_SECRET`      | Signs auth tokens; must be stable and secret across restarts. |
+| `-db`              | `HITKEEP_DB_PATH`         | Controls where `hitkeep.db` is stored/persisted. |
+| `-archive-path`    | `HITKEEP_ARCHIVE_PATH`    | Stores takeout and retention archives. |
+| `-trusted-proxies` | `HITKEEP_TRUSTED_PROXIES` | Controls whether forwarded headers are trusted for real IP and GeoIP. |
+| `-retention-days`  | `HITKEEP_DATA_RETENTION_DAYS` | Default retention policy for new sites. |
+
+### Notes on Recent/Important Defaults
+
+- `-trusted-proxies` now defaults to `*` (trust-all CIDRs). Set this explicitly in production to your reverse proxy/load balancer CIDRs.
+- `-jwt-secret` is auto-generated if omitted. That is fine for local dev but will invalidate sessions on restart unless you persist a fixed secret.
+
 ### General Settings
 
-| Flag          | Environment Variable | Default                 | Description                                                                  |
-| :------------ | :------------------- | :---------------------- | :--------------------------------------------------------------------------- |
-| `-public-url` | `HITKEEP_PUBLIC_URL` | `http://localhost:8080` | **Required.** The public URL of your instance. Used for JWT issuer and CORS. |
-| `-jwt-secret` | `HITKEEP_JWT_SECRET` | _(random)_              | **Required.** Secret key for signing auth tokens.                            |
-| `-http`       | `HITKEEP_HTTP_ADDR`  | `:8080`                 | Address to bind the HTTP server to.                                          |
-| `-db`         | `HITKEEP_DB_PATH`    | `hitkeep.db`            | Path to the DuckDB database file.                                            |
-| `-log-level`  | `HITKEEP_LOG_LEVEL`  | `info`                  | Logging verbosity (`debug`, `info`, `warn`, `error`).                        |
+| Flag           | Environment Variable | Default                 | Description                                                                       |
+| :------------- | :------------------- | :---------------------- | :-------------------------------------------------------------------------------- |
+| `-public-url`  | `HITKEEP_PUBLIC_URL` | `http://localhost:8080` | Public URL for JWT issuer/audience and CORS. Set this to your real public domain. |
+| `-jwt-secret`  | `HITKEEP_JWT_SECRET` | _(random)_              | Secret key for signing auth tokens. Use a fixed strong value in production.       |
+| `-http`        | `HITKEEP_HTTP_ADDR`  | `:8080`                 | Address to bind the HTTP server to.                                               |
+| `-healthcheck` | -                    | `false`                 | Run one-shot healthcheck mode and exit (useful for container probes).             |
+| `-db`          | `HITKEEP_DB_PATH`    | `hitkeep.db`            | Path to the DuckDB database file.                                                 |
+| `-log-level`   | `HITKEEP_LOG_LEVEL`  | `info`                  | Logging verbosity (`debug`, `info`, `warn`, `error`).                             |
 
 ### Data Management
 
@@ -203,14 +213,15 @@ HitKeep is configured via command-line flags or environment variables. Flags tak
 Use this when HitKeep is behind a reverse proxy or load balancer and you want to trust forwarded headers.
 This affects both **rate limiting** and **GeoIP** resolution.
 
-| Flag               | Environment Variable      | Default | Description                                                                   |
-| :----------------- | :------------------------ | :------ | :---------------------------------------------------------------------------- |
-| `-trusted-proxies` | `HITKEEP_TRUSTED_PROXIES` | `""`    | Comma-separated list of trusted proxy CIDRs (e.g. `10.0.0.0/8,127.0.0.1/32`). |
+| Flag               | Environment Variable      | Default | Description                                                                               |
+| :----------------- | :------------------------ | :------ | :---------------------------------------------------------------------------------------- |
+| `-trusted-proxies` | `HITKEEP_TRUSTED_PROXIES` | `"*"`   | Comma-separated trusted proxy CIDRs or `*` (trust all). Used for client IP and GeoIP resolution. |
 
 Behavior:
 
-- If empty, HitKeep trusts proxy headers from any direct peer.
-- If set, HitKeep only trusts proxy headers when the direct connection IP is in the trusted list.
+- `*` trusts forwarding headers from any direct peer.
+- CIDR list trusts forwarding headers only when the direct connection IP is in the trusted list.
+- Empty disables trusted proxy behavior and uses the direct remote address.
 
 ### Clustering & Internals
 
@@ -242,7 +253,7 @@ HitKeep bridges the gap between simple log analyzers (like GoAccess) and enterpr
 ### Prerequisites
 
 - Go 1.26+
-- Node.js 22+
+- Node.js 24+
 - Make
 
 ### Build from source

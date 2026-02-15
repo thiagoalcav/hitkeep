@@ -9,6 +9,7 @@ import { TranslocoPipe } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
 import { PasswordModule } from 'primeng/password';
 import { MessageModule } from 'primeng/message';
+import { SettingsCard } from '@features/settings/components/settings-card';
 
 // Core
 import { AuthService } from '@services/auth.service';
@@ -16,21 +17,22 @@ import { AuthService } from '@services/auth.service';
 @Component({
     selector: 'app-settings-security',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, ButtonModule, PasswordModule, MessageModule, TranslocoPipe],
+    imports: [CommonModule, ReactiveFormsModule, ButtonModule, PasswordModule, MessageModule, SettingsCard, TranslocoPipe],
     styles: [
         `
             :host ::ng-deep .p-password input {
                 width: 100%;
             }
+
+            :host ::ng-deep .settings-action-btn {
+                min-width: 11rem;
+                justify-content: center;
+            }
         `
     ],
     template: `
-        <div class="bg-[var(--p-surface-card)] border border-surface-200 dark:border-surface-700 rounded-xl shadow-sm p-6">
-            <h2 class="text-lg font-semibold mb-4 flex items-center gap-2"><i class="pi pi-shield text-primary"></i> {{ 'settings.security.title' | transloco }}</h2>
-
-            <form (submit)="onSubmit($event)" class="flex flex-col gap-4" novalidate>
-                <h3 class="text-sm font-medium text-muted-color uppercase tracking-wider mb-2">{{ 'settings.security.changePasswordTitle' | transloco }}</h3>
-
+        <app-settings-card [title]="'settings.security.title' | transloco" [subtitle]="'settings.security.changePasswordTitle' | transloco" icon="pi pi-shield">
+            <form id="settings-security-form" settings-card-body (submit)="onSubmit($event)" class="flex flex-col gap-4" novalidate>
                 @if (error()) {
                     <p-message severity="error" styleClass="w-full">{{ error()! | transloco }}</p-message>
                 }
@@ -57,12 +59,14 @@ import { AuthService } from '@services/auth.service';
                     <p-password id="newPassword" [formControl]="form.newPassword().control()" [toggleMask]="true" [feedback]="true" class="w-full" [placeholder]="'common.passwordPlaceholder' | transloco"></p-password>
                     <small class="text-xs text-muted-color">{{ 'settings.security.minimumLengthHint' | transloco }}</small>
                 </div>
-
-                <div class="flex justify-end mt-4">
-                    <p-button [label]="'settings.security.updatePassword' | transloco" type="submit" [loading]="isLoading()" [disabled]="isLoading() || form().invalid()"></p-button>
-                </div>
             </form>
-        </div>
+
+            <div settings-card-footer class="flex flex-col items-end gap-1">
+                <button pButton type="submit" form="settings-security-form" icon="pi pi-check" [loading]="isLoading()" [disabled]="isLoading() || form().invalid()" class="settings-action-btn">
+                    {{ 'settings.security.updatePassword' | transloco }}
+                </button>
+            </div>
+        </app-settings-card>
     `
 })
 export class SettingsSecurity {

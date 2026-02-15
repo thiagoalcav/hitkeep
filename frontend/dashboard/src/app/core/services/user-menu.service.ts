@@ -28,12 +28,7 @@ export class UserMenuService {
             {
                 label: this.transloco.translate('userMenu.userSettings'),
                 icon: 'pi pi-user',
-                command: () => this.router.navigate(['/settings/user'])
-            },
-            {
-                label: this.transloco.translate('userMenu.preferences'),
-                icon: 'pi pi-cog',
-                command: () => this.router.navigate(['/settings/preferences'])
+                command: () => this.router.navigate(['/settings'])
             },
             { separator: true },
             {

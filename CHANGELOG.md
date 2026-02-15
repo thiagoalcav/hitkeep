@@ -2,46 +2,40 @@
 
 ## [1.6.0](https://github.com/PascaleBeier/hitkeep/compare/v1.5.4...v1.6.0) (2026-02-15)
 
-
 ### Features
 
-* **frontend:** Add trend lines ([e362c85](https://github.com/PascaleBeier/hitkeep/commit/e362c856941a7b72205380a8af9d780797ca20bc))
-* **i18n:** add transloco localization and user locale preferences ([bb65797](https://github.com/PascaleBeier/hitkeep/commit/bb65797dc7c9cf298d6e3f8219a6b200969a0754))
-
+- **frontend:** Add trend lines ([e362c85](https://github.com/PascaleBeier/hitkeep/commit/e362c856941a7b72205380a8af9d780797ca20bc))
+- **i18n:** add transloco localization and user locale preferences ([bb65797](https://github.com/PascaleBeier/hitkeep/commit/bb65797dc7c9cf298d6e3f8219a6b200969a0754))
 
 ### Bug Fixes
 
-* **cluster:** route traffic and readiness to leader ([b14dac0](https://github.com/PascaleBeier/hitkeep/commit/b14dac085140294703daa96edcdac8abebdb0bb3))
-* **dev:** set default jwt secret for local backend ([ea6cc20](https://github.com/PascaleBeier/hitkeep/commit/ea6cc20fb133a7804a4457962b82d55d3b38a6a9))
+- **cluster:** route traffic and readiness to leader ([b14dac0](https://github.com/PascaleBeier/hitkeep/commit/b14dac085140294703daa96edcdac8abebdb0bb3))
+- **dev:** set default jwt secret for local backend ([ea6cc20](https://github.com/PascaleBeier/hitkeep/commit/ea6cc20fb133a7804a4457962b82d55d3b38a6a9))
 
 ## [1.5.4](https://github.com/PascaleBeier/hitkeep/compare/v1.5.3...v1.5.4) (2026-01-26)
 
-
 ### Miscellaneous Chores
 
-* release 1.5.4 ([6805e3c](https://github.com/PascaleBeier/hitkeep/commit/6805e3c7f5d783b6900ceee72afb0618530bde54))
-* release 1.5.4 ([0af3569](https://github.com/PascaleBeier/hitkeep/commit/0af3569443cecdaf012ad2e215fc614305fe5880))
+- release 1.5.4 ([6805e3c](https://github.com/PascaleBeier/hitkeep/commit/6805e3c7f5d783b6900ceee72afb0618530bde54))
+- release 1.5.4 ([0af3569](https://github.com/PascaleBeier/hitkeep/commit/0af3569443cecdaf012ad2e215fc614305fe5880))
 
 ## [1.5.3](https://github.com/PascaleBeier/hitkeep/compare/v1.5.2...v1.5.3) (2026-01-26)
 
-
 ### Miscellaneous Chores
 
-* release 1.5.3 ([4a40f71](https://github.com/PascaleBeier/hitkeep/commit/4a40f71235fdf0314dc6377569abd0f5247d3320))
+- release 1.5.3 ([4a40f71](https://github.com/PascaleBeier/hitkeep/commit/4a40f71235fdf0314dc6377569abd0f5247d3320))
 
 ## [1.5.2](https://github.com/PascaleBeier/hitkeep/compare/v1.5.1...v1.5.2) (2026-01-26)
 
-
 ### Miscellaneous Chores
 
-* release 1.5.2 ([569bc52](https://github.com/PascaleBeier/hitkeep/commit/569bc520d334f038cbb79004766737d2b9d18acf))
+- release 1.5.2 ([569bc52](https://github.com/PascaleBeier/hitkeep/commit/569bc520d334f038cbb79004766737d2b9d18acf))
 
 ## [1.5.1](https://github.com/PascaleBeier/hitkeep/compare/v1.5.0...v1.5.1) (2026-01-25)
 
-
 ### Bug Fixes
 
-* **frontend:** Wrong goal % denominator ([f3e7b6f](https://github.com/PascaleBeier/hitkeep/commit/f3e7b6f23fb6c42b80529a8ab8f6c091f28ffdfb))
+- **frontend:** Wrong goal % denominator ([f3e7b6f](https://github.com/PascaleBeier/hitkeep/commit/f3e7b6f23fb6c42b80529a8ab8f6c091f28ffdfb))
 
 ## [1.5.0](https://github.com/PascaleBeier/hitkeep/compare/v1.4.0...v1.5.0) (2026-01-24)
 

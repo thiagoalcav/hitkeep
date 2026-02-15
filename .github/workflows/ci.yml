@@ -28,7 +28,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.8
+          version: v2.9
       - name: Test API
         run: |
           go vet ./...

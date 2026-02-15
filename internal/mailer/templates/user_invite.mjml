@@ -3,12 +3,11 @@
   You've been invited!
 </mj-text>
 
-<mj-text>
-  Hello,
-</mj-text>
+<mj-text> Hello, </mj-text>
 
 <mj-text>
-  {{ .Inviter }} has invited you to join <strong>{{ .SiteName }}</strong> on HitKeep.
+  {{ .Inviter }} has invited you to join <strong>{{ .SiteName }}</strong> on
+  HitKeep.
 </mj-text>
 
 <mj-text>
@@ -20,6 +19,7 @@
 </mj-button>
 
 <mj-text font-size="13px" color="#64748b">
-  Or copy this link: <a href="{{ .Link }}" style="color:#33d399;">{{ .Link }}</a>
+  Or copy this link:
+  <a href="{{ .Link }}" style="color: #33d399">{{ .Link }}</a>
 </mj-text>
 {{ end }}

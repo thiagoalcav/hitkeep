@@ -19,28 +19,28 @@ Unlike other solutions that require you to manage a complex stack (PostgreSQL, R
 >
 > [**Join the Waitlist →**](https://hitkeep.com/cloud)
 
-##  Documentation
+## Documentation
 
 Visit **[hitkeep.com](https://hitkeep.com)** for the complete documentation, including:
 
-*   [Installation Guides (Docker, K8s, Systemd)](https://hitkeep.com/guides/installation/)
-*   [Configuration Reference](https://hitkeep.com/reference/configuration/)
-*   [REST API Reference](https://hitkeep.com/api/)
+- [Installation Guides (Docker, K8s, Systemd)](https://hitkeep.com/guides/installation/)
+- [Configuration Reference](https://hitkeep.com/reference/configuration/)
+- [REST API Reference](https://hitkeep.com/api/)
 
 ---
 
 ## Features
 
-*   **Zero External Dependencies:** No database server to provision. No Redis to manage. Just download and run.
-*   **Embedded DuckDB:** Utilizes a high-performance, column-oriented SQL database optimized for analytical queries.
-*   **High-Throughput Ingestion:** Uses an embedded, in-process NSQ instance to buffer high volumes of traffic efficiently.
-*   **Privacy First:** Cookie-less tracking, respects Do Not Track (DNT), and fully self-hosted data sovereignty.
-*   **Cluster Ready:** Architecture supports Leader/Follower replication using HashiCorp Memberlist for high availability (optional).
-*   **Modern Dashboard:** Fast, responsive UI built with Angular and PrimeNG.
-*   **Goals & Funnels:** Define conversion goals and multi-step funnels with timeseries breakdowns.
-*   **Shareable Dashboards:** Create read-only share links for stakeholders.
-*   **Team & Admin Controls:** Instance roles, site roles, and team member management.
-*   **Retention & Takeout:** Per-site retention policies and exportable data archives.
+- **Zero External Dependencies:** No database server to provision. No Redis to manage. Just download and run.
+- **Embedded DuckDB:** Utilizes a high-performance, column-oriented SQL database optimized for analytical queries.
+- **High-Throughput Ingestion:** Uses an embedded, in-process NSQ instance to buffer high volumes of traffic efficiently.
+- **Privacy First:** Cookie-less tracking, respects Do Not Track (DNT), and fully self-hosted data sovereignty.
+- **Cluster Ready:** Architecture supports Leader/Follower replication using HashiCorp Memberlist for high availability (optional).
+- **Modern Dashboard:** Fast, responsive UI built with Angular and PrimeNG.
+- **Goals & Funnels:** Define conversion goals and multi-step funnels with timeseries breakdowns.
+- **Shareable Dashboards:** Create read-only share links for stakeholders.
+- **Team & Admin Controls:** Instance roles, site roles, and team member management.
+- **Retention & Takeout:** Per-site retention policies and exportable data archives.
 
 ## Library State
 
@@ -61,7 +61,6 @@ This is a heavy WIP, just past PoC and MVP - it is already being used in product
 - [x] Events integration
 - [x] Goals and funnels
 
-
 ## Quick Start
 
 ### Binary
@@ -80,8 +79,8 @@ $ chmod +x hitkeep-linux-arm64
 ```bash
 # Set secret via ENV, config via flags
 $ export HITKEEP_JWT_SECRET="your-secure-random-string"
-$ ./hitkeep-linux-arm64 -public-url="https://analytics.example.org" 
-# to use your public ip 
+$ ./hitkeep-linux-arm64 -public-url="https://analytics.example.org"
+# to use your public ip
 $ ./hitkeep-linux-arm64 -public-url="http://1.2.3.4:8080"
 ```
 
@@ -113,6 +112,7 @@ volumes:
 ```
 
 2.  Run it:
+
     ```bash
     docker compose up -d
     ```
@@ -132,7 +132,11 @@ Once your instance is running and you have created a website in the dashboard, a
 To ignore DNT:
 
 ```html
-<script async src="https://your-hitkeep-instance.com/hk.js" data-collect-dnt="true"></script>
+<script
+  async
+  src="https://your-hitkeep-instance.com/hk.js"
+  data-collect-dnt="true"
+></script>
 ```
 
 ### fetch over sendBeacon
@@ -140,7 +144,12 @@ To ignore DNT:
 To use fetch over navigator.sendBeacon:
 
 ```html
-<script async src="https://your-hitkeep-instance.com/hk.js" data-collect-dnt="true" data-disable-beacon="true"></script>
+<script
+  async
+  src="https://your-hitkeep-instance.com/hk.js"
+  data-collect-dnt="true"
+  data-disable-beacon="true"
+></script>
 ```
 
 ## Configuration
@@ -150,24 +159,24 @@ HitKeep is configured via command-line flags or environment variables. Flags tak
 ### General Settings
 
 | Flag          | Environment Variable | Default                 | Description                                                                  |
-|:--------------|:---------------------|:------------------------|:-----------------------------------------------------------------------------|
+| :------------ | :------------------- | :---------------------- | :--------------------------------------------------------------------------- |
 | `-public-url` | `HITKEEP_PUBLIC_URL` | `http://localhost:8080` | **Required.** The public URL of your instance. Used for JWT issuer and CORS. |
-| `-jwt-secret` | `HITKEEP_JWT_SECRET` | *(random)*              | **Required.** Secret key for signing auth tokens.                            |
+| `-jwt-secret` | `HITKEEP_JWT_SECRET` | _(random)_              | **Required.** Secret key for signing auth tokens.                            |
 | `-http`       | `HITKEEP_HTTP_ADDR`  | `:8080`                 | Address to bind the HTTP server to.                                          |
 | `-db`         | `HITKEEP_DB_PATH`    | `hitkeep.db`            | Path to the DuckDB database file.                                            |
 | `-log-level`  | `HITKEEP_LOG_LEVEL`  | `info`                  | Logging verbosity (`debug`, `info`, `warn`, `error`).                        |
 
 ### Data Management
 
-| Flag             | Environment Variable          | Default        | Description                                                   |
-|:-----------------|:------------------------------|:---------------|:--------------------------------------------------------------|
-| `-archive-path`  | `HITKEEP_ARCHIVE_PATH`        | `archive`      | Directory for exports, rollups, and archival artifacts.       |
-| `-retention-days`| `HITKEEP_DATA_RETENTION_DAYS` | `365`          | Default data retention window (days) for newly created sites. |
+| Flag              | Environment Variable          | Default   | Description                                                   |
+| :---------------- | :---------------------------- | :-------- | :------------------------------------------------------------ |
+| `-archive-path`   | `HITKEEP_ARCHIVE_PATH`        | `archive` | Directory for exports, rollups, and archival artifacts.       |
+| `-retention-days` | `HITKEEP_DATA_RETENTION_DAYS` | `365`     | Default data retention window (days) for newly created sites. |
 
 ### Mailer (SMTP)
 
 | Flag                         | Environment Variable                | Default             | Description                                                     |
-|:-----------------------------|:------------------------------------|:--------------------|:----------------------------------------------------------------|
+| :--------------------------- | :---------------------------------- | :------------------ | :-------------------------------------------------------------- |
 | `-mail-driver`               | `HITKEEP_MAIL_DRIVER`               | `smtp`              | Mail driver to use (`smtp` or `log`).                           |
 | `-mail-host`                 | `HITKEEP_MAIL_HOST`                 |                     | SMTP Server Hostname (e.g., `smtp.postmarkapp.com`).            |
 | `-mail-port`                 | `HITKEEP_MAIL_PORT`                 | `587`               | SMTP Server Port.                                               |
@@ -181,7 +190,7 @@ HitKeep is configured via command-line flags or environment variables. Flags tak
 ### Rate Limiting
 
 | Flag            | Environment Variable        | Default | Description                                        |
-|:----------------|:----------------------------|:--------|:---------------------------------------------------|
+| :-------------- | :-------------------------- | :------ | :------------------------------------------------- |
 | `-ingest-rate`  | `HITKEEP_INGEST_RATE_LIMIT` | `20.0`  | Rate limit for `/ingest` (req/sec/ip).             |
 | `-ingest-burst` | `HITKEEP_INGEST_BURST`      | `40`    | Burst size for `/ingest`.                          |
 | `-api-rate`     | `HITKEEP_API_RATE_LIMIT`    | `10.0`  | Rate limit for general API endpoints (req/sec/ip). |
@@ -194,18 +203,19 @@ HitKeep is configured via command-line flags or environment variables. Flags tak
 Use this when HitKeep is behind a reverse proxy or load balancer and you want to trust forwarded headers.
 This affects both **rate limiting** and **GeoIP** resolution.
 
-| Flag               | Environment Variable        | Default | Description                                                                  |
-|:-------------------|:----------------------------|:--------|:-----------------------------------------------------------------------------|
-| `-trusted-proxies` | `HITKEEP_TRUSTED_PROXIES`   | `""`    | Comma-separated list of trusted proxy CIDRs (e.g. `10.0.0.0/8,127.0.0.1/32`). |
+| Flag               | Environment Variable      | Default | Description                                                                   |
+| :----------------- | :------------------------ | :------ | :---------------------------------------------------------------------------- |
+| `-trusted-proxies` | `HITKEEP_TRUSTED_PROXIES` | `""`    | Comma-separated list of trusted proxy CIDRs (e.g. `10.0.0.0/8,127.0.0.1/32`). |
 
 Behavior:
+
 - If empty, HitKeep trusts proxy headers from any direct peer.
 - If set, HitKeep only trusts proxy headers when the direct connection IP is in the trusted list.
 
 ### Clustering & Internals
 
 | Flag                | Environment Variable       | Default              | Description                                   |
-|:--------------------|:---------------------------|:---------------------|:----------------------------------------------|
+| :------------------ | :------------------------- | :------------------- | :-------------------------------------------- |
 | `-name`             | `HITKEEP_NODE_NAME`        | `hostname-timestamp` | Unique name for this node in the cluster.     |
 | `-bind`             | `HITKEEP_BIND_ADDR`        | `0.0.0.0:7946`       | Bind address for cluster gossip (Memberlist). |
 | `-join`             | `HITKEEP_JOIN_ADDR`        | `""`                 | Address of a peer node to join.               |
@@ -230,9 +240,10 @@ HitKeep bridges the gap between simple log analyzers (like GoAccess) and enterpr
 ## Development
 
 ### Prerequisites
-*   Go 1.26+
-*   Node.js 22+
-*   Make
+
+- Go 1.26+
+- Node.js 22+
+- Make
 
 ### Build from source
 

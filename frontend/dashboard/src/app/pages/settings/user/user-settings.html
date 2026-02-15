@@ -6,20 +6,88 @@
         </div>
     </app-page-header>
 
-    <div class="max-w-3xl mx-auto w-full">
-        <div class="flex flex-col gap-6">
+    <div class="settings-content max-w-3xl mx-auto w-full">
+        <div class="settings-grid">
+            <app-settings-card [title]="'preferences.language.heading' | transloco" [subtitle]="'preferences.language.description' | transloco" icon="pi pi-language">
+                <div settings-card-body class="flex flex-col gap-4">
+                    @if (loadError(); as loadErrorKey) {
+                        <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            {{ loadErrorKey | transloco }}
+                        </div>
+                    }
+
+                    <div class="grid gap-5">
+                        <div class="flex flex-col gap-2">
+                            <label for="default-locale" class="text-sm font-medium text-[var(--p-text-color)]">{{ "preferences.language.defaultLabel" | transloco }}</label>
+                            <p-select
+                                inputId="default-locale"
+                                [options]="languageOptions()"
+                                [formControl]="preferencesForm.defaultLocale().control()"
+                                (onChange)="onLocaleChange($event.value)"
+                                optionLabel="label"
+                                [placeholder]="'preferences.language.defaultPlaceholder' | transloco"
+                                class="w-full"
+                            >
+                                <ng-template #selectedItem let-selectedOption>
+                                    @if (selectedOption) {
+                                        <div class="flex items-center gap-2">
+                                            <img [src]="selectedOption.flagUrl" class="size-4 shrink-0 rounded-full" width="16" height="16" alt="" />
+                                            <span class="font-medium text-[var(--p-text-color)]">{{ selectedOption.label }}</span>
+                                            @if (selectedOption.direction === "rtl") {
+                                                <span class="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[var(--p-surface-200)] text-[var(--p-text-muted-color)]">
+                                                    {{ "preferences.language.rtlBadge" | transloco }}
+                                                </span>
+                                            }
+                                        </div>
+                                    }
+                                </ng-template>
+                                <ng-template #item let-option>
+                                    <div class="flex items-center gap-3">
+                                        <img [src]="option.flagUrl" class="size-4 shrink-0 rounded-full" width="16" height="16" alt="" />
+                                        <div class="flex flex-col">
+                                            <span class="font-medium text-[var(--p-text-color)]">{{ option.label }}</span>
+                                            <span class="text-xs text-[var(--p-text-muted-color)]">{{ option.value }}</span>
+                                        </div>
+                                        @if (option.direction === "rtl") {
+                                            <span class="ml-auto text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[var(--p-surface-200)] text-[var(--p-text-muted-color)]">
+                                                {{ "preferences.language.rtlBadge" | transloco }}
+                                            </span>
+                                        }
+                                    </div>
+                                </ng-template>
+                            </p-select>
+                            <p class="text-xs text-[var(--p-text-muted-color)]">{{ "preferences.language.defaultHint" | transloco }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div settings-card-footer>
+                    <div class="settings-card-action">
+                        <p-button [label]="'preferences.actions.saveChanges' | transloco" icon="pi pi-save" [loading]="isSaving()" [disabled]="!canSave()" styleClass="settings-action-btn" (onClick)="save()" />
+                        @if (saveState() === "saved") {
+                            <span class="settings-status text-emerald-600">{{ "preferences.status.saved" | transloco }}</span>
+                        }
+                        @if (saveState() === "error") {
+                            <span class="settings-status text-red-600">{{ "preferences.status.saveFailed" | transloco }}</span>
+                        }
+                    </div>
+                </div>
+            </app-settings-card>
+
             <app-settings-security />
 
-            <div class="p-6 border rounded-xl bg-surface-0 dark:bg-surface-900 border-surface-200 dark:border-surface-700">
-                <h2 class="text-lg font-semibold mb-4 text-[var(--p-text-color)]">{{ "settings.user.dataExportTitle" | transloco }}</h2>
-                <div class="flex items-center justify-between">
+            <app-settings-card [title]="'settings.user.dataExportTitle' | transloco" [subtitle]="'settings.user.exportAllDescription' | transloco" icon="pi pi-download">
+                <div settings-card-body class="flex flex-col gap-4">
                     <div>
                         <div class="font-medium text-[var(--p-text-color)]">{{ "settings.user.exportAllTitle" | transloco }}</div>
-                        <div class="text-sm text-[var(--p-text-muted-color)]">{{ "settings.user.exportAllDescription" | transloco }}</div>
                     </div>
-                    <p-splitButton [label]="'common.actions.downloadXlsx' | transloco" icon="pi pi-download" [outlined]="true" [model]="exportMenuItems()" (onClick)="downloadData('xlsx')" />
                 </div>
-            </div>
+                <div settings-card-footer>
+                    <div class="settings-card-action">
+                        <p-splitButton [label]="'common.actions.downloadXlsx' | transloco" icon="pi pi-download" [outlined]="true" [model]="exportMenuItems()" styleClass="settings-action-split" (onClick)="downloadData('xlsx')" />
+                    </div>
+                </div>
+            </app-settings-card>
         </div>
     </div>
 </div>

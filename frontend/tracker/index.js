@@ -1,16 +1,29 @@
 (() => {
   try {
-    const { document, location, navigator, screen, history, sessionStorage, crypto } = window;
+    const {
+      document,
+      location,
+      navigator,
+      screen,
+      history,
+      sessionStorage,
+      crypto,
+    } = window;
 
-    const scriptEl = document.currentScript || document.querySelector('script[src*="hk.js"]');
+    const scriptEl =
+      document.currentScript || document.querySelector('script[src*="hk.js"]');
     if (!scriptEl) return;
 
-    const collectDnt = scriptEl.getAttribute('data-collect-dnt') === 'true';
-    const disableBeacon = scriptEl.getAttribute('data-disable-beacon') === 'true';
+    const collectDnt = scriptEl.getAttribute("data-collect-dnt") === "true";
+    const disableBeacon =
+      scriptEl.getAttribute("data-disable-beacon") === "true";
 
-    const isBot = /bot|spider|crawl|slurp|ia_archiver/i.test(navigator.userAgent);
-    const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-    const dntEnabled = navigator.doNotTrack === '1';
+    const isBot = /bot|spider|crawl|slurp|ia_archiver/i.test(
+      navigator.userAgent,
+    );
+    const isLocal =
+      location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    const dntEnabled = navigator.doNotTrack === "1";
 
     if (isLocal || isBot || (dntEnabled && !collectDnt)) {
       window.hk = window.hk || {};
@@ -23,12 +36,15 @@
 
     const generateUUID = () => {
       if (crypto?.randomUUID) return crypto.randomUUID();
-      return '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, c =>
-        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+      return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) =>
+        (
+          c ^
+          (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
+        ).toString(16),
       );
     };
 
-    const SESSION_KEY = 'hk_session';
+    const SESSION_KEY = "hk_session";
     const SESSION_EXPIRY = 30 * 60 * 1000; // 30 minutes
 
     const getSessionId = () => {
@@ -38,7 +54,7 @@
       try {
         const stored = sessionStorage.getItem(SESSION_KEY);
         if (stored) {
-          const [id, lastActive] = stored.split('|');
+          const [id, lastActive] = stored.split("|");
           if (now - parseInt(lastActive, 10) < SESSION_EXPIRY) {
             sessionId = id;
           }
@@ -73,7 +89,10 @@
         referrer = `${location.origin}${lastPath}`;
       }
 
-      const isUnique = lastPath === currentPath && referrer && new URL(referrer).hostname !== initialHost;
+      const isUnique =
+        lastPath === currentPath &&
+        referrer &&
+        new URL(referrer).hostname !== initialHost;
 
       const payload = {
         path: currentPath,
@@ -90,19 +109,19 @@
       };
 
       const body = JSON.stringify(payload);
-      const headers = { 'Content-Type': 'application/json' };
+      const headers = { "Content-Type": "application/json" };
 
       // Use Beacon unless explicitly disabled via attribute
       if (navigator.sendBeacon && !disableBeacon) {
-        const blob = new Blob([body], { type: 'application/json' });
+        const blob = new Blob([body], { type: "application/json" });
         navigator.sendBeacon(endpoint, blob);
       } else {
         fetch(endpoint, {
-          method: 'POST',
+          method: "POST",
           body,
           headers,
           keepalive: true,
-          credentials: 'omit',
+          credentials: "omit",
         }).catch(() => {});
       }
 
@@ -117,16 +136,20 @@
       };
     };
 
-    history.pushState = patchHistory('pushState');
-    history.replaceState = patchHistory('replaceState');
+    history.pushState = patchHistory("pushState");
+    history.replaceState = patchHistory("replaceState");
 
-    window.addEventListener('popstate', sendPageView);
-    window.addEventListener('hashchange', sendPageView);
+    window.addEventListener("popstate", sendPageView);
+    window.addEventListener("hashchange", sendPageView);
 
-    if (document.visibilityState === 'prerender') {
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') sendPageView();
-      }, { once: true });
+    if (document.visibilityState === "prerender") {
+      document.addEventListener(
+        "visibilitychange",
+        () => {
+          if (document.visibilityState === "visible") sendPageView();
+        },
+        { once: true },
+      );
     } else {
       sendPageView();
     }
@@ -143,19 +166,19 @@
       const eventEndpoint = `${scriptUrl.origin}/ingest/event`;
 
       if (navigator.sendBeacon && !disableBeacon) {
-        const blob = new Blob([body], { type: 'application/json' });
+        const blob = new Blob([body], { type: "application/json" });
         navigator.sendBeacon(eventEndpoint, blob);
       } else {
         fetch(eventEndpoint, {
-          method: 'POST',
+          method: "POST",
           body,
-          headers: { 'Content-Type': 'application/json' },
+          headers: { "Content-Type": "application/json" },
           keepalive: true,
-          credentials: 'omit',
+          credentials: "omit",
         }).catch(() => {});
       }
     };
   } catch (e) {
-    if (console?.debug) console.debug('[HitKeep]', e);
+    if (console?.debug) console.debug("[HitKeep]", e);
   }
 })();

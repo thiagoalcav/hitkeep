@@ -40,6 +40,34 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleUpdateUserPreferences()))
+	mux.HandleFunc("GET /api/user/security", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetUserSecurityStatus()))
+	mux.HandleFunc("POST /api/user/security/totp/setup/start", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleStartTOTPSetup()))
+	mux.HandleFunc("POST /api/user/security/totp/setup/verify", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleVerifyTOTPSetup()))
+	mux.HandleFunc("POST /api/user/security/totp/disable", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleDisableTOTP()))
+	mux.HandleFunc("POST /api/user/security/passkeys/register/start", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleStartPasskeyRegistration()))
+	mux.HandleFunc("POST /api/user/security/passkeys/register/finish", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleFinishPasskeyRegistration()))
+	mux.HandleFunc("DELETE /api/user/security/passkeys/{id}", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleDeleteUserPasskey()))
 }
 
 const gravatarBaseURL = "https://www.gravatar.com/avatar/"

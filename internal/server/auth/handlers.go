@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
@@ -11,11 +12,15 @@ import (
 	"math"
 	"net/http"
 	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/argon2"
 
 	authcore "hitkeep/internal/auth"
+	"hitkeep/internal/database"
 	"hitkeep/internal/mailables"
+	"hitkeep/internal/security"
 	"hitkeep/internal/server/shared"
 )
 
@@ -43,6 +48,15 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 	mux.HandleFunc("POST /api/auth/accept-invite", ctx.Handler(shared.HandlerConfig{
 		RateLimiter: ctx.AuthLimiter,
 	}, h.handleAcceptInvite()))
+	mux.HandleFunc("POST /api/auth/passkey/login/start", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handlePasskeyLoginStart()))
+	mux.HandleFunc("POST /api/auth/passkey/login/finish", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handlePasskeyLoginFinish()))
+	mux.HandleFunc("POST /api/auth/mfa/totp/verify", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleMFATOTPVerify()))
 	mux.HandleFunc("POST /api/user/password", ctx.Handler(shared.HandlerConfig{
 		RequireAuth: true,
 		RateLimiter: ctx.AuthLimiter,
@@ -160,33 +174,101 @@ func (h *handler) handleLogin() http.HandlerFunc {
 			return
 		}
 
-		token, err := authcore.GenerateToken(h.ctx.Config.JWTSecret, h.ctx.Config.PublicURL, user.ID)
+		totpEnabled, err := h.ctx.Store.HasEnabledTOTP(r.Context(), user.ID)
 		if err != nil {
-			slog.Error("Failed to generate auth token", "error", err)
+			slog.Error("Failed to check user totp status during login", "error", err, "user_id", user.ID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-
-		isSecure := strings.HasPrefix(h.ctx.Config.PublicURL, "https://")
-		authcore.SetTokenCookie(w, token, isSecure)
-
-		if req.RememberMe {
-			rememberToken, err := h.ctx.Store.CreateRememberMeToken(r.Context(), user.ID)
+		if totpEnabled {
+			passkeys, err := h.ctx.Store.ListUserPasskeys(r.Context(), user.ID)
 			if err != nil {
-				slog.Error("Failed to create remember me token", "error", err)
-				// Don't fail login, just log error
-			} else {
-				authcore.SetRememberMeCookie(w, rememberToken, isSecure)
+				slog.Error("Failed to list user passkeys during login", "error", err, "user_id", user.ID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
 			}
+
+			challenge, err := security.GenerateRandomChallenge(32)
+			if err != nil {
+				slog.Error("Failed to generate mfa challenge for login", "error", err, "user_id", user.ID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			hasPasskey := len(passkeys) > 0
+
+			userID := user.ID
+			challengeID, err := h.ctx.Store.CreatePasskeyLoginChallenge(r.Context(), challenge, database.CreateLoginChallengeInput{
+				UserID:     &userID,
+				RememberMe: req.RememberMe,
+				Flow:       "mfa",
+			}, time.Now().UTC().Add(passkeyLoginChallengeTTL))
+			if err != nil {
+				slog.Error("Failed to create mfa login challenge", "error", err, "user_id", user.ID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
+			factors := []string{"totp"}
+			resp := loginResponse{
+				Status:         "mfa_required",
+				ChallengeToken: challengeID.String(),
+				Factors:        factors,
+			}
+
+			if hasPasskey {
+				factors = append(factors, "passkey")
+				resp.Factors = factors
+				resp.Passkey = h.newPasskeyLoginRequestOptions(r, challenge)
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			if err := json.NewEncoder(w).Encode(resp); err != nil {
+				slog.Error("Failed to encode mfa-required login response", "error", err, "user_id", user.ID)
+			}
+			return
+		}
+
+		if err := h.issueLoginSession(r.Context(), w, user.ID, req.RememberMe); err != nil {
+			slog.Error("Failed to issue login session", "error", err, "user_id", user.ID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
 		}
 
 		slog.Info("User logged in", "user_id", user.ID)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+		if err := json.NewEncoder(w).Encode(loginResponse{Status: "ok"}); err != nil {
 			slog.Error("Failed to encode response", "error", err)
 		}
 	}
+}
+
+type loginResponse struct {
+	Status         string                      `json:"status"`
+	ChallengeToken string                      `json:"challenge_token,omitempty"`
+	Factors        []string                    `json:"factors,omitempty"`
+	Passkey        *passkeyLoginRequestOptions `json:"passkey,omitempty"`
+}
+
+func (h *handler) issueLoginSession(ctx context.Context, w http.ResponseWriter, userID uuid.UUID, rememberMe bool) error {
+	token, err := authcore.GenerateToken(h.ctx.Config.JWTSecret, h.ctx.Config.PublicURL, userID)
+	if err != nil {
+		return fmt.Errorf("could not generate auth token: %w", err)
+	}
+
+	isSecure := strings.HasPrefix(h.ctx.Config.PublicURL, "https://")
+	authcore.SetTokenCookie(w, token, isSecure)
+
+	if rememberMe {
+		rememberToken, err := h.ctx.Store.CreateRememberMeToken(ctx, userID)
+		if err != nil {
+			slog.Error("Failed to create remember me token", "error", err, "user_id", userID)
+			return nil
+		}
+		authcore.SetRememberMeCookie(w, rememberToken, isSecure)
+	}
+	return nil
 }
 
 func HashPassword(password string) (string, error) {

@@ -93,6 +93,25 @@ type UserPreferences struct {
 	DefaultLocale string `json:"default_locale"`
 }
 
+type UserPasskey struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type UserSecurityStatus struct {
+	TOTPEnabled bool          `json:"totp_enabled"`
+	TOTPPending bool          `json:"totp_pending"`
+	Passkeys    []UserPasskey `json:"passkeys"`
+}
+
+type UserTOTPSetup struct {
+	Secret     string    `json:"secret"`
+	OTPAuthURL string    `json:"otpauth_url"`
+	ExpiresAt  time.Time `json:"expires_at"`
+}
+
 type AnalyticsParams struct {
 	SiteID    uuid.UUID
 	UserID    uuid.UUID

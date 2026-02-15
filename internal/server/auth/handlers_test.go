@@ -3,16 +3,25 @@ package auth
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
 	"hitkeep/internal/auth"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
+	"hitkeep/internal/security"
 	"hitkeep/internal/server/shared"
 )
 
@@ -237,4 +246,366 @@ func TestHandleLogout(t *testing.T) {
 	if validatedUser != uuid.Nil {
 		t.Fatalf("expected remember me token to be deleted")
 	}
+}
+
+func TestHandlePasskeyLogin(t *testing.T) {
+	h, store := setupAuthTestEnv(t)
+	defer store.Close()
+
+	hashed, err := HashPassword("password123")
+	if err != nil {
+		t.Fatalf("failed to hash password: %v", err)
+	}
+	userID, err := store.CreateUser(context.Background(), "user@example.com", hashed)
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("failed to generate test ecdsa key: %v", err)
+	}
+	publicKeyDER, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		t.Fatalf("failed to marshal test public key: %v", err)
+	}
+	publicKeyB64 := base64.RawURLEncoding.EncodeToString(publicKeyDER)
+
+	_, err = store.CreateUserPasskey(context.Background(), userID, "Test Passkey", "cred-login-1", publicKeyB64, nil)
+	if err != nil {
+		t.Fatalf("failed to create user passkey: %v", err)
+	}
+
+	startReq := httptest.NewRequest(http.MethodPost, "/api/auth/passkey/login/start", bytes.NewReader([]byte("{}")))
+	startW := httptest.NewRecorder()
+	h.handlePasskeyLoginStart().ServeHTTP(startW, startReq)
+	if startW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, startW.Code)
+	}
+
+	var startResp passkeyLoginStartResponse
+	if err := json.NewDecoder(startW.Body).Decode(&startResp); err != nil {
+		t.Fatalf("failed to decode passkey start response: %v", err)
+	}
+	if startResp.ChallengeToken == "" || startResp.PublicKey.Challenge == "" {
+		t.Fatalf("expected challenge token and challenge")
+	}
+
+	clientDataJSON, _ := json.Marshal(map[string]string{
+		"type":      "webauthn.get",
+		"challenge": startResp.PublicKey.Challenge,
+		"origin":    "http://localhost:8080",
+	})
+	clientDataHash := sha256.Sum256(clientDataJSON)
+
+	rpIDHash := sha256.Sum256([]byte("localhost"))
+	authData := make([]byte, 37)
+	copy(authData[:32], rpIDHash[:])
+	authData[32] = 0x01 // User present
+	binary.BigEndian.PutUint32(authData[33:37], 1)
+
+	signedPayload := make([]byte, 0, len(authData)+len(clientDataHash))
+	signedPayload = append(signedPayload, authData...)
+	signedPayload = append(signedPayload, clientDataHash[:]...)
+	digest := sha256.Sum256(signedPayload)
+	signature, err := ecdsa.SignASN1(rand.Reader, privateKey, digest[:])
+	if err != nil {
+		t.Fatalf("failed to create assertion signature: %v", err)
+	}
+
+	finishBody, _ := json.Marshal(map[string]any{
+		"challenge_token":    startResp.ChallengeToken,
+		"credential_id":      "cred-login-1",
+		"client_data_json":   base64.RawURLEncoding.EncodeToString(clientDataJSON),
+		"authenticator_data": base64.RawURLEncoding.EncodeToString(authData),
+		"signature":          base64.RawURLEncoding.EncodeToString(signature),
+		"remember_me":        true,
+	})
+	finishReq := httptest.NewRequest(http.MethodPost, "/api/auth/passkey/login/finish", bytes.NewReader(finishBody))
+	finishW := httptest.NewRecorder()
+	h.handlePasskeyLoginFinish().ServeHTTP(finishW, finishReq)
+	if finishW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, finishW.Code)
+	}
+
+	cookies := finishW.Header().Values("Set-Cookie")
+	foundAuth := false
+	foundRemember := false
+	for _, cookie := range cookies {
+		if bytes.Contains([]byte(cookie), []byte(auth.CookieName+"=")) {
+			foundAuth = true
+		}
+		if bytes.Contains([]byte(cookie), []byte(auth.RememberMeCookieName+"=")) {
+			foundRemember = true
+		}
+	}
+	if !foundAuth {
+		t.Fatalf("expected auth cookie to be set on passkey login")
+	}
+	if !foundRemember {
+		t.Fatalf("expected remember me cookie to be set on passkey login")
+	}
+}
+
+func TestHandleLoginMFARequiredWithTOTPOnly(t *testing.T) {
+	h, store := setupAuthTestEnv(t)
+	defer store.Close()
+
+	hashed, err := HashPassword("password123")
+	if err != nil {
+		t.Fatalf("failed to hash password: %v", err)
+	}
+	userID, err := store.CreateUser(context.Background(), "mfa-user@example.com", hashed)
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	totpSecret := "JBSWY3DPEHPK3PXP"
+	if err := store.EnableUserTOTP(context.Background(), userID, totpSecret); err != nil {
+		t.Fatalf("failed to enable user totp: %v", err)
+	}
+
+	body, _ := json.Marshal(map[string]any{
+		"email":    "mfa-user@example.com",
+		"password": "password123",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	h.handleLogin().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var resp loginResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode login response: %v", err)
+	}
+	if resp.Status != "mfa_required" {
+		t.Fatalf("expected mfa_required status, got %q", resp.Status)
+	}
+	if resp.ChallengeToken == "" {
+		t.Fatalf("expected challenge token when mfa is required")
+	}
+	if len(resp.Factors) != 1 || resp.Factors[0] != "totp" {
+		t.Fatalf("expected only totp factor, got %v", resp.Factors)
+	}
+	if resp.Passkey != nil {
+		t.Fatalf("expected no passkey options for totp-only user")
+	}
+
+	for _, cookie := range w.Header().Values("Set-Cookie") {
+		if bytes.Contains([]byte(cookie), []byte(auth.CookieName+"=")) {
+			t.Fatalf("did not expect auth cookie before mfa completion")
+		}
+	}
+}
+
+func TestHandleMFATOTPVerify(t *testing.T) {
+	h, store := setupAuthTestEnv(t)
+	defer store.Close()
+
+	hashed, err := HashPassword("password123")
+	if err != nil {
+		t.Fatalf("failed to hash password: %v", err)
+	}
+	userID, err := store.CreateUser(context.Background(), "mfa-verify@example.com", hashed)
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	totpSecret := "JBSWY3DPEHPK3PXP"
+	if err := store.EnableUserTOTP(context.Background(), userID, totpSecret); err != nil {
+		t.Fatalf("failed to enable user totp: %v", err)
+	}
+
+	loginBody, _ := json.Marshal(map[string]any{
+		"email":       "mfa-verify@example.com",
+		"password":    "password123",
+		"remember_me": true,
+	})
+	loginReq := httptest.NewRequest(http.MethodPost, "/api/login", bytes.NewReader(loginBody))
+	loginW := httptest.NewRecorder()
+	h.handleLogin().ServeHTTP(loginW, loginReq)
+
+	if loginW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, loginW.Code)
+	}
+
+	var loginResp loginResponse
+	if err := json.NewDecoder(loginW.Body).Decode(&loginResp); err != nil {
+		t.Fatalf("failed to decode login response: %v", err)
+	}
+	if loginResp.Status != "mfa_required" || loginResp.ChallengeToken == "" {
+		t.Fatalf("expected mfa_required response with challenge token, got %+v", loginResp)
+	}
+
+	code, err := security.GenerateCurrentTOTPCode(totpSecret, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("failed to generate totp code: %v", err)
+	}
+
+	verifyBody, _ := json.Marshal(map[string]any{
+		"challenge_token": loginResp.ChallengeToken,
+		"code":            code,
+	})
+	verifyReq := httptest.NewRequest(http.MethodPost, "/api/auth/mfa/totp/verify", bytes.NewReader(verifyBody))
+	verifyW := httptest.NewRecorder()
+	h.handleMFATOTPVerify().ServeHTTP(verifyW, verifyReq)
+
+	if verifyW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, verifyW.Code)
+	}
+
+	var verifyResp loginResponse
+	if err := json.NewDecoder(verifyW.Body).Decode(&verifyResp); err != nil {
+		t.Fatalf("failed to decode mfa verify response: %v", err)
+	}
+	if verifyResp.Status != "ok" {
+		t.Fatalf("expected ok status after mfa verification, got %q", verifyResp.Status)
+	}
+
+	cookies := verifyW.Header().Values("Set-Cookie")
+	foundAuth := false
+	foundRemember := false
+	for _, cookie := range cookies {
+		if bytes.Contains([]byte(cookie), []byte(auth.CookieName+"=")) {
+			foundAuth = true
+		}
+		if bytes.Contains([]byte(cookie), []byte(auth.RememberMeCookieName+"=")) {
+			foundRemember = true
+		}
+	}
+	if !foundAuth {
+		t.Fatalf("expected auth cookie after mfa totp verification")
+	}
+	if !foundRemember {
+		t.Fatalf("expected remember me cookie after mfa totp verification")
+	}
+}
+
+func TestHandleMFAPasskeyLoginFinish(t *testing.T) {
+	h, store := setupAuthTestEnv(t)
+	defer store.Close()
+
+	hashed, err := HashPassword("password123")
+	if err != nil {
+		t.Fatalf("failed to hash password: %v", err)
+	}
+	userID, err := store.CreateUser(context.Background(), "mfa-passkey@example.com", hashed)
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	totpSecret := "JBSWY3DPEHPK3PXP"
+	if err := store.EnableUserTOTP(context.Background(), userID, totpSecret); err != nil {
+		t.Fatalf("failed to enable user totp: %v", err)
+	}
+
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("failed to generate test ecdsa key: %v", err)
+	}
+	publicKeyDER, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		t.Fatalf("failed to marshal test public key: %v", err)
+	}
+	publicKeyB64 := base64.RawURLEncoding.EncodeToString(publicKeyDER)
+
+	_, err = store.CreateUserPasskey(context.Background(), userID, "MFA Passkey", "cred-mfa-1", publicKeyB64, nil)
+	if err != nil {
+		t.Fatalf("failed to create user passkey: %v", err)
+	}
+
+	loginBody, _ := json.Marshal(map[string]any{
+		"email":       "mfa-passkey@example.com",
+		"password":    "password123",
+		"remember_me": true,
+	})
+	loginReq := httptest.NewRequest(http.MethodPost, "/api/login", bytes.NewReader(loginBody))
+	loginW := httptest.NewRecorder()
+	h.handleLogin().ServeHTTP(loginW, loginReq)
+
+	if loginW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, loginW.Code)
+	}
+
+	var loginResp loginResponse
+	if err := json.NewDecoder(loginW.Body).Decode(&loginResp); err != nil {
+		t.Fatalf("failed to decode login response: %v", err)
+	}
+	if loginResp.Status != "mfa_required" || loginResp.ChallengeToken == "" {
+		t.Fatalf("expected mfa_required response with challenge token, got %+v", loginResp)
+	}
+	if !containsFactor(loginResp.Factors, "totp") || !containsFactor(loginResp.Factors, "passkey") {
+		t.Fatalf("expected both totp and passkey factors, got %v", loginResp.Factors)
+	}
+	if loginResp.Passkey == nil || loginResp.Passkey.Challenge == "" {
+		t.Fatalf("expected passkey request options in mfa response")
+	}
+
+	clientDataJSON, _ := json.Marshal(map[string]string{
+		"type":      "webauthn.get",
+		"challenge": loginResp.Passkey.Challenge,
+		"origin":    "http://localhost:8080",
+	})
+	clientDataHash := sha256.Sum256(clientDataJSON)
+
+	rpIDHash := sha256.Sum256([]byte("localhost"))
+	authData := make([]byte, 37)
+	copy(authData[:32], rpIDHash[:])
+	authData[32] = 0x01 // User present
+	binary.BigEndian.PutUint32(authData[33:37], 1)
+
+	signedPayload := make([]byte, 0, len(authData)+len(clientDataHash))
+	signedPayload = append(signedPayload, authData...)
+	signedPayload = append(signedPayload, clientDataHash[:]...)
+	digest := sha256.Sum256(signedPayload)
+	signature, err := ecdsa.SignASN1(rand.Reader, privateKey, digest[:])
+	if err != nil {
+		t.Fatalf("failed to create assertion signature: %v", err)
+	}
+
+	finishBody, _ := json.Marshal(map[string]any{
+		"challenge_token":    loginResp.ChallengeToken,
+		"credential_id":      "cred-mfa-1",
+		"client_data_json":   base64.RawURLEncoding.EncodeToString(clientDataJSON),
+		"authenticator_data": base64.RawURLEncoding.EncodeToString(authData),
+		"signature":          base64.RawURLEncoding.EncodeToString(signature),
+		// This should be ignored for MFA flow; remember-me comes from the challenge created on /api/login.
+		"remember_me": false,
+	})
+	finishReq := httptest.NewRequest(http.MethodPost, "/api/auth/passkey/login/finish", bytes.NewReader(finishBody))
+	finishW := httptest.NewRecorder()
+	h.handlePasskeyLoginFinish().ServeHTTP(finishW, finishReq)
+	if finishW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, finishW.Code)
+	}
+
+	cookies := finishW.Header().Values("Set-Cookie")
+	foundAuth := false
+	foundRemember := false
+	for _, cookie := range cookies {
+		if bytes.Contains([]byte(cookie), []byte(auth.CookieName+"=")) {
+			foundAuth = true
+		}
+		if bytes.Contains([]byte(cookie), []byte(auth.RememberMeCookieName+"=")) {
+			foundRemember = true
+		}
+	}
+	if !foundAuth {
+		t.Fatalf("expected auth cookie after mfa passkey verification")
+	}
+	if !foundRemember {
+		t.Fatalf("expected remember me cookie to follow login challenge in mfa flow")
+	}
+}
+
+func containsFactor(factors []string, factor string) bool {
+	for _, current := range factors {
+		if current == factor {
+			return true
+		}
+	}
+	return false
 }

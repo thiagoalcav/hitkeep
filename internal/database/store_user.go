@@ -192,6 +192,18 @@ func deleteUserRows(ctx context.Context, tx *sql.Tx, userID uuid.UUID) error {
 	if _, err := tx.ExecContext(ctx, "DELETE FROM remember_me_tokens WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete remember tokens: %w", err)
 	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM user_passkey_challenges WHERE user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not delete user passkey challenges: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM user_passkeys WHERE user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not delete user passkeys: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM user_totp_pending_setup WHERE user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not delete pending totp setup: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM user_totp_factors WHERE user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not delete user totp factors: %w", err)
+	}
 	if _, err := tx.ExecContext(ctx, "DELETE FROM instance_roles WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete instance role: %w", err)
 	}

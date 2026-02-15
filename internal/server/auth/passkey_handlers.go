@@ -18,10 +18,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"hitkeep/internal/database"
 	"hitkeep/internal/security"
-
-	"github.com/google/uuid"
 )
 
 const (

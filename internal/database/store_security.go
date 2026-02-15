@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -257,6 +258,9 @@ func (s *Store) GetPasskeyByCredentialID(ctx context.Context, credentialID strin
 	}
 	if signCount < 0 {
 		signCount = 0
+	}
+	if signCount > math.MaxUint32 {
+		return nil, fmt.Errorf("passkey sign count is out of range: %d", signCount)
 	}
 	row.SignCount = uint32(signCount)
 	return &row, nil

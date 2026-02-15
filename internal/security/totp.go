@@ -3,7 +3,7 @@ package security
 import (
 	"crypto/hmac"
 	"crypto/rand"
-	"crypto/sha1"
+	"crypto/sha1" // #nosec G505 -- RFC 6238 TOTP compatibility with standard authenticator apps.
 	"crypto/subtle"
 	"encoding/base32"
 	"encoding/base64"
@@ -80,13 +80,13 @@ func ValidateTOTPCodeWithWindow(secret string, code string, now time.Time, pastW
 		futureWindow = 0
 	}
 
-	counter := uint64(now.UTC().Unix() / totpPeriod)
+	counter := now.UTC().Unix() / totpPeriod
 	for delta := int64(-pastWindow); delta <= int64(futureWindow); delta++ {
-		windowCounter := int64(counter) + delta
+		windowCounter := counter + delta
 		if windowCounter < 0 {
 			continue
 		}
-		expected := generateHOTPCode(key, uint64(windowCounter))
+		expected := generateHOTPCode(key, windowCounter)
 		if subtle.ConstantTimeCompare([]byte(expected), []byte(normalizedCode)) == 1 {
 			return true
 		}
@@ -100,7 +100,10 @@ func GenerateCurrentTOTPCode(secret string, now time.Time) (string, error) {
 	if err != nil || len(key) == 0 {
 		return "", fmt.Errorf("invalid totp secret")
 	}
-	counter := uint64(now.UTC().Unix() / totpPeriod)
+	counter := now.UTC().Unix() / totpPeriod
+	if counter < 0 {
+		return "", fmt.Errorf("invalid time for totp generation")
+	}
 	return generateHOTPCode(key, counter), nil
 }
 
@@ -128,9 +131,9 @@ func normalizeTOTPCode(code string) string {
 	return code
 }
 
-func generateHOTPCode(key []byte, counter uint64) string {
+func generateHOTPCode(key []byte, counter int64) string {
 	var msg [8]byte
-	binary.BigEndian.PutUint64(msg[:], counter)
+	binary.BigEndian.PutUint64(msg[:], uint64(counter)) // #nosec G115 -- callers guarantee non-negative TOTP counters.
 
 	mac := hmac.New(sha1.New, key)
 	_, _ = mac.Write(msg[:])

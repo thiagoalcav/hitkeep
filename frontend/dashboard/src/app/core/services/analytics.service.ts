@@ -22,6 +22,11 @@ export interface Hit {
     viewport_width?: number;
     viewport_height?: number;
     language?: string;
+    utm_source?: string;
+    utm_medium?: string;
+    utm_campaign?: string;
+    utm_term?: string;
+    utm_content?: string;
     is_unique?: boolean;
 }
 
@@ -37,6 +42,7 @@ export interface ChartDataPoint {
 }
 
 export interface SiteStats {
+    live_visitors: number;
     total_pageviews: number;
     unique_sessions: number;
     bounce_rate: number;
@@ -47,6 +53,11 @@ export interface SiteStats {
     top_referrers: MetricStat[];
     top_devices: MetricStat[];
     top_countries: MetricStat[];
+    utm_campaign_hits: number;
+    utm_content_hits: number;
+    utm_medium_hits: number;
+    utm_source_hits: number;
+    utm_term_hits: number;
     goals: GoalStats[];
 }
 

@@ -21,6 +21,11 @@ type Hit struct {
 	ScreenHeight   *int      `json:"screen_height"`
 	Language       *string   `json:"language"`
 	CountryCode    *string   `json:"country_code"`
+	UTMSource      *string   `json:"utm_source"`
+	UTMMedium      *string   `json:"utm_medium"`
+	UTMCampaign    *string   `json:"utm_campaign"`
+	UTMTerm        *string   `json:"utm_term"`
+	UTMContent     *string   `json:"utm_content"`
 	IsUnique       *bool     `json:"is_unique"`
 }
 
@@ -133,6 +138,11 @@ type SiteStats struct {
 	TopReferrers       []MetricStat     `json:"top_referrers"`
 	TopDevices         []MetricStat     `json:"top_devices"`
 	TopCountries       []MetricStat     `json:"top_countries"`
+	UTMCampaignHits    int              `json:"utm_campaign_hits"`
+	UTMContentHits     int              `json:"utm_content_hits"`
+	UTMMediumHits      int              `json:"utm_medium_hits"`
+	UTMSourceHits      int              `json:"utm_source_hits"`
+	UTMTermHits        int              `json:"utm_term_hits"`
 	Goals              []GoalStats      `json:"goals"`
 }
 

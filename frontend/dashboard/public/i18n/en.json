@@ -7,9 +7,11 @@
         "dashboardAria": "Go to dashboard",
         "goalsAria": "Go to goals",
         "funnelsAria": "Go to funnels",
+        "utmAria": "Go to UTM dashboard",
         "dashboard": "Dashboard",
         "goals": "Goals",
-        "funnels": "Funnels"
+        "funnels": "Funnels",
+        "utm": "UTM"
     },
     "common": {
         "actions": {
@@ -211,6 +213,16 @@
             "droppedSuffix": "dropped",
             "retention": "retention",
             "entry": "Entry"
+        }
+    },
+    "utm": {
+        "noSiteDescription": "Select or create a site to view UTM metrics.",
+        "kpis": {
+            "campaign": "Campaign",
+            "content": "Content",
+            "medium": "Medium",
+            "source": "Source",
+            "term": "Term"
         }
     },
     "settings": {

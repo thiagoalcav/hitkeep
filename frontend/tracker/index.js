@@ -77,8 +77,16 @@
     const initialHost = location.hostname;
     let lastPath = location.pathname;
 
+    const readUtmValue = (params, key) => {
+      const value = params.get(key);
+      if (!value) return null;
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    };
+
     const sendPageView = () => {
       const currentPath = location.pathname;
+      const searchParams = new URLSearchParams(location.search);
 
       try {
         sessionStorage.setItem(SESSION_KEY, `${sessionId}|${Date.now()}`);
@@ -103,6 +111,11 @@
         sc_w: screen.width,
         sc_h: screen.height,
         lang: navigator.language,
+        u_src: readUtmValue(searchParams, "utm_source"),
+        u_med: readUtmValue(searchParams, "utm_medium"),
+        u_cmp: readUtmValue(searchParams, "utm_campaign"),
+        u_trm: readUtmValue(searchParams, "utm_term"),
+        u_cnt: readUtmValue(searchParams, "utm_content"),
         unique: !!isUnique,
         session_id: sessionId,
         page_id: generateUUID(),

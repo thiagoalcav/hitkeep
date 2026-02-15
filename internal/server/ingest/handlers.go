@@ -97,6 +97,11 @@ func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 		SCWidth   *int      `json:"sc_w"`
 		SCHeight  *int      `json:"sc_h"`
 		Language  *string   `json:"lang"`
+		UTMSource *string   `json:"u_src"`
+		UTMMedium *string   `json:"u_med"`
+		UTMCamp   *string   `json:"u_cmp"`
+		UTMTerm   *string   `json:"u_trm"`
+		UTMCont   *string   `json:"u_cnt"`
 		IsUnique  bool      `json:"unique"`
 		SessionID uuid.UUID `json:"session_id"`
 		PageID    uuid.UUID `json:"page_id"`
@@ -130,6 +135,11 @@ func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 		ScreenHeight:   payload.SCHeight,
 		Language:       payload.Language,
 		CountryCode:    countryCodePtr,
+		UTMSource:      payload.UTMSource,
+		UTMMedium:      payload.UTMMedium,
+		UTMCampaign:    payload.UTMCamp,
+		UTMTerm:        payload.UTMTerm,
+		UTMContent:     payload.UTMCont,
 		IsUnique:       &payload.IsUnique,
 	}
 

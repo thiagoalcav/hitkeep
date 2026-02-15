@@ -1,0 +1,36 @@
+<div class="flex flex-col h-full w-full bg-[var(--p-surface-ground)] transition-colors duration-200">
+    <app-page-header>
+        <div header-left>
+            <app-page-breadcrumb [items]="breadcrumbItems()" />
+        </div>
+    </app-page-header>
+
+    <app-range-toolbar [timeRanges]="timeRanges()" [selectedRange]="selectedRange()" [loading]="statsService.isLoading()" (selectedRangeChange)="selectedRange.set($event)" (rangeChange)="onRangeChange($event)" (refresh)="refreshStats()" />
+
+    @if (siteService.isLoading()) {
+        <div class="flex items-center gap-2 text-sm text-[var(--p-text-muted-color)]">
+            <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+            <span>{{ "common.loadingSiteData" | transloco }}</span>
+        </div>
+    } @else if (siteService.activeSite()) {
+        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
+            @for (card of utmKpis(); track card.label) {
+                <app-kpi-card [label]="card.label" [value]="card.value" [loading]="card.loading" [valueClass]="card.valueClass" />
+            }
+        </div>
+    } @else {
+        <div class="flex flex-col items-center justify-center h-[50vh] gap-4">
+            <i class="pi pi-globe text-6xl text-primary opacity-20"></i>
+            <h2 class="text-2xl font-semibold text-muted-color">{{ "common.noSiteSelected" | transloco }}</h2>
+            <p class="text-muted-color">{{ "utm.noSiteDescription" | transloco }}</p>
+        </div>
+    }
+</div>
+
+<p-dialog [header]="'common.selectDateRange' | transloco" [(visible)]="isCustomRangeVisible" [modal]="true">
+    <p-datepicker [formControl]="rangeForm.customRangeDates().control()" selectionMode="range" [inline]="true" [showWeek]="false" />
+    <ng-template pTemplate="footer">
+        <p-button [label]="'common.actions.cancel' | transloco" (onClick)="isCustomRangeVisible.set(false)" styleClass="p-button-text" />
+        <p-button [label]="'common.actions.apply' | transloco" (onClick)="applyCustomRange()" />
+    </ng-template>
+</p-dialog>

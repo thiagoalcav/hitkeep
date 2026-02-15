@@ -125,6 +125,20 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 	if err != nil {
 		return nil, fmt.Errorf("failed to calc KPIs: %w", err)
 	}
+	err = s.queryUTMKpis(
+		ctx,
+		params,
+		filterSQL,
+		filterArgs,
+		&stats.UTMCampaignHits,
+		&stats.UTMContentHits,
+		&stats.UTMMediumHits,
+		&stats.UTMSourceHits,
+		&stats.UTMTermHits,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calc UTM KPIs: %w", err)
+	}
 
 	if useRollups {
 		stats.ChartData, err = s.queryHybridChartData(ctx, params, truncUnit, rollupKind)
@@ -519,6 +533,38 @@ func (s *Store) queryKpis(
 		bounceRate,
 		avgDuration,
 		pagesPerSession,
+	)
+}
+
+func (s *Store) queryUTMKpis(
+	ctx context.Context,
+	params api.AnalyticsParams,
+	filterSQL string,
+	filterArgs []any,
+	utmCampaignHits *int,
+	utmContentHits *int,
+	utmMediumHits *int,
+	utmSourceHits *int,
+	utmTermHits *int,
+) error {
+	//nolint:gosec // filterSQL is derived from a fixed allowlist
+	query := fmt.Sprintf(`
+		SELECT
+			COALESCE(SUM(CASE WHEN NULLIF(TRIM(h.utm_campaign), '') IS NOT NULL THEN 1 ELSE 0 END), 0) AS utm_campaign_hits,
+			COALESCE(SUM(CASE WHEN NULLIF(TRIM(h.utm_content), '') IS NOT NULL THEN 1 ELSE 0 END), 0) AS utm_content_hits,
+			COALESCE(SUM(CASE WHEN NULLIF(TRIM(h.utm_medium), '') IS NOT NULL THEN 1 ELSE 0 END), 0) AS utm_medium_hits,
+			COALESCE(SUM(CASE WHEN NULLIF(TRIM(h.utm_source), '') IS NOT NULL THEN 1 ELSE 0 END), 0) AS utm_source_hits,
+			COALESCE(SUM(CASE WHEN NULLIF(TRIM(h.utm_term), '') IS NOT NULL THEN 1 ELSE 0 END), 0) AS utm_term_hits
+		FROM hits h
+		WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
+	`, filterSQL)
+
+	return s.db.QueryRowContext(ctx, query, append([]any{params.SiteID, params.Start, params.End}, filterArgs...)...).Scan(
+		utmCampaignHits,
+		utmContentHits,
+		utmMediumHits,
+		utmSourceHits,
+		utmTermHits,
 	)
 }
 

@@ -109,7 +109,8 @@
         "chartTitleOverview": "Traffic overview",
         "trafficChartAria": "Traffic chart with data for the last {{count}} intervals",
         "traffic": {
-            "visitors": "Visitors"
+            "visitors": "Visitors",
+            "trendLine": "Trend line"
         },
         "kpis": {
             "liveVisitors": "Live visitors",

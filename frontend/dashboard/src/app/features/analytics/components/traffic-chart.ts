@@ -64,6 +64,9 @@ export class TrafficChart {
     protected chartPayload = computed(() => {
         this.activeLanguage();
         const raw = this.data() || [];
+        const pageviews = raw.map((d) => d.pageviews);
+        const visitors = raw.map((d) => d.visitors);
+        const trend = this.linearTrendLine(visitors);
 
         const labels = raw.map((d) => {
             const date = new Date(d.time);
@@ -76,7 +79,7 @@ export class TrafficChart {
             datasets: [
                 {
                     label: this.transloco.translate('dashboard.kpis.pageviews'),
-                    data: raw.map((d) => d.pageviews),
+                    data: pageviews,
                     fill: true,
                     backgroundColor: (ctx: ChartContext) => this.getGradient(ctx, 'rgba(99, 102, 241, 0.5)', 'rgba(99, 102, 241, 0.0)'),
                     borderColor: '#6366f1',
@@ -88,7 +91,7 @@ export class TrafficChart {
                 },
                 {
                     label: this.transloco.translate('dashboard.traffic.visitors'),
-                    data: raw.map((d) => d.visitors),
+                    data: visitors,
                     fill: true,
                     backgroundColor: (ctx: ChartContext) => this.getGradient(ctx, 'rgba(20, 184, 166, 0.5)', 'rgba(20, 184, 166, 0.0)'),
                     borderColor: '#14b8a6',
@@ -97,6 +100,18 @@ export class TrafficChart {
                     borderWidth: 2,
                     pointRadius: 0,
                     pointHoverRadius: 4
+                },
+                {
+                    label: this.transloco.translate('dashboard.traffic.trendLine'),
+                    data: trend,
+                    fill: false,
+                    borderColor: '#0ea5b7',
+                    pointBackgroundColor: '#0ea5b7',
+                    tension: 0,
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    borderDash: [6, 4]
                 }
             ]
         };
@@ -153,5 +168,30 @@ export class TrafficChart {
         gradient.addColorStop(0, c1);
         gradient.addColorStop(1, c2);
         return gradient;
+    }
+
+    private linearTrendLine(values: number[]): number[] {
+        const n = values.length;
+        if (n === 0) return [];
+        if (n === 1) return [values[0] ?? 0];
+
+        let sumX = 0;
+        let sumY = 0;
+        let sumXY = 0;
+        let sumXX = 0;
+        for (let i = 0; i < n; i++) {
+            const x = i + 1;
+            const y = values[i] ?? 0;
+            sumX += x;
+            sumY += y;
+            sumXY += x * y;
+            sumXX += x * x;
+        }
+
+        const denominator = n * sumXX - sumX * sumX;
+        const slope = denominator === 0 ? 0 : (n * sumXY - sumX * sumY) / denominator;
+        const intercept = (sumY - slope * sumX) / n;
+
+        return values.map((_, index) => Number((intercept + slope * (index + 1)).toFixed(2)));
     }
 }

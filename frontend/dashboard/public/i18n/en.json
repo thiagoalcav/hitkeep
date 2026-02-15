@@ -277,7 +277,20 @@
             "description": "Anyone with this link can view the dashboard in read-only mode.",
             "generateAction": "Generate link",
             "shareUrlLabel": "Share URL",
-            "generateFailed": "Unable to create a share link right now. Please try again."
+            "tokenHintLabel": "Token",
+            "urlUnavailable": "URL hidden for existing links",
+            "empty": "No share links yet.",
+            "generateFailed": "Unable to create a share link right now. Please try again.",
+            "loadFailed": "Unable to load share links right now. Please try again.",
+            "deleteAction": "Delete",
+            "deleteConfirmTitle": "Delete share link",
+            "deleteConfirmMessage": "Anyone using this link will lose access immediately.",
+            "createSuccess": "Share link created.",
+            "deleteSuccess": "Share link deleted.",
+            "deleteFailed": "Unable to delete share link right now.",
+            "copySuccess": "Share URL copied.",
+            "copyFailed": "Unable to copy the share URL.",
+            "copyUnavailable": "Only newly created links can be copied from this session."
         },
         "page": {
             "loading": "Loading shared dashboard...",

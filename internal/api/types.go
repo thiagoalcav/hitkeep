@@ -32,6 +32,13 @@ type Site struct {
 	CreatedAt         time.Time `json:"created_at"`
 }
 
+type ShareLink struct {
+	ID        uuid.UUID `json:"id"`
+	SiteID    uuid.UUID `json:"site_id"`
+	TokenHint string    `json:"token_hint"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 type Event struct {
 	ID         uuid.UUID      `json:"id"`
 	SiteID     uuid.UUID      `json:"site_id"`

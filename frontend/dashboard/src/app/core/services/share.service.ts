@@ -3,7 +3,15 @@ import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs';
 import { Site } from '@models/analytics.types';
 
-interface ShareLinkResponse {
+export interface ShareLink {
+    id: string;
+    site_id: string;
+    token_hint: string;
+    created_at: string;
+    url?: string;
+}
+
+export interface ShareLinkResponse extends ShareLink {
     url: string;
     token: string;
 }
@@ -30,7 +38,15 @@ export class ShareService {
         return this.http.get<Site>(`/api/share/${token}/site`).pipe(tap((site) => this.site.set(site)));
     }
 
+    listShareLinks(siteId: string) {
+        return this.http.get<ShareLink[]>(`/api/sites/${siteId}/share`);
+    }
+
     createShareLink(siteId: string) {
         return this.http.post<ShareLinkResponse>(`/api/sites/${siteId}/share`, {});
+    }
+
+    deleteShareLink(siteId: string, shareId: string) {
+        return this.http.delete<void>(`/api/sites/${siteId}/share/${shareId}`);
     }
 }

@@ -1,22 +1,82 @@
 @if (!isShareMode()) {
-    <p-dialog [header]="'share.dialog.title' | transloco" [(visible)]="showShareDialog" [modal]="true" [style]="{ width: '520px', maxWidth: '92vw' }" [draggable]="false" [resizable]="false" (onHide)="resetShareDialog()">
+    <p-confirmdialog />
+
+    <p-dialog [header]="'share.dialog.title' | transloco" [(visible)]="showShareDialog" [modal]="true" [style]="{ width: '860px', maxWidth: '96vw' }" [draggable]="false" [resizable]="false" (onHide)="resetShareDialog()">
         <div class="flex flex-col gap-4">
-            <p class="text-sm text-[var(--p-text-muted-color)]">{{ "share.dialog.description" | transloco }}</p>
-            @if (shareError()) {
-                <div class="text-sm text-red-600">{{ shareError() | transloco }}</div>
-            }
-            @if (!shareLinkUrl()) {
-                <p-button [label]="'share.dialog.generateAction' | transloco" icon="pi pi-link" (onClick)="generateShareLink()" [loading]="shareLoading()" [disabled]="!siteService.activeSite()" styleClass="p-button-sm" />
-            } @else {
-                <div class="flex flex-col gap-2">
-                    <span class="text-xs font-medium text-[var(--p-text-muted-color)]">{{ "share.dialog.shareUrlLabel" | transloco }}</span>
-                    <div class="flex flex-col sm:flex-row gap-2">
-                        <input pInputText readonly [value]="shareLinkUrl()" class="flex-1" />
-                        <p-button [label]="shareCopyLabel() | transloco" [icon]="shareCopyIcon()" (onClick)="copyShareLink()" styleClass="p-button-outlined p-button-sm" />
-                    </div>
+            <div class="flex items-start justify-between gap-3">
+                <p class="text-sm text-[var(--p-text-muted-color)] m-0">{{ "share.dialog.description" | transloco }}</p>
+                <p-button [label]="'share.dialog.generateAction' | transloco" icon="pi pi-link" (onClick)="generateShareLink()" [loading]="createLoading()" [disabled]="!siteService.activeSite()" styleClass="p-button-sm shrink-0" />
+            </div>
+
+            @if (notice(); as noticeMessage) {
+                <div
+                    class="rounded-lg border p-3 flex items-center gap-3"
+                    [class.bg-green-50]="noticeMessage.kind === 'success'"
+                    [class.border-green-200]="noticeMessage.kind === 'success'"
+                    [class.bg-red-50]="noticeMessage.kind === 'error'"
+                    [class.border-red-200]="noticeMessage.kind === 'error'"
+                >
+                    <i
+                        class="pi"
+                        [class.pi-check-circle]="noticeMessage.kind === 'success'"
+                        [class.pi-exclamation-circle]="noticeMessage.kind === 'error'"
+                        [class.text-green-600]="noticeMessage.kind === 'success'"
+                        [class.text-red-500]="noticeMessage.kind === 'error'"
+                    ></i>
+                    <span class="text-sm font-medium" [class.text-green-700]="noticeMessage.kind === 'success'" [class.text-red-500]="noticeMessage.kind === 'error'">
+                        {{ noticeMessage.key | transloco }}
+                    </span>
                 </div>
             }
+
+            <p-table [value]="shareLinks()" [loading]="linksLoading()" dataKey="id" styleClass="p-datatable-sm">
+                <ng-template pTemplate="header">
+                    <tr>
+                        <th>{{ "share.dialog.tokenHintLabel" | transloco }}</th>
+                        <th>{{ "common.columns.created" | transloco }}</th>
+                        <th>{{ "share.dialog.shareUrlLabel" | transloco }}</th>
+                        <th class="share-actions-col">{{ "common.columns.actions" | transloco }}</th>
+                    </tr>
+                </ng-template>
+
+                <ng-template pTemplate="body" let-link>
+                    <tr>
+                        <td>
+                            <code class="share-token">{{ link.token_hint }}</code>
+                        </td>
+                        <td>{{ link.created_at | date: "medium" }}</td>
+                        <td>
+                            @if (link.url) {
+                                <input pInputText readonly [value]="link.url" class="w-full share-url-input" />
+                            } @else {
+                                <span class="text-sm text-[var(--p-text-muted-color)]">{{ "share.dialog.urlUnavailable" | transloco }}</span>
+                            }
+                        </td>
+                        <td class="share-actions-col">
+                            <div class="flex justify-end gap-2">
+                                <p-button icon="pi pi-copy" styleClass="p-button-text p-button-sm" [rounded]="true" [disabled]="!link.url" [ariaLabel]="'common.copyLink' | transloco" (onClick)="copyShareLink(link)" />
+                                <p-button
+                                    icon="pi pi-trash"
+                                    styleClass="p-button-text p-button-danger p-button-sm"
+                                    [rounded]="true"
+                                    [loading]="deletingShareId() === link.id"
+                                    [disabled]="deletingShareId() !== null"
+                                    [ariaLabel]="'share.dialog.deleteAction' | transloco"
+                                    (onClick)="confirmDeleteShareLink(link)"
+                                />
+                            </div>
+                        </td>
+                    </tr>
+                </ng-template>
+
+                <ng-template pTemplate="emptymessage">
+                    <tr>
+                        <td colspan="4" class="text-center text-muted-color py-4">{{ "share.dialog.empty" | transloco }}</td>
+                    </tr>
+                </ng-template>
+            </p-table>
         </div>
+
         <ng-template pTemplate="footer">
             <p-button [label]="'common.actions.close' | transloco" (onClick)="showShareDialog.set(false)" styleClass="p-button-text" />
         </ng-template>

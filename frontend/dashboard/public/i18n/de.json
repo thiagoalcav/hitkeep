@@ -277,7 +277,20 @@
             "description": "Jeder mit diesem Link kann das Dashboard im Nur-Lese-Modus sehen.",
             "generateAction": "Link erstellen",
             "shareUrlLabel": "Freigabe-URL",
-            "generateFailed": "Freigabelink konnte momentan nicht erstellt werden. Bitte versuchen Sie es erneut."
+            "tokenHintLabel": "Token",
+            "urlUnavailable": "URL ist für bestehende Links ausgeblendet",
+            "empty": "Noch keine Freigabelinks vorhanden.",
+            "generateFailed": "Freigabelink konnte momentan nicht erstellt werden. Bitte versuchen Sie es erneut.",
+            "loadFailed": "Freigabelinks konnten momentan nicht geladen werden. Bitte versuchen Sie es erneut.",
+            "deleteAction": "Löschen",
+            "deleteConfirmTitle": "Freigabelink löschen",
+            "deleteConfirmMessage": "Alle Nutzer mit diesem Link verlieren sofort den Zugriff.",
+            "createSuccess": "Freigabelink erstellt.",
+            "deleteSuccess": "Freigabelink gelöscht.",
+            "deleteFailed": "Freigabelink konnte momentan nicht gelöscht werden.",
+            "copySuccess": "Freigabe-URL kopiert.",
+            "copyFailed": "Freigabe-URL konnte nicht kopiert werden.",
+            "copyUnavailable": "Nur neu erstellte Links können in dieser Sitzung kopiert werden."
         },
         "page": {
             "loading": "Geteiltes Dashboard wird geladen...",

@@ -26,10 +26,20 @@ type handler struct {
 func Register(mux *http.ServeMux, ctx *shared.Context) {
 	h := &handler{ctx: ctx}
 
+	mux.HandleFunc("GET /api/sites/{id}/share", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteManageTeam,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleListShareLinks()))
+
 	mux.HandleFunc("POST /api/sites/{id}/share", ctx.Handler(shared.HandlerConfig{
 		SitePerm:    authcore.PermSiteManageTeam,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleCreateShareLink()))
+
+	mux.HandleFunc("DELETE /api/sites/{id}/share/{shareID}", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteManageTeam,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleDeleteShareLink()))
 
 	mux.HandleFunc("GET /api/share/{token}/site", ctx.Handler(shared.HandlerConfig{
 		RateLimiter: ctx.ApiLimiter,
@@ -68,10 +78,39 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 	}, h.handleGetShareFunnelStats()))
 }
 
+func (h *handler) handleListShareLinks() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.ctx.Store == nil {
+			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
+			return
+		}
+
+		siteID, ok := parsePathUUID(w, r, "id", "Invalid site_id")
+		if !ok {
+			return
+		}
+
+		links, err := h.ctx.Store.ListShareLinks(r.Context(), siteID)
+		if err != nil {
+			slog.Error("Failed to list share links", "error", err, "site_id", siteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(links); err != nil {
+			slog.Error("Failed to encode response", "error", err)
+		}
+	}
+}
+
 func (h *handler) handleCreateShareLink() http.HandlerFunc {
 	type response struct {
-		URL   string `json:"url"`
-		Token string `json:"token"`
+		ID        uuid.UUID `json:"id"`
+		URL       string    `json:"url"`
+		Token     string    `json:"token"`
+		TokenHint string    `json:"token_hint"`
+		CreatedAt time.Time `json:"created_at"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -86,14 +125,12 @@ func (h *handler) handleCreateShareLink() http.HandlerFunc {
 			return
 		}
 
-		siteIDStr := r.PathValue("id")
-		siteID, err := uuid.Parse(siteIDStr)
-		if err != nil {
-			http.Error(w, "Invalid site_id", http.StatusBadRequest)
+		siteID, ok := parsePathUUID(w, r, "id", "Invalid site_id")
+		if !ok {
 			return
 		}
 
-		token, err := h.ctx.Store.CreateShareLink(r.Context(), siteID, userID)
+		link, token, err := h.ctx.Store.CreateShareLink(r.Context(), siteID, userID)
 		if err != nil {
 			slog.Error("Failed to create share link", "error", err, "site_id", siteID, "user_id", userID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -102,14 +139,49 @@ func (h *handler) handleCreateShareLink() http.HandlerFunc {
 
 		publicURL := strings.TrimRight(h.ctx.Config.PublicURL, "/")
 		resp := response{
-			URL:   publicURL + "/share/" + token,
-			Token: token,
+			ID:        link.ID,
+			URL:       publicURL + "/share/" + token,
+			Token:     token,
+			TokenHint: link.TokenHint,
+			CreatedAt: link.CreatedAt,
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			slog.Error("Failed to encode response", "error", err)
 		}
+	}
+}
+
+func (h *handler) handleDeleteShareLink() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.ctx.Store == nil {
+			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
+			return
+		}
+
+		siteID, ok := parsePathUUID(w, r, "id", "Invalid site_id")
+		if !ok {
+			return
+		}
+
+		shareID, ok := parsePathUUID(w, r, "shareID", "Invalid share_id")
+		if !ok {
+			return
+		}
+
+		revoked, err := h.ctx.Store.RevokeShareLink(r.Context(), siteID, shareID)
+		if err != nil {
+			slog.Error("Failed to delete share link", "error", err, "site_id", siteID, "share_id", shareID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if !revoked {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
@@ -598,6 +670,16 @@ func parseUUIDQueryParam(q url.Values, key string) ([]uuid.UUID, error) {
 		ids = append(ids, id)
 	}
 	return ids, nil
+}
+
+func parsePathUUID(w http.ResponseWriter, r *http.Request, key string, invalidMessage string) (uuid.UUID, bool) {
+	value := strings.TrimSpace(r.PathValue(key))
+	id, err := uuid.Parse(value)
+	if err != nil {
+		http.Error(w, invalidMessage, http.StatusBadRequest)
+		return uuid.Nil, false
+	}
+	return id, true
 }
 
 func parseFilters(q url.Values) ([]api.Filter, error) {

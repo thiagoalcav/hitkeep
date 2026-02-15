@@ -180,21 +180,22 @@ func (h *handler) handleLogin() http.HandlerFunc {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		if totpEnabled {
-			passkeys, err := h.ctx.Store.ListUserPasskeys(r.Context(), user.ID)
-			if err != nil {
-				slog.Error("Failed to list user passkeys during login", "error", err, "user_id", user.ID)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
 
+		passkeys, err := h.ctx.Store.ListUserPasskeys(r.Context(), user.ID)
+		if err != nil {
+			slog.Error("Failed to list user passkeys during login", "error", err, "user_id", user.ID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		hasPasskey := len(passkeys) > 0
+
+		if totpEnabled || hasPasskey {
 			challenge, err := security.GenerateRandomChallenge(32)
 			if err != nil {
 				slog.Error("Failed to generate mfa challenge for login", "error", err, "user_id", user.ID)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			hasPasskey := len(passkeys) > 0
 
 			userID := user.ID
 			challengeID, err := h.ctx.Store.CreatePasskeyLoginChallenge(r.Context(), challenge, database.CreateLoginChallengeInput{
@@ -208,7 +209,10 @@ func (h *handler) handleLogin() http.HandlerFunc {
 				return
 			}
 
-			factors := []string{"totp"}
+			factors := make([]string, 0, 2)
+			if totpEnabled {
+				factors = append(factors, "totp")
+			}
 			resp := loginResponse{
 				Status:         "mfa_required",
 				ChallengeToken: challengeID.String(),
@@ -216,8 +220,7 @@ func (h *handler) handleLogin() http.HandlerFunc {
 			}
 
 			if hasPasskey {
-				factors = append(factors, "passkey")
-				resp.Factors = factors
+				resp.Factors = append(resp.Factors, "passkey")
 				resp.Passkey = h.newPasskeyLoginRequestOptions(r, challenge)
 			}
 

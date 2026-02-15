@@ -40,6 +40,8 @@ export class Login {
     protected readonly mfaFactors = signal<('totp' | 'passkey')[]>([]);
     protected readonly mfaPasskeyOptions = signal<PasskeyLoginStartResponse['publicKey'] | null>(null);
     protected readonly isMfaRequired = computed(() => this.mfaChallengeToken() !== null);
+    protected readonly mfaHasTotp = computed(() => this.mfaFactors().includes('totp'));
+    protected readonly mfaHasPasskey = computed(() => this.mfaFactors().includes('passkey'));
 
     private readonly loginModel = signal({
         email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
@@ -58,7 +60,15 @@ export class Login {
     onSubmit(event?: Event): void {
         event?.preventDefault();
         if (this.isMfaRequired()) {
-            this.verifyTotpMfa();
+            if (this.mfaHasTotp()) {
+                this.verifyTotpMfa();
+                return;
+            }
+            if (this.mfaHasPasskey()) {
+                void this.onPasskeyLogin();
+                return;
+            }
+            this.errorMessage.set('login.errors.unexpected');
             return;
         }
         if (this.loginForm.email().invalid() || this.loginForm.password().invalid()) {
@@ -174,8 +184,9 @@ export class Login {
             this.errorMessage.set('login.errors.unexpected');
             return;
         }
+        const factors: ('totp' | 'passkey')[] = resp.factors && resp.factors.length > 0 ? resp.factors : resp.passkey ? ['passkey'] : ['totp'];
         this.mfaChallengeToken.set(resp.challenge_token);
-        this.mfaFactors.set(resp.factors ?? ['totp']);
+        this.mfaFactors.set(factors);
         this.mfaPasskeyOptions.set(resp.passkey ?? null);
         this.loginForm.mfaCode().control().reset('');
         this.errorMessage.set(null);

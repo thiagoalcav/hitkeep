@@ -97,19 +97,23 @@
                         <p class="text-sm text-[var(--p-text-muted-color)]">{{ "login.mfaSubtitle" | transloco }}</p>
                     </div>
 
-                    <div class="flex flex-col gap-2">
-                        <label for="mfaCode" class="text-sm font-medium text-[var(--p-text-color)]">{{ "login.totpCodeLabel" | transloco }}</label>
-                        <p-inputotp inputId="mfaCode" [formControl]="loginForm.mfaCode().control()" [length]="6" [integerOnly]="true" [invalid]="loginForm.mfaCode().touched() && loginForm.mfaCode().invalid()" />
-                    </div>
-
-                    <p-button [label]="'login.verifyTotp' | transloco" type="submit" [loading]="isLoading()" class="w-full" [disabled]="isLoading() || loginForm.mfaCode().invalid()"> </p-button>
-
-                    @if (isPasskeySupported() && mfaFactors().includes("passkey")) {
-                        <div class="flex items-center gap-3 my-1">
-                            <span class="h-px flex-1 bg-surface-300"></span>
-                            <span class="text-xs uppercase tracking-wide text-[var(--p-text-muted-color)]">{{ "login.or" | transloco }}</span>
-                            <span class="h-px flex-1 bg-surface-300"></span>
+                    @if (mfaHasTotp()) {
+                        <div class="flex flex-col gap-2">
+                            <label for="mfaCode" class="text-sm font-medium text-[var(--p-text-color)]">{{ "login.totpCodeLabel" | transloco }}</label>
+                            <p-inputotp inputId="mfaCode" [formControl]="loginForm.mfaCode().control()" [length]="6" [integerOnly]="true" [invalid]="loginForm.mfaCode().touched() && loginForm.mfaCode().invalid()" />
                         </div>
+
+                        <p-button [label]="'login.verifyTotp' | transloco" type="submit" [loading]="isLoading()" class="w-full" [disabled]="isLoading() || loginForm.mfaCode().invalid()"> </p-button>
+                    }
+
+                    @if (isPasskeySupported() && mfaHasPasskey()) {
+                        @if (mfaHasTotp()) {
+                            <div class="flex items-center gap-3 my-1">
+                                <span class="h-px flex-1 bg-surface-300"></span>
+                                <span class="text-xs uppercase tracking-wide text-[var(--p-text-muted-color)]">{{ "login.or" | transloco }}</span>
+                                <span class="h-px flex-1 bg-surface-300"></span>
+                            </div>
+                        }
 
                         <p-button
                             [label]="'login.signInWithPasskey' | transloco"

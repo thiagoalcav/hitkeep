@@ -401,6 +401,69 @@ func TestHandleLoginMFARequiredWithTOTPOnly(t *testing.T) {
 	}
 }
 
+func TestHandleLoginMFARequiredWithPasskeyOnly(t *testing.T) {
+	h, store := setupAuthTestEnv(t)
+	defer store.Close()
+
+	hashed, err := HashPassword("password123")
+	if err != nil {
+		t.Fatalf("failed to hash password: %v", err)
+	}
+	userID, err := store.CreateUser(context.Background(), "mfa-passkey-only@example.com", hashed)
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("failed to generate test ecdsa key: %v", err)
+	}
+	publicKeyDER, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		t.Fatalf("failed to marshal test public key: %v", err)
+	}
+	publicKeyB64 := base64.RawURLEncoding.EncodeToString(publicKeyDER)
+	_, err = store.CreateUserPasskey(context.Background(), userID, "MFA Passkey", "cred-mfa-passkey-only-1", publicKeyB64, nil)
+	if err != nil {
+		t.Fatalf("failed to create user passkey: %v", err)
+	}
+
+	body, _ := json.Marshal(map[string]any{
+		"email":    "mfa-passkey-only@example.com",
+		"password": "password123",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	h.handleLogin().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var resp loginResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("failed to decode login response: %v", err)
+	}
+	if resp.Status != "mfa_required" {
+		t.Fatalf("expected mfa_required status, got %q", resp.Status)
+	}
+	if resp.ChallengeToken == "" {
+		t.Fatalf("expected challenge token when mfa is required")
+	}
+	if len(resp.Factors) != 1 || resp.Factors[0] != "passkey" {
+		t.Fatalf("expected only passkey factor, got %v", resp.Factors)
+	}
+	if resp.Passkey == nil || resp.Passkey.Challenge == "" {
+		t.Fatalf("expected passkey request options in mfa response")
+	}
+
+	for _, cookie := range w.Header().Values("Set-Cookie") {
+		if bytes.Contains([]byte(cookie), []byte(auth.CookieName+"=")) {
+			t.Fatalf("did not expect auth cookie before mfa completion")
+		}
+	}
+}
+
 func TestHandleMFATOTPVerify(t *testing.T) {
 	h, store := setupAuthTestEnv(t)
 	defer store.Close()

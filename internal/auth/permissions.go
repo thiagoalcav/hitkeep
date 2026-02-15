@@ -95,3 +95,77 @@ func (r SiteRole) HasPermission(perm Permission) bool {
 	}
 	return false
 }
+
+func IsValidInstanceRole(role InstanceRole) bool {
+	switch role {
+	case InstanceOwner, InstanceAdmin, InstanceUser:
+		return true
+	default:
+		return false
+	}
+}
+
+func IsValidSiteRole(role SiteRole) bool {
+	switch role {
+	case SiteOwner, SiteAdmin, SiteEditor, SiteViewer:
+		return true
+	default:
+		return false
+	}
+}
+
+func MinInstanceRole(a, b InstanceRole) InstanceRole {
+	if instanceRoleRank(a) <= instanceRoleRank(b) {
+		return a
+	}
+	return b
+}
+
+func MinSiteRole(a, b SiteRole) SiteRole {
+	if siteRoleRank(a) <= siteRoleRank(b) {
+		return a
+	}
+	return b
+}
+
+func CanAssignInstanceRole(actor, requested InstanceRole) bool {
+	if !IsValidInstanceRole(actor) || !IsValidInstanceRole(requested) {
+		return false
+	}
+	return instanceRoleRank(requested) >= instanceRoleRank(actor)
+}
+
+func CanAssignSiteRole(actor, requested SiteRole) bool {
+	if !IsValidSiteRole(actor) || !IsValidSiteRole(requested) {
+		return false
+	}
+	return siteRoleRank(requested) >= siteRoleRank(actor)
+}
+
+func instanceRoleRank(role InstanceRole) int {
+	switch role {
+	case InstanceOwner:
+		return 0
+	case InstanceAdmin:
+		return 1
+	case InstanceUser:
+		return 2
+	default:
+		return 99
+	}
+}
+
+func siteRoleRank(role SiteRole) int {
+	switch role {
+	case SiteOwner:
+		return 0
+	case SiteAdmin:
+		return 1
+	case SiteEditor:
+		return 2
+	case SiteViewer:
+		return 3
+	default:
+		return 99
+	}
+}

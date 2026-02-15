@@ -159,6 +159,7 @@ func (h *handler) handleLogin() http.HandlerFunc {
 			return
 		}
 		if user == nil {
+			burnLoginKDF(req.Password)
 			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 			return
 		}
@@ -334,6 +335,22 @@ func verifyPassword(password, encodedHash string) (bool, error) {
 		return true, nil
 	}
 	return false, nil
+}
+
+func burnLoginKDF(secret string) {
+	const (
+		timeCost   uint32 = 1
+		memoryCost uint32 = 64 * 1024
+		threads    uint8  = 4
+		keyLen     uint32 = 32
+	)
+
+	// Deterministic salt keeps the operation stable and avoids external dependencies.
+	salt := []byte("0123456789abcdef")
+	hash := argon2.IDKey([]byte(secret), salt, timeCost, memoryCost, threads, keyLen)
+	if subtle.ConstantTimeCompare(hash, hash) != 1 {
+		slog.Warn("Unreachable login kdf comparison failure")
+	}
 }
 
 func (h *handler) handleForgotPassword() http.HandlerFunc {

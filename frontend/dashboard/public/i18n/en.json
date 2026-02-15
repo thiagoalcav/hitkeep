@@ -4,14 +4,19 @@
         "primaryNavigationAria": "Primary navigation",
         "contentAreaAria": "Content area",
         "analytics": "Analytics",
+        "integration": "Integration",
         "dashboardAria": "Go to dashboard",
         "goalsAria": "Go to goals",
         "funnelsAria": "Go to funnels",
         "utmAria": "Go to UTM dashboard",
+        "apiClientsAria": "Go to API clients",
+        "apiReferenceAria": "Go to API reference",
         "dashboard": "Dashboard",
         "goals": "Goals",
         "funnels": "Funnels",
-        "utm": "UTM"
+        "utm": "UTM",
+        "apiClients": "API Clients",
+        "apiReference": "API Reference"
     },
     "common": {
         "actions": {
@@ -305,6 +310,64 @@
             "dataExportTitle": "Data export",
             "exportAllTitle": "Export all data",
             "exportAllDescription": "Download all your data across all sites as CSV, XLSX, or Parquet."
+        },
+        "apiClients": {
+            "title": "API clients",
+            "description": "Create delegated API clients with permissions capped to your own access.",
+            "loading": "Loading API clients...",
+            "empty": "No API clients yet.",
+            "listTitle": "Existing API clients",
+            "confirmDelete": "Delete API client \"{{name}}\"?",
+            "status": {
+                "active": "Active",
+                "revoked": "Revoked"
+            },
+            "meta": {
+                "instanceRole": "Instance role",
+                "created": "Created",
+                "lastUsed": "Last used",
+                "expires": "Expires"
+            },
+            "actions": {
+                "create": "Create client",
+                "save": "Save changes",
+                "edit": "Edit",
+                "revoke": "Revoke",
+                "reactivate": "Reactivate",
+                "delete": "Delete",
+                "addScope": "Add scope",
+                "refresh": "Refresh"
+            },
+            "form": {
+                "nameLabel": "Client name",
+                "namePlaceholder": "e.g. CI analytics sync",
+                "descriptionLabel": "Description",
+                "descriptionPlaceholder": "What this client is used for",
+                "instanceRoleLabel": "Instance role",
+                "expiresAtLabel": "Expiration",
+                "siteScopesLabel": "Site scopes",
+                "siteScopesHint": "Optional: restrict this client to specific sites and site roles.",
+                "selectSitePlaceholder": "Select site"
+            },
+            "tokenNotice": {
+                "title": "Copy this token now",
+                "description": "For security, the token is only shown once. Store it in your secret manager."
+            },
+            "messages": {
+                "created": "API client created.",
+                "updated": "API client updated.",
+                "deleted": "API client deleted.",
+                "revoked": "API client revoked.",
+                "reactivated": "API client reactivated."
+            },
+            "errors": {
+                "loadFailed": "Failed to load API clients.",
+                "createFailed": "Failed to create API client.",
+                "updateFailed": "Failed to update API client.",
+                "deleteFailed": "Failed to delete API client.",
+                "invalidExpiration": "Expiration timestamp is invalid.",
+                "notFound": "API client not found."
+            }
         }
     },
     "setup": {
@@ -532,6 +595,34 @@
             "defaultPlaceholder": "Select a default language",
             "defaultHint": "This is the primary language for the dashboard UI.",
             "rtlBadge": "RTL"
+        }
+    },
+    "integration": {
+        "apiClients": {
+            "subtitle": "Create and manage API clients for integrations."
+        },
+        "apiReference": {
+            "subtitle": "Versioned REST API reference with session and API-key authentication details.",
+            "versionLabel": "API version",
+            "searchLabel": "Search endpoints",
+            "searchPlaceholder": "Search by method, path, tag, or summary",
+            "refresh": "Refresh",
+            "latest": "latest",
+            "operationsTitle": "Operations",
+            "loading": "Loading API reference...",
+            "empty": "No API operations match your search.",
+            "noSummary": "No summary",
+            "auth": {
+                "title": "Authentication",
+                "description": "Use one of these credentials depending on the endpoint security requirements.",
+                "bearerLabel": "Bearer token",
+                "apiKeyLabel": "X-API-Key header",
+                "cookieLabel": "Session cookie"
+            },
+            "errors": {
+                "loadVersions": "Failed to load API doc versions.",
+                "loadSpec": "Failed to load API reference for this version."
+            }
         }
     }
 }

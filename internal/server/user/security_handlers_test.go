@@ -148,6 +148,9 @@ func TestPasskeyRegistrationLifecycle(t *testing.T) {
 	if begin.PublicKey.Challenge == "" {
 		t.Fatalf("expected non-empty challenge")
 	}
+	if begin.PublicKey.AuthenticatorSelection.UserVerification != "required" {
+		t.Fatalf("expected required user verification, got %q", begin.PublicKey.AuthenticatorSelection.UserVerification)
+	}
 
 	clientData, _ := json.Marshal(map[string]string{
 		"type":      "webauthn.create",

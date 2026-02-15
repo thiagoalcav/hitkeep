@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/subtle"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/binary"
@@ -223,7 +224,7 @@ func (h *handler) newPasskeyLoginRequestOptions(r *http.Request, challenge strin
 		Challenge:        challenge,
 		RPID:             rpID,
 		Timeout:          60_000,
-		UserVerification: "preferred",
+		UserVerification: "required",
 	}
 }
 
@@ -242,14 +243,18 @@ func verifyPasskeyAssertion(publicKeyB64 string, rpID string, clientDataJSON []b
 	}
 
 	expectedRPIDHash := sha256.Sum256([]byte(rpID))
-	if !equalBytes(authenticatorData[:32], expectedRPIDHash[:]) {
+	if subtle.ConstantTimeCompare(authenticatorData[:32], expectedRPIDHash[:]) != 1 {
 		return 0, fmt.Errorf("rp id hash mismatch")
 	}
 
 	flags := authenticatorData[32]
 	const userPresentBit = byte(0x01)
+	const userVerifiedBit = byte(0x04)
 	if flags&userPresentBit == 0 {
 		return 0, fmt.Errorf("user present flag is not set")
+	}
+	if flags&userVerifiedBit == 0 {
+		return 0, fmt.Errorf("user verification flag is not set")
 	}
 
 	signCount := binary.BigEndian.Uint32(authenticatorData[33:37])
@@ -344,16 +349,4 @@ func hostNameOnly(host string) string {
 		return name
 	}
 	return host
-}
-
-func equalBytes(a []byte, b []byte) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }

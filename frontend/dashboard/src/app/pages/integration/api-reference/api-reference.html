@@ -1,0 +1,106 @@
+<div class="flex flex-col w-full">
+    <app-page-header>
+        <div header-left>
+            <app-page-breadcrumb [items]="breadcrumbItems()" />
+            <p class="text-sm text-[var(--p-text-muted-color)]">{{ "integration.apiReference.subtitle" | transloco }}</p>
+        </div>
+    </app-page-header>
+
+    <div class="api-reference-content max-w-6xl mx-auto w-full">
+        @if (error(); as errorKey) {
+            <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 mb-4">
+                {{ errorKey | transloco }}
+            </div>
+        }
+
+        <section class="api-reference-panel mb-4">
+            <div class="controls-row">
+                <div class="control">
+                    <label for="api-doc-version" class="text-sm font-medium">{{ "integration.apiReference.versionLabel" | transloco }}</label>
+                    <p-select
+                        inputId="api-doc-version"
+                        [options]="versionOptions()"
+                        [ngModel]="selectedVersion()"
+                        (ngModelChange)="onVersionChange($event)"
+                        optionLabel="label"
+                        optionValue="value"
+                        class="w-full"
+                    />
+                </div>
+
+                <div class="control">
+                    <label for="api-doc-search" class="text-sm font-medium">{{ "integration.apiReference.searchLabel" | transloco }}</label>
+                    <input id="api-doc-search" pInputText [formControl]="queryControl" [placeholder]="'integration.apiReference.searchPlaceholder' | transloco" />
+                </div>
+
+                <div class="control actions">
+                    <p-button
+                        [label]="'integration.apiReference.refresh' | transloco"
+                        icon="pi pi-refresh"
+                        [outlined]="true"
+                        [disabled]="loading()"
+                        (onClick)="refresh()"
+                    />
+                </div>
+            </div>
+        </section>
+
+        <section class="api-reference-panel mb-4">
+            <h3 class="panel-title">{{ "integration.apiReference.auth.title" | transloco }}</h3>
+            <p class="text-sm text-[var(--p-text-muted-color)] mb-3">{{ "integration.apiReference.auth.description" | transloco }}</p>
+            <div class="auth-examples">
+                <div>
+                    <div class="auth-label">{{ "integration.apiReference.auth.bearerLabel" | transloco }}</div>
+                    <pre><code>Authorization: Bearer &lt;api-client-token&gt;</code></pre>
+                </div>
+                <div>
+                    <div class="auth-label">{{ "integration.apiReference.auth.apiKeyLabel" | transloco }}</div>
+                    <pre><code>X-API-Key: &lt;api-client-token&gt;</code></pre>
+                </div>
+                <div>
+                    <div class="auth-label">{{ "integration.apiReference.auth.cookieLabel" | transloco }}</div>
+                    <pre><code>Cookie: hk_token=&lt;session-token&gt;</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <section class="api-reference-panel">
+            <h3 class="panel-title">{{ "integration.apiReference.operationsTitle" | transloco }}</h3>
+
+            @if (loading()) {
+                <p class="text-sm text-[var(--p-text-muted-color)]">{{ "integration.apiReference.loading" | transloco }}</p>
+            } @else if (operations().length === 0) {
+                <p class="text-sm text-[var(--p-text-muted-color)]">{{ "integration.apiReference.empty" | transloco }}</p>
+            } @else {
+                <div class="operations-list">
+                    @for (operation of operations(); track operation.method + ':' + operation.path) {
+                        <article class="operation-item">
+                            <div class="operation-head">
+                                <span class="method-badge" [class]="methodClass(operation.method)">{{ operation.method.toUpperCase() }}</span>
+                                <code class="operation-path">{{ operation.path }}</code>
+                            </div>
+                            <div class="operation-summary">{{ operation.summary }}</div>
+                            @if (operation.description) {
+                                <p class="operation-description">{{ operation.description }}</p>
+                            }
+                            @if (operation.authSchemes.length > 0) {
+                                <div class="operation-auth">
+                                    @for (scheme of operation.authSchemes; track scheme) {
+                                        <span class="auth-pill">{{ formatAuthScheme(scheme) }}</span>
+                                    }
+                                </div>
+                            }
+                            @if (operation.tags.length > 0) {
+                                <div class="operation-tags">
+                                    @for (tag of operation.tags; track tag) {
+                                        <span class="tag-pill">{{ tag }}</span>
+                                    }
+                                </div>
+                            }
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+    </div>
+</div>

@@ -4,14 +4,19 @@
         "primaryNavigationAria": "Hauptnavigation",
         "contentAreaAria": "Inhaltsbereich",
         "analytics": "Analysen",
+        "integration": "Integration",
         "dashboardAria": "Zum Dashboard",
         "goalsAria": "Zu den Zielen",
         "funnelsAria": "Zu den Funnels",
         "utmAria": "Zum UTM-Dashboard",
+        "apiClientsAria": "Zu API-Clients",
+        "apiReferenceAria": "Zur API-Referenz",
         "dashboard": "Dashboard",
         "goals": "Ziele",
         "funnels": "Funnels",
-        "utm": "UTM"
+        "utm": "UTM",
+        "apiClients": "API-Clients",
+        "apiReference": "API-Referenz"
     },
     "common": {
         "actions": {
@@ -257,14 +262,14 @@
             "updatePassword": "Passwort aktualisieren",
             "twoFactor": {
                 "title": "Zwei-Faktor-Authentifizierung",
-                "description": "Schutzen Sie Ihr Konto mit einem Einmalcode aus einer Authenticator-App.",
-                "setupDescription": "Starten Sie die Einrichtung, um einen geheimen Schlussel zu erstellen und einen 6-stelligen TOTP-Code zu bestaetigen.",
-                "enabledDescription": "Die Zwei-Faktor-Authentifizierung ist fur Ihr Konto derzeit aktiviert.",
-                "secretLabel": "Manueller Einrichtungs-Schlussel",
+                "description": "Schützen Sie Ihr Konto mit einem Einmalcode aus einer Authenticator-App.",
+                "setupDescription": "Starten Sie die Einrichtung, um einen geheimen Schlüssel zu erstellen und einen 6-stelligen TOTP-Code zu bestätigen.",
+                "enabledDescription": "Die Zwei-Faktor-Authentifizierung ist für Ihr Konto derzeit aktiviert.",
+                "secretLabel": "Manueller Einrichtungs-Schlüssel",
                 "otpauthLabel": "OTPAuth-URI",
-                "verifyCodeLabel": "Bestaetigungscode",
+                "verifyCodeLabel": "Bestätigungscode",
                 "disableCodeLabel": "Aktueller Authenticator-Code",
-                "disableHint": "Geben Sie einen gueltigen 6-stelligen Code ein, um die Zwei-Faktor-Authentifizierung zu deaktivieren.",
+                "disableHint": "Geben Sie einen gültigen 6-stelligen Code ein, um die Zwei-Faktor-Authentifizierung zu deaktivieren.",
                 "startSetupAction": "Einrichtung starten",
                 "verifyAction": "Zwei-Faktor aktivieren",
                 "disableAction": "Zwei-Faktor deaktivieren",
@@ -272,23 +277,23 @@
                 "disabled": "Zwei-Faktor-Authentifizierung deaktiviert.",
                 "errors": {
                     "startFailed": "Die Einrichtung der Zwei-Faktor-Authentifizierung konnte nicht gestartet werden. Bitte versuchen Sie es erneut.",
-                    "verifyFailed": "Verifizierung fehlgeschlagen. Prufen Sie Ihren Code und versuchen Sie es erneut.",
+                    "verifyFailed": "Verifizierung fehlgeschlagen. Prüfen Sie Ihren Code und versuchen Sie es erneut.",
                     "disableFailed": "Die Zwei-Faktor-Authentifizierung konnte nicht deaktiviert werden."
                 }
             },
             "passkeys": {
                 "title": "Passkeys",
-                "description": "Registrieren Sie einen Passkey fur die geraetebasierte Anmeldung.",
+                "description": "Registrieren Sie einen Passkey für die gerätebasierte Anmeldung.",
                 "empty": "Noch keine Passkeys registriert.",
                 "nameLabel": "Passkey-Name",
                 "namePlaceholder": "z. B. Arbeitslaptop",
-                "nameHint": "Optionale Bezeichnung zur Identifizierung des Geraets.",
-                "addAction": "Passkey hinzufugen",
+                "nameHint": "Optionale Bezeichnung zur Identifizierung des Geräts.",
+                "addAction": "Passkey hinzufügen",
                 "removeAction": "Entfernen",
                 "registered": "Passkey registriert.",
                 "deleted": "Passkey entfernt.",
                 "errors": {
-                    "notSupported": "Dieser Browser unterstutzt die Passkey-Registrierung nicht.",
+                    "notSupported": "Dieser Browser unterstützt die Passkey-Registrierung nicht.",
                     "registrationFailed": "Passkey-Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
                     "deleteFailed": "Dieser Passkey kann derzeit nicht entfernt werden."
                 }
@@ -305,6 +310,64 @@
             "dataExportTitle": "Datenexport",
             "exportAllTitle": "Alle Daten exportieren",
             "exportAllDescription": "Laden Sie alle Ihre Daten über alle Seiten hinweg als CSV, XLSX oder Parquet herunter."
+        },
+        "apiClients": {
+            "title": "API-Clients",
+            "description": "Erstellen Sie delegierte API-Clients mit Berechtigungen, die auf Ihren eigenen Zugriff begrenzt sind.",
+            "loading": "API-Clients werden geladen...",
+            "empty": "Noch keine API-Clients.",
+            "listTitle": "Vorhandene API-Clients",
+            "confirmDelete": "API-Client \"{{name}}\" löschen?",
+            "status": {
+                "active": "Aktiv",
+                "revoked": "Widerrufen"
+            },
+            "meta": {
+                "instanceRole": "Instanzrolle",
+                "created": "Erstellt",
+                "lastUsed": "Zuletzt verwendet",
+                "expires": "Läuft ab"
+            },
+            "actions": {
+                "create": "Client erstellen",
+                "save": "Änderungen speichern",
+                "edit": "Bearbeiten",
+                "revoke": "Widerrufen",
+                "reactivate": "Reaktivieren",
+                "delete": "Löschen",
+                "addScope": "Scope hinzufügen",
+                "refresh": "Aktualisieren"
+            },
+            "form": {
+                "nameLabel": "Client-Name",
+                "namePlaceholder": "z. B. CI-Analytics-Sync",
+                "descriptionLabel": "Beschreibung",
+                "descriptionPlaceholder": "Wofür dieser Client verwendet wird",
+                "instanceRoleLabel": "Instanzrolle",
+                "expiresAtLabel": "Ablaufzeit",
+                "siteScopesLabel": "Site-Scopes",
+                "siteScopesHint": "Optional: Diesen Client auf bestimmte Sites und Site-Rollen beschränken.",
+                "selectSitePlaceholder": "Site auswählen"
+            },
+            "tokenNotice": {
+                "title": "Dieses Token jetzt kopieren",
+                "description": "Aus Sicherheitsgründen wird das Token nur einmal angezeigt. Speichern Sie es in Ihrem Secret-Manager."
+            },
+            "messages": {
+                "created": "API-Client erstellt.",
+                "updated": "API-Client aktualisiert.",
+                "deleted": "API-Client gelöscht.",
+                "revoked": "API-Client widerrufen.",
+                "reactivated": "API-Client reaktiviert."
+            },
+            "errors": {
+                "loadFailed": "API-Clients konnten nicht geladen werden.",
+                "createFailed": "API-Client konnte nicht erstellt werden.",
+                "updateFailed": "API-Client konnte nicht aktualisiert werden.",
+                "deleteFailed": "API-Client konnte nicht gelöscht werden.",
+                "invalidExpiration": "Der Ablaufzeitpunkt ist ungültig.",
+                "notFound": "API-Client nicht gefunden."
+            }
         }
     },
     "setup": {
@@ -532,6 +595,34 @@
             "defaultPlaceholder": "Standardsprache auswählen",
             "defaultHint": "Dies ist die primäre Sprache für die Dashboard-Oberfläche.",
             "rtlBadge": "RTL"
+        }
+    },
+    "integration": {
+        "apiClients": {
+            "subtitle": "Erstellen und verwalten Sie API-Clients für Integrationen."
+        },
+        "apiReference": {
+            "subtitle": "Versionierte REST-API-Referenz mit Details zu Session- und API-Key-Authentifizierung.",
+            "versionLabel": "API-Version",
+            "searchLabel": "Endpunkte suchen",
+            "searchPlaceholder": "Nach Methode, Pfad, Tag oder Zusammenfassung suchen",
+            "refresh": "Aktualisieren",
+            "latest": "neueste",
+            "operationsTitle": "Operationen",
+            "loading": "API-Referenz wird geladen...",
+            "empty": "Keine API-Operationen entsprechen Ihrer Suche.",
+            "noSummary": "Keine Zusammenfassung",
+            "auth": {
+                "title": "Authentifizierung",
+                "description": "Verwenden Sie je nach Endpunktanforderung eine dieser Anmeldeinformationen.",
+                "bearerLabel": "Bearer-Token",
+                "apiKeyLabel": "X-API-Key-Header",
+                "cookieLabel": "Session-Cookie"
+            },
+            "errors": {
+                "loadVersions": "API-Dokumentversionen konnten nicht geladen werden.",
+                "loadSpec": "API-Referenz für diese Version konnte nicht geladen werden."
+            }
         }
     }
 }

@@ -55,7 +55,7 @@ func (c *Config) GetTrustedProxyNetworks() []*net.IPNet {
 // IsTrustedProxy checks if an IP is in the trusted proxy list.
 func (c *Config) IsTrustedProxy(ip net.IP) bool {
 	if len(c.trustedProxyNets) == 0 {
-		return true
+		return false
 	}
 
 	for _, network := range c.trustedProxyNets {
@@ -145,7 +145,7 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	defMailName := getEnv("HITKEEP_MAIL_FROM_NAME", "HitKeep")
 
 	defRetention := getInt("HITKEEP_DATA_RETENTION_DAYS", 365)
-	defTrustedProxies := getEnv("HITKEEP_TRUSTED_PROXIES", "")
+	defTrustedProxies := getEnv("HITKEEP_TRUSTED_PROXIES", "*")
 
 	hostname, _ := os.Hostname()
 	defNodeName := getEnv("HITKEEP_NODE_NAME", fmt.Sprintf("%s-%d", hostname, time.Now().UnixNano()))
@@ -184,7 +184,7 @@ func load(args []string, getEnv func(string, string) string) *Config {
 
 	fs.IntVar(&conf.DataRetentionDays, "retention-days", defRetention, "Default data retention in days")
 
-	fs.StringVar(&conf.TrustedProxies, "trusted-proxies", defTrustedProxies, "Trusted proxy CIDRs (comma-separated)")
+	fs.StringVar(&conf.TrustedProxies, "trusted-proxies", defTrustedProxies, "Trusted proxy CIDRs (comma-separated) or '*' to trust all")
 
 	fs.StringVar(&conf.NodeName, "name", defNodeName, "Unique node name")
 
@@ -211,6 +211,7 @@ func load(args []string, getEnv func(string, string) string) *Config {
 }
 
 // parseTrustedProxies parses a comma-separated list of CIDR ranges.
+// The wildcard "*" expands to both IPv4 and IPv6 all-network CIDRs.
 func parseTrustedProxies(cidrs string) []*net.IPNet {
 	if cidrs == "" {
 		return nil
@@ -224,6 +225,9 @@ func parseTrustedProxies(cidrs string) []*net.IPNet {
 		if cidr == "" {
 			continue
 		}
+		if cidr == "*" {
+			return trustAllProxyNetworks()
+		}
 
 		_, network, err := net.ParseCIDR(cidr)
 		if err != nil {
@@ -235,4 +239,14 @@ func parseTrustedProxies(cidrs string) []*net.IPNet {
 	}
 
 	return networks
+}
+
+func trustAllProxyNetworks() []*net.IPNet {
+	_, allV4, errV4 := net.ParseCIDR("0.0.0.0/0")
+	_, allV6, errV6 := net.ParseCIDR("::/0")
+	if errV4 != nil || errV6 != nil {
+		slog.Warn("Failed to parse trust-all proxy CIDRs", "ipv4_error", errV4, "ipv6_error", errV6)
+		return nil
+	}
+	return []*net.IPNet{allV4, allV6}
 }

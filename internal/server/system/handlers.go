@@ -17,6 +17,8 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 	mux.HandleFunc("GET /healthz", h.handleHealthz())
 	mux.HandleFunc("GET /readyz", h.handleReadyz())
 	mux.HandleFunc("GET /api/status", h.handleGetStatus())
+	mux.HandleFunc("GET /api/docs/versions", h.handleGetAPIDocVersions())
+	mux.HandleFunc("GET /api/docs/v1/openapi.json", h.handleGetAPIDocV1())
 }
 
 // handleHealthz checks the health of the node.

@@ -316,7 +316,7 @@ func (h *handler) handleStartPasskeyRegistration() http.HandlerFunc {
 				Attestation: "none",
 				AuthenticatorSelection: passkeyAuthenticatorSelection{
 					ResidentKey:      "required",
-					UserVerification: "preferred",
+					UserVerification: "required",
 				},
 			},
 		}

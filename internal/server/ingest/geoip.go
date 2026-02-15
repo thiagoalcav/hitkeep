@@ -132,12 +132,12 @@ func (e *CountryCodeExtractor) fromGeoIP(r *http.Request) string {
 func (e *CountryCodeExtractor) shouldTrustProxyHeaders(r *http.Request) bool {
 	directIP := shared.RemoteIPFromAddr(r.RemoteAddr)
 	if directIP == "" {
-		return len(e.trustedProxyNets) == 0
+		return false
 	}
 
 	parsedDirectIP := net.ParseIP(directIP)
 	if parsedDirectIP == nil {
-		return len(e.trustedProxyNets) == 0
+		return false
 	}
 
 	return shared.IsTrustedProxy(parsedDirectIP, e.trustedProxyNets)

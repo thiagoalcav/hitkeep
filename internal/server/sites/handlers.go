@@ -17,6 +17,7 @@ import (
 
 	"hitkeep/internal/api"
 	authcore "hitkeep/internal/auth"
+	"hitkeep/internal/database"
 	"hitkeep/internal/server/shared"
 )
 
@@ -28,6 +29,7 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 	h := &handler{ctx: ctx}
 	mux.HandleFunc("GET /api/sites", ctx.Handler(shared.HandlerConfig{
 		RequireAuth: true,
+		AllowAPIKey: true,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleGetSites()))
 	mux.HandleFunc("POST /api/sites", ctx.Handler(shared.HandlerConfig{
@@ -80,6 +82,17 @@ func (h *handler) handleGetSites() http.HandlerFunc {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+
+		if apiClientAuth, ok := r.Context().Value(shared.APIClientAuthKey).(*database.APIClientAuth); ok && apiClientAuth != nil {
+			filtered := make([]api.Site, 0, len(sites))
+			for _, site := range sites {
+				if _, allowed := apiClientAuth.SiteRoles[site.ID]; allowed {
+					filtered = append(filtered, site)
+				}
+			}
+			sites = filtered
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(sites); err != nil {
 			slog.Error("Failed to encode response", "error", err)

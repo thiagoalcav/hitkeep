@@ -44,6 +44,25 @@ type ShareLink struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type APIClient struct {
+	ID           uuid.UUID           `json:"id"`
+	UserID       uuid.UUID           `json:"user_id"`
+	Name         string              `json:"name"`
+	Description  string              `json:"description"`
+	InstanceRole string              `json:"instance_role"`
+	ExpiresAt    *time.Time          `json:"expires_at,omitempty"`
+	LastUsedAt   *time.Time          `json:"last_used_at,omitempty"`
+	RevokedAt    *time.Time          `json:"revoked_at,omitempty"`
+	CreatedAt    time.Time           `json:"created_at"`
+	UpdatedAt    time.Time           `json:"updated_at"`
+	SiteRoles    []APIClientSiteRole `json:"site_roles"`
+}
+
+type APIClientSiteRole struct {
+	SiteID uuid.UUID `json:"site_id"`
+	Role   string    `json:"role"`
+}
+
 type Event struct {
 	ID         uuid.UUID      `json:"id"`
 	SiteID     uuid.UUID      `json:"site_id"`

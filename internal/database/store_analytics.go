@@ -16,7 +16,13 @@ import (
 // GetSiteStats returns aggregated KPIs and time-series data using the AnalyticsParams struct.
 func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*api.SiteStats, error) {
 	var exists int
-	err := s.db.QueryRowContext(ctx, "SELECT 1 FROM sites WHERE id = ? AND user_id = ?", params.SiteID, params.UserID).Scan(&exists)
+	err := s.db.QueryRowContext(ctx, `
+		SELECT 1
+		FROM sites s
+		LEFT JOIN site_members sm ON sm.site_id = s.id AND sm.user_id = ?
+		WHERE s.id = ?
+		  AND (s.user_id = ? OR sm.user_id IS NOT NULL)
+	`, params.UserID, params.SiteID, params.UserID).Scan(&exists)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("site not found or access denied")
 	} else if err != nil {

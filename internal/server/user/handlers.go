@@ -68,6 +68,22 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RequireAuth: true,
 		RateLimiter: ctx.AuthLimiter,
 	}, h.handleDeleteUserPasskey()))
+	mux.HandleFunc("GET /api/user/api-clients", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleListAPIClients()))
+	mux.HandleFunc("POST /api/user/api-clients", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleCreateAPIClient()))
+	mux.HandleFunc("PUT /api/user/api-clients/{id}", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleUpdateAPIClient()))
+	mux.HandleFunc("DELETE /api/user/api-clients/{id}", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleDeleteAPIClient()))
 }
 
 const gravatarBaseURL = "https://www.gravatar.com/avatar/"

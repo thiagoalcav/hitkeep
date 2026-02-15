@@ -1,6 +1,7 @@
 package config
 
 import (
+	"net"
 	"testing"
 )
 
@@ -104,4 +105,43 @@ func TestLoadConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTrustedProxiesDefaultIsWildcard(t *testing.T) {
+	conf := load([]string{}, func(key, fallback string) string {
+		return fallback
+	})
+
+	if conf.TrustedProxies != "*" {
+		t.Fatalf("expected default trusted proxies to be '*', got %q", conf.TrustedProxies)
+	}
+	if len(conf.GetTrustedProxyNetworks()) == 0 {
+		t.Fatalf("expected trust-all proxy networks to be loaded by default")
+	}
+	if !conf.IsTrustedProxy(net.ParseIP("203.0.113.10")) {
+		t.Fatalf("expected default trusted proxies to trust public ipv4")
+	}
+}
+
+func TestParseTrustedProxiesWildcard(t *testing.T) {
+	networks := parseTrustedProxies("*")
+	if len(networks) == 0 {
+		t.Fatalf("expected wildcard to parse into trust-all proxy networks")
+	}
+
+	if !isIPInNetworksForTest(net.ParseIP("198.51.100.20"), networks) {
+		t.Fatalf("expected wildcard trusted proxies to include public ipv4")
+	}
+	if !isIPInNetworksForTest(net.ParseIP("2001:db8::1"), networks) {
+		t.Fatalf("expected wildcard trusted proxies to include ipv6")
+	}
+}
+
+func isIPInNetworksForTest(ip net.IP, networks []*net.IPNet) bool {
+	for _, network := range networks {
+		if network.Contains(ip) {
+			return true
+		}
+	}
+	return false
 }

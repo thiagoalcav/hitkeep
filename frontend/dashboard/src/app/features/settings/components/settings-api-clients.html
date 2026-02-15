@@ -1,0 +1,152 @@
+<app-settings-card [title]="'settings.apiClients.title' | transloco" [subtitle]="'settings.apiClients.description' | transloco" icon="pi pi-key">
+    <div settings-card-body class="flex flex-col gap-4">
+        @if (error(); as errorKey) {
+            <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {{ errorKey | transloco }}
+            </div>
+        }
+
+        @if (success(); as successKey) {
+            <div class="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                {{ successKey | transloco }}
+            </div>
+        }
+
+        @if (createdToken(); as token) {
+            <div class="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <div class="font-medium mb-1">{{ "settings.apiClients.tokenNotice.title" | transloco }}</div>
+                <p class="mb-2">{{ "settings.apiClients.tokenNotice.description" | transloco }}</p>
+                <code class="api-client-token">{{ token }}</code>
+                <div class="mt-2">
+                    <p-button [label]="'common.copyLink' | transloco" icon="pi pi-copy" [text]="true" [type]="'button'" (onClick)="copyCreatedToken()" />
+                </div>
+            </div>
+        }
+
+        <form [formGroup]="form" class="api-client-form" (ngSubmit)="submit()">
+            <div class="grid gap-4 md:grid-cols-2">
+                <div class="flex flex-col gap-2">
+                    <label for="api-client-name" class="text-sm font-medium">{{ "settings.apiClients.form.nameLabel" | transloco }}</label>
+                    <input id="api-client-name" pInputText formControlName="name" [placeholder]="'settings.apiClients.form.namePlaceholder' | transloco" />
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <label for="api-client-instance-role" class="text-sm font-medium">{{ "settings.apiClients.form.instanceRoleLabel" | transloco }}</label>
+                    <p-select inputId="api-client-instance-role" [options]="instanceRoleOptions()" formControlName="instanceRole" optionLabel="label" optionValue="value" class="w-full" />
+                </div>
+            </div>
+
+            <div class="grid gap-4 md:grid-cols-2">
+                <div class="flex flex-col gap-2">
+                    <label for="api-client-description" class="text-sm font-medium">{{ "settings.apiClients.form.descriptionLabel" | transloco }}</label>
+                    <input id="api-client-description" pInputText formControlName="description" [placeholder]="'settings.apiClients.form.descriptionPlaceholder' | transloco" />
+                </div>
+
+                <div class="flex flex-col gap-2">
+                    <label for="api-client-expires-at" class="text-sm font-medium">{{ "settings.apiClients.form.expiresAtLabel" | transloco }}</label>
+                    <input id="api-client-expires-at" pInputText type="datetime-local" formControlName="expiresAt" />
+                </div>
+            </div>
+
+            <div class="api-client-scope">
+                <div class="font-medium">{{ "settings.apiClients.form.siteScopesLabel" | transloco }}</div>
+                <p class="text-xs text-[var(--p-text-muted-color)]">{{ "settings.apiClients.form.siteScopesHint" | transloco }}</p>
+
+                <div class="api-client-scope-row" [formGroup]="siteRoleForm">
+                    <p-select [options]="siteOptions()" formControlName="siteID" optionLabel="label" optionValue="value" [placeholder]="'settings.apiClients.form.selectSitePlaceholder' | transloco" class="w-full" />
+                    <p-select [options]="siteRoleOptions()" formControlName="role" optionLabel="label" optionValue="value" class="w-44" />
+                    <p-button [label]="'settings.apiClients.actions.addScope' | transloco" icon="pi pi-plus" [outlined]="true" [type]="'button'" (onClick)="addSiteScope()" />
+                </div>
+
+                @if (selectedSiteRoles().length > 0) {
+                    <div class="api-client-scope-list">
+                        @for (scope of selectedSiteRoles(); track scope.site_id) {
+                            <div class="api-client-scope-item">
+                                <div class="api-client-scope-text">
+                                    <span class="font-medium">{{ siteDomain(scope.site_id) }}</span>
+                                    <span class="text-xs text-[var(--p-text-muted-color)]">{{ "roles." + scope.role | transloco }}</span>
+                                </div>
+                                <p-button icon="pi pi-times" [text]="true" [type]="'button'" (onClick)="removeSiteScope(scope.site_id)" />
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="api-client-form-actions">
+                <p-button [label]="(isEditing() ? 'settings.apiClients.actions.save' : 'settings.apiClients.actions.create') | transloco" icon="pi pi-check" [loading]="isSaving()" [disabled]="isSaving()" [type]="'submit'" />
+                @if (isEditing()) {
+                    <p-button [label]="'common.actions.cancel' | transloco" icon="pi pi-times" [outlined]="true" [type]="'button'" (onClick)="cancelEdit()" />
+                }
+            </div>
+        </form>
+
+        <div class="api-client-divider"></div>
+
+        <div class="api-client-listing">
+            <div class="api-client-listing-header">
+                <h4 class="font-semibold">{{ "settings.apiClients.listTitle" | transloco }}</h4>
+                <p-button [label]="'settings.apiClients.actions.refresh' | transloco" icon="pi pi-refresh" [text]="true" [type]="'button'" [disabled]="isLoading()" (onClick)="reload()" />
+            </div>
+
+            @if (isLoading()) {
+                <p class="text-sm text-[var(--p-text-muted-color)]">{{ "settings.apiClients.loading" | transloco }}</p>
+            } @else if (clients().length === 0) {
+                <p class="text-sm text-[var(--p-text-muted-color)]">{{ "settings.apiClients.empty" | transloco }}</p>
+            } @else {
+                <div class="api-client-list">
+                    @for (client of clients(); track client.id) {
+                        <article class="api-client-item">
+                            <div class="api-client-item-main">
+                                <div class="api-client-item-head">
+                                    <div class="font-semibold">{{ client.name }}</div>
+                                    @if (client.revoked_at) {
+                                        <span class="api-client-status revoked">{{ "settings.apiClients.status.revoked" | transloco }}</span>
+                                    } @else {
+                                        <span class="api-client-status active">{{ "settings.apiClients.status.active" | transloco }}</span>
+                                    }
+                                </div>
+                                @if (client.description) {
+                                    <p class="text-sm text-[var(--p-text-muted-color)]">{{ client.description }}</p>
+                                }
+                                <div class="api-client-meta">
+                                    <span
+                                        >{{ "settings.apiClients.meta.instanceRole" | transloco }}:
+                                        {{ "admin.roles." + (client.instance_role === "owner" ? "instanceOwner" : client.instance_role === "admin" ? "instanceAdmin" : "user") | transloco }}</span
+                                    >
+                                    <span>{{ "settings.apiClients.meta.created" | transloco }}: {{ client.created_at | date: "medium" }}</span>
+                                    @if (client.last_used_at) {
+                                        <span>{{ "settings.apiClients.meta.lastUsed" | transloco }}: {{ client.last_used_at | date: "medium" }}</span>
+                                    }
+                                    @if (client.expires_at) {
+                                        <span>{{ "settings.apiClients.meta.expires" | transloco }}: {{ client.expires_at | date: "medium" }}</span>
+                                    }
+                                </div>
+
+                                @if (client.site_roles.length > 0) {
+                                    <div class="api-client-site-scope-list">
+                                        @for (scope of client.site_roles; track scope.site_id) {
+                                            <span class="api-client-scope-pill">{{ siteDomain(scope.site_id) }} · {{ "roles." + scope.role | transloco }}</span>
+                                        }
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="api-client-item-actions">
+                                <p-button [label]="'settings.apiClients.actions.edit' | transloco" icon="pi pi-pencil" [text]="true" [type]="'button'" (onClick)="startEdit(client)" />
+                                <p-button
+                                    [label]="(client.revoked_at ? 'settings.apiClients.actions.reactivate' : 'settings.apiClients.actions.revoke') | transloco"
+                                    icon="pi pi-lock"
+                                    [text]="true"
+                                    [type]="'button'"
+                                    (onClick)="toggleRevoked(client)"
+                                />
+                                <p-button [label]="'settings.apiClients.actions.delete' | transloco" icon="pi pi-trash" [text]="true" severity="danger" [type]="'button'" (onClick)="deleteClient(client)" />
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</app-settings-card>

@@ -1,0 +1,180 @@
+.api-client-token {
+    display: block;
+    overflow-wrap: anywhere;
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.5rem;
+    background: rgba(0, 0, 0, 0.06);
+    color: inherit;
+}
+
+.api-client-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.api-client-scope {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 0.875rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--p-content-border-color);
+    background: var(--p-content-hover-background);
+}
+
+.api-client-scope-row {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+}
+
+.api-client-scope-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.api-client-scope-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--p-content-border-color);
+    background: var(--p-content-background);
+}
+
+.api-client-scope-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.api-client-form-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.api-client-divider {
+    height: 1px;
+    background: var(--p-content-border-color);
+}
+
+.api-client-listing {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.api-client-listing-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.api-client-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.api-client-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.875rem;
+    border: 1px solid var(--p-content-border-color);
+    border-radius: 0.75rem;
+    background: var(--p-content-background);
+}
+
+.api-client-item-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.api-client-item-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.api-client-status {
+    border-radius: 999px;
+    padding: 0.125rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.api-client-status.active {
+    color: #065f46;
+    background: #d1fae5;
+}
+
+.api-client-status.revoked {
+    color: #991b1b;
+    background: #fee2e2;
+}
+
+.api-client-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    font-size: 0.75rem;
+    color: var(--p-text-muted-color);
+}
+
+.api-client-site-scope-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.api-client-scope-pill {
+    font-size: 0.72rem;
+    padding: 0.2rem 0.45rem;
+    border-radius: 999px;
+    border: 1px solid var(--p-content-border-color);
+    background: var(--p-content-hover-background);
+}
+
+.api-client-item-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
+}
+
+@media (max-width: 900px) {
+    .api-client-item {
+        flex-direction: column;
+    }
+
+    .api-client-item-actions {
+        align-items: flex-start;
+    }
+}
+
+@media (max-width: 768px) {
+    .api-client-scope-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .api-client-form-actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .api-client-listing-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

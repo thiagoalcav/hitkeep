@@ -77,6 +77,24 @@ import { DrawerModule } from 'primeng/drawer';
                     >
                         <i class="pi pi-tags" aria-hidden="true"></i> <span>{{ 'nav.utm' | transloco }}</span>
                     </a>
+
+                    <div class="text-xs font-semibold text-muted-color uppercase px-2 mt-4 mb-2" role="presentation">{{ 'nav.integration' | transloco }}</div>
+                    <a
+                        routerLink="/integration/api-clients"
+                        routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
+                        class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        [attr.aria-label]="'nav.apiClientsAria' | transloco"
+                    >
+                        <i class="pi pi-key" aria-hidden="true"></i> <span>{{ 'nav.apiClients' | transloco }}</span>
+                    </a>
+                    <a
+                        routerLink="/integration/api-reference"
+                        routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
+                        class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        [attr.aria-label]="'nav.apiReferenceAria' | transloco"
+                    >
+                        <i class="pi pi-book" aria-hidden="true"></i> <span>{{ 'nav.apiReference' | transloco }}</span>
+                    </a>
                 </nav>
             </aside>
 
@@ -137,6 +155,25 @@ import { DrawerModule } from 'primeng/drawer';
                         </a>
                         <a routerLink="/utm" (click)="isMobileDrawerOpen.set(false)" routerLinkActive="bg-primary-50 text-primary-700" class="flex items-center gap-3 px-3 py-2 rounded-md font-medium" [attr.aria-label]="'nav.utmAria' | transloco">
                             <i class="pi pi-tags"></i> <span>{{ 'nav.utm' | transloco }}</span>
+                        </a>
+                        <div class="text-xs font-semibold text-muted-color uppercase px-3 mt-4 mb-2" role="presentation">{{ 'nav.integration' | transloco }}</div>
+                        <a
+                            routerLink="/integration/api-clients"
+                            (click)="isMobileDrawerOpen.set(false)"
+                            routerLinkActive="bg-primary-50 text-primary-700"
+                            class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
+                            [attr.aria-label]="'nav.apiClientsAria' | transloco"
+                        >
+                            <i class="pi pi-key"></i> <span>{{ 'nav.apiClients' | transloco }}</span>
+                        </a>
+                        <a
+                            routerLink="/integration/api-reference"
+                            (click)="isMobileDrawerOpen.set(false)"
+                            routerLinkActive="bg-primary-50 text-primary-700"
+                            class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
+                            [attr.aria-label]="'nav.apiReferenceAria' | transloco"
+                        >
+                            <i class="pi pi-book"></i> <span>{{ 'nav.apiReference' | transloco }}</span>
                         </a>
                     </nav>
                 </div>

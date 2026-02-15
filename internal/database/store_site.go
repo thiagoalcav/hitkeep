@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/auth"
 )
 
 func (s *Store) FindSiteByDomain(ctx context.Context, domain string) (*api.Site, error) {
@@ -75,10 +76,27 @@ func (s *Store) CreateSite(ctx context.Context, userID uuid.UUID, domain string)
 }
 
 func (s *Store) GetSites(ctx context.Context, userID uuid.UUID) ([]api.Site, error) {
-	rows, err := s.db.QueryContext(ctx,
-		"SELECT id, user_id, domain, created_at FROM sites WHERE user_id = ? ORDER BY created_at DESC",
-		userID,
-	)
+	instanceRole, err := s.GetInstanceRole(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("could not get instance role: %w", err)
+	}
+
+	var rows *sql.Rows
+	if instanceRole.HasPermission(auth.PermInstanceViewAllSites) {
+		rows, err = s.db.QueryContext(ctx,
+			"SELECT id, user_id, domain, data_retention_days, created_at FROM sites ORDER BY created_at DESC",
+		)
+	} else {
+		rows, err = s.db.QueryContext(ctx, `
+			SELECT DISTINCT s.id, s.user_id, s.domain, s.data_retention_days, s.created_at
+			FROM sites s
+			LEFT JOIN site_members sm ON sm.site_id = s.id AND sm.user_id = ?
+			WHERE s.user_id = ? OR sm.user_id IS NOT NULL
+			ORDER BY s.created_at DESC
+		`,
+			userID, userID,
+		)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +105,7 @@ func (s *Store) GetSites(ctx context.Context, userID uuid.UUID) ([]api.Site, err
 	sites := []api.Site{}
 	for rows.Next() {
 		var site api.Site
-		if err := rows.Scan(&site.ID, &site.UserID, &site.Domain, &site.CreatedAt); err != nil {
+		if err := rows.Scan(&site.ID, &site.UserID, &site.Domain, &site.DataRetentionDays, &site.CreatedAt); err != nil {
 			return nil, err
 		}
 		sites = append(sites, site)

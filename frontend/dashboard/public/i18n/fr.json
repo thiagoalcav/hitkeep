@@ -4,14 +4,19 @@
         "primaryNavigationAria": "Navigation principale",
         "contentAreaAria": "Zone de contenu",
         "analytics": "Analytiques",
+        "integration": "Integrations",
         "dashboardAria": "Aller au tableau de bord",
         "goalsAria": "Aller aux objectifs",
         "funnelsAria": "Aller aux entonnoirs",
         "utmAria": "Aller au tableau UTM",
+        "apiClientsAria": "Aller aux clients API",
+        "apiReferenceAria": "Aller a la reference API",
         "dashboard": "Tableau de bord",
         "goals": "Objectifs",
         "funnels": "Entonnoirs",
-        "utm": "UTM"
+        "utm": "UTM",
+        "apiClients": "Clients API",
+        "apiReference": "Reference API"
     },
     "common": {
         "actions": {
@@ -305,6 +310,64 @@
             "dataExportTitle": "Export des donnees",
             "exportAllTitle": "Exporter toutes les donnees",
             "exportAllDescription": "Telechargez toutes vos donnees de tous les sites au format CSV, XLSX ou Parquet."
+        },
+        "apiClients": {
+            "title": "Clients API",
+            "description": "Creez des clients API delegues avec des permissions limitees a votre propre acces.",
+            "loading": "Chargement des clients API...",
+            "empty": "Aucun client API pour le moment.",
+            "listTitle": "Clients API existants",
+            "confirmDelete": "Supprimer le client API \"{{name}}\" ?",
+            "status": {
+                "active": "Actif",
+                "revoked": "Revoque"
+            },
+            "meta": {
+                "instanceRole": "Role d'instance",
+                "created": "Cree",
+                "lastUsed": "Derniere utilisation",
+                "expires": "Expire"
+            },
+            "actions": {
+                "create": "Creer un client",
+                "save": "Enregistrer les modifications",
+                "edit": "Modifier",
+                "revoke": "Revoquer",
+                "reactivate": "Reactiver",
+                "delete": "Supprimer",
+                "addScope": "Ajouter une portee",
+                "refresh": "Actualiser"
+            },
+            "form": {
+                "nameLabel": "Nom du client",
+                "namePlaceholder": "ex. synchronisation analytics CI",
+                "descriptionLabel": "Description",
+                "descriptionPlaceholder": "A quoi sert ce client",
+                "instanceRoleLabel": "Role d'instance",
+                "expiresAtLabel": "Expiration",
+                "siteScopesLabel": "Portees de site",
+                "siteScopesHint": "Optionnel : limitez ce client a des sites et roles de site specifiques.",
+                "selectSitePlaceholder": "Selectionner un site"
+            },
+            "tokenNotice": {
+                "title": "Copiez ce jeton maintenant",
+                "description": "Pour des raisons de securite, le jeton n'est affiche qu'une seule fois. Stockez-le dans votre gestionnaire de secrets."
+            },
+            "messages": {
+                "created": "Client API cree.",
+                "updated": "Client API mis a jour.",
+                "deleted": "Client API supprime.",
+                "revoked": "Client API revoque.",
+                "reactivated": "Client API reactive."
+            },
+            "errors": {
+                "loadFailed": "Impossible de charger les clients API.",
+                "createFailed": "Impossible de creer le client API.",
+                "updateFailed": "Impossible de mettre a jour le client API.",
+                "deleteFailed": "Impossible de supprimer le client API.",
+                "invalidExpiration": "La date d'expiration est invalide.",
+                "notFound": "Client API introuvable."
+            }
         }
     },
     "setup": {
@@ -532,6 +595,34 @@
             "defaultPlaceholder": "Selectionnez une langue par defaut",
             "defaultHint": "C'est la langue principale de l'interface du tableau de bord.",
             "rtlBadge": "RTL"
+        }
+    },
+    "integration": {
+        "apiClients": {
+            "subtitle": "Creez et gerez des clients API pour vos integrations."
+        },
+        "apiReference": {
+            "subtitle": "Reference REST versionnee avec les details d'authentification par session et API key.",
+            "versionLabel": "Version API",
+            "searchLabel": "Rechercher des endpoints",
+            "searchPlaceholder": "Rechercher par methode, chemin, tag ou resume",
+            "refresh": "Actualiser",
+            "latest": "derniere",
+            "operationsTitle": "Operations",
+            "loading": "Chargement de la reference API...",
+            "empty": "Aucune operation API ne correspond a votre recherche.",
+            "noSummary": "Aucun resume",
+            "auth": {
+                "title": "Authentification",
+                "description": "Utilisez l'une de ces informations selon les exigences de securite de l'endpoint.",
+                "bearerLabel": "Jeton Bearer",
+                "apiKeyLabel": "En-tete X-API-Key",
+                "cookieLabel": "Cookie de session"
+            },
+            "errors": {
+                "loadVersions": "Impossible de charger les versions de la documentation API.",
+                "loadSpec": "Impossible de charger la reference API pour cette version."
+            }
         }
     }
 }

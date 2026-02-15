@@ -21,6 +21,7 @@ type contextKey string
 
 const UserIDKey contextKey = "user_id"
 const PermissionKey contextKey = "permissions"
+const APIClientAuthKey contextKey = "api_client_auth"
 
 type PermissionContext struct {
 	UserID       uuid.UUID
@@ -32,6 +33,7 @@ type HandlerConfig struct {
 	RequireAuth  bool
 	InstancePerm auth.Permission
 	SitePerm     auth.Permission
+	AllowAPIKey  bool
 	RateLimiter  *IPRateLimiter
 }
 
@@ -84,7 +86,8 @@ func (c *Context) Handler(config HandlerConfig, fn http.HandlerFunc) http.Handle
 
 	// Apply auth if needed.
 	if config.RequireAuth || config.InstancePerm != "" || config.SitePerm != "" {
-		handler = c.RequireAuth(handler)
+		allowAPIKey := config.AllowAPIKey || config.InstancePerm != "" || config.SitePerm != ""
+		handler = c.RequireAuth(allowAPIKey, handler)
 	}
 
 	// Apply rate limiting.
@@ -111,6 +114,11 @@ func (c *Context) RequirePermission(perm auth.Permission) func(http.HandlerFunc)
 				slog.Error("Failed to get instance role", "error", err)
 				http.Error(w, "Internal error", http.StatusInternalServerError)
 				return
+			}
+
+			apiClientAuth, _ := r.Context().Value(APIClientAuthKey).(*database.APIClientAuth)
+			if apiClientAuth != nil {
+				instanceRole = auth.MinInstanceRole(instanceRole, apiClientAuth.InstanceRole)
 			}
 
 			// Check instance-level permission.
@@ -143,6 +151,15 @@ func (c *Context) RequirePermission(perm auth.Permission) func(http.HandlerFunc)
 					return
 				}
 
+				if apiClientAuth != nil {
+					delegatedRole, ok := apiClientAuth.SiteRoles[siteID]
+					if !ok {
+						http.Error(w, "Forbidden", http.StatusForbidden)
+						return
+					}
+					siteRole = auth.MinSiteRole(siteRole, delegatedRole)
+				}
+
 				if siteRole.HasPermission(perm) {
 					ctx := context.WithValue(r.Context(), PermissionKey, PermissionContext{
 						UserID:       userID,
@@ -161,10 +178,11 @@ func (c *Context) RequirePermission(perm auth.Permission) func(http.HandlerFunc)
 
 // RequireAuth wraps a handler and ensures the user is authenticated.
 // It sets the UserIDKey in the context.
-func (c *Context) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
+func (c *Context) RequireAuth(allowAPIKey bool, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var userID uuid.UUID
 		var err error
+		var apiClientAuth *database.APIClientAuth
 
 		// 1. Try to validate the short-lived JWT.
 		cookie, err := r.Cookie(auth.CookieName)
@@ -188,14 +206,44 @@ func (c *Context) RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 
+		if allowAPIKey && userID == uuid.Nil {
+			token := extractAPIClientToken(r)
+			if token != "" {
+				apiClientAuth, err = c.Store.GetAPIClientAuth(r.Context(), token)
+				if err != nil {
+					slog.Error("Failed to validate api client token", "error", err)
+				} else if apiClientAuth != nil {
+					userID = apiClientAuth.UserID
+				}
+			}
+		}
+
 		if userID == uuid.Nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
 		ctx := context.WithValue(r.Context(), UserIDKey, userID)
+		if apiClientAuth != nil {
+			ctx = context.WithValue(ctx, APIClientAuthKey, apiClientAuth)
+		}
 		next(w, r.WithContext(ctx))
 	}
+}
+
+func extractAPIClientToken(r *http.Request) string {
+	authorization := strings.TrimSpace(r.Header.Get("Authorization"))
+	if authorization != "" {
+		parts := strings.SplitN(authorization, " ", 2)
+		if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+			token := strings.TrimSpace(parts[1])
+			if token != "" {
+				return token
+			}
+		}
+	}
+
+	return strings.TrimSpace(r.Header.Get("X-API-Key"))
 }
 
 // WithRateLimit wraps a handler with IP-based rate limiting.

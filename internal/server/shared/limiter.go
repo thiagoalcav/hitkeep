@@ -111,24 +111,20 @@ func GetRealIP(r *http.Request, trustedProxies []*net.IPNet) string {
 		return ip
 	}
 
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+	if len(trustedProxies) > 0 {
+		xff := r.Header.Get("X-Forwarded-For")
+		if xff == "" {
+			return directIP
+		}
 		parts := strings.Split(xff, ",")
-		if len(trustedProxies) == 0 {
-			for _, part := range parts {
-				if ip := parseIPHeader(strings.TrimSpace(part)); ip != "" {
-					return ip
-				}
+		for i := len(parts) - 1; i >= 0; i-- {
+			ip := strings.TrimSpace(parts[i])
+			parsedIP := net.ParseIP(ip)
+			if parsedIP == nil {
+				continue
 			}
-		} else {
-			for i := len(parts) - 1; i >= 0; i-- {
-				ip := strings.TrimSpace(parts[i])
-				parsedIP := net.ParseIP(ip)
-				if parsedIP == nil {
-					continue
-				}
-				if !isIPInNetworks(parsedIP, trustedProxies) {
-					return ip
-				}
+			if !isIPInNetworks(parsedIP, trustedProxies) {
+				return ip
 			}
 		}
 	}
@@ -171,7 +167,7 @@ func isValidIP(ip string) bool {
 // IsTrustedProxy reports if an IP belongs to any of the provided networks.
 func IsTrustedProxy(ip net.IP, trustedProxies []*net.IPNet) bool {
 	if len(trustedProxies) == 0 {
-		return true
+		return false
 	}
 	return isIPInNetworks(ip, trustedProxies)
 }

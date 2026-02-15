@@ -290,6 +290,9 @@ func TestHandlePasskeyLogin(t *testing.T) {
 	if startResp.ChallengeToken == "" || startResp.PublicKey.Challenge == "" {
 		t.Fatalf("expected challenge token and challenge")
 	}
+	if startResp.PublicKey.UserVerification != "required" {
+		t.Fatalf("expected required user verification, got %q", startResp.PublicKey.UserVerification)
+	}
 
 	clientDataJSON, _ := json.Marshal(map[string]string{
 		"type":      "webauthn.get",
@@ -301,7 +304,7 @@ func TestHandlePasskeyLogin(t *testing.T) {
 	rpIDHash := sha256.Sum256([]byte("localhost"))
 	authData := make([]byte, 37)
 	copy(authData[:32], rpIDHash[:])
-	authData[32] = 0x01 // User present
+	authData[32] = 0x05 // User present + user verified
 	binary.BigEndian.PutUint32(authData[33:37], 1)
 
 	signedPayload := make([]byte, 0, len(authData)+len(clientDataHash))
@@ -344,6 +347,84 @@ func TestHandlePasskeyLogin(t *testing.T) {
 	}
 	if !foundRemember {
 		t.Fatalf("expected remember me cookie to be set on passkey login")
+	}
+}
+
+func TestHandlePasskeyLoginRejectsMissingUserVerification(t *testing.T) {
+	h, store := setupAuthTestEnv(t)
+	defer store.Close()
+
+	hashed, err := HashPassword("password123")
+	if err != nil {
+		t.Fatalf("failed to hash password: %v", err)
+	}
+	userID, err := store.CreateUser(context.Background(), "user-uv@example.com", hashed)
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("failed to generate test ecdsa key: %v", err)
+	}
+	publicKeyDER, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+	if err != nil {
+		t.Fatalf("failed to marshal test public key: %v", err)
+	}
+	publicKeyB64 := base64.RawURLEncoding.EncodeToString(publicKeyDER)
+
+	_, err = store.CreateUserPasskey(context.Background(), userID, "Test Passkey", "cred-login-uv", publicKeyB64, nil)
+	if err != nil {
+		t.Fatalf("failed to create user passkey: %v", err)
+	}
+
+	startReq := httptest.NewRequest(http.MethodPost, "/api/auth/passkey/login/start", bytes.NewReader([]byte("{}")))
+	startW := httptest.NewRecorder()
+	h.handlePasskeyLoginStart().ServeHTTP(startW, startReq)
+	if startW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, startW.Code)
+	}
+
+	var startResp passkeyLoginStartResponse
+	if err := json.NewDecoder(startW.Body).Decode(&startResp); err != nil {
+		t.Fatalf("failed to decode passkey start response: %v", err)
+	}
+
+	clientDataJSON, _ := json.Marshal(map[string]string{
+		"type":      "webauthn.get",
+		"challenge": startResp.PublicKey.Challenge,
+		"origin":    "http://localhost:8080",
+	})
+	clientDataHash := sha256.Sum256(clientDataJSON)
+
+	rpIDHash := sha256.Sum256([]byte("localhost"))
+	authData := make([]byte, 37)
+	copy(authData[:32], rpIDHash[:])
+	authData[32] = 0x01 // User present only; missing UV bit.
+	binary.BigEndian.PutUint32(authData[33:37], 1)
+
+	signedPayload := make([]byte, 0, len(authData)+len(clientDataHash))
+	signedPayload = append(signedPayload, authData...)
+	signedPayload = append(signedPayload, clientDataHash[:]...)
+	digest := sha256.Sum256(signedPayload)
+	signature, err := ecdsa.SignASN1(rand.Reader, privateKey, digest[:])
+	if err != nil {
+		t.Fatalf("failed to create assertion signature: %v", err)
+	}
+
+	finishBody, _ := json.Marshal(map[string]any{
+		"challenge_token":    startResp.ChallengeToken,
+		"credential_id":      "cred-login-uv",
+		"client_data_json":   base64.RawURLEncoding.EncodeToString(clientDataJSON),
+		"authenticator_data": base64.RawURLEncoding.EncodeToString(authData),
+		"signature":          base64.RawURLEncoding.EncodeToString(signature),
+		"remember_me":        false,
+	})
+	finishReq := httptest.NewRequest(http.MethodPost, "/api/auth/passkey/login/finish", bytes.NewReader(finishBody))
+	finishW := httptest.NewRecorder()
+	h.handlePasskeyLoginFinish().ServeHTTP(finishW, finishReq)
+	if finishW.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, finishW.Code)
 	}
 }
 
@@ -606,6 +687,9 @@ func TestHandleMFAPasskeyLoginFinish(t *testing.T) {
 	if loginResp.Passkey == nil || loginResp.Passkey.Challenge == "" {
 		t.Fatalf("expected passkey request options in mfa response")
 	}
+	if loginResp.Passkey.UserVerification != "required" {
+		t.Fatalf("expected required user verification for mfa passkey flow, got %q", loginResp.Passkey.UserVerification)
+	}
 
 	clientDataJSON, _ := json.Marshal(map[string]string{
 		"type":      "webauthn.get",
@@ -617,7 +701,7 @@ func TestHandleMFAPasskeyLoginFinish(t *testing.T) {
 	rpIDHash := sha256.Sum256([]byte("localhost"))
 	authData := make([]byte, 37)
 	copy(authData[:32], rpIDHash[:])
-	authData[32] = 0x01 // User present
+	authData[32] = 0x05 // User present + user verified
 	binary.BigEndian.PutUint32(authData[33:37], 1)
 
 	signedPayload := make([]byte, 0, len(authData)+len(clientDataHash))

@@ -189,6 +189,12 @@ func deleteUserRows(ctx context.Context, tx *sql.Tx, userID uuid.UUID) error {
 	if _, err := tx.ExecContext(ctx, "DELETE FROM site_members WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete user site memberships: %w", err)
 	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM api_client_site_roles WHERE api_client_id IN (SELECT id FROM api_clients WHERE user_id = ?)", userID); err != nil {
+		return fmt.Errorf("could not delete user api client site roles: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM api_clients WHERE user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not delete user api clients: %w", err)
+	}
 	if _, err := tx.ExecContext(ctx, "DELETE FROM remember_me_tokens WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete remember tokens: %w", err)
 	}

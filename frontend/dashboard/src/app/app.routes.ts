@@ -52,6 +52,14 @@ export const routes: Routes = [
                 loadChildren: () => import('@pages/settings/settings.routes').then((m) => m.SETTINGS_ROUTES)
             },
             {
+                path: 'integration/api-clients',
+                loadComponent: () => import('@pages/integration/api-clients/api-clients').then((m) => m.APIClientsPage)
+            },
+            {
+                path: 'integration/api-reference',
+                loadComponent: () => import('@pages/integration/api-reference/api-reference').then((m) => m.APIReferencePage)
+            },
+            {
                 path: 'admin',
                 loadComponent: () => import('@pages/admin/admin-settings').then((m) => m.AdminSettings),
                 canActivate: [adminGuard]

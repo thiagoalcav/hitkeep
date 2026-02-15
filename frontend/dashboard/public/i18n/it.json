@@ -4,14 +4,19 @@
         "primaryNavigationAria": "Navigazione principale",
         "contentAreaAria": "Area contenuti",
         "analytics": "Analitiche",
+        "integration": "Integrazioni",
         "dashboardAria": "Vai alla dashboard",
         "goalsAria": "Vai agli obiettivi",
         "funnelsAria": "Vai ai funnel",
         "utmAria": "Vai alla dashboard UTM",
+        "apiClientsAria": "Vai ai client API",
+        "apiReferenceAria": "Vai al riferimento API",
         "dashboard": "Dashboard",
         "goals": "Obiettivi",
         "funnels": "Funnel",
-        "utm": "UTM"
+        "utm": "UTM",
+        "apiClients": "Client API",
+        "apiReference": "Riferimento API"
     },
     "common": {
         "actions": {
@@ -305,6 +310,64 @@
             "dataExportTitle": "Esportazione dati",
             "exportAllTitle": "Esporta tutti i dati",
             "exportAllDescription": "Scarica tutti i tuoi dati su tutti i siti in CSV, XLSX o Parquet."
+        },
+        "apiClients": {
+            "title": "Client API",
+            "description": "Crea client API delegati con permessi limitati al tuo livello di accesso.",
+            "loading": "Caricamento client API...",
+            "empty": "Nessun client API al momento.",
+            "listTitle": "Client API esistenti",
+            "confirmDelete": "Eliminare il client API \"{{name}}\"?",
+            "status": {
+                "active": "Attivo",
+                "revoked": "Revocato"
+            },
+            "meta": {
+                "instanceRole": "Ruolo istanza",
+                "created": "Creato",
+                "lastUsed": "Ultimo utilizzo",
+                "expires": "Scade"
+            },
+            "actions": {
+                "create": "Crea client",
+                "save": "Salva modifiche",
+                "edit": "Modifica",
+                "revoke": "Revoca",
+                "reactivate": "Riattiva",
+                "delete": "Elimina",
+                "addScope": "Aggiungi ambito",
+                "refresh": "Aggiorna"
+            },
+            "form": {
+                "nameLabel": "Nome client",
+                "namePlaceholder": "es. sync analytics CI",
+                "descriptionLabel": "Descrizione",
+                "descriptionPlaceholder": "A cosa serve questo client",
+                "instanceRoleLabel": "Ruolo istanza",
+                "expiresAtLabel": "Scadenza",
+                "siteScopesLabel": "Ambiti sito",
+                "siteScopesHint": "Opzionale: limita questo client a siti e ruoli sito specifici.",
+                "selectSitePlaceholder": "Seleziona sito"
+            },
+            "tokenNotice": {
+                "title": "Copia ora questo token",
+                "description": "Per sicurezza, il token viene mostrato una sola volta. Salvalo nel tuo gestore di segreti."
+            },
+            "messages": {
+                "created": "Client API creato.",
+                "updated": "Client API aggiornato.",
+                "deleted": "Client API eliminato.",
+                "revoked": "Client API revocato.",
+                "reactivated": "Client API riattivato."
+            },
+            "errors": {
+                "loadFailed": "Impossibile caricare i client API.",
+                "createFailed": "Impossibile creare il client API.",
+                "updateFailed": "Impossibile aggiornare il client API.",
+                "deleteFailed": "Impossibile eliminare il client API.",
+                "invalidExpiration": "Data di scadenza non valida.",
+                "notFound": "Client API non trovato."
+            }
         }
     },
     "setup": {
@@ -532,6 +595,34 @@
             "defaultPlaceholder": "Seleziona una lingua predefinita",
             "defaultHint": "Questa e la lingua principale dell'interfaccia della dashboard.",
             "rtlBadge": "RTL"
+        }
+    },
+    "integration": {
+        "apiClients": {
+            "subtitle": "Crea e gestisci client API per le integrazioni."
+        },
+        "apiReference": {
+            "subtitle": "Riferimento REST versionato con dettagli su autenticazione via sessione e API key.",
+            "versionLabel": "Versione API",
+            "searchLabel": "Cerca endpoint",
+            "searchPlaceholder": "Cerca per metodo, percorso, tag o riepilogo",
+            "refresh": "Aggiorna",
+            "latest": "ultima",
+            "operationsTitle": "Operazioni",
+            "loading": "Caricamento riferimento API...",
+            "empty": "Nessuna operazione API corrisponde alla tua ricerca.",
+            "noSummary": "Nessun riepilogo",
+            "auth": {
+                "title": "Autenticazione",
+                "description": "Usa una di queste credenziali in base ai requisiti di sicurezza dell'endpoint.",
+                "bearerLabel": "Token Bearer",
+                "apiKeyLabel": "Header X-API-Key",
+                "cookieLabel": "Cookie di sessione"
+            },
+            "errors": {
+                "loadVersions": "Impossibile caricare le versioni della documentazione API.",
+                "loadSpec": "Impossibile caricare il riferimento API per questa versione."
+            }
         }
     }
 }

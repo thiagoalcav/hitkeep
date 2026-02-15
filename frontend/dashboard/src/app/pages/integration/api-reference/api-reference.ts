@@ -160,26 +160,24 @@ export class APIReferencePage {
         this.loading.set(true);
         this.error.set(null);
 
-        this.docs
-            .getVersions()
-            .subscribe({
-                next: (response) => {
-                    this.versions.set(response.versions || []);
-                    const selected = response.latest || response.versions?.[0]?.version || null;
-                    this.selectedVersion.set(selected);
-                    if (selected) {
-                        this.loadSpec(selected);
-                    } else {
-                        this.spec.set(null);
-                        this.loading.set(false);
-                    }
-                },
-                error: () => {
-                    this.error.set('integration.apiReference.errors.loadVersions');
+        this.docs.getVersions().subscribe({
+            next: (response) => {
+                this.versions.set(response.versions || []);
+                const selected = response.latest || response.versions?.[0]?.version || null;
+                this.selectedVersion.set(selected);
+                if (selected) {
+                    this.loadSpec(selected);
+                } else {
                     this.spec.set(null);
                     this.loading.set(false);
                 }
-            });
+            },
+            error: () => {
+                this.error.set('integration.apiReference.errors.loadVersions');
+                this.spec.set(null);
+                this.loading.set(false);
+            }
+        });
     }
 
     private loadSpec(version: string): void {

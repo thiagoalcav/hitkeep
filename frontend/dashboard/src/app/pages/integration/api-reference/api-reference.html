@@ -17,15 +17,7 @@
             <div class="controls-row">
                 <div class="control">
                     <label for="api-doc-version" class="text-sm font-medium">{{ "integration.apiReference.versionLabel" | transloco }}</label>
-                    <p-select
-                        inputId="api-doc-version"
-                        [options]="versionOptions()"
-                        [ngModel]="selectedVersion()"
-                        (ngModelChange)="onVersionChange($event)"
-                        optionLabel="label"
-                        optionValue="value"
-                        class="w-full"
-                    />
+                    <p-select inputId="api-doc-version" [options]="versionOptions()" [ngModel]="selectedVersion()" (ngModelChange)="onVersionChange($event)" optionLabel="label" optionValue="value" class="w-full" />
                 </div>
 
                 <div class="control">
@@ -34,13 +26,7 @@
                 </div>
 
                 <div class="control actions">
-                    <p-button
-                        [label]="'integration.apiReference.refresh' | transloco"
-                        icon="pi pi-refresh"
-                        [outlined]="true"
-                        [disabled]="loading()"
-                        (onClick)="refresh()"
-                    />
+                    <p-button [label]="'integration.apiReference.refresh' | transloco" icon="pi pi-refresh" [outlined]="true" [disabled]="loading()" (onClick)="refresh()" />
                 </div>
             </div>
         </section>
@@ -73,7 +59,7 @@
                 <p class="text-sm text-[var(--p-text-muted-color)]">{{ "integration.apiReference.empty" | transloco }}</p>
             } @else {
                 <div class="operations-list">
-                    @for (operation of operations(); track operation.method + ':' + operation.path) {
+                    @for (operation of operations(); track operation.method + ":" + operation.path) {
                         <article class="operation-item">
                             <div class="operation-head">
                                 <span class="method-badge" [class]="methodClass(operation.method)">{{ operation.method.toUpperCase() }}</span>

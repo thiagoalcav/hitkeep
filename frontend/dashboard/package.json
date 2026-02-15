@@ -7,7 +7,7 @@
         "start": "ng serve",
         "build": "ng build",
         "transloco:optimize": "transloco-optimize dist/dashboard/browser/i18n",
-        "build:prod": "ng build --configuration production --output-hashing=none && npm run transloco:optimize",
+        "build:prod": "ng build --configuration production && npm run transloco:optimize",
         "watch": "ng build --watch --configuration development",
         "test": "ng test",
         "lint": "ng lint"

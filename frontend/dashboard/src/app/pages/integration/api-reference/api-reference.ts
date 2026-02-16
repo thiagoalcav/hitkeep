@@ -1,45 +1,38 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { DOCUMENT } from '@angular/common';
+import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, OnDestroy, ViewChild, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { finalize } from 'rxjs';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
-import { SelectModule } from 'primeng/select';
-import { InputTextModule } from 'primeng/inputtext';
-import { ButtonModule } from 'primeng/button';
-
-import { PageHeader } from '@components/page-header/page-header';
 import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
-import { APIDocVersionInfo, APIReferenceService, OpenAPIOperation, OpenAPISpec } from '@services/api-reference.service';
+import { PageHeader } from '@components/page-header/page-header';
 
-interface OperationView {
-    method: string;
-    path: string;
-    summary: string;
-    description: string;
-    tags: string[];
-    authSchemes: string[];
-}
+const SCALAR_REFERENCE_ID = 'api-reference';
+const SCALAR_SCRIPT_ID = 'hitkeep-scalar-script';
+const SCALAR_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/@scalar/api-reference';
+const SCALAR_PROXY_URL = 'https://proxy.scalar.com';
+
+type ScalarGlobal = {
+    createApiReference: (...args: unknown[]) => unknown;
+};
 
 @Component({
     selector: 'app-api-reference-page',
-    imports: [CommonModule, FormsModule, ReactiveFormsModule, TranslocoPipe, SelectModule, InputTextModule, ButtonModule, PageHeader, PageBreadcrumb],
+    imports: [PageHeader, PageBreadcrumb, TranslocoPipe],
     templateUrl: './api-reference.html',
     styleUrl: './api-reference.css',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class APIReferencePage {
-    private docs = inject(APIReferenceService);
+export class APIReferencePage implements AfterViewInit, OnDestroy {
+    @ViewChild('referenceContainer')
+    private referenceContainer?: ElementRef<HTMLDivElement>;
+
+    private document = inject(DOCUMENT);
     private transloco = inject(TranslocoService);
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
-    protected readonly loading = signal(false);
+    protected readonly viewerReady = signal(false);
     protected readonly error = signal<string | null>(null);
-    protected readonly versions = signal<APIDocVersionInfo[]>([]);
-    protected readonly selectedVersion = signal<string | null>(null);
-    protected readonly spec = signal<OpenAPISpec | null>(null);
-    protected readonly queryControl = new FormControl('', { nonNullable: true });
+    protected readonly specUrl = '/api/docs/v1/openapi.json';
 
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         this.activeLanguage();
@@ -49,152 +42,90 @@ export class APIReferencePage {
         ];
     });
 
-    protected readonly versionOptions = computed(() =>
-        this.versions().map((version) => ({
-            label: `${version.version}${version.latest ? ` (${this.transloco.translate('integration.apiReference.latest')})` : ''}`,
-            value: version.version
-        }))
-    );
-
-    protected readonly authSchemes = computed(() => {
-        const schemes = this.spec()?.components?.securitySchemes ?? {};
-        return Object.entries(schemes).map(([key, value]) => ({
-            key,
-            type: value.type,
-            description: value.description || ''
-        }));
-    });
-
-    protected readonly operations = computed<OperationView[]>(() => {
-        const spec = this.spec();
-        if (!spec?.paths) {
-            return [];
-        }
-
-        const query = (this.queryControl.value ?? '').trim().toLowerCase();
-        const methodOrder = ['get', 'post', 'put', 'patch', 'delete'];
-        const list: OperationView[] = [];
-        const globalSecurity = spec.security ?? [];
-
-        for (const [path, methods] of Object.entries(spec.paths)) {
-            for (const method of methodOrder) {
-                const op = methods[method] as OpenAPIOperation | undefined;
-                if (!op) continue;
-
-                const summary = op.summary ?? '';
-                const description = op.description ?? '';
-                const tags = op.tags ?? [];
-                const security = op.security ?? globalSecurity;
-                const authSchemes = Array.from(new Set(security.flatMap((entry) => Object.keys(entry))));
-
-                const haystack = `${method} ${path} ${summary} ${description} ${tags.join(' ')}`.toLowerCase();
-                if (query && !haystack.includes(query)) {
-                    continue;
-                }
-
-                list.push({
-                    method,
-                    path,
-                    summary: summary || this.transloco.translate('integration.apiReference.noSummary'),
-                    description,
-                    tags,
-                    authSchemes
-                });
-            }
-        }
-
-        return list;
-    });
-
-    constructor() {
-        this.loadVersions();
+    ngAfterViewInit(): void {
+        void this.loadViewer();
     }
 
-    protected refresh(): void {
-        const version = this.selectedVersion();
-        if (!version) {
-            this.loadVersions();
-            return;
-        }
-        this.loadSpec(version);
-    }
-
-    protected onVersionChange(version: string | null): void {
-        if (!version) {
-            return;
-        }
-        this.selectedVersion.set(version);
-        this.loadSpec(version);
-    }
-
-    protected formatAuthScheme(scheme: string): string {
-        switch (scheme) {
-            case 'cookieAuth':
-                return this.transloco.translate('integration.apiReference.auth.cookieLabel');
-            case 'bearerAuth':
-                return this.transloco.translate('integration.apiReference.auth.bearerLabel');
-            case 'apiKeyAuth':
-                return this.transloco.translate('integration.apiReference.auth.apiKeyLabel');
-            default:
-                return scheme;
+    ngOnDestroy(): void {
+        const container = this.referenceContainer?.nativeElement;
+        if (container) {
+            container.replaceChildren();
         }
     }
 
-    protected methodClass(method: string): string {
-        switch (method.toLowerCase()) {
-            case 'get':
-                return 'method-get';
-            case 'post':
-                return 'method-post';
-            case 'put':
-            case 'patch':
-                return 'method-put';
-            case 'delete':
-                return 'method-delete';
-            default:
-                return 'method-default';
-        }
-    }
-
-    private loadVersions(): void {
-        this.loading.set(true);
+    private async loadViewer(): Promise<void> {
         this.error.set(null);
+        this.viewerReady.set(false);
 
-        this.docs.getVersions().subscribe({
-            next: (response) => {
-                this.versions.set(response.versions || []);
-                const selected = response.latest || response.versions?.[0]?.version || null;
-                this.selectedVersion.set(selected);
-                if (selected) {
-                    this.loadSpec(selected);
-                } else {
-                    this.spec.set(null);
-                    this.loading.set(false);
-                }
-            },
-            error: () => {
-                this.error.set('integration.apiReference.errors.loadVersions');
-                this.spec.set(null);
-                this.loading.set(false);
+        const container = this.referenceContainer?.nativeElement;
+        if (!container) {
+            this.error.set('integration.apiReference.errors.loadSpec');
+            return;
+        }
+
+        try {
+            await this.ensureScript();
+            if (!this.isViewerAvailable()) {
+                this.error.set('integration.apiReference.errors.loadSpec');
+                return;
             }
+
+            this.mountReference(container);
+            this.reloadReference();
+            this.viewerReady.set(true);
+        } catch {
+            this.viewerReady.set(false);
+            this.error.set('integration.apiReference.errors.loadSpec');
+        }
+    }
+
+    private isViewerAvailable(): boolean {
+        return this.getScalarGlobal() !== null;
+    }
+
+    private ensureScript(): Promise<void> {
+        if (this.getScalarGlobal()) {
+            return Promise.resolve();
+        }
+
+        const existing = this.document.getElementById(SCALAR_SCRIPT_ID) as HTMLScriptElement | null;
+        if (existing) {
+            return new Promise<void>((resolve, reject) => {
+                existing.addEventListener('load', () => resolve(), { once: true });
+                existing.addEventListener('error', () => reject(new Error('Failed to load Scalar script.')), { once: true });
+            });
+        }
+
+        return new Promise<void>((resolve, reject) => {
+            const script = this.document.createElement('script');
+            script.id = SCALAR_SCRIPT_ID;
+            script.src = SCALAR_SCRIPT_URL;
+            script.async = true;
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error('Failed to load Scalar script.'));
+            this.document.body.appendChild(script);
         });
     }
 
-    private loadSpec(version: string): void {
-        this.loading.set(true);
-        this.error.set(null);
+    private mountReference(container: HTMLDivElement): void {
+        container.replaceChildren();
 
-        this.docs
-            .getSpec(version)
-            .pipe(finalize(() => this.loading.set(false)))
-            .subscribe({
-                next: (spec) => {
-                    this.spec.set(spec);
-                },
-                error: () => {
-                    this.error.set('integration.apiReference.errors.loadSpec');
-                    this.spec.set(null);
-                }
-            });
+        const referenceNode = this.document.createElement('script');
+        referenceNode.id = SCALAR_REFERENCE_ID;
+        referenceNode.dataset['url'] = this.specUrl;
+        referenceNode.dataset['proxyUrl'] = SCALAR_PROXY_URL;
+        container.appendChild(referenceNode);
+    }
+
+    private reloadReference(): void {
+        this.document.dispatchEvent(new Event('scalar:reload-references'));
+    }
+
+    private getScalarGlobal(): ScalarGlobal | null {
+        const globalRef = (this.document.defaultView as Window & { Scalar?: ScalarGlobal } | null)?.Scalar;
+        if (!globalRef || typeof globalRef.createApiReference !== 'function') {
+            return null;
+        }
+        return globalRef;
     }
 }

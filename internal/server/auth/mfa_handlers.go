@@ -45,11 +45,10 @@ func (h *handler) handleMFATOTPVerify() http.HandlerFunc {
 			return
 		}
 
-		// Single-use challenge
-		if err := h.ctx.Store.DeletePasskeyLoginChallenge(r.Context(), challengeID); err != nil {
-			slog.Warn("Failed to delete mfa challenge", "error", err, "challenge_id", challengeID)
-		}
 		if time.Now().UTC().After(challenge.ExpiresAt.UTC()) {
+			if err := h.ctx.Store.DeletePasskeyLoginChallenge(r.Context(), challengeID); err != nil {
+				slog.Warn("Failed to delete expired mfa challenge", "error", err, "challenge_id", challengeID)
+			}
 			http.Error(w, "MFA challenge expired", http.StatusGone)
 			return
 		}
@@ -66,6 +65,12 @@ func (h *handler) handleMFATOTPVerify() http.HandlerFunc {
 		}
 		if !security.ValidateTOTPCodeStrict(secret, req.Code, time.Now().UTC()) {
 			http.Error(w, "Invalid TOTP code", http.StatusUnauthorized)
+			return
+		}
+
+		if err := h.ctx.Store.DeletePasskeyLoginChallenge(r.Context(), challengeID); err != nil {
+			slog.Error("Failed to consume mfa challenge after totp verification", "error", err, "challenge_id", challengeID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 

@@ -628,6 +628,83 @@ func TestHandleMFATOTPVerify(t *testing.T) {
 	}
 }
 
+func TestHandleMFATOTPVerifyKeepsChallengeAfterInvalidCode(t *testing.T) {
+	h, store := setupAuthTestEnv(t)
+	defer store.Close()
+
+	hashed, err := HashPassword("password123")
+	if err != nil {
+		t.Fatalf("failed to hash password: %v", err)
+	}
+	userID, err := store.CreateUser(context.Background(), "mfa-retry@example.com", hashed)
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	totpSecret := "JBSWY3DPEHPK3PXP"
+	if err := store.EnableUserTOTP(context.Background(), userID, totpSecret); err != nil {
+		t.Fatalf("failed to enable user totp: %v", err)
+	}
+
+	loginBody, _ := json.Marshal(map[string]any{
+		"email":       "mfa-retry@example.com",
+		"password":    "password123",
+		"remember_me": false,
+	})
+	loginReq := httptest.NewRequest(http.MethodPost, "/api/login", bytes.NewReader(loginBody))
+	loginW := httptest.NewRecorder()
+	h.handleLogin().ServeHTTP(loginW, loginReq)
+
+	if loginW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, loginW.Code)
+	}
+
+	var loginResp loginResponse
+	if err := json.NewDecoder(loginW.Body).Decode(&loginResp); err != nil {
+		t.Fatalf("failed to decode login response: %v", err)
+	}
+	if loginResp.Status != "mfa_required" || loginResp.ChallengeToken == "" {
+		t.Fatalf("expected mfa_required response with challenge token, got %+v", loginResp)
+	}
+
+	currentCode, err := security.GenerateCurrentTOTPCode(totpSecret, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("failed to generate baseline totp code: %v", err)
+	}
+	invalidCode := "0" + currentCode[1:]
+	if currentCode[0] == '0' {
+		invalidCode = "1" + currentCode[1:]
+	}
+
+	firstVerifyBody, _ := json.Marshal(map[string]any{
+		"challenge_token": loginResp.ChallengeToken,
+		"code":            invalidCode,
+	})
+	firstVerifyReq := httptest.NewRequest(http.MethodPost, "/api/auth/mfa/totp/verify", bytes.NewReader(firstVerifyBody))
+	firstVerifyW := httptest.NewRecorder()
+	h.handleMFATOTPVerify().ServeHTTP(firstVerifyW, firstVerifyReq)
+
+	if firstVerifyW.Code != http.StatusUnauthorized {
+		t.Fatalf("expected status %d for invalid totp, got %d", http.StatusUnauthorized, firstVerifyW.Code)
+	}
+
+	validCode, err := security.GenerateCurrentTOTPCode(totpSecret, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("failed to generate totp code: %v", err)
+	}
+	secondVerifyBody, _ := json.Marshal(map[string]any{
+		"challenge_token": loginResp.ChallengeToken,
+		"code":            validCode,
+	})
+	secondVerifyReq := httptest.NewRequest(http.MethodPost, "/api/auth/mfa/totp/verify", bytes.NewReader(secondVerifyBody))
+	secondVerifyW := httptest.NewRecorder()
+	h.handleMFATOTPVerify().ServeHTTP(secondVerifyW, secondVerifyReq)
+
+	if secondVerifyW.Code != http.StatusOK {
+		t.Fatalf("expected status %d after retry with valid code, got %d", http.StatusOK, secondVerifyW.Code)
+	}
+}
+
 func TestHandleMFAPasskeyLoginFinish(t *testing.T) {
 	h, store := setupAuthTestEnv(t)
 	defer store.Close()

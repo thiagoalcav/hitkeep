@@ -19,6 +19,11 @@
     line-height: 1rem;
 }
 
+.settings-field-error {
+    color: #b91c1c;
+    font-size: 0.75rem;
+}
+
 :host ::ng-deep .settings-action-btn {
     min-width: 11rem;
     justify-content: center;

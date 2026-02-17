@@ -8,11 +8,112 @@
 
     <div class="settings-content max-w-3xl mx-auto w-full">
         <div class="settings-grid">
+            <app-settings-card [title]="'settings.user.profile.title' | transloco" [subtitle]="'settings.user.profile.description' | transloco" icon="pi pi-user">
+                <div settings-card-body class="flex flex-col gap-4">
+                    @if (profileLoadError(); as profileLoadErrorKey) {
+                        <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            {{ profileLoadErrorKey | transloco }}
+                        </div>
+                    }
+
+                    @if (profileSaveError(); as profileSaveErrorKey) {
+                        <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            {{ profileSaveErrorKey | transloco }}
+                        </div>
+                    }
+                    @if (profileSaveState() === "saved") {
+                        <div class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                            {{ "settings.user.profile.status.saved" | transloco }}
+                        </div>
+                    }
+
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <div class="flex flex-col gap-2">
+                            <label for="profile-given-name" class="text-sm font-medium text-[var(--p-text-color)]">{{ "settings.user.profile.givenNameLabel" | transloco }}</label>
+                            <input
+                                id="profile-given-name"
+                                pInputText
+                                [formControl]="profileForm.givenName().control()"
+                                [placeholder]="'settings.user.profile.givenNamePlaceholder' | transloco"
+                                [class.ng-invalid]="profileForm.givenName().touched() && profileForm.givenName().invalid()"
+                                [class.ng-dirty]="profileForm.givenName().dirty()"
+                                autocomplete="given-name"
+                                (input)="onProfileFieldChange()"
+                            />
+                            @if (profileForm.givenName().touched() && profileForm.givenName().control().hasError("maxlength")) {
+                                <small class="settings-field-error">{{ "settings.user.profile.validation.nameTooLong" | transloco }}</small>
+                            }
+                        </div>
+
+                        <div class="flex flex-col gap-2">
+                            <label for="profile-last-name" class="text-sm font-medium text-[var(--p-text-color)]">{{ "settings.user.profile.lastNameLabel" | transloco }}</label>
+                            <input
+                                id="profile-last-name"
+                                pInputText
+                                [formControl]="profileForm.lastName().control()"
+                                [placeholder]="'settings.user.profile.lastNamePlaceholder' | transloco"
+                                [class.ng-invalid]="profileForm.lastName().touched() && profileForm.lastName().invalid()"
+                                [class.ng-dirty]="profileForm.lastName().dirty()"
+                                autocomplete="family-name"
+                                (input)="onProfileFieldChange()"
+                            />
+                            @if (profileForm.lastName().touched() && profileForm.lastName().control().hasError("maxlength")) {
+                                <small class="settings-field-error">{{ "settings.user.profile.validation.nameTooLong" | transloco }}</small>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <label for="profile-email" class="text-sm font-medium text-[var(--p-text-color)]">
+                            {{ "settings.user.profile.emailLabel" | transloco }}
+                            <span class="api-client-required-asterisk" aria-hidden="true">*</span>
+                        </label>
+                        <input
+                            id="profile-email"
+                            type="email"
+                            pInputText
+                            [formControl]="profileForm.email().control()"
+                            [placeholder]="'settings.user.profile.emailPlaceholder' | transloco"
+                            [class.ng-invalid]="profileForm.email().touched() && profileForm.email().invalid()"
+                            [class.ng-dirty]="profileForm.email().dirty()"
+                            autocomplete="email"
+                            autocapitalize="none"
+                            spellcheck="false"
+                            inputmode="email"
+                            (input)="onProfileFieldChange()"
+                        />
+                        @if (profileForm.email().touched() && profileForm.email().control().hasError("required")) {
+                            <small class="settings-field-error">{{ "settings.user.profile.validation.emailRequired" | transloco }}</small>
+                        } @else if (profileForm.email().touched() && profileForm.email().control().hasError("email")) {
+                            <small class="settings-field-error">{{ "settings.user.profile.validation.emailInvalid" | transloco }}</small>
+                        } @else if (profileForm.email().touched() && profileForm.email().control().hasError("maxlength")) {
+                            <small class="settings-field-error">{{ "settings.user.profile.validation.emailTooLong" | transloco }}</small>
+                        }
+                    </div>
+                </div>
+
+                <div settings-card-footer>
+                    <div class="settings-card-action">
+                        <p-button [label]="'settings.user.profile.saveAction' | transloco" icon="pi pi-save" [loading]="isProfileSaving()" [disabled]="!canSaveProfile()" styleClass="settings-action-btn" (onClick)="saveProfile()" />
+                    </div>
+                </div>
+            </app-settings-card>
+
             <app-settings-card [title]="'preferences.language.heading' | transloco" [subtitle]="'preferences.language.description' | transloco" icon="pi pi-language">
                 <div settings-card-body class="flex flex-col gap-4">
                     @if (loadError(); as loadErrorKey) {
                         <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                             {{ loadErrorKey | transloco }}
+                        </div>
+                    }
+                    @if (saveState() === "saved") {
+                        <div class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                            {{ "preferences.status.saved" | transloco }}
+                        </div>
+                    }
+                    @if (saveState() === "error") {
+                        <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            {{ "preferences.status.saveFailed" | transloco }}
                         </div>
                     }
 
@@ -64,12 +165,6 @@
                 <div settings-card-footer>
                     <div class="settings-card-action">
                         <p-button [label]="'preferences.actions.saveChanges' | transloco" icon="pi pi-save" [loading]="isSaving()" [disabled]="!canSave()" styleClass="settings-action-btn" (onClick)="save()" />
-                        @if (saveState() === "saved") {
-                            <span class="settings-status text-emerald-600">{{ "preferences.status.saved" | transloco }}</span>
-                        }
-                        @if (saveState() === "error") {
-                            <span class="settings-status text-red-600">{{ "preferences.status.saveFailed" | transloco }}</span>
-                        }
                     </div>
                 </div>
             </app-settings-card>

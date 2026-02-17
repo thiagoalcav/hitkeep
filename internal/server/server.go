@@ -12,6 +12,7 @@ import (
 	"github.com/nsqio/go-nsq"
 	"golang.org/x/time/rate"
 
+	"hitkeep/internal/blocking"
 	"hitkeep/internal/cluster"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
@@ -40,6 +41,8 @@ type Server struct {
 	ingestLimiter *shared.IPRateLimiter
 	apiLimiter    *shared.IPRateLimiter
 	authLimiter   *shared.IPRateLimiter
+	ipFilter      *blocking.IPFilter
+	ipFilterStop  context.CancelFunc
 	takeout       *takeout.TakeoutService
 	ctx           *shared.Context
 }
@@ -54,6 +57,14 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, cluster *cl
 	}
 
 	takeoutService := takeout.NewTakeoutService(store, "archive/takeout")
+	var ipFilter *blocking.IPFilter
+	var ipFilterStop context.CancelFunc
+	if store != nil {
+		ipFilter = blocking.NewIPFilter(store)
+		filterCtx, cancel := context.WithCancel(context.Background())
+		ipFilter.StartRefreshLoop(filterCtx)
+		ipFilterStop = cancel
+	}
 
 	s := &Server{
 		store:         store,
@@ -64,6 +75,8 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, cluster *cl
 		ingestLimiter: ingestLim,
 		apiLimiter:    apiLim,
 		authLimiter:   authLim,
+		ipFilter:      ipFilter,
+		ipFilterStop:  ipFilterStop,
 		takeout:       takeoutService,
 	}
 	s.ctx = &shared.Context{
@@ -76,6 +89,7 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, cluster *cl
 		IngestLimiter: ingestLim,
 		ApiLimiter:    apiLim,
 		AuthLimiter:   authLim,
+		IPFilter:      ipFilter,
 	}
 
 	mux := http.NewServeMux()
@@ -83,7 +97,7 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, cluster *cl
 
 	s.httpServer = &http.Server{
 		Addr:              conf.HTTPAddr,
-		Handler:           mux,
+		Handler:           shared.FetchMetadataMiddleware(conf.PublicURL, mux),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	return s
@@ -96,6 +110,10 @@ func (s *Server) ListenAndServe() error {
 
 func (s *Server) Shutdown(ctx context.Context) error {
 	slog.Info("HTTP server shutting down.")
+
+	if s.ipFilterStop != nil {
+		s.ipFilterStop()
+	}
 
 	s.ingestLimiter.Stop()
 	s.apiLimiter.Stop()

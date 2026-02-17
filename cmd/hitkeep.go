@@ -142,6 +142,7 @@ func startLeaderServices(ctx context.Context, conf *config.Config, logger *slog.
 		store.Close()
 		return nil, nil, nil, err
 	}
+	store.StartMaintenance(ctx)
 
 	nsqdOpts := nsqd.NewOptions()
 	tmpDir, _ := os.MkdirTemp("", "nsqd")

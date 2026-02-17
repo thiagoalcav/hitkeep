@@ -88,6 +88,13 @@ func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userIP := shared.GetRealIP(r, h.ctx.Config.GetTrustedProxyNetworks())
+	if h.ctx.IPFilter != nil && h.ctx.IPFilter.IsBlocked(site.ID, userIP) {
+		slog.Debug("Dropped hit due to IP exclusion", "ip", userIP, "site_id", site.ID)
+		w.WriteHeader(http.StatusAccepted)
+		return
+	}
+
 	type ingestPayload struct {
 		Path      string    `json:"path"`
 		Referrer  *string   `json:"referrer"`
@@ -178,8 +185,9 @@ func (h *handler) forwardToLeader(w http.ResponseWriter, r *http.Request, target
 		return
 	}
 
-	proxyReq.Header.Set("Origin", r.Header.Get("Origin"))
+	proxyReq.Header = r.Header.Clone()
 	proxyReq.Header.Set("Content-Type", "application/json")
+	appendForwardedFor(proxyReq.Header, r.RemoteAddr)
 
 	resp, err := http.DefaultClient.Do(proxyReq)
 	if err != nil {
@@ -246,6 +254,13 @@ func (h *handler) handleIngestEventLeader(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	userIP := shared.GetRealIP(r, h.ctx.Config.GetTrustedProxyNetworks())
+	if h.ctx.IPFilter != nil && h.ctx.IPFilter.IsBlocked(site.ID, userIP) {
+		slog.Debug("Dropped event due to IP exclusion", "ip", userIP, "site_id", site.ID)
+		w.WriteHeader(http.StatusAccepted)
+		return
+	}
+
 	type eventPayload struct {
 		Name       string         `json:"n"`
 		Properties map[string]any `json:"p"`
@@ -290,4 +305,19 @@ func normalizeLeaderHost(addr string) string {
 	}
 
 	return addr
+}
+
+func appendForwardedFor(headers http.Header, remoteAddr string) {
+	ip := shared.RemoteIPFromAddr(remoteAddr)
+	if ip == "" {
+		return
+	}
+
+	existing := strings.TrimSpace(headers.Get("X-Forwarded-For"))
+	if existing == "" {
+		headers.Set("X-Forwarded-For", ip)
+		return
+	}
+
+	headers.Set("X-Forwarded-For", existing+", "+ip)
 }

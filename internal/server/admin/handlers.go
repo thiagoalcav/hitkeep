@@ -1,13 +1,16 @@
 package admin
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 
 	authcore "hitkeep/internal/auth"
+	"hitkeep/internal/blocking"
 	"hitkeep/internal/mailables"
 	serverauth "hitkeep/internal/server/auth"
 	"hitkeep/internal/server/shared"
@@ -39,6 +42,18 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		InstancePerm: authcore.PermInstanceManageUsers,
 		RateLimiter:  ctx.ApiLimiter,
 	}, h.handleAdminDeleteSite()))
+	mux.HandleFunc("GET /api/admin/exclusions", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceViewAllSites,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleListInstanceExclusions()))
+	mux.HandleFunc("POST /api/admin/exclusions", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceViewAllSites,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleCreateInstanceExclusion()))
+	mux.HandleFunc("DELETE /api/admin/exclusions/{ruleID}", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceViewAllSites,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleDeleteInstanceExclusion()))
 
 	mux.HandleFunc("GET /api/sites/{id}/members", ctx.Handler(shared.HandlerConfig{
 		SitePerm:    authcore.PermSiteView,
@@ -75,6 +90,119 @@ func (h *handler) handleListUsers() http.HandlerFunc {
 		if err := json.NewEncoder(w).Encode(users); err != nil {
 			slog.Error("Failed to encode response", "error", err)
 		}
+	}
+}
+
+func (h *handler) handleListInstanceExclusions() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.ctx.Store == nil {
+			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
+			return
+		}
+
+		rules, err := h.ctx.Store.ListInstanceExclusions(r.Context())
+		if err != nil {
+			slog.Error("Failed to list instance exclusions", "error", err)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(rules); err != nil {
+			slog.Error("Failed to encode instance exclusions response", "error", err)
+		}
+	}
+}
+
+func (h *handler) handleCreateInstanceExclusion() http.HandlerFunc {
+	type request struct {
+		CIDR        string `json:"cidr"`
+		Description string `json:"description"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.ctx.Store == nil {
+			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
+			return
+		}
+
+		userID := shared.GetUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		var req request
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		normalizedCIDR, _, err := blocking.NormalizeCIDR(req.CIDR)
+		if err != nil {
+			http.Error(w, "Invalid IP or CIDR", http.StatusBadRequest)
+			return
+		}
+
+		description := strings.TrimSpace(req.Description)
+		if len(description) > 255 {
+			http.Error(w, "Description must be 255 characters or fewer", http.StatusBadRequest)
+			return
+		}
+
+		rule, err := h.ctx.Store.CreateInstanceExclusion(r.Context(), normalizedCIDR, description, userID)
+		if err != nil {
+			slog.Error("Failed to create instance exclusion", "error", err, "cidr", normalizedCIDR)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			return
+		}
+
+		h.refreshIPFilter(r.Context())
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if err := json.NewEncoder(w).Encode(rule); err != nil {
+			slog.Error("Failed to encode instance exclusion response", "error", err)
+		}
+	}
+}
+
+func (h *handler) handleDeleteInstanceExclusion() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.ctx.Store == nil {
+			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
+			return
+		}
+
+		ruleID, err := uuid.Parse(strings.TrimSpace(r.PathValue("ruleID")))
+		if err != nil {
+			http.Error(w, "Invalid rule ID", http.StatusBadRequest)
+			return
+		}
+
+		deleted, err := h.ctx.Store.DeleteInstanceExclusion(r.Context(), ruleID)
+		if err != nil {
+			slog.Error("Failed to delete instance exclusion", "error", err, "rule_id", ruleID)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			return
+		}
+		if !deleted {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
+
+		h.refreshIPFilter(r.Context())
+
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+func (h *handler) refreshIPFilter(ctx context.Context) {
+	if h.ctx.IPFilter == nil {
+		return
+	}
+	if err := h.ctx.IPFilter.Refresh(ctx); err != nil {
+		slog.Warn("Failed to refresh IP filter after exclusion write", "error", err)
 	}
 }
 

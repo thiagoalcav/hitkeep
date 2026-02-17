@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -32,6 +33,10 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleGetUserAvatar()))
+	mux.HandleFunc("GET /api/user/current-ip", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetCurrentIP()))
 	mux.HandleFunc("GET /api/user/preferences", ctx.Handler(shared.HandlerConfig{
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
@@ -205,6 +210,41 @@ func (h *handler) handleGetUserPreferences() http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(prefs); err != nil {
 			slog.Error("Failed to encode user preferences", "error", err, "user_id", userID)
+		}
+	}
+}
+
+func (h *handler) handleGetCurrentIP() http.HandlerFunc {
+	type response struct {
+		IP   string `json:"ip"`
+		CIDR string `json:"cidr"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		ipValue := strings.TrimSpace(shared.GetRealIP(r, h.ctx.Config.GetTrustedProxyNetworks()))
+		if parsed := net.ParseIP(ipValue); parsed == nil {
+			ipValue = strings.TrimSpace(shared.RemoteIPFromAddr(ipValue))
+		}
+
+		parsedIP := net.ParseIP(ipValue)
+		if parsedIP == nil {
+			http.Error(w, "Unable to resolve client IP", http.StatusBadRequest)
+			return
+		}
+
+		cidrSuffix := "/128"
+		if parsedIP.To4() != nil {
+			cidrSuffix = "/32"
+		}
+
+		resp := response{
+			IP:   parsedIP.String(),
+			CIDR: parsedIP.String() + cidrSuffix,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			slog.Error("Failed to encode current IP response", "error", err)
 		}
 	}
 }

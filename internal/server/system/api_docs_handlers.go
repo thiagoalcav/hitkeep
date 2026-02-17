@@ -97,6 +97,7 @@ func openAPISpecV1(publicURL string) map[string]any {
 				"goalID":        map[string]any{"name": "goalID", "in": "path", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}},
 				"funnelID":      map[string]any{"name": "funnelID", "in": "path", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}},
 				"shareID":       map[string]any{"name": "shareID", "in": "path", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}},
+				"ruleID":        map[string]any{"name": "ruleID", "in": "path", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}},
 				"userID":        map[string]any{"name": "userId", "in": "path", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}},
 				"adminUserID":   map[string]any{"name": "id", "in": "path", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}},
 				"apiClientID":   map[string]any{"name": "id", "in": "path", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}},
@@ -308,6 +309,25 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"added_at": map[string]any{"type": "string", "format": "date-time"},
 					},
 				},
+				"IPExclusion": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"id":          map[string]any{"type": "string", "format": "uuid"},
+						"site_id":     map[string]any{"type": "string", "format": "uuid"},
+						"cidr":        map[string]any{"type": "string"},
+						"description": map[string]any{"type": "string"},
+						"created_at":  map[string]any{"type": "string", "format": "date-time"},
+						"created_by":  map[string]any{"type": "string", "format": "uuid"},
+					},
+				},
+				"IPExclusionCreateRequest": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"cidr":        map[string]any{"type": "string", "description": "IP or CIDR value. Plain IP values are normalized to /32 (IPv4) or /128 (IPv6)."},
+						"description": map[string]any{"type": "string", "maxLength": 255},
+					},
+					"required": []string{"cidr"},
+				},
 				"UserProfile": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
@@ -506,6 +526,18 @@ func openAPISpecV1(publicURL string) map[string]any {
 			"/api/user/avatar": map[string]any{
 				"get": op([]string{"User"}, "Get avatar", "Proxies authenticated user's avatar image.", secCookie(), []any{paramRef("#/components/parameters/avatarSize")}, nil, map[string]any{"200": desc("Avatar image")}),
 			},
+			"/api/user/current-ip": map[string]any{
+				"get": op([]string{"User"}, "Get current IP", "Returns the resolved client IP and single-host CIDR for quick exclusion setup.", secCookie(), nil, nil, map[string]any{
+					"200": jsonSchemaResp("Current IP", map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"ip":   map[string]any{"type": "string"},
+							"cidr": map[string]any{"type": "string"},
+						},
+						"required": []string{"ip", "cidr"},
+					}),
+				}),
+			},
 			"/api/user/preferences": map[string]any{
 				"get": op([]string{"User"}, "Get user preferences", "Returns authenticated user preferences.", secCookie(), nil, nil, map[string]any{"200": jsonRefResp("Preferences", "#/components/schemas/UserPreferences")}),
 				"put": op([]string{"User"}, "Update user preferences", "Updates authenticated user preferences.", secCookie(), nil,
@@ -589,6 +621,17 @@ func openAPISpecV1(publicURL string) map[string]any {
 			"/api/admin/sites/{id}": map[string]any{
 				"delete": op([]string{"Admin"}, "Delete site (admin)", "Deletes site by admin endpoint.", secCookie(), []any{paramRef("#/components/parameters/siteID")}, nil, map[string]any{"200": jsonRefResp("Status", "#/components/schemas/Status")}),
 			},
+			"/api/admin/exclusions": map[string]any{
+				"get": op([]string{"Admin"}, "List global exclusions", "Lists instance-level IP/CIDR exclusions used by ingest filtering.", secCookie(), nil, nil,
+					map[string]any{"200": jsonSchemaResp("Global exclusions", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/IPExclusion"}})}),
+				"post": op([]string{"Admin"}, "Create global exclusion", "Creates instance-level IP/CIDR exclusion for all sites.", secCookie(), nil,
+					jsonBody(map[string]any{"$ref": "#/components/schemas/IPExclusionCreateRequest"}),
+					map[string]any{"201": jsonRefResp("Created exclusion", "#/components/schemas/IPExclusion"), "400": errResp("Invalid IP/CIDR")}),
+			},
+			"/api/admin/exclusions/{ruleID}": map[string]any{
+				"delete": op([]string{"Admin"}, "Delete global exclusion", "Deletes instance-level IP/CIDR exclusion rule.", secCookie(), []any{paramRef("#/components/parameters/ruleID")}, nil,
+					map[string]any{"204": desc("Deleted"), "404": errResp("Not found")}),
+			},
 			"/api/sites/{id}/members": map[string]any{
 				"get": op([]string{"Admin"}, "List site members", "Lists site members and roles.", secCookie(), []any{paramRef("#/components/parameters/siteID")}, nil, map[string]any{"200": jsonSchemaResp("Members", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/SiteMember"}})}),
 				"post": op([]string{"Admin"}, "Add site member", "Adds member to site and optionally sends invite.", secCookie(), []any{paramRef("#/components/parameters/siteID")},
@@ -636,6 +679,17 @@ func openAPISpecV1(publicURL string) map[string]any {
 				"put": op([]string{"Sites"}, "Update retention policy", "Updates per-site retention days.", secCookie(), []any{paramRef("#/components/parameters/siteID")},
 					jsonBody(map[string]any{"type": "object", "properties": map[string]any{"days": map[string]any{"type": "integer", "minimum": 0}}, "required": []string{"days"}}),
 					map[string]any{"200": desc("Updated")}),
+			},
+			"/api/sites/{id}/exclusions": map[string]any{
+				"get": op([]string{"Sites"}, "List site exclusions", "Lists per-site IP/CIDR exclusions used by ingest filtering.", secCookie(), []any{paramRef("#/components/parameters/siteID")}, nil,
+					map[string]any{"200": jsonSchemaResp("Site exclusions", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/IPExclusion"}})}),
+				"post": op([]string{"Sites"}, "Create site exclusion", "Creates per-site IP/CIDR exclusion rule.", secCookie(), []any{paramRef("#/components/parameters/siteID")},
+					jsonBody(map[string]any{"$ref": "#/components/schemas/IPExclusionCreateRequest"}),
+					map[string]any{"201": jsonRefResp("Created exclusion", "#/components/schemas/IPExclusion"), "400": errResp("Invalid IP/CIDR")}),
+			},
+			"/api/sites/{id}/exclusions/{ruleID}": map[string]any{
+				"delete": op([]string{"Sites"}, "Delete site exclusion", "Deletes a per-site IP/CIDR exclusion rule.", secCookie(), []any{paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/ruleID")}, nil,
+					map[string]any{"204": desc("Deleted"), "404": errResp("Not found")}),
 			},
 
 			"/api/sites/{id}/goals": map[string]any{

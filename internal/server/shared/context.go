@@ -10,6 +10,7 @@ import (
 	"github.com/nsqio/go-nsq"
 
 	"hitkeep/internal/auth"
+	"hitkeep/internal/blocking"
 	"hitkeep/internal/cluster"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
@@ -47,6 +48,7 @@ type Context struct {
 	IngestLimiter *IPRateLimiter
 	ApiLimiter    *IPRateLimiter
 	AuthLimiter   *IPRateLimiter
+	IPFilter      *blocking.IPFilter
 }
 
 // GetUserIDFromContext extracts the user ID from context (set by auth middleware).

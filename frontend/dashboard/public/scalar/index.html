@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>HitKeep API Reference</title>
+        <style>
+            html,
+            body {
+                height: 100%;
+                margin: 0;
+                width: 100%;
+            }
+
+            body {
+                background: #ffffff;
+                color: #111111;
+                font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            }
+
+            #app {
+                height: 100%;
+                width: 100%;
+            }
+
+            #status {
+                align-items: center;
+                display: flex;
+                height: 100%;
+                justify-content: center;
+                padding: 1rem;
+                text-align: center;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="status">Loading API reference...</div>
+        <div id="app" hidden></div>
+
+        <script src="/vendor/scalar/standalone.js"></script>
+        <script>
+            (async function () {
+                const EVENT_SOURCE = 'hitkeep-scalar-frame';
+                const DEFAULT_SPEC_URL = '/api/docs/v1/openapi.json';
+                const SPEC_TIMEOUT_MS = 15000;
+                const params = new URLSearchParams(window.location.search);
+                const specUrl = params.get('spec') || DEFAULT_SPEC_URL;
+                const theme = (params.get('theme') || 'light').toLowerCase() === 'dark' ? 'dark' : 'light';
+                const hideThemeToggle = params.get('hideThemeToggle') !== '0';
+                const disableAgent = params.get('agent') !== '1';
+                const mountEl = document.getElementById('app');
+                const statusEl = document.getElementById('status');
+
+                function notifyParent(type) {
+                    if (window.parent && window.parent !== window) {
+                        window.parent.postMessage({ source: EVENT_SOURCE, type }, window.location.origin);
+                    }
+                }
+
+                function showError(message) {
+                    if (statusEl) {
+                        statusEl.textContent = message;
+                    }
+                    if (mountEl) {
+                        mountEl.hidden = true;
+                    }
+                    notifyParent('error');
+                }
+
+                async function loadSpec(url) {
+                    const controller = new AbortController();
+                    const timeoutId = window.setTimeout(() => controller.abort(), SPEC_TIMEOUT_MS);
+
+                    try {
+                        const response = await fetch(url, {
+                            cache: 'no-store',
+                            credentials: 'same-origin',
+                            signal: controller.signal
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`OpenAPI fetch failed: ${response.status}`);
+                        }
+
+                        return response.json();
+                    } finally {
+                        window.clearTimeout(timeoutId);
+                    }
+                }
+
+                try {
+                    if (!window.Scalar || typeof window.Scalar.createApiReference !== 'function') {
+                        throw new Error('Scalar standalone runtime is unavailable');
+                    }
+
+                    if (!mountEl) {
+                        throw new Error('Scalar mount element not found');
+                    }
+
+                    const spec = await loadSpec(specUrl);
+                    window.Scalar.createApiReference('#app', {
+                        content: spec,
+                        forceDarkModeState: theme,
+                        hideDarkModeToggle: hideThemeToggle,
+                        withDefaultFonts: false,
+                        agent: {
+                            disabled: disableAgent
+                        }
+                    });
+
+                    if (statusEl) {
+                        statusEl.remove();
+                    }
+                    mountEl.hidden = false;
+                    notifyParent('ready');
+                } catch (error) {
+                    console.error('[scalar-frame] Failed to initialize API reference:', error);
+                    showError('Unable to load API reference. Please refresh and try again.');
+                }
+            })();
+        </script>
+    </body>
+</html>

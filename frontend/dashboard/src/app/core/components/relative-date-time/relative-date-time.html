@@ -1,0 +1,7 @@
+@if (parsedDate()) {
+    <time class="hk-relative-date-time" [attr.datetime]="isoDateTime()" [attr.aria-label]="ariaLabel()" [attr.title]="absoluteLabel()" tabindex="0">
+        {{ relativeLabel() }}
+    </time>
+} @else {
+    <span class="hk-relative-date-time hk-relative-date-time--empty">{{ emptyText() }}</span>
+}

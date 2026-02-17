@@ -1,0 +1,17 @@
+.hk-relative-date-time {
+    text-decoration-line: underline;
+    text-decoration-style: dotted;
+    text-underline-offset: 0.15em;
+    cursor: help;
+}
+
+.hk-relative-date-time:focus-visible {
+    outline: 2px solid var(--p-primary-color);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+.hk-relative-date-time--empty {
+    text-decoration: none;
+    cursor: default;
+}

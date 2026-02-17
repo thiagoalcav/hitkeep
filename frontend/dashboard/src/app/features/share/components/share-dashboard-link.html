@@ -61,7 +61,7 @@
                             <td>
                                 <code class="share-token">{{ link.token_hint }}</code>
                             </td>
-                            <td>{{ link.created_at | date: "medium" }}</td>
+                            <td><app-relative-date-time [value]="link.created_at" /></td>
                             <td>
                                 @if (link.url) {
                                     <input pInputText readonly [value]="link.url" class="w-full share-url-input" />

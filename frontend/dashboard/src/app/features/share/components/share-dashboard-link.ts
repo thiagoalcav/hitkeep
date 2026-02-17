@@ -9,6 +9,7 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
 import { ShareLink, ShareService } from '@services/share.service';
 import { SiteService } from '@features/sites/services/site.service';
+import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
 
 interface ShareNotice {
     kind: 'success' | 'error';
@@ -17,7 +18,7 @@ interface ShareNotice {
 
 @Component({
     selector: 'app-share-dashboard-link',
-    imports: [CommonModule, ButtonModule, DialogModule, InputTextModule, TableModule, ConfirmDialogModule, TranslocoPipe],
+    imports: [CommonModule, ButtonModule, DialogModule, InputTextModule, TableModule, ConfirmDialogModule, RelativeDateTime, TranslocoPipe],
     providers: [ConfirmationService],
     templateUrl: './share-dashboard-link.html',
     styleUrl: './share-dashboard-link.css',

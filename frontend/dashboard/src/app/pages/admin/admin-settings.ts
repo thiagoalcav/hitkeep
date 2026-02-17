@@ -10,9 +10,9 @@ import { TabsModule } from 'primeng/tabs';
 import { InputTextModule } from 'primeng/inputtext';
 import { HttpClient } from '@angular/common/http';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { TranslocoDatePipe } from '@jsverse/transloco-locale';
 import { PageHeader } from '@components/page-header/page-header';
 import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
+import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
 import { UserProfileService } from '@services/user-profile.service';
 import { AdminGlobalExclusionSettings } from './components/admin-global-exclusion-settings';
 
@@ -36,7 +36,7 @@ interface Site {
 @Component({
     selector: 'app-admin-settings',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, TableModule, ButtonModule, SelectModule, CardModule, TabsModule, InputTextModule, PageHeader, PageBreadcrumb, AdminGlobalExclusionSettings, TranslocoPipe, TranslocoDatePipe],
+    imports: [CommonModule, ReactiveFormsModule, TableModule, ButtonModule, SelectModule, CardModule, TabsModule, InputTextModule, PageHeader, PageBreadcrumb, AdminGlobalExclusionSettings, RelativeDateTime, TranslocoPipe],
     templateUrl: './admin-settings.html',
     styleUrl: './admin-settings.css'
 })

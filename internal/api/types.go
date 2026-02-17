@@ -98,6 +98,8 @@ type Funnel struct {
 type User struct {
 	ID           uuid.UUID `json:"id"`
 	Email        string    `json:"email"`
+	GivenName    string    `json:"given_name,omitempty"`
+	LastName     string    `json:"last_name,omitempty"`
 	InstanceRole string    `json:"instance_role,omitempty"`
 	Password     string    `json:"-"`
 	CreatedAt    time.Time `json:"created_at"`
@@ -106,6 +108,8 @@ type User struct {
 type UserProfile struct {
 	ID          uuid.UUID `json:"id"`
 	Email       string    `json:"email"`
+	GivenName   string    `json:"given_name,omitempty"`
+	LastName    string    `json:"last_name,omitempty"`
 	DisplayName string    `json:"display_name"`
 	AvatarURL   string    `json:"avatar_url"`
 }

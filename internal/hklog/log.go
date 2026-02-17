@@ -34,8 +34,8 @@ func (w LevelParsingWriter) Write(p []byte) (int, error) {
 
 	trimmed := strings.TrimSpace(msg)
 	level, trimmed = parseLevelPrefix(level, trimmed)
-	if strings.HasPrefix(trimmed, "memberlist:") {
-		trimmed = strings.TrimSpace(strings.TrimPrefix(trimmed, "memberlist:"))
+	if after, ok := strings.CutPrefix(trimmed, "memberlist:"); ok {
+		trimmed = strings.TrimSpace(after)
 	}
 
 	logger := w.Logger

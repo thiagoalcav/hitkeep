@@ -333,6 +333,8 @@ func openAPISpecV1(publicURL string) map[string]any {
 					"properties": map[string]any{
 						"id":           map[string]any{"type": "string", "format": "uuid"},
 						"email":        map[string]any{"type": "string", "format": "email"},
+						"given_name":   map[string]any{"type": "string"},
+						"last_name":    map[string]any{"type": "string"},
 						"display_name": map[string]any{"type": "string"},
 						"avatar_url":   map[string]any{"type": "string"},
 					},
@@ -474,7 +476,16 @@ func openAPISpecV1(publicURL string) map[string]any {
 
 			"/api/initial-user": map[string]any{
 				"post": op([]string{"Auth"}, "Create initial admin", "Bootstraps first user account during setup.", nil, nil,
-					jsonBody(map[string]any{"type": "object", "properties": map[string]any{"email": map[string]any{"type": "string", "format": "email"}, "password": map[string]any{"type": "string", "minLength": 8}}, "required": []string{"email", "password"}}),
+					jsonBody(map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"email":      map[string]any{"type": "string", "format": "email"},
+							"password":   map[string]any{"type": "string", "minLength": 8},
+							"given_name": map[string]any{"type": "string"},
+							"last_name":  map[string]any{"type": "string"},
+						},
+						"required": []string{"email", "password"},
+					}),
 					map[string]any{"201": jsonSchemaResp("Token created", map[string]any{"type": "object", "properties": map[string]any{"token": map[string]any{"type": "string"}}}), "403": errResp("Setup already complete")}),
 			},
 			"/api/login": map[string]any{
@@ -522,6 +533,22 @@ func openAPISpecV1(publicURL string) map[string]any {
 
 			"/api/user/profile": map[string]any{
 				"get": op([]string{"User"}, "Get profile", "Returns authenticated user profile.", secCookie(), nil, nil, map[string]any{"200": jsonRefResp("User profile", "#/components/schemas/UserProfile")}),
+				"put": op([]string{"User"}, "Update profile", "Updates authenticated user profile details.", secCookie(), nil,
+					jsonBody(map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"email":      map[string]any{"type": "string", "format": "email"},
+							"given_name": map[string]any{"type": "string"},
+							"last_name":  map[string]any{"type": "string"},
+						},
+						"required": []string{"email"},
+					}),
+					map[string]any{
+						"200": jsonRefResp("Updated profile", "#/components/schemas/UserProfile"),
+						"400": errResp("Invalid request"),
+						"404": errResp("User not found"),
+						"409": errResp("Email already exists"),
+					}),
 			},
 			"/api/user/avatar": map[string]any{
 				"get": op([]string{"User"}, "Get avatar", "Proxies authenticated user's avatar image.", secCookie(), []any{paramRef("#/components/parameters/avatarSize")}, nil, map[string]any{"200": desc("Avatar image")}),

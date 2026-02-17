@@ -5,7 +5,6 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -31,6 +30,11 @@ import (
 	"hitkeep/internal/takeout"
 )
 
+const (
+	cacheControlImmutable = "public, max-age=31536000, immutable"
+	cacheControlNoCache   = "no-cache, no-store, must-revalidate"
+)
+
 type Server struct {
 	httpServer    *http.Server
 	store         *database.Store
@@ -45,18 +49,23 @@ type Server struct {
 	ipFilterStop  context.CancelFunc
 	takeout       *takeout.TakeoutService
 	ctx           *shared.Context
+
+	indexHTML   []byte
+	scalarIndex []byte
 }
 
 func New(conf *config.Config, publicFS fs.FS, store *database.Store, cluster *cluster.Manager, producer *nsq.Producer) *Server {
 	ingestLim := shared.NewIPRateLimiter(rate.Limit(conf.IngestRateLimit), conf.IngestBurst)
 	apiLim := shared.NewIPRateLimiter(rate.Limit(conf.ApiRateLimit), conf.ApiBurst)
 	authLim := shared.NewIPRateLimiter(rate.Limit(conf.AuthRateLimit), conf.AuthBurst)
+
 	mailService, err := mailer.New(conf)
 	if err != nil {
 		slog.Warn("Failed to initialize mailer. Email features will not work.", "error", err)
 	}
 
 	takeoutService := takeout.NewTakeoutService(store, "archive/takeout")
+
 	var ipFilter *blocking.IPFilter
 	var ipFilterStop context.CancelFunc
 	if store != nil {
@@ -79,6 +88,7 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, cluster *cl
 		ipFilterStop:  ipFilterStop,
 		takeout:       takeoutService,
 	}
+
 	s.ctx = &shared.Context{
 		Store:         store,
 		Cluster:       cluster,
@@ -91,6 +101,9 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, cluster *cl
 		AuthLimiter:   authLim,
 		IPFilter:      ipFilter,
 	}
+
+	// Load static HTML into memory
+	s.loadStaticAssets(publicFS)
 
 	mux := http.NewServeMux()
 	s.setupRoutes(mux, publicFS)
@@ -122,6 +135,25 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return s.httpServer.Shutdown(ctx)
 }
 
+// loadStaticAssets reads index.html and scalar/index.html once at startup.
+func (s *Server) loadStaticAssets(publicFS fs.FS) {
+	// 1. Load Main SPA Index
+	indexData, err := fs.ReadFile(publicFS, "index.html")
+	if err != nil {
+		slog.Warn("Frontend index.html not found. Dashboard will not be available.")
+	} else {
+		s.indexHTML = indexData
+	}
+
+	// 2. Load Scalar Index (API Docs)
+	scalarData, err := fs.ReadFile(publicFS, "scalar/index.html")
+	if err != nil {
+		slog.Warn("Scalar index.html not found. API docs will not render.")
+	} else {
+		s.scalarIndex = scalarData
+	}
+}
+
 func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 	ctx := s.ctx
 	system.Register(mux, ctx)
@@ -135,7 +167,7 @@ func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 	takeouthandlers.Register(mux, ctx)
 	sharehandlers.Register(mux, ctx)
 
-	// Static
+	// Static & SPA Handling
 	mux.Handle("/", s.spaHandler(publicFS))
 }
 
@@ -145,33 +177,78 @@ func (s *Server) spaHandler(publicFS fs.FS) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		path := strings.TrimPrefix(r.URL.Path, "/")
 
-		if strings.HasSuffix(path, ".js") ||
-			strings.HasSuffix(path, ".css") ||
-			strings.HasSuffix(path, ".woff2") ||
-			strings.HasSuffix(path, ".png") ||
-			strings.HasSuffix(path, ".svg") {
-			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		} else {
-			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-		}
-
-		if path == "" {
+		if path == "scalar" || strings.HasPrefix(path, "scalar/") {
+			if path == "scalar" || path == "scalar/" || path == "scalar/index.html" {
+				s.serveScalarIndex(w)
+				return
+			}
+			// Static scalar assets
+			w.Header().Set("Cache-Control", cacheControlImmutable)
 			fileServer.ServeHTTP(w, r)
 			return
 		}
 
+		// 2. Handle Root (Explicit request for index)
+		if path == "" || path == "index.html" {
+			s.serveIndex(w)
+			return
+		}
+
 		f, err := publicFS.Open(path)
-		if os.IsNotExist(err) {
-			if strings.HasPrefix(path, "api/") || strings.HasPrefix(path, "ingest") {
-				w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
-				http.NotFound(w, r)
-				return
-			}
-			r.URL.Path = "/"
-		} else if err == nil {
-			f.Close()
+		if err != nil {
+			s.serveIndex(w)
+			return
+		}
+		defer f.Close()
+
+		stat, err := f.Stat()
+		if err == nil && stat.IsDir() {
+			s.serveIndex(w)
+			return
+		}
+
+		// 4. Intelligent Caching for Static Assets
+		// Angular/Webpack build artifacts contain hashes (e.g., main.7a2b9c.js).
+		// We can tell browsers to cache these forever.
+		if isHashedFile(path) {
+			w.Header().Set("Cache-Control", cacheControlImmutable)
+		} else {
+			// Mutable assets (favicon.ico, manifest.json) must check ETag/Last-Modified
+			w.Header().Set("Cache-Control", cacheControlNoCache)
 		}
 
 		fileServer.ServeHTTP(w, r)
 	}
+}
+
+// serveIndex serves the Angular index.html from memory.
+func (s *Server) serveIndex(w http.ResponseWriter) {
+	if len(s.indexHTML) == 0 {
+		http.Error(w, "Frontend index missing", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Cache-Control", cacheControlNoCache)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write(s.indexHTML)
+}
+
+func (s *Server) serveScalarIndex(w http.ResponseWriter) {
+	if len(s.scalarIndex) == 0 {
+		http.Error(w, "API docs missing", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Cache-Control", cacheControlNoCache)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	_, _ = w.Write(s.scalarIndex)
+}
+
+// isHashedFile uses heuristics to determine if a file is an immutable build artifact.
+func isHashedFile(path string) bool {
+	return strings.HasSuffix(path, ".js") ||
+		strings.HasSuffix(path, ".css") ||
+		strings.HasSuffix(path, ".woff2") ||
+		strings.HasSuffix(path, ".woff") ||
+		strings.HasSuffix(path, ".ttf")
 }

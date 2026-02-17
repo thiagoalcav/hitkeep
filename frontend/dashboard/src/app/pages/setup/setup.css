@@ -1,73 +1,7 @@
-.setup-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    background-color: var(--p-surface-ground);
-    padding: 1rem;
-    transition: background-color 0.2s;
+:host {
+    display: block;
 }
 
-.setup-card {
-    background: var(--p-surface-card);
-    padding: 2.5rem;
-    border-radius: 12px;
-    box-shadow:
-        0 4px 6px -1px rgba(0, 0, 0, 0.1),
-        0 2px 4px -1px rgba(0, 0, 0, 0.06);
+:host ::ng-deep .p-password input {
     width: 100%;
-    max-width: 420px;
-}
-
-.setup-card h1 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: var(--p-text-color);
-}
-
-.setup-card p {
-    margin: 0;
-    color: var(--p-text-muted-color);
-    line-height: 1.5;
-}
-
-.field {
-    margin-bottom: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.field label {
-    font-weight: 500;
-    color: var(--p-text-color);
-    font-size: 0.875rem;
-}
-
-.error-banner {
-    background-color: var(--p-red-50);
-    color: var(--p-red-700);
-    padding: 1rem;
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
-    font-size: 0.875rem;
-    border: 1px solid var(--p-red-200);
-}
-
-.p-dark .error-banner {
-    background-color: rgba(239, 68, 68, 0.1);
-    color: #fca5a5;
-    border-color: rgba(239, 68, 68, 0.2);
-}
-
-.text-center {
-    text-align: center;
-}
-
-.mb-6 {
-    margin-bottom: 1.5rem;
 }

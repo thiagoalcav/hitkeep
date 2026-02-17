@@ -165,7 +165,7 @@
                                 }
                             </div>
                         </td>
-                        <td class="whitespace-nowrap text-muted-color">{{ hit.timestamp | translocoDate: { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" } }}</td>
+                        <td class="whitespace-nowrap text-muted-color"><app-relative-date-time [value]="hit.timestamp" /></td>
                         <td class="truncate max-w-[200px] text-muted-color" [title]="hit.referrer">
                             @if (hit.referrer) {
                                 <div class="flex items-center gap-2 min-w-0">

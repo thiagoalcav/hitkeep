@@ -1,30 +1,80 @@
-<div class="setup-container">
-    <div class="setup-card border border-surface-200 dark:border-surface-700">
-        <div class="flex flex-col items-center justify-center mb-8 text-center">
-            <app-brand size="large" class="mb-3"></app-brand>
-            <p>{{ "setup.description" | transloco }}</p>
-        </div>
+<main class="hk-auth-page">
+    <section class="hk-auth-shell" aria-labelledby="setup-title">
+        <div class="hk-auth-card">
+            <header class="hk-auth-header">
+                <app-brand size="large"></app-brand>
+                <h1 id="setup-title" class="hk-auth-title">{{ "setup.createAdminAction" | transloco }}</h1>
+                <p class="hk-auth-subtitle">{{ "setup.description" | transloco }}</p>
+            </header>
 
-        <form (submit)="onSubmit($event)" novalidate>
-            <!-- Error Banner -->
-            @if (errorMessage(); as errorMessageText) {
-                <div class="error-banner animate-scalein">
-                    <i class="pi pi-exclamation-circle"></i>
-                    <span>{{ errorMessageText | transloco }}</span>
+            <form (submit)="onSubmit($event)" class="hk-auth-form" novalidate>
+                @if (errorMessage(); as errorMessageText) {
+                    <div class="hk-auth-alert hk-auth-alert-error" role="alert" aria-live="assertive">
+                        <i class="pi pi-exclamation-circle mt-0.5" aria-hidden="true"></i>
+                        <span class="text-sm font-medium">{{ errorMessageText | transloco }}</span>
+                    </div>
+                }
+
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div class="hk-auth-field">
+                        <label for="givenName" class="hk-auth-field-label">{{ "setup.givenNameLabel" | transloco }}</label>
+                        <input pInputText id="givenName" [formControl]="setupForm.givenName().control()" class="w-full" autocomplete="given-name" [placeholder]="'setup.givenNamePlaceholder' | transloco" />
+                    </div>
+
+                    <div class="hk-auth-field">
+                        <label for="lastName" class="hk-auth-field-label">{{ "setup.lastNameLabel" | transloco }}</label>
+                        <input pInputText id="lastName" [formControl]="setupForm.lastName().control()" class="w-full" autocomplete="family-name" [placeholder]="'setup.lastNamePlaceholder' | transloco" />
+                    </div>
                 </div>
-            }
 
-            <div class="field">
-                <label for="email">{{ "common.emailAddress" | transloco }}</label>
-                <input pInputText id="email" [formControl]="setupForm.email().control()" class="p-inputtext-lg w-full" [placeholder]="'setup.emailPlaceholder' | transloco" />
-            </div>
+                <div class="hk-auth-field">
+                    <label for="email" class="hk-auth-field-label">
+                        {{ "common.emailAddress" | transloco }}
+                        <span class="api-client-required-asterisk" aria-hidden="true">*</span>
+                    </label>
+                    <input
+                        pInputText
+                        id="email"
+                        type="email"
+                        inputmode="email"
+                        autocapitalize="none"
+                        spellcheck="false"
+                        [formControl]="setupForm.email().control()"
+                        class="w-full"
+                        autocomplete="email"
+                        [attr.aria-invalid]="setupForm.email().touched() && setupForm.email().invalid() ? true : null"
+                        [attr.aria-describedby]="setupForm.email().touched() && setupForm.email().invalid() ? 'setup-email-error' : null"
+                        [placeholder]="'setup.emailPlaceholder' | transloco"
+                    />
+                    @if (setupForm.email().touched() && setupForm.email().invalid()) {
+                        <small id="setup-email-error" class="hk-auth-field-error" role="status">{{ "login.emailInvalid" | transloco }}</small>
+                    }
+                </div>
 
-            <div class="field">
-                <label for="password">{{ "common.password" | transloco }}</label>
-                <p-password id="password" [formControl]="setupForm.password().control()" [toggleMask]="true" class="w-full" inputclass="w-full p-inputtext-lg" [feedback]="true" [placeholder]="'common.passwordPlaceholder' | transloco"> </p-password>
-            </div>
+                <div class="hk-auth-field">
+                    <label for="password" class="hk-auth-field-label">
+                        {{ "common.password" | transloco }}
+                        <span class="api-client-required-asterisk" aria-hidden="true">*</span>
+                    </label>
+                    <p-password
+                        id="password"
+                        [formControl]="setupForm.password().control()"
+                        [toggleMask]="true"
+                        class="w-full"
+                        inputclass="w-full"
+                        [feedback]="true"
+                        [placeholder]="'common.passwordPlaceholder' | transloco"
+                        [attr.aria-invalid]="setupForm.password().touched() && setupForm.password().invalid() ? true : null"
+                        [attr.aria-describedby]="'setup-password-help'"
+                    ></p-password>
+                    <p id="setup-password-help" class="hk-auth-field-help">{{ "password.reset.minimumLength" | transloco }}</p>
+                    @if (setupForm.password().touched() && setupForm.password().invalid()) {
+                        <small class="hk-auth-field-error" role="status">{{ "password.reset.minimumLength" | transloco }}</small>
+                    }
+                </div>
 
-            <p-button [label]="'setup.createAdminAction' | transloco" type="submit" [loading]="isLoading()" [disabled]="isLoading() || setupForm().invalid()" class="w-full" size="large"> </p-button>
-        </form>
-    </div>
-</div>
+                <p-button [label]="'setup.createAdminAndContinueAction' | transloco" type="submit" [loading]="isLoading()" [disabled]="isLoading() || setupForm().invalid()" class="w-full"> </p-button>
+            </form>
+        </div>
+    </section>
+</main>

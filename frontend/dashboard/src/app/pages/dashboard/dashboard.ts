@@ -6,7 +6,7 @@ import { compatForm } from '@angular/forms/signals/compat';
 import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 import { TranslocoService } from '@jsverse/transloco';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { TranslocoDatePipe, TranslocoLocaleService } from '@jsverse/transloco-locale';
+import { TranslocoLocaleService } from '@jsverse/transloco-locale';
 // PrimeNG
 import { CardModule } from 'primeng/card';
 import { TableModule, TableLazyLoadEvent } from 'primeng/table';
@@ -38,6 +38,7 @@ import { KpiCard } from '@features/analytics/components/kpi-card';
 import { ShareService } from '@services/share.service';
 import { RangeToolbar } from '@components/range-toolbar/range-toolbar';
 import { SiteSettingsService } from '@services/site-settings.service';
+import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
 
 interface RangeSelectEvent {
     value: {
@@ -65,7 +66,6 @@ interface KpiCardData {
         CommonModule,
         ReactiveFormsModule,
         TranslocoPipe,
-        TranslocoDatePipe,
         CardModule,
         TableModule,
         SelectModule,
@@ -80,6 +80,7 @@ interface KpiCardData {
         PageHeader,
         PageBreadcrumb,
         RangeToolbar,
+        RelativeDateTime,
         KpiCard,
         TrafficChart,
         MetricList,

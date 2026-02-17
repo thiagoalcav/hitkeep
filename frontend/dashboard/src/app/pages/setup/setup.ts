@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -19,7 +19,8 @@ import { Brand } from '@components/brand/brand';
     standalone: true,
     imports: [Brand, ReactiveFormsModule, PasswordModule, ButtonModule, InputTextModule, TranslocoPipe],
     templateUrl: './setup.html',
-    styleUrl: './setup.css'
+    styleUrl: './setup.css',
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Setup {
     private http = inject(HttpClient);
@@ -29,6 +30,8 @@ export class Setup {
     protected errorMessage = signal<string | null>(null);
 
     private readonly setupModel = signal({
+        givenName: new FormControl('', { nonNullable: true }),
+        lastName: new FormControl('', { nonNullable: true }),
         email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
         password: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(8)] })
     });
@@ -47,13 +50,23 @@ export class Setup {
 
         const email = this.setupForm.email().value();
         const password = this.setupForm.password().value();
+        const givenName = this.setupForm.givenName().value().trim();
+        const lastName = this.setupForm.lastName().value().trim();
+
+        const payload: { email: string; password: string; given_name?: string; last_name?: string } = { email, password };
+        if (givenName !== '') {
+            payload.given_name = givenName;
+        }
+        if (lastName !== '') {
+            payload.last_name = lastName;
+        }
 
         this.http
-            .post('/api/initial-user', { email, password })
+            .post('/api/initial-user', payload)
             .pipe(finalize(() => this.isLoading.set(false)))
             .subscribe({
                 next: () => {
-                    this.router.navigate(['/login']);
+                    this.router.navigate(['/dashboard']);
                 },
                 error: (err) => {
                     console.error('Failed to create initial user:', err);

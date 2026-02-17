@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -22,7 +22,8 @@ import { UserPreferencesService } from '@services/user-preferences.service';
     standalone: true,
     imports: [Brand, CommonModule, ReactiveFormsModule, PasswordModule, ButtonModule, InputTextModule, CheckboxModule, InputOtpModule, RouterLink, TranslocoPipe],
     templateUrl: './login.html',
-    styleUrl: './login.css'
+    styleUrl: './login.css',
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Login {
     private static readonly PASSKEY_DEVICE_HISTORY_KEY = 'hitkeep.passkey.used_on_device';

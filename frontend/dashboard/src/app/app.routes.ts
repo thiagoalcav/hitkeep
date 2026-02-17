@@ -1,6 +1,5 @@
 import { Routes } from '@angular/router';
 import { setupGuard } from '@guards/setup-guard';
-import { MainLayout } from '@layout/main-layout';
 import { adminGuard } from '@guards/admin-guard';
 
 export const routes: Routes = [
@@ -24,7 +23,7 @@ export const routes: Routes = [
     },
     {
         path: '',
-        component: MainLayout,
+        loadComponent: () => import('@layout/main-layout').then((m) => m.MainLayout),
         canActivate: [setupGuard],
         children: [
             {

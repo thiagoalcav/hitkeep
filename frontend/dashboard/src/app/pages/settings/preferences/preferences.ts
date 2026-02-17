@@ -85,7 +85,7 @@ export class Preferences {
             }
             seen.add(base);
 
-            const label = typeof entry === 'string' ? this.optionLabel(base) : entry.label || this.optionLabel(base);
+            const label = this.optionLabel(base);
             options.push({
                 value: base,
                 label,
@@ -178,22 +178,9 @@ export class Preferences {
         if (!normalized) return locale;
         const uiLanguage = getBaseLanguage(this.activeLanguage()) || 'en';
         const languageNames = this.displayNames('language', uiLanguage);
-        const regionNames = this.displayNames('region', uiLanguage);
-        const scriptNames = this.displayNames('script', uiLanguage);
-        const parts = normalized.split('-');
-        const language = parts[0];
-        const script = parts.find((part) => part.length === 4);
-        const region = parts.find((part) => part.length === 2);
+        const language = normalized.split('-')[0];
         const languageName = languageNames?.of(language) ?? language;
-        const scriptName = script ? scriptNames?.of(script) : null;
-        const regionName = region ? regionNames?.of(region) : null;
-        if (scriptName && regionName) {
-            return `${languageName} (${scriptName}, ${regionName})`;
-        }
-        if (scriptName) {
-            return `${languageName} (${scriptName})`;
-        }
-        return regionName ? `${languageName} (${regionName})` : languageName;
+        return languageName;
     }
 
     protected currentPreferences(): UserPreferences {

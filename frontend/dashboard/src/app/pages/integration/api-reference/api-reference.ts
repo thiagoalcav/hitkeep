@@ -9,11 +9,10 @@ import { PageHeader } from '@components/page-header/page-header';
 const SCALAR_REFERENCE_ID = 'api-reference';
 const SCALAR_SCRIPT_ID = 'hitkeep-scalar-script';
 const SCALAR_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/@scalar/api-reference';
-const SCALAR_PROXY_URL = 'https://proxy.scalar.com';
 
-type ScalarGlobal = {
-    createApiReference: (...args: unknown[]) => unknown;
-};
+interface ScalarGlobal {
+    createApiReference: (mountTarget: string | Element, configuration: { url: string; proxyUrl?: string; agent?: { disabled?: boolean } }) => unknown;
+}
 
 @Component({
     selector: 'app-api-reference-page',
@@ -65,22 +64,18 @@ export class APIReferencePage implements AfterViewInit, OnDestroy {
 
         try {
             await this.ensureScript();
-            if (!this.isViewerAvailable()) {
+            const scalar = this.getScalarGlobal();
+            if (!scalar) {
                 this.error.set('integration.apiReference.errors.loadSpec');
                 return;
             }
 
-            this.mountReference(container);
-            this.reloadReference();
+            this.mountReference(container, scalar);
             this.viewerReady.set(true);
         } catch {
             this.viewerReady.set(false);
             this.error.set('integration.apiReference.errors.loadSpec');
         }
-    }
-
-    private isViewerAvailable(): boolean {
-        return this.getScalarGlobal() !== null;
     }
 
     private ensureScript(): Promise<void> {
@@ -107,22 +102,19 @@ export class APIReferencePage implements AfterViewInit, OnDestroy {
         });
     }
 
-    private mountReference(container: HTMLDivElement): void {
+    private mountReference(container: HTMLDivElement, scalar: ScalarGlobal): void {
         container.replaceChildren();
-
-        const referenceNode = this.document.createElement('script');
-        referenceNode.id = SCALAR_REFERENCE_ID;
-        referenceNode.dataset['url'] = this.specUrl;
-        referenceNode.dataset['proxyUrl'] = SCALAR_PROXY_URL;
-        container.appendChild(referenceNode);
-    }
-
-    private reloadReference(): void {
-        this.document.dispatchEvent(new Event('scalar:reload-references'));
+        container.id = SCALAR_REFERENCE_ID;
+        scalar.createApiReference(container, {
+            url: this.specUrl,
+            agent: {
+                disabled: true
+            }
+        });
     }
 
     private getScalarGlobal(): ScalarGlobal | null {
-        const globalRef = (this.document.defaultView as Window & { Scalar?: ScalarGlobal } | null)?.Scalar;
+        const globalRef = (this.document.defaultView as (Window & { Scalar?: ScalarGlobal }) | null)?.Scalar;
         if (!globalRef || typeof globalRef.createApiReference !== 'function') {
             return null;
         }

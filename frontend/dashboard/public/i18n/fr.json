@@ -308,6 +308,33 @@
         "user": {
             "breadcrumb": "Parametres utilisateur",
             "subtitle": "Gerez la securite et les preferences de votre compte.",
+            "profile": {
+                "title": "Profil",
+                "description": "Mettez a jour vos informations personnelles et votre e-mail de connexion.",
+                "emailLabel": "Adresse e-mail",
+                "emailPlaceholder": "you@example.com",
+                "givenNameLabel": "Prenom",
+                "givenNamePlaceholder": "Ada",
+                "lastNameLabel": "Nom",
+                "lastNamePlaceholder": "Lovelace",
+                "saveAction": "Enregistrer le profil",
+                "status": {
+                    "saved": "Profil enregistre"
+                },
+                "validation": {
+                    "emailRequired": "L'adresse e-mail est obligatoire.",
+                    "emailInvalid": "Veuillez entrer une adresse e-mail valide.",
+                    "emailTooLong": "L'adresse e-mail doit contenir 320 caracteres maximum.",
+                    "nameTooLong": "Le prenom et le nom doivent contenir 120 caracteres maximum."
+                },
+                "errors": {
+                    "loadFailed": "Impossible de charger votre profil.",
+                    "invalidInput": "Verifiez les champs mis en evidence et reessayez.",
+                    "emailTaken": "Cette adresse e-mail est deja utilisee.",
+                    "notFound": "Votre compte est introuvable.",
+                    "updateFailed": "Impossible de mettre a jour le profil. Veuillez reessayer."
+                }
+            },
             "dataExportTitle": "Export des donnees",
             "exportAllTitle": "Exporter toutes les donnees",
             "exportAllDescription": "Telechargez toutes vos donnees de tous les sites au format CSV, XLSX ou Parquet."
@@ -382,8 +409,13 @@
     },
     "setup": {
         "description": "Creez votre compte administrateur pour commencer.",
+        "givenNameLabel": "Prenom",
+        "givenNamePlaceholder": "Ada",
+        "lastNameLabel": "Nom",
+        "lastNamePlaceholder": "Lovelace",
         "emailPlaceholder": "admin@example.com",
         "createAdminAction": "Creer un compte administrateur",
+        "createAdminAndContinueAction": "Creer un compte administrateur et continuer",
         "errors": {
             "unexpected": "Une erreur inattendue est survenue. Veuillez reessayer."
         }

@@ -308,6 +308,33 @@
         "user": {
             "breadcrumb": "Impostazioni utente",
             "subtitle": "Gestisci sicurezza e preferenze del tuo account.",
+            "profile": {
+                "title": "Profilo",
+                "description": "Aggiorna i tuoi dati personali e l'email di accesso.",
+                "emailLabel": "Indirizzo email",
+                "emailPlaceholder": "you@example.com",
+                "givenNameLabel": "Nome",
+                "givenNamePlaceholder": "Ada",
+                "lastNameLabel": "Cognome",
+                "lastNamePlaceholder": "Lovelace",
+                "saveAction": "Salva profilo",
+                "status": {
+                    "saved": "Profilo salvato"
+                },
+                "validation": {
+                    "emailRequired": "L'indirizzo email e obbligatorio.",
+                    "emailInvalid": "Inserisci un indirizzo email valido.",
+                    "emailTooLong": "L'indirizzo email deve avere massimo 320 caratteri.",
+                    "nameTooLong": "Nome e cognome devono avere massimo 120 caratteri."
+                },
+                "errors": {
+                    "loadFailed": "Impossibile caricare il tuo profilo.",
+                    "invalidInput": "Controlla i campi evidenziati e riprova.",
+                    "emailTaken": "Questo indirizzo email e gia in uso.",
+                    "notFound": "Il tuo account non e stato trovato.",
+                    "updateFailed": "Impossibile aggiornare il profilo. Riprova."
+                }
+            },
             "dataExportTitle": "Esportazione dati",
             "exportAllTitle": "Esporta tutti i dati",
             "exportAllDescription": "Scarica tutti i tuoi dati su tutti i siti in CSV, XLSX o Parquet."
@@ -382,8 +409,13 @@
     },
     "setup": {
         "description": "Crea il tuo account amministratore per iniziare.",
+        "givenNameLabel": "Nome",
+        "givenNamePlaceholder": "Ada",
+        "lastNameLabel": "Cognome",
+        "lastNamePlaceholder": "Lovelace",
         "emailPlaceholder": "admin@example.com",
         "createAdminAction": "Crea account amministratore",
+        "createAdminAndContinueAction": "Crea account amministratore e continua",
         "errors": {
             "unexpected": "Si e verificato un errore imprevisto. Riprova."
         }

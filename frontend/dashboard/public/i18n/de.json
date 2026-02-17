@@ -308,6 +308,33 @@
         "user": {
             "breadcrumb": "Benutzereinstellungen",
             "subtitle": "Verwalten Sie die Sicherheit und Einstellungen Ihres Kontos.",
+            "profile": {
+                "title": "Profil",
+                "description": "Aktualisieren Sie Ihre persönlichen Angaben und Ihre Anmelde-E-Mail.",
+                "emailLabel": "E-Mail-Adresse",
+                "emailPlaceholder": "you@example.com",
+                "givenNameLabel": "Vorname",
+                "givenNamePlaceholder": "Max",
+                "lastNameLabel": "Nachname",
+                "lastNamePlaceholder": "Mustermann",
+                "saveAction": "Profil speichern",
+                "status": {
+                    "saved": "Profil gespeichert"
+                },
+                "validation": {
+                    "emailRequired": "E-Mail ist erforderlich.",
+                    "emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+                    "emailTooLong": "E-Mail darf maximal 320 Zeichen haben.",
+                    "nameTooLong": "Vor- und Nachname dürfen maximal 120 Zeichen haben."
+                },
+                "errors": {
+                    "loadFailed": "Profil konnte nicht geladen werden.",
+                    "invalidInput": "Bitte prüfen Sie die markierten Felder und versuchen Sie es erneut.",
+                    "emailTaken": "Diese E-Mail wird bereits verwendet.",
+                    "notFound": "Ihr Konto wurde nicht gefunden.",
+                    "updateFailed": "Profil konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut."
+                }
+            },
             "dataExportTitle": "Datenexport",
             "exportAllTitle": "Alle Daten exportieren",
             "exportAllDescription": "Laden Sie alle Ihre Daten über alle Seiten hinweg als CSV, XLSX oder Parquet herunter."
@@ -382,8 +409,13 @@
     },
     "setup": {
         "description": "Erstellen Sie Ihr Administratorkonto, um zu starten.",
+        "givenNameLabel": "Vorname",
+        "givenNamePlaceholder": "Max",
+        "lastNameLabel": "Nachname",
+        "lastNamePlaceholder": "Mustermann",
         "emailPlaceholder": "admin@example.com",
         "createAdminAction": "Admin-Konto erstellen",
+        "createAdminAndContinueAction": "Admin-Konto erstellen und fortfahren",
         "errors": {
             "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
         }

@@ -308,6 +308,33 @@
         "user": {
             "breadcrumb": "User settings",
             "subtitle": "Manage your account security and preferences.",
+            "profile": {
+                "title": "Profile",
+                "description": "Update your personal details and sign-in email.",
+                "emailLabel": "Email address",
+                "emailPlaceholder": "you@example.com",
+                "givenNameLabel": "Given name",
+                "givenNamePlaceholder": "Ada",
+                "lastNameLabel": "Last name",
+                "lastNamePlaceholder": "Lovelace",
+                "saveAction": "Save profile",
+                "status": {
+                    "saved": "Profile saved"
+                },
+                "validation": {
+                    "emailRequired": "Email is required.",
+                    "emailInvalid": "Please enter a valid email address.",
+                    "emailTooLong": "Email must be 320 characters or fewer.",
+                    "nameTooLong": "Names must be 120 characters or fewer."
+                },
+                "errors": {
+                    "loadFailed": "Failed to load your profile.",
+                    "invalidInput": "Please check the highlighted fields and try again.",
+                    "emailTaken": "That email is already in use.",
+                    "notFound": "Your account could not be found.",
+                    "updateFailed": "Failed to update profile. Please try again."
+                }
+            },
             "dataExportTitle": "Data export",
             "exportAllTitle": "Export all data",
             "exportAllDescription": "Download all your data across all sites as CSV, XLSX, or Parquet."
@@ -382,8 +409,13 @@
     },
     "setup": {
         "description": "Create your administrator account to get started.",
+        "givenNameLabel": "Given name",
+        "givenNamePlaceholder": "Ada",
+        "lastNameLabel": "Last name",
+        "lastNamePlaceholder": "Lovelace",
         "emailPlaceholder": "admin@example.com",
         "createAdminAction": "Create admin account",
+        "createAdminAndContinueAction": "Create admin account and continue",
         "errors": {
             "unexpected": "An unexpected error occurred. Please try again."
         }

@@ -308,6 +308,33 @@
         "user": {
             "breadcrumb": "Configuración de usuario",
             "subtitle": "Administra la seguridad y las preferencias de tu cuenta.",
+            "profile": {
+                "title": "Perfil",
+                "description": "Actualiza tus datos personales y tu correo de inicio de sesión.",
+                "emailLabel": "Correo electrónico",
+                "emailPlaceholder": "you@example.com",
+                "givenNameLabel": "Nombre",
+                "givenNamePlaceholder": "Ada",
+                "lastNameLabel": "Apellido",
+                "lastNamePlaceholder": "Lovelace",
+                "saveAction": "Guardar perfil",
+                "status": {
+                    "saved": "Perfil guardado"
+                },
+                "validation": {
+                    "emailRequired": "El correo electrónico es obligatorio.",
+                    "emailInvalid": "Ingresa un correo electrónico válido.",
+                    "emailTooLong": "El correo electrónico debe tener 320 caracteres o menos.",
+                    "nameTooLong": "El nombre y el apellido deben tener 120 caracteres o menos."
+                },
+                "errors": {
+                    "loadFailed": "No se pudo cargar tu perfil.",
+                    "invalidInput": "Revisa los campos marcados e inténtalo de nuevo.",
+                    "emailTaken": "Ese correo electrónico ya está en uso.",
+                    "notFound": "No se pudo encontrar tu cuenta.",
+                    "updateFailed": "No se pudo actualizar el perfil. Inténtalo de nuevo."
+                }
+            },
             "dataExportTitle": "Exportación de datos",
             "exportAllTitle": "Exportar todos los datos",
             "exportAllDescription": "Descarga todos tus datos de todos los sitios como CSV, XLSX o Parquet."
@@ -382,8 +409,13 @@
     },
     "setup": {
         "description": "Crea tu cuenta de administrador para comenzar.",
+        "givenNameLabel": "Nombre",
+        "givenNamePlaceholder": "Ada",
+        "lastNameLabel": "Apellido",
+        "lastNamePlaceholder": "Lovelace",
         "emailPlaceholder": "admin@example.com",
         "createAdminAction": "Crear cuenta de administrador",
+        "createAdminAndContinueAction": "Crear cuenta de administrador y continuar",
         "errors": {
             "unexpected": "Ocurrió un error inesperado. Inténtalo de nuevo."
         }

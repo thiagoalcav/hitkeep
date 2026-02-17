@@ -1,18 +1,18 @@
-import { DOCUMENT } from '@angular/common';
-import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, OnDestroy, ViewChild, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
 import { PageHeader } from '@components/page-header/page-header';
+import { PreferencesService } from '@services/preferences.service';
 
-const SCALAR_REFERENCE_ID = 'api-reference';
-const SCALAR_SCRIPT_ID = 'hitkeep-scalar-script';
-const SCALAR_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/@scalar/api-reference';
-
-interface ScalarGlobal {
-    createApiReference: (mountTarget: string | Element, configuration: { url: string; proxyUrl?: string; agent?: { disabled?: boolean } }) => unknown;
+interface ScalarFrameEvent {
+    source?: string;
+    type?: 'ready' | 'error';
 }
+
+const SCALAR_FRAME_EVENT_SOURCE = 'hitkeep-scalar-frame';
 
 @Component({
     selector: 'app-api-reference-page',
@@ -21,17 +21,48 @@ interface ScalarGlobal {
     styleUrl: './api-reference.css',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class APIReferencePage implements AfterViewInit, OnDestroy {
-    @ViewChild('referenceContainer')
-    private referenceContainer?: ElementRef<HTMLDivElement>;
-
-    private document = inject(DOCUMENT);
+export class APIReferencePage implements OnInit, OnDestroy {
     private transloco = inject(TranslocoService);
+    private prefs = inject(PreferencesService);
+    private sanitizer = inject(DomSanitizer);
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+    private handleFrameMessage = (event: MessageEvent<ScalarFrameEvent>): void => {
+        if (typeof window === 'undefined' || event.origin !== window.location.origin) {
+            return;
+        }
+
+        if (event.data?.source !== SCALAR_FRAME_EVENT_SOURCE) {
+            return;
+        }
+
+        if (event.data.type === 'ready') {
+            this.error.set(null);
+            this.viewerReady.set(true);
+            return;
+        }
+
+        if (event.data.type === 'error') {
+            this.viewerReady.set(true);
+            this.error.set('integration.apiReference.errors.loadSpec');
+        }
+    };
 
     protected readonly viewerReady = signal(false);
     protected readonly error = signal<string | null>(null);
     protected readonly specUrl = '/api/docs/v1/openapi.json';
+    protected readonly scalarFrameSrc = computed<SafeResourceUrl>(() => {
+        const theme = this.prefs.isDarkMode() ? 'dark' : 'light';
+        const query = new URLSearchParams({
+            spec: this.specUrl,
+            theme,
+            hideThemeToggle: '1',
+            agent: '0',
+            defaultFonts: '0'
+        });
+
+        const frameUrl = `/scalar/index.html?${query.toString()}`;
+        return this.sanitizer.bypassSecurityTrustResourceUrl(frameUrl);
+    });
 
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         this.activeLanguage();
@@ -41,83 +72,38 @@ export class APIReferencePage implements AfterViewInit, OnDestroy {
         ];
     });
 
-    ngAfterViewInit(): void {
-        void this.loadViewer();
+    constructor() {
+        effect(() => {
+            this.prefs.isDarkMode();
+            this.viewerReady.set(false);
+            this.error.set(null);
+        });
     }
 
-    ngOnDestroy(): void {
-        const container = this.referenceContainer?.nativeElement;
-        if (container) {
-            container.replaceChildren();
-        }
-    }
-
-    private async loadViewer(): Promise<void> {
-        this.error.set(null);
-        this.viewerReady.set(false);
-
-        const container = this.referenceContainer?.nativeElement;
-        if (!container) {
-            this.error.set('integration.apiReference.errors.loadSpec');
+    ngOnInit(): void {
+        if (typeof window === 'undefined') {
             return;
         }
 
-        try {
-            await this.ensureScript();
-            const scalar = this.getScalarGlobal();
-            if (!scalar) {
-                this.error.set('integration.apiReference.errors.loadSpec');
-                return;
-            }
+        window.addEventListener('message', this.handleFrameMessage);
+    }
 
-            this.mountReference(container, scalar);
+    ngOnDestroy(): void {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        window.removeEventListener('message', this.handleFrameMessage);
+    }
+
+    protected onFrameError(): void {
+        this.viewerReady.set(false);
+        this.error.set('integration.apiReference.errors.loadSpec');
+    }
+
+    protected onFrameLoad(): void {
+        if (!this.error()) {
             this.viewerReady.set(true);
-        } catch {
-            this.viewerReady.set(false);
-            this.error.set('integration.apiReference.errors.loadSpec');
         }
-    }
-
-    private ensureScript(): Promise<void> {
-        if (this.getScalarGlobal()) {
-            return Promise.resolve();
-        }
-
-        const existing = this.document.getElementById(SCALAR_SCRIPT_ID) as HTMLScriptElement | null;
-        if (existing) {
-            return new Promise<void>((resolve, reject) => {
-                existing.addEventListener('load', () => resolve(), { once: true });
-                existing.addEventListener('error', () => reject(new Error('Failed to load Scalar script.')), { once: true });
-            });
-        }
-
-        return new Promise<void>((resolve, reject) => {
-            const script = this.document.createElement('script');
-            script.id = SCALAR_SCRIPT_ID;
-            script.src = SCALAR_SCRIPT_URL;
-            script.async = true;
-            script.onload = () => resolve();
-            script.onerror = () => reject(new Error('Failed to load Scalar script.'));
-            this.document.body.appendChild(script);
-        });
-    }
-
-    private mountReference(container: HTMLDivElement, scalar: ScalarGlobal): void {
-        container.replaceChildren();
-        container.id = SCALAR_REFERENCE_ID;
-        scalar.createApiReference(container, {
-            url: this.specUrl,
-            agent: {
-                disabled: true
-            }
-        });
-    }
-
-    private getScalarGlobal(): ScalarGlobal | null {
-        const globalRef = (this.document.defaultView as (Window & { Scalar?: ScalarGlobal }) | null)?.Scalar;
-        if (!globalRef || typeof globalRef.createApiReference !== 'function') {
-            return null;
-        }
-        return globalRef;
     }
 }

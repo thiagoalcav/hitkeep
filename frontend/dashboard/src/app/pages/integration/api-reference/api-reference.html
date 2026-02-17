@@ -19,6 +19,17 @@
             </div>
         }
 
-        <div #referenceContainer class="api-reference-viewer" [class.hidden]="!viewerReady()"></div>
+        <div class="api-reference-viewer">
+            <iframe
+                class="api-reference-frame"
+                [src]="scalarFrameSrc()"
+                title="API reference"
+                sandbox="allow-scripts allow-same-origin allow-popups"
+                referrerpolicy="same-origin"
+                loading="lazy"
+                (load)="onFrameLoad()"
+                (error)="onFrameError()"
+            ></iframe>
+        </div>
     </div>
 </div>

@@ -53,11 +53,11 @@ func TestRetentionArchivesAndPrunesUTMHits(t *testing.T) {
 		PageID:      uuid.New(),
 		Timestamp:   old,
 		Path:        "/old-utm",
-		UTMSource:   strPtr("search"),
-		UTMMedium:   strPtr("paid"),
-		UTMCampaign: strPtr("retention-check"),
-		UTMTerm:     strPtr("audit"),
-		UTMContent:  strPtr("copy-a"),
+		UTMSource:   new("search"),
+		UTMMedium:   new("paid"),
+		UTMCampaign: new("retention-check"),
+		UTMTerm:     new("audit"),
+		UTMContent:  new("copy-a"),
 		IsUnique:    &isUnique,
 	}); err != nil {
 		t.Fatalf("create hit: %v", err)
@@ -125,8 +125,4 @@ func TestRetentionArchivesAndPrunesUTMHits(t *testing.T) {
 	if remainingEvents != 0 {
 		t.Fatalf("expected 0 retained events in hot storage, got %d", remainingEvents)
 	}
-}
-
-func strPtr(v string) *string {
-	return &v
 }

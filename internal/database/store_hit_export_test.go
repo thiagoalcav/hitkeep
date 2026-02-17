@@ -44,11 +44,11 @@ func TestExportHitsCSVIncludesUTMFields(t *testing.T) {
 		PageID:      uuid.New(),
 		Timestamp:   now,
 		Path:        "/landing",
-		UTMSource:   strPtr("google"),
-		UTMMedium:   strPtr("cpc"),
-		UTMCampaign: strPtr("spring-launch"),
-		UTMTerm:     strPtr("privacy analytics"),
-		UTMContent:  strPtr("hero-cta"),
+		UTMSource:   new("google"),
+		UTMMedium:   new("cpc"),
+		UTMCampaign: new("spring-launch"),
+		UTMTerm:     new("privacy analytics"),
+		UTMContent:  new("hero-cta"),
 		IsUnique:    &isUnique,
 	}
 	if err := store.CreateHit(ctx, hit); err != nil {
@@ -105,8 +105,4 @@ func TestExportHitsCSVIncludesUTMFields(t *testing.T) {
 	if got := row[index["utm_content"]]; got != "hero-cta" {
 		t.Fatalf("expected utm_content=hero-cta, got %q", got)
 	}
-}
-
-func strPtr(v string) *string {
-	return &v
 }

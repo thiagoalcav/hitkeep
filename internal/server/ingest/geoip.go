@@ -5,6 +5,7 @@ import (
 	"iter"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/phuslu/iploc"
@@ -172,11 +173,5 @@ func (e *CountryCodeExtractor) isValidCountryCode(code string) bool {
 
 	// Common placeholder/invalid codes
 	invalid := []string{"XX", "T1", "A1", "A2", "O1"}
-	for _, inv := range invalid {
-		if code == inv {
-			return false
-		}
-	}
-
-	return true
+	return !slices.Contains(invalid, code)
 }

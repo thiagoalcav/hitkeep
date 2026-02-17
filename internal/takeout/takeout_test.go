@@ -46,11 +46,11 @@ func TestExportSiteDataCSVIncludesUTMFields(t *testing.T) {
 		PageID:      uuid.New(),
 		Timestamp:   now,
 		Path:        "/utm",
-		UTMSource:   strPtr("newsletter"),
-		UTMMedium:   strPtr("email"),
-		UTMCampaign: strPtr("feb-launch"),
-		UTMTerm:     strPtr("feature"),
-		UTMContent:  strPtr("button-a"),
+		UTMSource:   new("newsletter"),
+		UTMMedium:   new("email"),
+		UTMCampaign: new("feb-launch"),
+		UTMTerm:     new("feature"),
+		UTMContent:  new("button-a"),
 		IsUnique:    &isUnique,
 	}); err != nil {
 		t.Fatalf("create hit: %v", err)
@@ -117,8 +117,4 @@ func TestExportSiteDataCSVIncludesUTMFields(t *testing.T) {
 	if got := row[index["utm_content"]]; got != "button-a" {
 		t.Fatalf("expected utm_content=button-a, got %q", got)
 	}
-}
-
-func strPtr(v string) *string {
-	return &v
 }

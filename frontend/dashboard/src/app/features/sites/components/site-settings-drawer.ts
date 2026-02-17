@@ -14,11 +14,12 @@ import { SiteTrackingSettings } from '@features/sites/components/site-tracking-s
 import { SiteDangerZone } from '@features/sites/components/site-danger-zone';
 import { SiteRetentionSettings } from '@features/sites/components/site-retention-settings';
 import { SiteTeamSettings } from '@features/sites/components/site-team-settings';
+import { SiteExclusionSettings } from '@features/sites/components/site-exclusion-settings';
 
 @Component({
     selector: 'app-site-settings-drawer',
     standalone: true,
-    imports: [DrawerModule, TabsModule, ButtonModule, SiteGeneralSettings, SiteTrackingSettings, SiteDangerZone, SiteRetentionSettings, SiteTeamSettings, TranslocoPipe],
+    imports: [DrawerModule, TabsModule, ButtonModule, SiteGeneralSettings, SiteTrackingSettings, SiteExclusionSettings, SiteDangerZone, SiteRetentionSettings, SiteTeamSettings, TranslocoPipe],
     templateUrl: './site-settings-drawer.html',
     styleUrl: './site-settings-drawer.css'
 })

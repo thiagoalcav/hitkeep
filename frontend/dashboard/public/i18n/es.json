@@ -35,6 +35,7 @@
             "domain": "Dominio",
             "email": "Correo",
             "name": "Nombre",
+            "owner": "Propietario",
             "path": "Ruta",
             "referrer": "Referencia",
             "role": "Rol",
@@ -345,9 +346,18 @@
                 "descriptionPlaceholder": "Para qué se usa este cliente",
                 "instanceRoleLabel": "Rol de instancia",
                 "expiresAtLabel": "Expiración",
+                "expiresAtHint": "Si lo dejas en blanco, el token no caduca. No se recomienda.",
                 "siteScopesLabel": "Alcances por sitio",
                 "siteScopesHint": "Opcional: limita este cliente a sitios y roles de sitio específicos.",
-                "selectSitePlaceholder": "Seleccionar sitio"
+                "selectSitePlaceholder": "Seleccionar sitio",
+                "validation": {
+                    "nameRequired": "El nombre del cliente es obligatorio.",
+                    "nameTooLong": "El nombre del cliente debe tener como máximo 120 caracteres.",
+                    "instanceRoleRequired": "El rol de instancia es obligatorio.",
+                    "expiresAtPast": "La expiración debe estar en el futuro.",
+                    "expiresAtInvalid": "La fecha de expiración no es válida.",
+                    "scopeSiteRequired": "Selecciona un sitio antes de agregar un alcance."
+                }
             },
             "tokenNotice": {
                 "title": "Copia este token ahora",
@@ -465,6 +475,35 @@
             "defaultHint": "El valor predeterminado es 365 días.",
             "savePolicy": "Guardar política"
         },
+        "exclusions": {
+            "description": "Excluye tráfico interno, de monitoreo o bots por IP o CIDR para que nunca llegue al almacenamiento analítico.",
+            "cidrLabel": "IP o CIDR",
+            "cidrPlaceholder": "203.0.113.5 o 192.168.0.0/24",
+            "descriptionLabel": "Descripción",
+            "descriptionPlaceholder": "VPN de oficina, monitor sintético, etc.",
+            "addAction": "Agregar exclusión",
+            "loading": "Cargando exclusiones...",
+            "empty": "No hay exclusiones configuradas para este sitio.",
+            "confirmDelete": "¿Eliminar la exclusión {{cidr}}?",
+            "suggestionsTitle": "Tu IP actual",
+            "suggestionsHint": "Copia este CIDR y pegalo en el campo IP o CIDR.",
+            "copySuggestionsAction": "Copiar IP actual",
+            "currentIpLoading": "Resolviendo tu IP...",
+            "currentIpUnavailable": "No se pudo resolver tu IP actual.",
+            "columns": {
+                "cidr": "CIDR",
+                "description": "Descripción",
+                "created": "Creado"
+            },
+            "errors": {
+                "invalidCidr": "Ingresa un valor IP o CIDR válido.",
+                "descriptionTooLong": "La descripción debe tener 255 caracteres o menos.",
+                "loadFailed": "No se pudieron cargar las exclusiones.",
+                "createFailed": "No se pudo crear la exclusión.",
+                "deleteFailed": "No se pudo eliminar la exclusión.",
+                "copyFailed": "No se pudo copiar la IP actual."
+            }
+        },
         "selector": {
             "regionAria": "Selección de sitio",
             "sitesLabel": "Sitios",
@@ -484,6 +523,7 @@
             "tabs": {
                 "general": "General",
                 "tracking": "Seguimiento",
+                "filtering": "Filtrado",
                 "retention": "Retencion",
                 "team": "Equipo",
                 "dangerZone": "Zona de peligro"
@@ -521,13 +561,45 @@
         "breadcrumb": "Administración de la instancia",
         "tabs": {
             "users": "Usuarios",
-            "sites": "Sitios"
+            "sites": "Sitios",
+            "globalFilters": "Filtros globales"
         },
         "users": {
             "title": "Usuarios"
         },
         "sites": {
-            "title": "Sitios"
+            "title": "Sitios",
+            "ownerUnknown": "Propietario desconocido"
+        },
+        "exclusions": {
+            "title": "Filtros globales IP/CIDR",
+            "description": "Descarta tráfico de redes seleccionadas para todos los sitios de esta instancia de HitKeep.",
+            "cidrLabel": "IP o CIDR",
+            "cidrPlaceholder": "203.0.113.5 o 192.168.0.0/24",
+            "descriptionLabel": "Descripción",
+            "descriptionPlaceholder": "Monitor de uptime, rango de oficina, etc.",
+            "addAction": "Agregar filtro global",
+            "loading": "Cargando filtros globales...",
+            "empty": "No hay filtros globales configurados.",
+            "confirmDelete": "¿Eliminar el filtro global {{cidr}}?",
+            "suggestionsTitle": "Tu IP actual",
+            "suggestionsHint": "Copia este CIDR y pegalo en el campo IP o CIDR.",
+            "copySuggestionsAction": "Copiar IP actual",
+            "currentIpLoading": "Resolviendo tu IP...",
+            "currentIpUnavailable": "No se pudo resolver tu IP actual.",
+            "columns": {
+                "cidr": "CIDR",
+                "description": "Descripción",
+                "created": "Creado"
+            },
+            "errors": {
+                "invalidCidr": "Ingresa un valor IP o CIDR válido.",
+                "descriptionTooLong": "La descripción debe tener 255 caracteres o menos.",
+                "loadFailed": "No se pudieron cargar los filtros globales.",
+                "createFailed": "No se pudo crear el filtro global.",
+                "deleteFailed": "No se pudo eliminar el filtro global.",
+                "copyFailed": "No se pudo copiar la IP actual."
+            }
         },
         "roles": {
             "instanceOwner": "Propietario de la instancia",

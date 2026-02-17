@@ -35,6 +35,7 @@
             "domain": "Domaine",
             "email": "E-mail",
             "name": "Nom",
+            "owner": "Proprietaire",
             "path": "Chemin",
             "referrer": "Referent",
             "role": "Role",
@@ -345,9 +346,18 @@
                 "descriptionPlaceholder": "A quoi sert ce client",
                 "instanceRoleLabel": "Role d'instance",
                 "expiresAtLabel": "Expiration",
+                "expiresAtHint": "Si vide, le jeton n'expire jamais. Ce n'est pas recommande.",
                 "siteScopesLabel": "Portees de site",
                 "siteScopesHint": "Optionnel : limitez ce client a des sites et roles de site specifiques.",
-                "selectSitePlaceholder": "Selectionner un site"
+                "selectSitePlaceholder": "Selectionner un site",
+                "validation": {
+                    "nameRequired": "Le nom du client est obligatoire.",
+                    "nameTooLong": "Le nom du client doit contenir 120 caracteres maximum.",
+                    "instanceRoleRequired": "Le role d'instance est obligatoire.",
+                    "expiresAtPast": "La date d'expiration doit etre dans le futur.",
+                    "expiresAtInvalid": "La date d'expiration est invalide.",
+                    "scopeSiteRequired": "Selectionnez un site avant d'ajouter une portee."
+                }
             },
             "tokenNotice": {
                 "title": "Copiez ce jeton maintenant",
@@ -465,6 +475,35 @@
             "defaultHint": "La valeur par defaut est 365 jours.",
             "savePolicy": "Enregistrer la politique"
         },
+        "exclusions": {
+            "description": "Excluez le trafic interne, de monitoring ou de bots par IP/CIDR afin qu'il n'entre jamais dans le stockage analytique.",
+            "cidrLabel": "IP ou CIDR",
+            "cidrPlaceholder": "203.0.113.5 ou 192.168.0.0/24",
+            "descriptionLabel": "Description",
+            "descriptionPlaceholder": "VPN bureau, sonde synthetique, etc.",
+            "addAction": "Ajouter une exclusion",
+            "loading": "Chargement des exclusions...",
+            "empty": "Aucune exclusion configuree pour ce site.",
+            "confirmDelete": "Supprimer l'exclusion {{cidr}}?",
+            "suggestionsTitle": "Votre IP actuelle",
+            "suggestionsHint": "Copiez ce CIDR et collez-le dans le champ IP ou CIDR.",
+            "copySuggestionsAction": "Copier l'IP actuelle",
+            "currentIpLoading": "Resolution de votre IP...",
+            "currentIpUnavailable": "Impossible de determiner votre IP actuelle.",
+            "columns": {
+                "cidr": "CIDR",
+                "description": "Description",
+                "created": "Cree"
+            },
+            "errors": {
+                "invalidCidr": "Saisissez une IP ou un CIDR valide.",
+                "descriptionTooLong": "La description doit contenir 255 caracteres maximum.",
+                "loadFailed": "Impossible de charger les exclusions.",
+                "createFailed": "Impossible de creer l'exclusion.",
+                "deleteFailed": "Impossible de supprimer l'exclusion.",
+                "copyFailed": "Impossible de copier l'IP actuelle."
+            }
+        },
         "selector": {
             "regionAria": "Selection du site",
             "sitesLabel": "Sites",
@@ -484,6 +523,7 @@
             "tabs": {
                 "general": "General",
                 "tracking": "Suivi",
+                "filtering": "Filtrage",
                 "retention": "Retention",
                 "team": "Equipe",
                 "dangerZone": "Zone de danger"
@@ -521,13 +561,45 @@
         "breadcrumb": "Administration de l'instance",
         "tabs": {
             "users": "Utilisateurs",
-            "sites": "Sites"
+            "sites": "Sites",
+            "globalFilters": "Filtres globaux"
         },
         "users": {
             "title": "Utilisateurs"
         },
         "sites": {
-            "title": "Sites"
+            "title": "Sites",
+            "ownerUnknown": "Proprietaire inconnu"
+        },
+        "exclusions": {
+            "title": "Filtres globaux IP/CIDR",
+            "description": "Ignorez le trafic provenant de reseaux selectionnes pour tous les sites de cette instance HitKeep.",
+            "cidrLabel": "IP ou CIDR",
+            "cidrPlaceholder": "203.0.113.5 ou 192.168.0.0/24",
+            "descriptionLabel": "Description",
+            "descriptionPlaceholder": "Sonde uptime, plage bureau, etc.",
+            "addAction": "Ajouter un filtre global",
+            "loading": "Chargement des filtres globaux...",
+            "empty": "Aucun filtre global configure.",
+            "confirmDelete": "Supprimer le filtre global {{cidr}}?",
+            "suggestionsTitle": "Votre IP actuelle",
+            "suggestionsHint": "Copiez ce CIDR et collez-le dans le champ IP ou CIDR.",
+            "copySuggestionsAction": "Copier l'IP actuelle",
+            "currentIpLoading": "Resolution de votre IP...",
+            "currentIpUnavailable": "Impossible de determiner votre IP actuelle.",
+            "columns": {
+                "cidr": "CIDR",
+                "description": "Description",
+                "created": "Cree"
+            },
+            "errors": {
+                "invalidCidr": "Saisissez une IP ou un CIDR valide.",
+                "descriptionTooLong": "La description doit contenir 255 caracteres maximum.",
+                "loadFailed": "Impossible de charger les filtres globaux.",
+                "createFailed": "Impossible de creer le filtre global.",
+                "deleteFailed": "Impossible de supprimer le filtre global.",
+                "copyFailed": "Impossible de copier l'IP actuelle."
+            }
         },
         "roles": {
             "instanceOwner": "Proprietaire de l'instance",

@@ -35,6 +35,7 @@
             "domain": "Domain",
             "email": "Email",
             "name": "Name",
+            "owner": "Owner",
             "path": "Path",
             "referrer": "Referrer",
             "role": "Role",
@@ -345,9 +346,18 @@
                 "descriptionPlaceholder": "What this client is used for",
                 "instanceRoleLabel": "Instance role",
                 "expiresAtLabel": "Expiration",
+                "expiresAtHint": "Leaving this blank creates a token with no expiration, which is not recommended.",
                 "siteScopesLabel": "Site scopes",
                 "siteScopesHint": "Optional: restrict this client to specific sites and site roles.",
-                "selectSitePlaceholder": "Select site"
+                "selectSitePlaceholder": "Select site",
+                "validation": {
+                    "nameRequired": "Client name is required.",
+                    "nameTooLong": "Client name must be 120 characters or fewer.",
+                    "instanceRoleRequired": "Instance role is required.",
+                    "expiresAtPast": "Expiration must be in the future.",
+                    "expiresAtInvalid": "Expiration timestamp is invalid.",
+                    "scopeSiteRequired": "Select a site before adding a scope."
+                }
             },
             "tokenNotice": {
                 "title": "Copy this token now",
@@ -465,6 +475,35 @@
             "defaultHint": "Default is 365 days.",
             "savePolicy": "Save policy"
         },
+        "exclusions": {
+            "description": "Exclude internal, monitoring, or bot traffic by IP or CIDR so it never reaches analytics storage.",
+            "cidrLabel": "IP or CIDR",
+            "cidrPlaceholder": "203.0.113.5 or 192.168.0.0/24",
+            "descriptionLabel": "Description",
+            "descriptionPlaceholder": "Office VPN, synthetic monitor, etc.",
+            "addAction": "Add exclusion",
+            "loading": "Loading exclusions...",
+            "empty": "No exclusions configured for this site.",
+            "confirmDelete": "Delete exclusion {{cidr}}?",
+            "suggestionsTitle": "Your current IP",
+            "suggestionsHint": "Copy this CIDR and paste it into the IP or CIDR field.",
+            "copySuggestionsAction": "Copy current IP",
+            "currentIpLoading": "Resolving your IP...",
+            "currentIpUnavailable": "Unable to resolve your current IP.",
+            "columns": {
+                "cidr": "CIDR",
+                "description": "Description",
+                "created": "Created"
+            },
+            "errors": {
+                "invalidCidr": "Enter a valid IP or CIDR value.",
+                "descriptionTooLong": "Description must be 255 characters or fewer.",
+                "loadFailed": "Failed to load exclusions.",
+                "createFailed": "Failed to create exclusion.",
+                "deleteFailed": "Failed to delete exclusion.",
+                "copyFailed": "Failed to copy current IP."
+            }
+        },
         "selector": {
             "regionAria": "Site selection",
             "sitesLabel": "Sites",
@@ -484,6 +523,7 @@
             "tabs": {
                 "general": "General",
                 "tracking": "Tracking",
+                "filtering": "Filtering",
                 "retention": "Retention",
                 "team": "Team",
                 "dangerZone": "Danger zone"
@@ -521,13 +561,45 @@
         "breadcrumb": "Instance administration",
         "tabs": {
             "users": "Users",
-            "sites": "Sites"
+            "sites": "Sites",
+            "globalFilters": "Global filters"
         },
         "users": {
             "title": "Users"
         },
         "sites": {
-            "title": "Sites"
+            "title": "Sites",
+            "ownerUnknown": "Unknown owner"
+        },
+        "exclusions": {
+            "title": "Global IP/CIDR filters",
+            "description": "Drop traffic from selected networks for every site in this HitKeep instance.",
+            "cidrLabel": "IP or CIDR",
+            "cidrPlaceholder": "203.0.113.5 or 192.168.0.0/24",
+            "descriptionLabel": "Description",
+            "descriptionPlaceholder": "Uptime monitor, office range, etc.",
+            "addAction": "Add global filter",
+            "loading": "Loading global filters...",
+            "empty": "No global filters configured.",
+            "confirmDelete": "Delete global filter {{cidr}}?",
+            "suggestionsTitle": "Your current IP",
+            "suggestionsHint": "Copy this CIDR and paste it into the IP or CIDR field.",
+            "copySuggestionsAction": "Copy current IP",
+            "currentIpLoading": "Resolving your IP...",
+            "currentIpUnavailable": "Unable to resolve your current IP.",
+            "columns": {
+                "cidr": "CIDR",
+                "description": "Description",
+                "created": "Created"
+            },
+            "errors": {
+                "invalidCidr": "Enter a valid IP or CIDR value.",
+                "descriptionTooLong": "Description must be 255 characters or fewer.",
+                "loadFailed": "Failed to load global filters.",
+                "createFailed": "Failed to create global filter.",
+                "deleteFailed": "Failed to delete global filter.",
+                "copyFailed": "Failed to copy current IP."
+            }
         },
         "roles": {
             "instanceOwner": "Instance owner",

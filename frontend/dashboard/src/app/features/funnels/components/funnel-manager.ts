@@ -27,41 +27,53 @@ interface FunnelStepControl {
             <p class="text-sm text-muted-color mb-4">{{ 'funnels.manager.dialogDescription' | transloco }}</p>
 
             <!-- List Funnels -->
-            <p-table [value]="funnels()" [loading]="loading()" styleClass="p-datatable-sm mb-6" [rowHover]="true">
-                <ng-template pTemplate="header">
-                    <tr>
-                        <th>{{ 'common.columns.name' | transloco }}</th>
-                        <th>{{ 'funnels.manager.stepsLabel' | transloco }}</th>
-                        <th style="width: 8rem"></th>
-                    </tr>
-                </ng-template>
-                <ng-template pTemplate="body" let-funnel>
-                    <tr>
-                        <td class="font-medium">{{ funnel.name }}</td>
-                        <td>
-                            <div class="flex items-center gap-1 flex-wrap">
-                                @for (step of funnel.steps; track $index; let last = $last) {
-                                    <span class="text-xs bg-surface-100 dark:bg-surface-800 px-2 py-1 rounded border border-surface-200 dark:border-surface-700" [title]="step.value"> {{ step.type === 'path' ? '/' : '' }}{{ step.value }} </span>
-                                    @if (!last) {
-                                        <i class="pi pi-arrow-right text-xs text-muted-color"></i>
+            <div class="flex justify-end mb-3">
+                <span class="p-input-icon-left hk-crud-search">
+                    <i class="pi pi-search"></i>
+                    <input pInputText #funnelSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="funnelsTable.filterGlobal($any($event.target).value, 'contains')" class="w-full" />
+                </span>
+            </div>
+
+            <div class="hk-crud-table-wrap mb-6">
+                <p-table #funnelsTable [value]="funnels()" [loading]="loading()" styleClass="hk-crud-table p-datatable-sm" [rowHover]="true" [globalFilterFields]="['name']" [sortField]="'name'" [sortOrder]="1">
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th pSortableColumn="name">
+                                {{ 'common.columns.name' | transloco }}
+                                <p-sortIcon field="name" />
+                            </th>
+                            <th>{{ 'funnels.manager.stepsLabel' | transloco }}</th>
+                            <th style="width: 8rem"></th>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-funnel>
+                        <tr>
+                            <td class="font-medium">{{ funnel.name }}</td>
+                            <td>
+                                <div class="flex items-center gap-1 flex-wrap">
+                                    @for (step of funnel.steps; track $index; let last = $last) {
+                                        <span class="text-xs bg-surface-100 dark:bg-surface-800 px-2 py-1 rounded border border-surface-200 dark:border-surface-700" [title]="step.value"> {{ step.type === 'path' ? '/' : '' }}{{ step.value }} </span>
+                                        @if (!last) {
+                                            <i class="pi pi-arrow-right text-xs text-muted-color"></i>
+                                        }
                                     }
-                                }
-                            </div>
-                        </td>
-                        <td>
-                            <div class="flex gap-2">
-                                <p-button icon="pi pi-chart-bar" (onClick)="viewFunnel.emit(funnel)" styleClass="p-button-text p-button-sm" [rounded]="true" [pTooltip]="'funnels.manager.viewStats' | transloco"></p-button>
-                                <p-button icon="pi pi-trash" (onClick)="deleteFunnel(funnel.id)" styleClass="p-button-text p-button-danger p-button-sm" [rounded]="true"></p-button>
-                            </div>
-                        </td>
-                    </tr>
-                </ng-template>
-                <ng-template pTemplate="emptymessage">
-                    <tr>
-                        <td colspan="3" class="text-center text-muted-color py-4">{{ 'funnels.manager.empty' | transloco }}</td>
-                    </tr>
-                </ng-template>
-            </p-table>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="flex gap-2">
+                                    <p-button icon="pi pi-chart-bar" (onClick)="viewFunnel.emit(funnel)" styleClass="p-button-text p-button-sm" [rounded]="true" [pTooltip]="'funnels.manager.viewStats' | transloco"></p-button>
+                                    <p-button icon="pi pi-trash" (onClick)="deleteFunnel(funnel.id)" styleClass="p-button-text p-button-danger p-button-sm" [rounded]="true"></p-button>
+                                </div>
+                            </td>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="emptymessage">
+                        <tr>
+                            <td colspan="3" class="text-center text-muted-color py-4">{{ 'funnels.manager.empty' | transloco }}</td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+            </div>
 
             <!-- Add Funnel Form -->
             <div class="flex flex-col gap-4 p-4 border border-surface-200 dark:border-surface-700 rounded-lg bg-surface-50 dark:bg-surface-900">

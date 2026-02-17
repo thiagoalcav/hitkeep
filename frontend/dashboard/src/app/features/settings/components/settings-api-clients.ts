@@ -1,13 +1,14 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { finalize, forkJoin } from 'rxjs';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
+import { TableModule } from 'primeng/table';
 
 import { SettingsCard } from '@features/settings/components/settings-card';
 import { APIClient, APIClientSiteRole, APIClientsService, CreateAPIClientRequest, InstanceRole, SiteRole } from '@services/api-clients.service';
@@ -18,9 +19,35 @@ interface SelectOption<TValue extends string> {
     value: TValue;
 }
 
+const truncateToMinute = (value: Date): number => {
+    const copy = new Date(value);
+    copy.setSeconds(0, 0);
+    return copy.getTime();
+};
+
+const expiresAtNotPastValidator = (): ValidatorFn => {
+    return (control: AbstractControl<string | null>): ValidationErrors | null => {
+        const value = control.value;
+        if (!value) {
+            return null;
+        }
+
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) {
+            return { invalidDateTime: true };
+        }
+
+        if (truncateToMinute(parsed) < truncateToMinute(new Date())) {
+            return { pastDateTime: true };
+        }
+
+        return null;
+    };
+};
+
 @Component({
     selector: 'app-settings-api-clients',
-    imports: [CommonModule, ReactiveFormsModule, ButtonModule, InputTextModule, SelectModule, SettingsCard, TranslocoPipe],
+    imports: [CommonModule, ReactiveFormsModule, ButtonModule, InputTextModule, SelectModule, TableModule, SettingsCard, TranslocoPipe],
     templateUrl: './settings-api-clients.html',
     styleUrl: './settings-api-clients.css',
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -46,7 +73,7 @@ export class SettingsAPIClients {
         name: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(120)] }),
         description: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(500)] }),
         instanceRole: new FormControl<InstanceRole>('user', { nonNullable: true, validators: [Validators.required] }),
-        expiresAt: new FormControl<string | null>(null)
+        expiresAt: new FormControl<string | null>(null, { validators: [expiresAtNotPastValidator()] })
     });
 
     protected readonly siteRoleForm = new FormGroup({
@@ -123,6 +150,9 @@ export class SettingsAPIClients {
     }
 
     protected submit(): void {
+        this.error.set(null);
+        this.form.controls.expiresAt.updateValueAndValidity({ emitEvent: false });
+
         if (this.form.invalid) {
             this.form.markAllAsTouched();
             return;
@@ -295,6 +325,10 @@ export class SettingsAPIClients {
         }
 
         navigator.clipboard.writeText(token).catch(() => undefined);
+    }
+
+    protected expiresAtMin(): string {
+        return this.toDateTimeLocal(new Date().toISOString()) ?? '';
     }
 
     private buildPayload(): CreateAPIClientRequest | null {

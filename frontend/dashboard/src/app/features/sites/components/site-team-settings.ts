@@ -40,31 +40,49 @@ interface SiteMember {
                 <p-button [label]="'sites.team.addMemberAction' | transloco" icon="pi pi-plus" (onClick)="addMember()" [loading]="isAdding()" [disabled]="isAdding() || memberForm().invalid()" />
             </div>
 
-            <p-table [value]="members()" [loading]="isLoading()">
-                <ng-template pTemplate="header">
-                    <tr>
-                        <th>{{ 'common.columns.email' | transloco }}</th>
-                        <th>{{ 'common.columns.role' | transloco }}</th>
-                        <th>{{ 'common.columns.added' | transloco }}</th>
-                        <th>{{ 'common.columns.actions' | transloco }}</th>
-                    </tr>
-                </ng-template>
+            <div class="flex justify-end">
+                <span class="p-input-icon-left hk-crud-search">
+                    <i class="pi pi-search"></i>
+                    <input pInputText #memberSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="membersTable.filterGlobal($any($event.target).value, 'contains')" class="w-full" />
+                </span>
+            </div>
 
-                <ng-template pTemplate="body" let-member>
-                    <tr>
-                        <td>{{ member.email }}</td>
-                        <td>
-                            <span class="px-2 py-1 rounded text-xs font-medium" [class]="getRoleBadgeClass(member.role)">
-                                {{ getRoleLabel(member.role) }}
-                            </span>
-                        </td>
-                        <td>{{ member.added_at | translocoDate: { dateStyle: 'short', timeStyle: 'short' } }}</td>
-                        <td>
-                            <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="removeMember(member)" />
-                        </td>
-                    </tr>
-                </ng-template>
-            </p-table>
+            <div class="hk-crud-table-wrap">
+                <p-table #membersTable [value]="members()" [loading]="isLoading()" [globalFilterFields]="['email', 'role', 'added_at']" [sortField]="'added_at'" [sortOrder]="-1" styleClass="hk-crud-table p-datatable-sm">
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th pSortableColumn="email">
+                                {{ 'common.columns.email' | transloco }}
+                                <p-sortIcon field="email" />
+                            </th>
+                            <th pSortableColumn="role">
+                                {{ 'common.columns.role' | transloco }}
+                                <p-sortIcon field="role" />
+                            </th>
+                            <th pSortableColumn="added_at">
+                                {{ 'common.columns.added' | transloco }}
+                                <p-sortIcon field="added_at" />
+                            </th>
+                            <th>{{ 'common.columns.actions' | transloco }}</th>
+                        </tr>
+                    </ng-template>
+
+                    <ng-template pTemplate="body" let-member>
+                        <tr>
+                            <td>{{ member.email }}</td>
+                            <td>
+                                <span class="px-2 py-1 rounded text-xs font-medium" [class]="getRoleBadgeClass(member.role)">
+                                    {{ getRoleLabel(member.role) }}
+                                </span>
+                            </td>
+                            <td>{{ member.added_at | translocoDate: { dateStyle: 'short', timeStyle: 'short' } }}</td>
+                            <td>
+                                <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="removeMember(member)" />
+                            </td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+            </div>
         </div>
     `
 })

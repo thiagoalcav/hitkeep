@@ -10,64 +10,142 @@
             <p-tablist>
                 <p-tab value="0">{{ "admin.tabs.users" | transloco }}</p-tab>
                 <p-tab value="1">{{ "admin.tabs.sites" | transloco }}</p-tab>
+                <p-tab value="2">{{ "admin.tabs.globalFilters" | transloco }}</p-tab>
             </p-tablist>
             <p-tabpanels>
                 <p-tabpanel value="0">
                     <p-card>
-                        <h2 class="text-lg font-semibold mb-4">{{ "admin.users.title" | transloco }}</h2>
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                            <h2 class="text-lg font-semibold m-0">{{ "admin.users.title" | transloco }}</h2>
+                            <span class="p-input-icon-left hk-crud-search">
+                                <i class="pi pi-search"></i>
+                                <input pInputText #usersSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="usersTable.filterGlobal($any($event.target).value, 'contains')" />
+                            </span>
+                        </div>
 
-                        <p-table [value]="users()" [loading]="isLoading()">
-                            <ng-template pTemplate="header">
-                                <tr>
-                                    <th>{{ "common.columns.email" | transloco }}</th>
-                                    <th>{{ "common.columns.role" | transloco }}</th>
-                                    <th>{{ "common.columns.created" | transloco }}</th>
-                                    <th>{{ "common.columns.actions" | transloco }}</th>
-                                </tr>
-                            </ng-template>
+                        <div class="hk-crud-table-wrap">
+                            <p-table
+                                #usersTable
+                                [value]="users()"
+                                [loading]="isLoading()"
+                                [scrollable]="false"
+                                [globalFilterFields]="['email', 'instance_role', 'created_at']"
+                                [sortField]="'created_at'"
+                                [sortOrder]="-1"
+                                styleClass="hk-crud-table p-datatable-sm"
+                            >
+                                <ng-template pTemplate="header">
+                                    <tr>
+                                        <th pSortableColumn="email">
+                                            {{ "common.columns.email" | transloco }}
+                                            <p-sortIcon field="email" />
+                                        </th>
+                                        <th pSortableColumn="instance_role">
+                                            {{ "common.columns.role" | transloco }}
+                                            <p-sortIcon field="instance_role" />
+                                        </th>
+                                        <th pSortableColumn="instance_role">
+                                            {{ "common.columns.owner" | transloco }}
+                                            <p-sortIcon field="instance_role" />
+                                        </th>
+                                        <th pSortableColumn="created_at">
+                                            {{ "common.columns.created" | transloco }}
+                                            <p-sortIcon field="created_at" />
+                                        </th>
+                                        <th>{{ "common.columns.actions" | transloco }}</th>
+                                    </tr>
+                                </ng-template>
 
-                            <ng-template pTemplate="body" let-user>
-                                <tr>
-                                    <td>{{ user.email }}</td>
-                                    <td>
-                                        <p-select [options]="roleOptions()" [formControl]="roleControl(user.id)" (onChange)="onRoleChange(user, $event.value)" optionLabel="label" optionValue="value" class="w-40" />
-                                    </td>
-                                    <td>{{ user.created_at | translocoDate: { dateStyle: "short", timeStyle: "short" } }}</td>
-                                    <td>
-                                        <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="deleteUser(user)" [disabled]="user.id === currentUserId()" />
-                                    </td>
-                                </tr>
-                            </ng-template>
-                        </p-table>
+                                <ng-template pTemplate="body" let-user>
+                                    <tr>
+                                        <td>{{ user.email }}</td>
+                                        <td>
+                                            <p-select [options]="roleOptions()" [formControl]="roleControl(user.id)" (onChange)="onRoleChange(user, $event.value)" optionLabel="label" optionValue="value" class="w-40" appendTo="body" />
+                                        </td>
+                                        <td>
+                                            @if (isInstanceOwner(user)) {
+                                                <span class="hk-owner-chip">{{ "admin.roles.instanceOwner" | transloco }}</span>
+                                            } @else {
+                                                <span class="text-sm text-[var(--p-text-muted-color)]">-</span>
+                                            }
+                                        </td>
+                                        <td>{{ user.created_at | translocoDate: { dateStyle: "short", timeStyle: "short" } }}</td>
+                                        <td>
+                                            <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="deleteUser(user)" [disabled]="user.id === currentUserId()" />
+                                        </td>
+                                    </tr>
+                                </ng-template>
+                            </p-table>
+                        </div>
                     </p-card>
                 </p-tabpanel>
                 <p-tabpanel value="1">
                     <p-card>
-                        <h2 class="text-lg font-semibold mb-4">{{ "admin.sites.title" | transloco }}</h2>
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                            <h2 class="text-lg font-semibold m-0">{{ "admin.sites.title" | transloco }}</h2>
+                            <span class="p-input-icon-left hk-crud-search">
+                                <i class="pi pi-search"></i>
+                                <input pInputText #sitesSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="sitesTable.filterGlobal($any($event.target).value, 'contains')" />
+                            </span>
+                        </div>
 
-                        <p-table [value]="sites()" [loading]="isLoadingSites()">
-                            <ng-template pTemplate="header">
-                                <tr>
-                                    <th>{{ "common.columns.domain" | transloco }}</th>
-                                    <th>{{ "common.columns.created" | transloco }}</th>
-                                    <th>{{ "common.columns.actions" | transloco }}</th>
-                                </tr>
-                            </ng-template>
+                        <div class="hk-crud-table-wrap">
+                            <p-table
+                                #sitesTable
+                                [value]="sites()"
+                                [loading]="isLoadingSites()"
+                                [scrollable]="false"
+                                [globalFilterFields]="['domain', 'owner_email', 'created_at']"
+                                [sortField]="'created_at'"
+                                [sortOrder]="-1"
+                                styleClass="hk-crud-table p-datatable-sm"
+                            >
+                                <ng-template pTemplate="header">
+                                    <tr>
+                                        <th pSortableColumn="domain">
+                                            {{ "common.columns.domain" | transloco }}
+                                            <p-sortIcon field="domain" />
+                                        </th>
+                                        <th pSortableColumn="owner_email">
+                                            {{ "common.columns.owner" | transloco }}
+                                            <p-sortIcon field="owner_email" />
+                                        </th>
+                                        <th pSortableColumn="created_at">
+                                            {{ "common.columns.created" | transloco }}
+                                            <p-sortIcon field="created_at" />
+                                        </th>
+                                        <th>{{ "common.columns.actions" | transloco }}</th>
+                                    </tr>
+                                </ng-template>
 
-                            <ng-template pTemplate="body" let-site>
-                                <tr>
-                                    <td>
-                                        <a [href]="'https://' + site.domain" target="_blank" class="text-primary hover:underline">
-                                            {{ site.domain }}
-                                        </a>
-                                    </td>
-                                    <td>{{ site.created_at | translocoDate: { dateStyle: "short", timeStyle: "short" } }}</td>
-                                    <td>
-                                        <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="deleteSite(site)" />
-                                    </td>
-                                </tr>
-                            </ng-template>
-                        </p-table>
+                                <ng-template pTemplate="body" let-site>
+                                    <tr>
+                                        <td>
+                                            <a [href]="'https://' + site.domain" target="_blank" class="text-primary hover:underline">
+                                                {{ site.domain }}
+                                            </a>
+                                        </td>
+                                        <td>
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <span>{{ siteOwnerEmail(site) }}</span>
+                                                @if (siteOwnerInstanceRole(site) === "owner") {
+                                                    <span class="hk-owner-chip">{{ roleLabel("owner") }}</span>
+                                                }
+                                            </div>
+                                        </td>
+                                        <td>{{ site.created_at | translocoDate: { dateStyle: "short", timeStyle: "short" } }}</td>
+                                        <td>
+                                            <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="deleteSite(site)" />
+                                        </td>
+                                    </tr>
+                                </ng-template>
+                            </p-table>
+                        </div>
+                    </p-card>
+                </p-tabpanel>
+                <p-tabpanel value="2">
+                    <p-card>
+                        <app-admin-global-exclusion-settings />
                     </p-card>
                 </p-tabpanel>
             </p-tabpanels>

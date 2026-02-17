@@ -13,6 +13,24 @@
     gap: 1rem;
 }
 
+.api-client-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.api-client-required-asterisk {
+    color: #b91c1c;
+    margin-left: 0.125rem;
+}
+
+.api-client-field-error {
+    color: #b91c1c;
+    font-size: 0.75rem;
+}
+
 .api-client-scope {
     display: flex;
     flex-direction: column;

@@ -6,6 +6,20 @@ export interface Site {
     data_retention_days?: number;
 }
 
+export interface IPExclusion {
+    id: string;
+    site_id?: string;
+    cidr: string;
+    description?: string;
+    created_at: string;
+    created_by?: string;
+}
+
+export interface CurrentIP {
+    ip: string;
+    cidr: string;
+}
+
 export interface Hit {
     id: string;
     site_id: string;

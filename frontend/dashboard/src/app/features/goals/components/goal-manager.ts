@@ -21,35 +21,53 @@ import { Goal } from '@models/analytics.types';
             <p class="text-sm text-muted-color mb-4">{{ 'goals.manager.dialogDescription' | transloco }}</p>
 
             <!-- List Goals -->
-            <p-table [value]="goals()" [loading]="loading()" styleClass="p-datatable-sm mb-6" [rowHover]="true">
-                <ng-template pTemplate="header">
-                    <tr>
-                        <th>{{ 'common.columns.name' | transloco }}</th>
-                        <th style="width: 100px">{{ 'common.columns.type' | transloco }}</th>
-                        <th>{{ 'common.columns.value' | transloco }}</th>
-                        <th style="width: 4rem"></th>
-                    </tr>
-                </ng-template>
-                <ng-template pTemplate="body" let-goal>
-                    <tr>
-                        <td class="font-medium">{{ goal.name }}</td>
-                        <td>
-                            <span [class]="goalTypeClass(goal.type)">
-                                {{ goalTypeLabel(goal.type) }}
-                            </span>
-                        </td>
-                        <td class="font-mono text-sm text-muted-color truncate max-w-[150px]" [title]="goal.value">{{ goal.value }}</td>
-                        <td>
-                            <p-button icon="pi pi-trash" (onClick)="deleteGoal(goal.id)" styleClass="p-button-text p-button-danger p-button-sm" [rounded]="true"></p-button>
-                        </td>
-                    </tr>
-                </ng-template>
-                <ng-template pTemplate="emptymessage">
-                    <tr>
-                        <td colspan="4" class="text-center text-muted-color py-4">{{ 'goals.manager.empty' | transloco }}</td>
-                    </tr>
-                </ng-template>
-            </p-table>
+            <div class="flex justify-end mb-3">
+                <span class="p-input-icon-left hk-crud-search">
+                    <i class="pi pi-search"></i>
+                    <input pInputText #goalSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="goalsTable.filterGlobal($any($event.target).value, 'contains')" class="w-full" />
+                </span>
+            </div>
+
+            <div class="hk-crud-table-wrap mb-6">
+                <p-table #goalsTable [value]="goals()" [loading]="loading()" styleClass="hk-crud-table p-datatable-sm" [rowHover]="true" [globalFilterFields]="['name', 'type', 'value']" [sortField]="'name'" [sortOrder]="1">
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th pSortableColumn="name">
+                                {{ 'common.columns.name' | transloco }}
+                                <p-sortIcon field="name" />
+                            </th>
+                            <th pSortableColumn="type" style="width: 100px">
+                                {{ 'common.columns.type' | transloco }}
+                                <p-sortIcon field="type" />
+                            </th>
+                            <th pSortableColumn="value">
+                                {{ 'common.columns.value' | transloco }}
+                                <p-sortIcon field="value" />
+                            </th>
+                            <th style="width: 4rem"></th>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-goal>
+                        <tr>
+                            <td class="font-medium">{{ goal.name }}</td>
+                            <td>
+                                <span [class]="goalTypeClass(goal.type)">
+                                    {{ goalTypeLabel(goal.type) }}
+                                </span>
+                            </td>
+                            <td class="font-mono text-sm text-muted-color truncate max-w-[150px]" [title]="goal.value">{{ goal.value }}</td>
+                            <td>
+                                <p-button icon="pi pi-trash" (onClick)="deleteGoal(goal.id)" styleClass="p-button-text p-button-danger p-button-sm" [rounded]="true"></p-button>
+                            </td>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="emptymessage">
+                        <tr>
+                            <td colspan="4" class="text-center text-muted-color py-4">{{ 'goals.manager.empty' | transloco }}</td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+            </div>
 
             <!-- Add Goal Form -->
             <div class="flex flex-col gap-4 p-4 border border-surface-200 dark:border-surface-700 rounded-lg bg-surface-50 dark:bg-surface-900">

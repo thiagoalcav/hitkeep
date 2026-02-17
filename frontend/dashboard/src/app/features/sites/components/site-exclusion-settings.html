@@ -88,7 +88,7 @@
                             <code>{{ rule.cidr }}</code>
                         </td>
                         <td>{{ rule.description || "-" }}</td>
-                        <td>{{ rule.created_at | date: "medium" }}</td>
+                        <td><app-relative-date-time [value]="rule.created_at" /></td>
                         <td>
                             <p-button icon="pi pi-trash" severity="danger" [text]="true" [type]="'button'" (onClick)="deleteRule(rule)" />
                         </td>

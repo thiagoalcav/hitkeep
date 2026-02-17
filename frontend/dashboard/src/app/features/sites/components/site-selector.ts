@@ -1,4 +1,4 @@
-import { Component, input, output, ChangeDetectionStrategy, ViewChild, inject, effect, signal } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, inject, effect, signal, viewChild } from '@angular/core';
 
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { compatForm } from '@angular/forms/signals/compat';
@@ -73,7 +73,9 @@ import { ShareService } from '@services/share.service';
                                 <p-button icon="pi pi-code" [ariaLabel]="'sites.selector.trackingCodeAria' | transloco" [text]="true" size="small" (onClick)="trackingClicked.emit()" />
                                 <p-button icon="pi pi-share-alt" [ariaLabel]="'sites.selector.shareDashboardAria' | transloco" [text]="true" size="small" (onClick)="openShareDialog()" [disabled]="!current()" />
                             </p-buttonGroup>
-                            <app-share-dashboard-link />
+                            @defer (when shareDialogLoaded()) {
+                                <app-share-dashboard-link #shareDialog />
+                            }
                         }
                     }
                 </div>
@@ -83,11 +85,13 @@ import { ShareService } from '@services/share.service';
 })
 export class SiteSelector {
     protected shareService = inject(ShareService);
-    @ViewChild(ShareDashboardLink) private shareDialog?: ShareDashboardLink;
+    private readonly shareDialog = viewChild<ShareDashboardLink>('shareDialog');
     private readonly siteFormModel = signal({
         selectedSite: new FormControl<Site | null>(null)
     });
     protected readonly siteForm = compatForm(this.siteFormModel);
+    protected readonly shareDialogLoaded = signal(false);
+    private readonly pendingShareDialogOpen = signal(false);
 
     sites = input.required<Site[]>();
     current = input<Site | null>(null);
@@ -101,6 +105,20 @@ export class SiteSelector {
         effect(() => {
             this.siteForm.selectedSite().control().setValue(this.current(), { emitEvent: false });
         });
+
+        effect(() => {
+            if (!this.pendingShareDialogOpen()) {
+                return;
+            }
+
+            const dialog = this.shareDialog();
+            if (!dialog) {
+                return;
+            }
+
+            dialog.open();
+            this.pendingShareDialogOpen.set(false);
+        });
     }
 
     protected onSiteChange(site: Site | null): void {
@@ -111,6 +129,7 @@ export class SiteSelector {
     }
 
     protected openShareDialog() {
-        this.shareDialog?.open();
+        this.shareDialogLoaded.set(true);
+        this.pendingShareDialogOpen.set(true);
     }
 }

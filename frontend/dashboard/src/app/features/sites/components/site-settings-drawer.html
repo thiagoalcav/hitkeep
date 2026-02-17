@@ -55,22 +55,34 @@
             </p-tablist>
             <p-tabpanels>
                 <p-tabpanel value="0">
-                    <app-site-general-settings [site]="site()" />
+                    @if (visible() && activeTab() === "0") {
+                        <app-site-general-settings [site]="site()" />
+                    }
                 </p-tabpanel>
                 <p-tabpanel value="1">
-                    <app-site-tracking-settings [site]="site()" />
+                    @if (visible() && activeTab() === "1") {
+                        <app-site-tracking-settings [site]="site()" />
+                    }
                 </p-tabpanel>
                 <p-tabpanel value="2">
-                    <app-site-exclusion-settings [site]="site()" />
+                    @if (visible() && activeTab() === "2") {
+                        <app-site-exclusion-settings [site]="site()" />
+                    }
                 </p-tabpanel>
                 <p-tabpanel value="3">
-                    <app-site-retention-settings [site]="site()" />
+                    @if (visible() && activeTab() === "3") {
+                        <app-site-retention-settings [site]="site()" />
+                    }
                 </p-tabpanel>
                 <p-tabpanel value="4">
-                    <app-site-team-settings [site]="site()" />
+                    @if (visible() && activeTab() === "4") {
+                        <app-site-team-settings [site]="site()" />
+                    }
                 </p-tabpanel>
                 <p-tabpanel value="5">
-                    <app-site-danger-zone [site]="site()" />
+                    @if (visible() && activeTab() === "5") {
+                        <app-site-danger-zone [site]="site()" />
+                    }
                 </p-tabpanel>
             </p-tabpanels>
         </p-tabs>

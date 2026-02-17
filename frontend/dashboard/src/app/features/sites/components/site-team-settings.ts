@@ -9,8 +9,8 @@ import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
 import { InputTextModule } from 'primeng/inputtext';
-import { TranslocoDatePipe } from '@jsverse/transloco-locale';
 import { Site } from '@models/analytics.types';
+import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
 
 interface SiteMember {
     id: string;
@@ -23,7 +23,7 @@ interface SiteMember {
 @Component({
     selector: 'app-site-team-settings',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, TableModule, ButtonModule, SelectModule, InputTextModule, TranslocoPipe, TranslocoDatePipe],
+    imports: [CommonModule, ReactiveFormsModule, TableModule, ButtonModule, SelectModule, InputTextModule, RelativeDateTime, TranslocoPipe],
     template: `
         <div class="flex flex-col gap-4">
             <div class="flex items-end gap-2">
@@ -75,7 +75,7 @@ interface SiteMember {
                                     {{ getRoleLabel(member.role) }}
                                 </span>
                             </td>
-                            <td>{{ member.added_at | translocoDate: { dateStyle: 'short', timeStyle: 'short' } }}</td>
+                            <td><app-relative-date-time [value]="member.added_at" /></td>
                             <td>
                                 <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="removeMember(member)" />
                             </td>

@@ -113,7 +113,7 @@
                     <div class="passkey-item">
                         <div class="passkey-meta">
                             <span class="font-medium text-sm">{{ passkey.name }}</span>
-                            <span class="text-xs text-muted-color">{{ passkey.created_at | date: "medium" }}</span>
+                            <span class="text-xs text-muted-color"><app-relative-date-time [value]="passkey.created_at" /></span>
                         </div>
                         <button pButton type="button" severity="secondary" [outlined]="true" icon="pi pi-trash" [disabled]="isPasskeyActionLoading()" (click)="deletePasskey(passkey.id)">
                             {{ "settings.security.passkeys.removeAction" | transloco }}

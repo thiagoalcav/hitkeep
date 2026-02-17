@@ -11,6 +11,7 @@ import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
 
 import { SettingsCard } from '@features/settings/components/settings-card';
+import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
 import { APIClient, APIClientSiteRole, APIClientsService, CreateAPIClientRequest, InstanceRole, SiteRole } from '@services/api-clients.service';
 import { PermissionService } from '@services/permission.service';
 
@@ -47,7 +48,7 @@ const expiresAtNotPastValidator = (): ValidatorFn => {
 
 @Component({
     selector: 'app-settings-api-clients',
-    imports: [CommonModule, ReactiveFormsModule, ButtonModule, InputTextModule, SelectModule, TableModule, SettingsCard, TranslocoPipe],
+    imports: [CommonModule, ReactiveFormsModule, ButtonModule, InputTextModule, SelectModule, TableModule, SettingsCard, RelativeDateTime, TranslocoPipe],
     templateUrl: './settings-api-clients.html',
     styleUrl: './settings-api-clients.css',
     changeDetection: ChangeDetectionStrategy.OnPush

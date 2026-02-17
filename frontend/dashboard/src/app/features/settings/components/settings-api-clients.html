@@ -217,17 +217,17 @@
                                 <td>
                                     {{ "admin.roles." + (client.instance_role === "owner" ? "instanceOwner" : client.instance_role === "admin" ? "instanceAdmin" : "user") | transloco }}
                                 </td>
-                                <td>{{ client.created_at | date: "medium" }}</td>
+                                <td><app-relative-date-time [value]="client.created_at" /></td>
                                 <td>
                                     @if (client.last_used_at) {
-                                        {{ client.last_used_at | date: "medium" }}
+                                        <app-relative-date-time [value]="client.last_used_at" />
                                     } @else {
                                         -
                                     }
                                 </td>
                                 <td>
                                     @if (client.expires_at) {
-                                        {{ client.expires_at | date: "medium" }}
+                                        <app-relative-date-time [value]="client.expires_at" />
                                     } @else {
                                         -
                                     }

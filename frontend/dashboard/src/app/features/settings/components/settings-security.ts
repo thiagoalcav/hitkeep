@@ -11,6 +11,7 @@ import { PasswordModule } from 'primeng/password';
 import { MessageModule } from 'primeng/message';
 import { InputOtpModule } from 'primeng/inputotp';
 import { SettingsCard } from '@features/settings/components/settings-card';
+import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
 
 // Core
 import { AuthService } from '@services/auth.service';
@@ -18,7 +19,7 @@ import { PasskeyRegistrationFinishRequest, PasskeyRegistrationStartResponse, Use
 
 @Component({
     selector: 'app-settings-security',
-    imports: [CommonModule, ReactiveFormsModule, ButtonModule, PasswordModule, MessageModule, InputOtpModule, SettingsCard, TranslocoPipe],
+    imports: [CommonModule, ReactiveFormsModule, ButtonModule, PasswordModule, MessageModule, InputOtpModule, SettingsCard, RelativeDateTime, TranslocoPipe],
     templateUrl: './settings-security.html',
     styleUrl: './settings-security.css',
     changeDetection: ChangeDetectionStrategy.OnPush

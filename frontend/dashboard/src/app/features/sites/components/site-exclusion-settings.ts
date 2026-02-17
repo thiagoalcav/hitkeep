@@ -10,13 +10,14 @@ import { TableModule } from 'primeng/table';
 
 import { IPExclusion, Site } from '@models/analytics.types';
 import { ExclusionsService } from '@services/exclusions.service';
+import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
 
 const ipOrCIDRPattern = /^(([0-9]{1,3}\.){3}[0-9]{1,3}(\/(3[0-2]|[12]?[0-9]))?|([0-9A-Fa-f:]+)(\/(12[0-8]|1[01][0-9]|[1-9]?[0-9]))?)$/;
 
 @Component({
     selector: 'app-site-exclusion-settings',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, ButtonModule, InputTextModule, TableModule, TranslocoPipe],
+    imports: [CommonModule, ReactiveFormsModule, ButtonModule, InputTextModule, TableModule, RelativeDateTime, TranslocoPipe],
     templateUrl: './site-exclusion-settings.html',
     styleUrl: './site-exclusion-settings.css',
     changeDetection: ChangeDetectionStrategy.OnPush

@@ -1,0 +1,2 @@
+ALTER TABLE users ADD COLUMN given_name VARCHAR;
+ALTER TABLE users ADD COLUMN last_name VARCHAR;

@@ -4,10 +4,12 @@ import (
 	"crypto/md5" //nolint:gosec // Gravatar requires MD5 hashes for avatar lookups.
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net"
 	"net/http"
+	"net/mail"
 	"net/url"
 	"strconv"
 	"strings"
@@ -16,6 +18,7 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/database"
 	"hitkeep/internal/server/shared"
 )
 
@@ -29,6 +32,10 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleGetUserProfile()))
+	mux.HandleFunc("PUT /api/user/profile", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleUpdateUserProfile()))
 	mux.HandleFunc("GET /api/user/avatar", ctx.Handler(shared.HandlerConfig{
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
@@ -115,13 +122,103 @@ func (h *handler) handleGetUserProfile() http.HandlerFunc {
 		resp := api.UserProfile{
 			ID:          user.ID,
 			Email:       user.Email,
-			DisplayName: displayNameFromEmail(user.Email),
+			GivenName:   user.GivenName,
+			LastName:    user.LastName,
+			DisplayName: displayNameForUser(user),
 			AvatarURL:   "/api/user/avatar?s=96",
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			slog.Error("Failed to encode user profile", "error", err, "user_id", userID)
+		}
+	}
+}
+
+func (h *handler) handleUpdateUserProfile() http.HandlerFunc {
+	type request struct {
+		Email     string `json:"email"`
+		GivenName string `json:"given_name"`
+		LastName  string `json:"last_name"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := shared.GetUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		var req request
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&req); err != nil {
+			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			return
+		}
+		if err := decoder.Decode(&struct{}{}); err != io.EOF {
+			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			return
+		}
+
+		email := strings.ToLower(strings.TrimSpace(req.Email))
+		givenName := strings.TrimSpace(req.GivenName)
+		lastName := strings.TrimSpace(req.LastName)
+
+		if email == "" {
+			http.Error(w, "Email is required", http.StatusBadRequest)
+			return
+		}
+		if len(email) > 320 {
+			http.Error(w, "Email must be 320 characters or fewer", http.StatusBadRequest)
+			return
+		}
+		parsed, err := mail.ParseAddress(email)
+		if err != nil || parsed.Address != email {
+			http.Error(w, "Invalid email address", http.StatusBadRequest)
+			return
+		}
+		if len(givenName) > 120 || len(lastName) > 120 {
+			http.Error(w, "Given and last name must be 120 characters or fewer", http.StatusBadRequest)
+			return
+		}
+
+		if err := h.ctx.Store.UpdateUserProfile(r.Context(), userID, email, givenName, lastName); err != nil {
+			switch {
+			case errors.Is(err, database.ErrUserEmailAlreadyExists):
+				http.Error(w, "Email already exists", http.StatusConflict)
+			case errors.Is(err, database.ErrUserNotFound):
+				http.Error(w, "User not found", http.StatusNotFound)
+			default:
+				slog.Error("Failed to update user profile", "error", err, "user_id", userID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		user, err := h.ctx.Store.GetUserByID(r.Context(), userID)
+		if err != nil {
+			slog.Error("Failed to load updated user profile", "error", err, "user_id", userID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if user == nil {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+
+		resp := api.UserProfile{
+			ID:          user.ID,
+			Email:       user.Email,
+			GivenName:   user.GivenName,
+			LastName:    user.LastName,
+			DisplayName: displayNameForUser(user),
+			AvatarURL:   "/api/user/avatar?s=96",
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			slog.Error("Failed to encode updated user profile", "error", err, "user_id", userID)
 		}
 	}
 }
@@ -339,4 +436,21 @@ func displayNameFromEmail(email string) string {
 		return "User"
 	}
 	return name
+}
+
+func displayNameForUser(user *api.User) string {
+	if user == nil {
+		return "User"
+	}
+	parts := make([]string, 0, 2)
+	if given := strings.TrimSpace(user.GivenName); given != "" {
+		parts = append(parts, given)
+	}
+	if last := strings.TrimSpace(user.LastName); last != "" {
+		parts = append(parts, last)
+	}
+	if len(parts) > 0 {
+		return strings.Join(parts, " ")
+	}
+	return displayNameFromEmail(user.Email)
 }

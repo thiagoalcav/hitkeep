@@ -3,12 +3,19 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+)
+
+var (
+	ErrUserEmailAlreadyExists = errors.New("user email already exists")
+	ErrUserNotFound           = errors.New("user not found")
 )
 
 // GetUserCount returns the total number of users.
@@ -26,8 +33,8 @@ func (s *Store) GetUserCount(ctx context.Context) (int, error) {
 func (s *Store) GetUserByEmail(ctx context.Context, email string) (*api.User, error) {
 	var user api.User
 	err := s.QueryRowOrNil(ctx,
-		"SELECT id, email, password, created_at FROM users WHERE email = ?",
-		[]any{&user.ID, &user.Email, &user.Password, &user.CreatedAt},
+		"SELECT id, email, password, COALESCE(given_name, ''), COALESCE(last_name, ''), created_at FROM users WHERE email = ?",
+		[]any{&user.ID, &user.Email, &user.Password, &user.GivenName, &user.LastName, &user.CreatedAt},
 		email,
 	)
 
@@ -45,8 +52,8 @@ func (s *Store) GetUserByEmail(ctx context.Context, email string) (*api.User, er
 func (s *Store) GetUserByID(ctx context.Context, id uuid.UUID) (*api.User, error) {
 	var user api.User
 	err := s.QueryRowOrNil(ctx,
-		"SELECT id, email, password, created_at FROM users WHERE id = ?",
-		[]any{&user.ID, &user.Email, &user.Password, &user.CreatedAt},
+		"SELECT id, email, password, COALESCE(given_name, ''), COALESCE(last_name, ''), created_at FROM users WHERE id = ?",
+		[]any{&user.ID, &user.Email, &user.Password, &user.GivenName, &user.LastName, &user.CreatedAt},
 		id,
 	)
 
@@ -64,14 +71,14 @@ func (s *Store) ListUsers(ctx context.Context) ([]api.User, error) {
 	var users []api.User
 
 	err := s.QueryList(ctx,
-		`SELECT u.id, u.email, COALESCE(ir.role, 'user') AS instance_role, u.created_at
+		`SELECT u.id, u.email, COALESCE(u.given_name, ''), COALESCE(u.last_name, ''), COALESCE(ir.role, 'user') AS instance_role, u.created_at
 		 FROM users u
 		 LEFT JOIN instance_roles ir ON ir.user_id = u.id
 		 ORDER BY u.created_at DESC`,
 		func(rows *sql.Rows) error {
 			var u api.User
 			// Note: password is not selected for listing
-			if err := rows.Scan(&u.ID, &u.Email, &u.InstanceRole, &u.CreatedAt); err != nil {
+			if err := rows.Scan(&u.ID, &u.Email, &u.GivenName, &u.LastName, &u.InstanceRole, &u.CreatedAt); err != nil {
 				return fmt.Errorf("could not scan user: %w", err)
 			}
 			users = append(users, u)
@@ -88,7 +95,14 @@ func (s *Store) ListUsers(ctx context.Context) ([]api.User, error) {
 // CreateUser creates a new user and assigns the 'owner' role if they are the first user.
 // This uses a transaction, so we do not use the helpers here.
 func (s *Store) CreateUser(ctx context.Context, email string, hashedPassword string) (uuid.UUID, error) {
+	return s.CreateUserWithNames(ctx, email, hashedPassword, "", "")
+}
+
+// CreateUserWithNames creates a new user and optionally persists profile names.
+func (s *Store) CreateUserWithNames(ctx context.Context, email string, hashedPassword string, givenName string, lastName string) (uuid.UUID, error) {
 	id := uuid.New()
+	givenName = strings.TrimSpace(givenName)
+	lastName = strings.TrimSpace(lastName)
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -97,8 +111,8 @@ func (s *Store) CreateUser(ctx context.Context, email string, hashedPassword str
 	defer func() { _ = tx.Rollback() }()
 
 	_, err = tx.ExecContext(ctx,
-		"INSERT INTO users (id, email, password, created_at) VALUES (?, ?, ?, ?)",
-		id, email, hashedPassword, time.Now(),
+		"INSERT INTO users (id, email, password, given_name, last_name, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+		id, email, hashedPassword, nullableProfileName(givenName), nullableProfileName(lastName), time.Now(),
 	)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("could not create user: %w", err)
@@ -127,6 +141,162 @@ func (s *Store) CreateUser(ctx context.Context, email string, hashedPassword str
 	}
 
 	return id, nil
+}
+
+func nullableProfileName(value string) any {
+	if value == "" {
+		return nil
+	}
+	return value
+}
+
+type userFKReference struct {
+	table  string
+	column string
+	query  string
+}
+
+var userFKReferences = []userFKReference{
+	{table: "api_clients", column: "user_id", query: "UPDATE api_clients SET user_id = ? WHERE user_id = ?"},
+	{table: "instance_exclusions", column: "created_by", query: "UPDATE instance_exclusions SET created_by = ? WHERE created_by = ?"},
+	{table: "instance_roles", column: "granted_by", query: "UPDATE instance_roles SET granted_by = ? WHERE granted_by = ?"},
+	{table: "instance_roles", column: "user_id", query: "UPDATE instance_roles SET user_id = ? WHERE user_id = ?"},
+	{table: "remember_me_tokens", column: "user_id", query: "UPDATE remember_me_tokens SET user_id = ? WHERE user_id = ?"},
+	{table: "share_links", column: "created_by", query: "UPDATE share_links SET created_by = ? WHERE created_by = ?"},
+	{table: "site_exclusions", column: "created_by", query: "UPDATE site_exclusions SET created_by = ? WHERE created_by = ?"},
+	{table: "site_members", column: "added_by", query: "UPDATE site_members SET added_by = ? WHERE added_by = ?"},
+	{table: "site_members", column: "user_id", query: "UPDATE site_members SET user_id = ? WHERE user_id = ?"},
+	{table: "sites", column: "user_id", query: "UPDATE sites SET user_id = ? WHERE user_id = ?"},
+	{table: "user_passkey_challenges", column: "user_id", query: "UPDATE user_passkey_challenges SET user_id = ? WHERE user_id = ?"},
+	{table: "user_passkeys", column: "user_id", query: "UPDATE user_passkeys SET user_id = ? WHERE user_id = ?"},
+	{table: "user_preferences", column: "user_id", query: "UPDATE user_preferences SET user_id = ? WHERE user_id = ?"},
+	{table: "user_totp_factors", column: "user_id", query: "UPDATE user_totp_factors SET user_id = ? WHERE user_id = ?"},
+	{table: "user_totp_pending_setup", column: "user_id", query: "UPDATE user_totp_pending_setup SET user_id = ? WHERE user_id = ?"},
+}
+
+func moveUserForeignKeys(ctx context.Context, tx *sql.Tx, fromUserID uuid.UUID, toUserID uuid.UUID) error {
+	for _, ref := range userFKReferences {
+		if _, err := tx.ExecContext(ctx, ref.query, toUserID, fromUserID); err != nil {
+			return fmt.Errorf("could not update user foreign key %s.%s: %w", ref.table, ref.column, err)
+		}
+	}
+	return nil
+}
+
+func runStoreTx(ctx context.Context, db *sql.DB, fn func(*sql.Tx) error) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("could not begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := fn(tx); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("could not commit transaction: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) UpdateUserProfile(ctx context.Context, userID uuid.UUID, email string, givenName string, lastName string) error {
+	email = strings.TrimSpace(email)
+	givenName = strings.TrimSpace(givenName)
+	lastName = strings.TrimSpace(lastName)
+
+	var duplicateCount int
+	if err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users WHERE lower(email) = lower(?) AND id <> ?", email, userID).Scan(&duplicateCount); err != nil {
+		return fmt.Errorf("could not check duplicate email: %w", err)
+	}
+	if duplicateCount > 0 {
+		return ErrUserEmailAlreadyExists
+	}
+
+	var currentEmail string
+	var currentPassword string
+	var currentCreatedAt time.Time
+	if err := s.db.QueryRowContext(ctx, "SELECT email, password, created_at FROM users WHERE id = ?", userID).Scan(&currentEmail, &currentPassword, &currentCreatedAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrUserNotFound
+		}
+		return fmt.Errorf("could not load current user profile: %w", err)
+	}
+
+	if strings.EqualFold(currentEmail, email) {
+		if err := runStoreTx(ctx, s.db, func(tx *sql.Tx) error {
+			if _, err := tx.ExecContext(ctx,
+				"UPDATE users SET given_name = ?, last_name = ? WHERE id = ?",
+				nullableProfileName(givenName), nullableProfileName(lastName), userID,
+			); err != nil {
+				return fmt.Errorf("could not update user profile names: %w", err)
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	shadowUserID := uuid.New()
+	shadowEmail := fmt.Sprintf("__shadow_%s@hitkeep.invalid", strings.ReplaceAll(shadowUserID.String(), "-", ""))
+
+	if err := runStoreTx(ctx, s.db, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx,
+			"INSERT INTO users (id, email, password, created_at) VALUES (?, ?, ?, ?)",
+			shadowUserID, shadowEmail, currentPassword, currentCreatedAt,
+		); err != nil {
+			return fmt.Errorf("could not create shadow user for profile update: %w", err)
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	if err := runStoreTx(ctx, s.db, func(tx *sql.Tx) error {
+		if err := moveUserForeignKeys(ctx, tx, userID, shadowUserID); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	if err := runStoreTx(ctx, s.db, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx,
+			"UPDATE users SET email = ?, given_name = ?, last_name = ? WHERE id = ?",
+			email, nullableProfileName(givenName), nullableProfileName(lastName), userID,
+		); err != nil {
+			return fmt.Errorf("could not update user profile: %w", err)
+		}
+		if err := moveUserForeignKeys(ctx, tx, shadowUserID, userID); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, "DELETE FROM users WHERE id = ?", shadowUserID); err != nil {
+			return fmt.Errorf("could not cleanup shadow user for profile update: %w", err)
+		}
+		return nil
+	}); err != nil {
+		// Best-effort rollback to keep references on original user if update sequence fails.
+		_ = runStoreTx(ctx, s.db, func(tx *sql.Tx) error {
+			if err := moveUserForeignKeys(ctx, tx, shadowUserID, userID); err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, "DELETE FROM users WHERE id = ?", shadowUserID); err != nil {
+				return fmt.Errorf("could not cleanup shadow user during rollback: %w", err)
+			}
+			return nil
+		})
+		return err
+	}
+
+	var stillExists int
+	if err := s.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users WHERE id = ?", userID).Scan(&stillExists); err != nil {
+		return fmt.Errorf("could not verify updated user profile: %w", err)
+	}
+	if stillExists == 0 {
+		return ErrUserNotFound
+	}
+
+	return nil
 }
 
 // DeleteUser removes a user by ID.

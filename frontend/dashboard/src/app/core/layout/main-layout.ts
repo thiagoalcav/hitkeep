@@ -180,10 +180,14 @@ import { DrawerModule } from 'primeng/drawer';
             </p-drawer>
 
             <!-- Add Site Dialog -->
-            <app-add-site-dialog [visible]="isAddSiteVisible()" (visibleChange)="isAddSiteVisible.set($event)" />
+            @defer (when isAddSiteVisible()) {
+                <app-add-site-dialog [visible]="isAddSiteVisible()" (visibleChange)="isAddSiteVisible.set($event)" />
+            }
 
             <!-- Site Settings Drawer -->
-            <app-site-settings-drawer [visible]="isSiteSettingsVisible()" (visibleChange)="isSiteSettingsVisible.set($event)" [activeTab]="siteSettingsTab()" (activeTabChange)="siteSettingsTab.set($event)" [site]="siteService.activeSite()" />
+            @defer (when isSiteSettingsVisible()) {
+                <app-site-settings-drawer [visible]="isSiteSettingsVisible()" (visibleChange)="isSiteSettingsVisible.set($event)" [activeTab]="siteSettingsTab()" (activeTabChange)="siteSettingsTab.set($event)" [site]="siteService.activeSite()" />
+            }
         </div>
     `
 })

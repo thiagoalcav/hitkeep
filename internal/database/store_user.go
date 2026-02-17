@@ -64,11 +64,14 @@ func (s *Store) ListUsers(ctx context.Context) ([]api.User, error) {
 	var users []api.User
 
 	err := s.QueryList(ctx,
-		"SELECT id, email, created_at FROM users ORDER BY created_at DESC",
+		`SELECT u.id, u.email, COALESCE(ir.role, 'user') AS instance_role, u.created_at
+		 FROM users u
+		 LEFT JOIN instance_roles ir ON ir.user_id = u.id
+		 ORDER BY u.created_at DESC`,
 		func(rows *sql.Rows) error {
 			var u api.User
 			// Note: password is not selected for listing
-			if err := rows.Scan(&u.ID, &u.Email, &u.CreatedAt); err != nil {
+			if err := rows.Scan(&u.ID, &u.Email, &u.InstanceRole, &u.CreatedAt); err != nil {
 				return fmt.Errorf("could not scan user: %w", err)
 			}
 			users = append(users, u)

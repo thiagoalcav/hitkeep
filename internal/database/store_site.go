@@ -126,7 +126,10 @@ func (s *Store) UpdateSiteRetention(ctx context.Context, siteID uuid.UUID, userI
 
 func (s *Store) ListAllSites(ctx context.Context) ([]api.Site, error) {
 	rows, err := s.db.QueryContext(ctx,
-		"SELECT id, user_id, domain, created_at FROM sites ORDER BY created_at DESC",
+		`SELECT s.id, s.user_id, s.domain, s.created_at, COALESCE(u.email, '') AS owner_email
+		 FROM sites s
+		 LEFT JOIN users u ON u.id = s.user_id
+		 ORDER BY s.created_at DESC`,
 	)
 	if err != nil {
 		return nil, err
@@ -136,7 +139,7 @@ func (s *Store) ListAllSites(ctx context.Context) ([]api.Site, error) {
 	sites := []api.Site{}
 	for rows.Next() {
 		var site api.Site
-		if err := rows.Scan(&site.ID, &site.UserID, &site.Domain, &site.CreatedAt); err != nil {
+		if err := rows.Scan(&site.ID, &site.UserID, &site.Domain, &site.CreatedAt, &site.OwnerEmail); err != nil {
 			return nil, err
 		}
 		sites = append(sites, site)

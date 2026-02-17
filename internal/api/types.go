@@ -33,6 +33,7 @@ type Site struct {
 	ID                uuid.UUID `json:"id"`
 	UserID            uuid.UUID `json:"user_id"`
 	Domain            string    `json:"domain"`
+	OwnerEmail        string    `json:"owner_email,omitempty"`
 	DataRetentionDays int       `json:"data_retention_days"`
 	CreatedAt         time.Time `json:"created_at"`
 }
@@ -95,10 +96,11 @@ type Funnel struct {
 }
 
 type User struct {
-	ID        uuid.UUID `json:"id"`
-	Email     string    `json:"email"`
-	Password  string    `json:"-"`
-	CreatedAt time.Time `json:"created_at"`
+	ID           uuid.UUID `json:"id"`
+	Email        string    `json:"email"`
+	InstanceRole string    `json:"instance_role,omitempty"`
+	Password     string    `json:"-"`
+	CreatedAt    time.Time `json:"created_at"`
 }
 
 type UserProfile struct {
@@ -242,4 +244,13 @@ type SiteMember struct {
 	Email   string    `json:"email"`
 	Role    string    `json:"role"`
 	AddedAt time.Time `json:"added_at"`
+}
+
+type IPExclusion struct {
+	ID          uuid.UUID  `json:"id"`
+	SiteID      *uuid.UUID `json:"site_id,omitempty"`
+	CIDR        string     `json:"cidr"`
+	Description string     `json:"description,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	CreatedBy   *uuid.UUID `json:"created_by,omitempty"`
 }

@@ -1,5 +1,7 @@
 package auth
 
+import "slices"
+
 type InstanceRole string
 
 const (
@@ -75,12 +77,7 @@ func (r InstanceRole) HasPermission(perm Permission) bool {
 	if !ok {
 		return false
 	}
-	for _, p := range perms {
-		if p == perm {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(perms, perm)
 }
 
 func (r SiteRole) HasPermission(perm Permission) bool {
@@ -88,12 +85,7 @@ func (r SiteRole) HasPermission(perm Permission) bool {
 	if !ok {
 		return false
 	}
-	for _, p := range perms {
-		if p == perm {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(perms, perm)
 }
 
 func IsValidInstanceRole(role InstanceRole) bool {

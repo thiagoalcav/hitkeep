@@ -306,7 +306,7 @@ func (h *handler) handleStartPasskeyRegistration() http.HandlerFunc {
 				User: passkeyUserEntity{
 					ID:          userIDB64,
 					Name:        user.Email,
-					DisplayName: displayNameFromEmail(user.Email),
+					DisplayName: displayNameForUser(user),
 				},
 				PubKeyCredParams: []passkeyCredentialParameter{
 					{Type: "public-key", Alg: -7},

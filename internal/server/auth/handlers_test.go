@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 
@@ -54,8 +55,10 @@ func TestHandleCreateInitialUser(t *testing.T) {
 	defer store.Close()
 
 	body, err := json.Marshal(map[string]string{
-		"email":    "admin@example.com",
-		"password": "password123",
+		"email":      "admin@example.com",
+		"password":   "password123",
+		"given_name": "Ada",
+		"last_name":  "Lovelace",
 	})
 	if err != nil {
 		t.Fatalf("failed to marshal request: %v", err)
@@ -84,6 +87,17 @@ func TestHandleCreateInitialUser(t *testing.T) {
 	}
 	if count != 1 {
 		t.Fatalf("expected 1 user, got %d", count)
+	}
+
+	user, err := store.GetUserByEmail(context.Background(), "admin@example.com")
+	if err != nil {
+		t.Fatalf("failed to fetch created user: %v", err)
+	}
+	if user == nil {
+		t.Fatalf("expected created user to exist")
+	}
+	if user.GivenName != "Ada" || user.LastName != "Lovelace" {
+		t.Fatalf("expected given/last name to be persisted, got %+v", user)
 	}
 
 	// Second call should be blocked once setup is complete.
@@ -826,10 +840,5 @@ func TestHandleMFAPasskeyLoginFinish(t *testing.T) {
 }
 
 func containsFactor(factors []string, factor string) bool {
-	for _, current := range factors {
-		if current == factor {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(factors, factor)
 }

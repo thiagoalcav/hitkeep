@@ -65,8 +65,10 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 
 func (h *handler) handleCreateInitialUser() http.HandlerFunc {
 	type request struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email     string `json:"email"`
+		Password  string `json:"password"`
+		GivenName string `json:"given_name"`
+		LastName  string `json:"last_name"`
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +106,7 @@ func (h *handler) handleCreateInitialUser() http.HandlerFunc {
 			return
 		}
 
-		userID, err := h.ctx.Store.CreateUser(r.Context(), req.Email, hashedPassword)
+		userID, err := h.ctx.Store.CreateUserWithNames(r.Context(), req.Email, hashedPassword, req.GivenName, req.LastName)
 		if err != nil {
 			slog.Error("Failed to create initial user", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

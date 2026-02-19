@@ -63,13 +63,13 @@ jobs:
       - name: Build Tracker
         working-directory: frontend/tracker
         run: |
-          npm ci
+          npm ci --no-audit --no-fund
           npm run build
 
       - name: Build Dashboard
         working-directory: frontend/dashboard
         run: |
-          npm ci
+          npm ci --no-audit --no-fund
           npm run build:prod
 
       - name: Prepare Public Assets

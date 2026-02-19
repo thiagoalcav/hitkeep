@@ -10,11 +10,11 @@ frontend-build: frontend-tracker-build frontend-dashboard-build
 
 frontend-tracker-build:
 	@echo "Building tracker snippet..."
-	@cd frontend/tracker && npm install && npm run build
+	@cd frontend/tracker && npm ci --no-fund --no-audit && npm run build
 
 frontend-dashboard-build:
 	@echo "Building Angular dashboard..."
-	@cd frontend/dashboard && npm install && npm run build:prod
+	@cd frontend/dashboard && npm ci --no-fund --no-audit && npm run build:prod
 	@echo "Copying dashboard to public directory..."
 	@cp -r frontend/dashboard/dist/dashboard/browser/* public/
 
@@ -32,7 +32,7 @@ dev-backend:
 
 dev-frontend:
 	@echo "Starting Angular with Hot Reload..."
-	@cd frontend/dashboard && npm install && npm start
+	@cd frontend/dashboard && npm ci --no-fund --no-audit && npm start
 
 run: build
 	@./hitkeep

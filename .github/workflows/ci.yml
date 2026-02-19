@@ -28,7 +28,7 @@ jobs:
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.9
+          version: v2.10
       - name: Test API
         run: |
           go vet ./...
@@ -47,10 +47,33 @@ jobs:
           cache-dependency-path: frontend/dashboard/package-lock.json
       - name: Install dependencies
         working-directory: frontend/dashboard
-        run: npm ci
+        run: npm ci --no-audit --no-fund
       - name: Prettier check
         working-directory: frontend/dashboard
-        run: npx --yes prettier@3.4.2 --check .
+        run: npx --yes prettier@3.8.1 --check .
       - name: Lint dashboard
         working-directory: frontend/dashboard
         run: npm run lint
+
+  test-dashboard:
+    name: Test Dashboard (Angular)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/dashboard/package-lock.json
+      - name: Setup Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@v2
+      - name: Install dependencies
+        working-directory: frontend/dashboard
+        run: npm ci --no-audit --no-fund
+      - name: Test dashboard
+        working-directory: frontend/dashboard
+        env:
+          CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
+        run: npm run test -- --watch=false --browsers=ChromeHeadless --no-progress

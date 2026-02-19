@@ -18,5 +18,5 @@ if [ -d "frontend/dashboard" ]; then
   (cd frontend/dashboard && npm run lint)
 
   echo "Running Prettier check..."
-  (cd frontend/dashboard && npx prettier@3.4.2 --check .)
+  (cd frontend/dashboard && npx prettier@3.8.1 --check .)
 fi

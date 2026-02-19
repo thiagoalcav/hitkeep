@@ -26,6 +26,11 @@
                                 "input": "public"
                             },
                             {
+                                "glob": "standalone.js",
+                                "input": "node_modules/@scalar/api-reference/dist/browser",
+                                "output": "vendor/scalar"
+                            },
+                            {
                                 "glob": "**/*.svg",
                                 "input": "node_modules/circle-flags/flags",
                                 "output": "flags"
@@ -87,6 +92,11 @@
                             {
                                 "glob": "**/*",
                                 "input": "public"
+                            },
+                            {
+                                "glob": "standalone.js",
+                                "input": "node_modules/@scalar/api-reference/dist/browser",
+                                "output": "vendor/scalar"
                             },
                             {
                                 "glob": "**/*.svg",

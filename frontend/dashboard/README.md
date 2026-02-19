@@ -36,6 +36,8 @@ ng build
 
 This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
 
+The Scalar API Reference runtime (`vendor/scalar/standalone.js`) is copied into the build output from `node_modules/@scalar/api-reference/dist/browser/standalone.js` via Angular assets configuration, so it always matches the installed npm package version.
+
 ## Running unit tests
 
 To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:

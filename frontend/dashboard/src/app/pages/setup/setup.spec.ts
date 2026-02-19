@@ -1,4 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+import { TranslocoTestingModule } from '@jsverse/transloco';
 
 import { Setup } from '@pages/setup/setup';
 
@@ -8,7 +11,18 @@ describe('Setup', () => {
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
-            imports: [Setup]
+            imports: [
+                Setup,
+                TranslocoTestingModule.forRoot({
+                    langs: { en: {} },
+                    translocoConfig: {
+                        availableLangs: ['en'],
+                        defaultLang: 'en'
+                    },
+                    preloadLangs: true
+                })
+            ],
+            providers: [provideHttpClient(), provideRouter([])]
         }).compileComponents();
 
         fixture = TestBed.createComponent(Setup);

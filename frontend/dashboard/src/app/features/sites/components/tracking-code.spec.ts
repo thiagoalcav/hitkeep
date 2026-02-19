@@ -1,15 +1,27 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { TrackingCode } from '@features/sites/components/tracking-code';
+import { TranslocoTestingModule } from '@jsverse/transloco';
+import { SiteTrackingSettings } from './site-tracking-settings';
 
-describe('TrackingCode', () => {
-    let component: TrackingCode;
-    let fixture: ComponentFixture<TrackingCode>;
+describe('SiteTrackingSettings', () => {
+    let component: SiteTrackingSettings;
+    let fixture: ComponentFixture<SiteTrackingSettings>;
     beforeEach(async () => {
         await TestBed.configureTestingModule({
-            imports: [TrackingCode]
+            imports: [
+                SiteTrackingSettings,
+                TranslocoTestingModule.forRoot({
+                    langs: { en: {} },
+                    translocoConfig: {
+                        availableLangs: ['en'],
+                        defaultLang: 'en'
+                    },
+                    preloadLangs: true
+                })
+            ]
         }).compileComponents();
 
-        fixture = TestBed.createComponent(TrackingCode);
+        fixture = TestBed.createComponent(SiteTrackingSettings);
+        fixture.componentRef.setInput('site', null);
         component = fixture.componentInstance;
         fixture.detectChanges();
     });
@@ -17,10 +29,12 @@ describe('TrackingCode', () => {
         expect(component).toBeTruthy();
     });
     it('should update snippet when toggles change', () => {
-        const internals = component as TrackingCode & {
+        const internals = component as SiteTrackingSettings & {
             snippetCode: () => string;
-            collectDnt: { set: (value: boolean) => void };
-            disableBeacon: { set: (value: boolean) => void };
+            trackingForm: {
+                collectDnt: () => { control: () => { setValue: (value: boolean) => void } };
+                disableBeacon: () => { control: () => { setValue: (value: boolean) => void } };
+            };
         };
         const getSnippet = () => internals.snippetCode();
 
@@ -28,11 +42,11 @@ describe('TrackingCode', () => {
         expect(getSnippet()).not.toContain('data-collect-dnt');
         expect(getSnippet()).not.toContain('data-disable-beacon');
 
-        internals.collectDnt.set(true);
+        internals.trackingForm.collectDnt().control().setValue(true);
         fixture.detectChanges();
         expect(getSnippet()).toContain('data-collect-dnt="true"');
 
-        internals.disableBeacon.set(true);
+        internals.trackingForm.disableBeacon().control().setValue(true);
         fixture.detectChanges();
         expect(getSnippet()).toContain('hk.js');
         expect(getSnippet()).toContain('data-disable-beacon="true"');

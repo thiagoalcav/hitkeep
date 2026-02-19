@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -20,6 +21,16 @@ import (
 type handler struct {
 	ctx *shared.Context
 }
+
+var (
+	forwardedHostPattern = regexp.MustCompile(`^(?i:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*)$`)
+	leaderForwardClient  = &http.Client{
+		Timeout: 5 * time.Second,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+)
 
 func Register(mux *http.ServeMux, ctx *shared.Context) {
 	h := &handler{ctx: ctx}
@@ -78,19 +89,18 @@ func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 
 	site, err := h.ctx.Store.FindSiteByDomain(r.Context(), domain)
 	if err != nil {
-		slog.Error("Failed to find site", "error", err, "domain", domain)
+		slog.Error("Failed to find site", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	if site == nil {
-		slog.Warn("Dropped hit for unknown site", "domain", domain)
+		slog.Warn("Dropped hit for unknown site")
 		w.WriteHeader(http.StatusAccepted)
 		return
 	}
 
 	userIP := shared.GetRealIP(r, h.ctx.Config.GetTrustedProxyNetworks())
 	if h.ctx.IPFilter != nil && h.ctx.IPFilter.IsBlocked(site.ID, userIP) {
-		slog.Debug("Dropped hit due to IP exclusion", "ip", userIP, "site_id", site.ID)
 		w.WriteHeader(http.StatusAccepted)
 		return
 	}
@@ -160,26 +170,18 @@ func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *handler) forwardToLeader(w http.ResponseWriter, r *http.Request, targetPath string) {
-	leaderHost := normalizeLeaderHost(h.ctx.Cluster.GetLeaderAddr())
-	if leaderHost == "" {
+	forwardURL, err := buildForwardURL(h.ctx.Cluster.GetLeaderAddr(), h.ctx.Config.HTTPAddr, targetPath)
+	if err != nil {
 		http.Error(w, "No leader available", http.StatusServiceUnavailable)
 		return
 	}
-
-	_, port, err := net.SplitHostPort(h.ctx.Config.HTTPAddr)
-	if err != nil {
-		port = "8080"
-	}
-
-	forwardHost := net.JoinHostPort(leaderHost, port)
-	forwardURL := fmt.Sprintf("http://%s%s", forwardHost, targetPath)
 	bodyBytes := new(bytes.Buffer)
 	if _, err := bodyBytes.ReadFrom(r.Body); err != nil {
 		http.Error(w, "Failed to read request body", http.StatusInternalServerError)
 		return
 	}
 
-	proxyReq, err := http.NewRequest(r.Method, forwardURL, bodyBytes)
+	proxyReq, err := http.NewRequestWithContext(r.Context(), r.Method, forwardURL.String(), bodyBytes)
 	if err != nil {
 		http.Error(w, "Failed to create forward request", http.StatusInternalServerError)
 		return
@@ -189,9 +191,10 @@ func (h *handler) forwardToLeader(w http.ResponseWriter, r *http.Request, target
 	proxyReq.Header.Set("Content-Type", "application/json")
 	appendForwardedFor(proxyReq.Header, r.RemoteAddr)
 
-	resp, err := http.DefaultClient.Do(proxyReq)
+	//nolint:gosec // proxyReq target is validated via buildForwardURL and constrained to cluster leader ingest endpoints.
+	resp, err := leaderForwardClient.Do(proxyReq)
 	if err != nil {
-		slog.Error("Follower failed to forward request", "error", err, "target", forwardURL)
+		slog.Error("Follower failed to forward request", "error", err)
 		http.Error(w, "Failed to forward request", http.StatusInternalServerError)
 		return
 	}
@@ -244,19 +247,18 @@ func (h *handler) handleIngestEventLeader(w http.ResponseWriter, r *http.Request
 
 	site, err := h.ctx.Store.FindSiteByDomain(r.Context(), domain)
 	if err != nil {
-		slog.Error("Failed to find site", "error", err, "domain", domain)
+		slog.Error("Failed to find site", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 	if site == nil {
-		slog.Warn("Dropped event for unknown site", "domain", domain)
+		slog.Warn("Dropped event for unknown site")
 		w.WriteHeader(http.StatusAccepted)
 		return
 	}
 
 	userIP := shared.GetRealIP(r, h.ctx.Config.GetTrustedProxyNetworks())
 	if h.ctx.IPFilter != nil && h.ctx.IPFilter.IsBlocked(site.ID, userIP) {
-		slog.Debug("Dropped event due to IP exclusion", "ip", userIP, "site_id", site.ID)
 		w.WriteHeader(http.StatusAccepted)
 		return
 	}
@@ -305,6 +307,42 @@ func normalizeLeaderHost(addr string) string {
 	}
 
 	return addr
+}
+
+func buildForwardURL(leaderAddr, httpAddr, targetPath string) (*url.URL, error) {
+	if targetPath != "/ingest" && targetPath != "/ingest/event" {
+		return nil, fmt.Errorf("invalid forward target")
+	}
+
+	leaderHost := normalizeLeaderHost(leaderAddr)
+	if !isValidForwardHost(leaderHost) {
+		return nil, fmt.Errorf("invalid leader address")
+	}
+
+	_, port, err := net.SplitHostPort(httpAddr)
+	if err != nil || port == "" {
+		port = "8080"
+	}
+
+	return &url.URL{
+		Scheme: "http",
+		Host:   net.JoinHostPort(leaderHost, port),
+		Path:   targetPath,
+	}, nil
+}
+
+func isValidForwardHost(host string) bool {
+	trimmed := strings.TrimSpace(host)
+	if trimmed == "" {
+		return false
+	}
+	if strings.ContainsAny(trimmed, `/\?#`) {
+		return false
+	}
+	if net.ParseIP(trimmed) != nil {
+		return true
+	}
+	return forwardedHostPattern.MatchString(trimmed)
 }
 
 func appendForwardedFor(headers http.Header, remoteAddr string) {

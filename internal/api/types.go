@@ -132,6 +132,7 @@ type UserSecurityStatus struct {
 }
 
 type UserTOTPSetup struct {
+	//nolint:gosec // TOTP bootstrap secret is intentionally returned to the authenticated user during setup.
 	Secret     string    `json:"secret"`
 	OTPAuthURL string    `json:"otpauth_url"`
 	ExpiresAt  time.Time `json:"expires_at"`

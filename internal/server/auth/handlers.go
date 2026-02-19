@@ -65,7 +65,8 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 
 func (h *handler) handleCreateInitialUser() http.HandlerFunc {
 	type request struct {
-		Email     string `json:"email"`
+		Email string `json:"email"`
+		//nolint:gosec // request payload intentionally accepts plaintext password input.
 		Password  string `json:"password"`
 		GivenName string `json:"given_name"`
 		LastName  string `json:"last_name"`
@@ -123,6 +124,7 @@ func (h *handler) handleCreateInitialUser() http.HandlerFunc {
 		isSecure := strings.HasPrefix(h.ctx.Config.PublicURL, "https://")
 		authcore.SetTokenCookie(w, token, isSecure)
 
+		//nolint:gosec // email/user_id are expected audit fields after successful account setup.
 		slog.Info("Initial admin user created", "email", req.Email, "user_id", userID)
 
 		w.Header().Set("Content-Type", "application/json")
@@ -137,7 +139,8 @@ func (h *handler) handleCreateInitialUser() http.HandlerFunc {
 
 func (h *handler) handleLogin() http.HandlerFunc {
 	type request struct {
-		Email      string `json:"email"`
+		Email string `json:"email"`
+		//nolint:gosec // request payload intentionally accepts plaintext password input.
 		Password   string `json:"password"`
 		RememberMe bool   `json:"remember_me"`
 	}
@@ -179,6 +182,7 @@ func (h *handler) handleLogin() http.HandlerFunc {
 
 		totpEnabled, err := h.ctx.Store.HasEnabledTOTP(r.Context(), user.ID)
 		if err != nil {
+			//nolint:gosec // user_id comes from authenticated lookup and is logged for auditability.
 			slog.Error("Failed to check user totp status during login", "error", err, "user_id", user.ID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
@@ -186,6 +190,7 @@ func (h *handler) handleLogin() http.HandlerFunc {
 
 		passkeys, err := h.ctx.Store.ListUserPasskeys(r.Context(), user.ID)
 		if err != nil {
+			//nolint:gosec // user_id comes from authenticated lookup and is logged for auditability.
 			slog.Error("Failed to list user passkeys during login", "error", err, "user_id", user.ID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
@@ -411,7 +416,8 @@ func (h *handler) handleForgotPassword() http.HandlerFunc {
 
 func (h *handler) handleResetPassword() http.HandlerFunc {
 	type request struct {
-		Token    string `json:"token"`
+		Token string `json:"token"`
+		//nolint:gosec // request payload intentionally accepts plaintext password input.
 		Password string `json:"password"`
 	}
 
@@ -462,7 +468,8 @@ func (h *handler) handleResetPassword() http.HandlerFunc {
 }
 func (h *handler) handleAcceptInvite() http.HandlerFunc {
 	type request struct {
-		Token    string `json:"token"`
+		Token string `json:"token"`
+		//nolint:gosec // request payload intentionally accepts plaintext password input.
 		Password string `json:"password"`
 	}
 

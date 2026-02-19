@@ -14,18 +14,19 @@ import (
 )
 
 type Config struct {
-	ApiBurst               int
-	ApiRateLimit           float64
-	AuthBurst              int
-	AuthRateLimit          float64
-	ArchivePath            string
-	BindAddr               string
-	DBPath                 string
-	Healthcheck            bool
-	HTTPAddr               string
-	IngestBurst            int
-	IngestRateLimit        float64
-	JoinAddr               string
+	ApiBurst        int
+	ApiRateLimit    float64
+	AuthBurst       int
+	AuthRateLimit   float64
+	ArchivePath     string
+	BindAddr        string
+	DBPath          string
+	Healthcheck     bool
+	HTTPAddr        string
+	IngestBurst     int
+	IngestRateLimit float64
+	JoinAddr        string
+	//nolint:gosec // runtime configuration intentionally carries the JWT signing secret.
 	JWTSecret              string
 	LogLevel               string
 	MailDriver             string

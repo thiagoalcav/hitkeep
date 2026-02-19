@@ -44,6 +44,7 @@ func (h *handler) handleGetUserPermissions() http.HandlerFunc {
 		// Get instance role
 		instanceRole, err := h.ctx.Store.GetInstanceRole(r.Context(), userID)
 		if err != nil {
+			//nolint:gosec // user_id is sourced from authenticated context; structured logging is intentional.
 			slog.Error("Failed to get instance role", "error", err, "user_id", userID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return

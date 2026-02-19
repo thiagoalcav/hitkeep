@@ -252,6 +252,7 @@ func (h *handler) handleGetUserAvatar() http.HandlerFunc {
 		}
 
 		client := &http.Client{Timeout: 5 * time.Second}
+		//nolint:gosec // avatar URL is generated from fixed gravatarBaseURL and a deterministic MD5 hash.
 		resp, err := client.Do(req)
 		if err != nil {
 			slog.Warn("Failed to fetch gravatar", "error", err, "user_id", userID)

@@ -59,7 +59,9 @@
         "exportFormats": {
             "csv": "CSV",
             "xlsx": "XLSX",
-            "parquet": "Parquet"
+            "parquet": "Parquet",
+            "json": "JSON",
+            "ndjson": "NDJSON"
         },
         "filters": {
             "country": "País: {{value}}",
@@ -112,6 +114,10 @@
         "noSiteDescription": "Selecciona o crea un sitio para ver analíticas.",
         "openPageInNewTabAria": "Abrir página en una nueva pestaña",
         "openReferrerInNewTabAria": "Abrir referencia en una nueva pestaña",
+        "exportStatus": {
+            "success": "La descarga de exportación se ha iniciado.",
+            "error": "No se pudieron exportar los datos filtrados. Inténtalo de nuevo."
+        },
         "chartTitleWithRange": "Tráfico: {{range}}",
         "chartTitleCustomRange": "Tráfico: {{start}} - {{end}}",
         "chartTitleOverview": "Resumen de tráfico",
@@ -131,7 +137,8 @@
         "empty": {
             "noTrafficTitle": "Aún no hay tráfico registrado",
             "noTrafficDescription": "Instala el snippet de seguimiento en tu sitio web para empezar a recopilar datos de analítica.",
-            "getTrackingCode": "Obtener código de seguimiento"
+            "getTrackingCode": "Obtener código de seguimiento",
+            "createSite": "Crear sitio"
         }
     },
     "goals": {
@@ -337,7 +344,11 @@
             },
             "dataExportTitle": "Exportación de datos",
             "exportAllTitle": "Exportar todos los datos",
-            "exportAllDescription": "Descarga todos tus datos de todos los sitios como CSV, XLSX o Parquet."
+            "exportAllDescription": "Descarga todos tus datos de todos los sitios como CSV, XLSX, Parquet, JSON o NDJSON.",
+            "exportStatus": {
+                "success": "La descarga se ha iniciado.",
+                "error": "No se pudieron exportar los datos. Inténtalo de nuevo."
+            }
         },
         "apiClients": {
             "title": "Clientes de API",
@@ -565,7 +576,11 @@
                 "domainLabel": "Dominio",
                 "dataExportTitle": "Exportación de datos",
                 "exportSiteDataTitle": "Exportar datos del sitio",
-                "exportSiteDataDescription": "Descarga todos los hits y eventos de este sitio como CSV, XLSX o Parquet."
+                "exportSiteDataDescription": "Descarga todos los hits y eventos de este sitio como CSV, XLSX, Parquet, JSON o NDJSON.",
+                "exportStatus": {
+                    "success": "La descarga se ha iniciado.",
+                    "error": "No se pudieron exportar los datos del sitio. Inténtalo de nuevo."
+                }
             },
             "unsavedChangesConfirm": "Tienes cambios sin guardar. Deseas descartarlos?"
         },

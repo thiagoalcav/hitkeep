@@ -1,9 +1,9 @@
-import { Component, effect, inject, signal, computed, ChangeDetectionStrategy, untracked } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { Component, effect, inject, signal, computed, ChangeDetectionStrategy, untracked, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule, NgOptimizedImage } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { compatForm } from '@angular/forms/signals/compat';
-import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, finalize, Subject } from 'rxjs';
 import { TranslocoService } from '@jsverse/transloco';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { TranslocoLocaleService } from '@jsverse/transloco-locale';
@@ -39,6 +39,9 @@ import { ShareService } from '@services/share.service';
 import { RangeToolbar } from '@components/range-toolbar/range-toolbar';
 import { SiteSettingsService } from '@services/site-settings.service';
 import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
+import { buildTakeoutExportMenuItems, DEFAULT_HITS_EXPORT_FORMAT, TakeoutExportFormat } from '@core/export/export-formats';
+import { TakeoutDownloadService } from '@services/takeout-download.service';
+import { AddSiteDialog } from '@features/sites/components/add-site-dialog';
 
 interface RangeSelectEvent {
     value: {
@@ -48,7 +51,6 @@ interface RangeSelectEvent {
 }
 
 type MetricFilterType = 'path' | 'referrer' | 'device' | 'country';
-type ExportFormat = 'csv' | 'xlsx' | 'parquet';
 interface MetricFilter {
     type: MetricFilterType;
     value: string;
@@ -88,7 +90,8 @@ interface KpiCardData {
         FunnelList,
         FunnelManager,
         FunnelViewer,
-        NgOptimizedImage
+        NgOptimizedImage,
+        AddSiteDialog
     ],
     templateUrl: './dashboard.html',
     styleUrl: './dashboard.css',
@@ -100,8 +103,10 @@ export class Dashboard {
     protected hitService = inject(HitService);
     private shareService = inject(ShareService);
     private siteSettings = inject(SiteSettingsService);
+    private takeoutDownloadService = inject(TakeoutDownloadService);
     private localeService = inject(TranslocoLocaleService);
     private transloco = inject(TranslocoService);
+    private destroyRef = inject(DestroyRef);
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
     protected timeRanges = signal([
         { label: '', value: '24h' },
@@ -121,6 +126,7 @@ export class Dashboard {
     protected showFunnelManager = signal(false);
     protected showFunnelViewer = signal(false);
     protected selectedFunnelId = signal<string | null>(null);
+    protected isAddSiteVisible = signal(false);
     protected funnelDateRange = computed(() => this.getCurrentDateRange());
     protected siteDomain = computed(() => this.siteService.activeSite()?.domain ?? null);
     protected siteFaviconUrl = computed(() => {
@@ -129,13 +135,11 @@ export class Dashboard {
     });
     protected activeFilters = signal<MetricFilter[]>([]);
     protected hasFilters = computed(() => this.activeFilters().length > 0);
+    protected isExportingFiltered = signal(false);
+    protected filteredExportState = signal<'idle' | 'success' | 'error'>('idle');
     protected readonly exportMenuItems = computed<MenuItem[]>(() => {
         this.activeLanguage();
-        return [
-            { label: this.transloco.translate('common.exportFormats.csv'), icon: 'pi pi-file', command: () => this.exportFiltered('csv') },
-            { label: this.transloco.translate('common.exportFormats.xlsx'), icon: 'pi pi-file-excel', command: () => this.exportFiltered('xlsx') },
-            { label: this.transloco.translate('common.exportFormats.parquet'), icon: 'pi pi-database', command: () => this.exportFiltered('parquet') }
-        ];
+        return buildTakeoutExportMenuItems(this.transloco, (format) => this.exportFiltered(format));
     });
     protected filterChips = computed(() =>
         this.activeFilters().map((filter) => ({
@@ -447,10 +451,23 @@ export class Dashboard {
         ];
     }
 
-    protected exportFiltered(format: ExportFormat = 'csv') {
+    protected exportFiltered(format: TakeoutExportFormat = DEFAULT_HITS_EXPORT_FORMAT) {
         const url = this.buildExportUrl(format);
-        if (!url) return;
-        window.location.href = url;
+        if (!url || this.isExportingFiltered()) return;
+
+        this.isExportingFiltered.set(true);
+        this.filteredExportState.set('idle');
+
+        this.takeoutDownloadService
+            .downloadFromUrl(url, this.buildFilteredExportFilename(format))
+            .pipe(
+                takeUntilDestroyed(this.destroyRef),
+                finalize(() => this.isExportingFiltered.set(false))
+            )
+            .subscribe({
+                next: () => this.filteredExportState.set('success'),
+                error: () => this.filteredExportState.set('error')
+            });
     }
 
     protected buildSiteUrl(path: string | null | undefined): string | null {
@@ -474,12 +491,22 @@ export class Dashboard {
         return domain ? `/api/favicon/${encodeURIComponent(domain)}` : null;
     }
 
-    private buildExportUrl(format: ExportFormat): string {
+    private buildExportUrl(format: TakeoutExportFormat): string {
         const baseUrl = this.exportUrl();
         if (!baseUrl) return '';
         const url = new URL(baseUrl, window.location.origin);
         url.searchParams.set('format', format);
         return url.pathname + `?${url.searchParams.toString()}`;
+    }
+
+    private buildFilteredExportFilename(format: TakeoutExportFormat): string {
+        const siteDomain = this.siteService.activeSite()?.domain || 'site';
+        const safeDomain = siteDomain
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)/g, '');
+        const dateStamp = new Date().toISOString().slice(0, 10);
+        return `${safeDomain || 'site'}-hits-${dateStamp}.${format}`;
     }
 
     private normalizeUrl(raw: string | null | undefined): URL | null {

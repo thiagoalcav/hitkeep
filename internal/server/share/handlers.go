@@ -16,6 +16,7 @@ import (
 
 	"hitkeep/internal/api"
 	authcore "hitkeep/internal/auth"
+	"hitkeep/internal/exportfmt"
 	"hitkeep/internal/server/shared"
 )
 
@@ -92,6 +93,7 @@ func (h *handler) handleListShareLinks() http.HandlerFunc {
 
 		links, err := h.ctx.Store.ListShareLinks(r.Context(), siteID)
 		if err != nil {
+			//nolint:gosec // IDs are parsed as UUIDs before logging; structured logging is intentional.
 			slog.Error("Failed to list share links", "error", err, "site_id", siteID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
@@ -132,6 +134,7 @@ func (h *handler) handleCreateShareLink() http.HandlerFunc {
 
 		link, token, err := h.ctx.Store.CreateShareLink(r.Context(), siteID, userID)
 		if err != nil {
+			//nolint:gosec // IDs are sourced from auth context/path UUID parsing; structured logging is intentional.
 			slog.Error("Failed to create share link", "error", err, "site_id", siteID, "user_id", userID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
@@ -172,6 +175,7 @@ func (h *handler) handleDeleteShareLink() http.HandlerFunc {
 
 		revoked, err := h.ctx.Store.RevokeShareLink(r.Context(), siteID, shareID)
 		if err != nil {
+			//nolint:gosec // IDs are parsed as UUIDs before logging; structured logging is intentional.
 			slog.Error("Failed to delete share link", "error", err, "site_id", siteID, "share_id", shareID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
@@ -242,6 +246,7 @@ func (h *handler) handleGetShareSiteStats() http.HandlerFunc {
 
 		stats, err := h.ctx.Store.GetSiteStats(r.Context(), params)
 		if err != nil {
+			//nolint:gosec // site_id comes from a validated share-site association and is logged for diagnostics.
 			slog.Error("Failed to get share stats", "error", err, "site_id", site.ID)
 			if strings.Contains(err.Error(), "not found") {
 				http.Error(w, "Not found", http.StatusNotFound)
@@ -325,6 +330,7 @@ func (h *handler) handleGetShareHits() http.HandlerFunc {
 
 		result, err := h.ctx.Store.GetHits(r.Context(), params)
 		if err != nil {
+			//nolint:gosec // site_id comes from a validated share-site association and is logged for diagnostics.
 			slog.Error("Failed to get share hits", "error", err, "site_id", site.ID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
@@ -370,13 +376,7 @@ func (h *handler) handleExportShareHits() http.HandlerFunc {
 			return
 		}
 
-		format := strings.ToLower(q.Get("format"))
-		switch format {
-		case "xlsx", "parquet", "csv":
-			// allowed
-		default:
-			format = "csv"
-		}
+		format := exportfmt.Normalize(q.Get("format"), exportfmt.FormatCSV)
 
 		params := api.HitQueryParams{
 			SiteID:  site.ID,
@@ -387,12 +387,13 @@ func (h *handler) handleExportShareHits() http.HandlerFunc {
 			Filters: filters,
 		}
 
-		if format == "csv" {
+		if format == exportfmt.FormatCSV {
 			filename := fmt.Sprintf("hits_%s_%d.csv", site.ID, time.Now().Unix())
-			w.Header().Set("Content-Type", "text/csv")
+			w.Header().Set("Content-Type", exportfmt.ContentType(exportfmt.FormatCSV))
 			w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 
 			if err := h.ctx.Store.ExportHitsCSV(r.Context(), params, w); err != nil {
+				//nolint:gosec // site_id comes from a validated share-site association and is logged for diagnostics.
 				slog.Error("Failed to export share hits", "error", err, "site_id", site.ID)
 			}
 			return
@@ -400,20 +401,14 @@ func (h *handler) handleExportShareHits() http.HandlerFunc {
 
 		filename, err := h.ctx.Store.ExportHitsFile(r.Context(), params, format)
 		if err != nil {
+			//nolint:gosec // site_id comes from a validated share-site association and is logged for diagnostics.
 			slog.Error("Failed to export share hits", "error", err, "site_id", site.ID)
 			http.Error(w, "Failed to export hits", http.StatusInternalServerError)
 			return
 		}
 		downloadName := fmt.Sprintf("hits_%s_%d.%s", site.ID, time.Now().Unix(), format)
 		w.Header().Set("Content-Disposition", "attachment; filename="+downloadName)
-		switch format {
-		case "xlsx":
-			w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-		case "parquet":
-			w.Header().Set("Content-Type", "application/octet-stream")
-		default:
-			w.Header().Set("Content-Type", "application/octet-stream")
-		}
+		w.Header().Set("Content-Type", exportfmt.ContentType(format))
 		http.ServeFile(w, r, filename)
 
 		go func() {

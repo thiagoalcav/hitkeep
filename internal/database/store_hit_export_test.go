@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/exportfmt"
 )
 
 func TestExportHitsCSVIncludesUTMFields(t *testing.T) {
@@ -104,5 +107,97 @@ func TestExportHitsCSVIncludesUTMFields(t *testing.T) {
 	}
 	if got := row[index["utm_content"]]; got != "hero-cta" {
 		t.Fatalf("expected utm_content=hero-cta, got %q", got)
+	}
+}
+
+func TestExportHitsFileSupportsAllFormats(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "hits-export-file.db")
+
+	store := NewStore(dbPath)
+	if err := store.Connect(); err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+
+	if err := store.Migrate(ctx); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	userID, err := store.CreateUser(ctx, "hits-file-export@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	site, err := store.CreateSite(ctx, userID, "hits-file-export.test")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	now := time.Now().UTC()
+	isUnique := true
+	hit := &api.Hit{
+		SiteID:      site.ID,
+		SessionID:   uuid.New(),
+		PageID:      uuid.New(),
+		Timestamp:   now,
+		Path:        "/landing",
+		UTMSource:   new("google"),
+		UTMMedium:   new("cpc"),
+		UTMCampaign: new("spring-launch"),
+		UTMTerm:     new("privacy analytics"),
+		UTMContent:  new("hero-cta"),
+		IsUnique:    &isUnique,
+	}
+	if err := store.CreateHit(ctx, hit); err != nil {
+		t.Fatalf("create hit: %v", err)
+	}
+
+	params := api.HitQueryParams{
+		SiteID: site.ID,
+		UserID: userID,
+		Start:  now.Add(-time.Hour),
+		End:    now.Add(time.Hour),
+		Limit:  10,
+		Offset: 0,
+	}
+
+	tests := []struct {
+		name   string
+		format string
+		want   string
+	}{
+		{name: "csv", format: "csv", want: ".csv"},
+		{name: "xlsx", format: "xlsx", want: ".xlsx"},
+		{name: "parquet", format: "parquet", want: ".parquet"},
+		{name: "json", format: "json", want: ".json"},
+		{name: "ndjson", format: "ndjson", want: ".ndjson"},
+		{name: "unknown defaults to csv", format: "xml", want: ".csv"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			filename, err := store.ExportHitsFile(ctx, params, tc.format)
+			if err != nil {
+				t.Fatalf("export hits file: %v", err)
+			}
+			t.Cleanup(func() { _ = os.Remove(filename) })
+
+			if got := strings.ToLower(filepath.Ext(filename)); got != tc.want {
+				t.Fatalf("expected extension %q, got %q", tc.want, got)
+			}
+
+			contentType := exportfmt.ContentType(strings.TrimPrefix(strings.ToLower(filepath.Ext(filename)), "."))
+			if contentType == "" {
+				t.Fatalf("expected content type mapping for %q", filename)
+			}
+
+			info, err := os.Stat(filename)
+			if err != nil {
+				t.Fatalf("stat export file: %v", err)
+			}
+			if info.Size() == 0 {
+				t.Fatalf("expected non-empty export file for format %q", tc.format)
+			}
+		})
 	}
 }

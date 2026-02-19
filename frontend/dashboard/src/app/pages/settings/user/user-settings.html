@@ -173,13 +173,31 @@
 
             <app-settings-card [title]="'settings.user.dataExportTitle' | transloco" [subtitle]="'settings.user.exportAllDescription' | transloco" icon="pi pi-download">
                 <div settings-card-body class="flex flex-col gap-4">
+                    @if (exportState() === "success") {
+                        <div class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                            {{ "settings.user.exportStatus.success" | transloco }}
+                        </div>
+                    }
+                    @if (exportState() === "error") {
+                        <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            {{ "settings.user.exportStatus.error" | transloco }}
+                        </div>
+                    }
                     <div>
                         <div class="font-medium text-[var(--p-text-color)]">{{ "settings.user.exportAllTitle" | transloco }}</div>
                     </div>
                 </div>
                 <div settings-card-footer>
                     <div class="settings-card-action">
-                        <p-splitButton [label]="'common.actions.downloadXlsx' | transloco" icon="pi pi-download" [outlined]="true" [model]="exportMenuItems()" styleClass="settings-action-split" (onClick)="downloadData('xlsx')" />
+                        <p-splitButton
+                            [label]="isExporting() ? ('common.preparing' | transloco) : ('common.actions.downloadXlsx' | transloco)"
+                            icon="pi pi-download"
+                            [outlined]="true"
+                            [model]="exportMenuItems()"
+                            styleClass="settings-action-split"
+                            [disabled]="isExporting()"
+                            (onClick)="downloadData('xlsx')"
+                        />
                     </div>
                 </div>
             </app-settings-card>

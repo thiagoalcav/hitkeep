@@ -1,22 +1,25 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, DestroyRef } from '@angular/core';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { compatForm } from '@angular/forms/signals/compat';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
 import { PageHeader } from '@components/page-header/page-header';
 import { getBaseLanguage, getLocaleDirection, normalizeLocaleTag, TextDirection } from '@core/i18n/locale-utils';
+import { buildTakeoutExportMenuItems, DEFAULT_TAKEOUT_EXPORT_FORMAT, TakeoutExportFormat } from '@core/export/export-formats';
 import { SettingsCard } from '@features/settings/components/settings-card';
 import { SettingsSecurity } from '@features/settings/components/settings-security';
 import { UserPreferences, UserPreferencesService } from '@services/user-preferences.service';
 import { UserProfile, UserProfileService } from '@services/user-profile.service';
+import { TakeoutDownloadService } from '@services/takeout-download.service';
 import { MenuItem } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { SplitButtonModule } from 'primeng/splitbutton';
+import { finalize } from 'rxjs';
 
 interface LanguageOption {
     label: string;
@@ -32,7 +35,6 @@ interface EditableProfile {
 }
 
 type AvailableLang = string | { id: string; label: string };
-type ExportFormat = 'csv' | 'xlsx' | 'parquet';
 
 const LANGUAGE_FLAG_FALLBACK: Record<string, string> = {
     en: 'us',
@@ -71,7 +73,9 @@ const LANGUAGE_FLAG_FALLBACK: Record<string, string> = {
 export class UserSettings {
     private preferencesService = inject(UserPreferencesService);
     private profileService = inject(UserProfileService);
+    private takeoutDownloadService = inject(TakeoutDownloadService);
     private transloco = inject(TranslocoService);
+    private destroyRef = inject(DestroyRef);
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
     private readonly profileFormModel = signal({
@@ -98,6 +102,8 @@ export class UserSettings {
     protected readonly loadError = signal<string | null>(null);
     protected readonly saveState = signal<'idle' | 'saved' | 'error'>('idle');
     protected readonly initialPreferences = signal<UserPreferences | null>(null);
+    protected readonly isExporting = signal(false);
+    protected readonly exportState = signal<'idle' | 'success' | 'error'>('idle');
 
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         this.activeLanguage();
@@ -105,11 +111,7 @@ export class UserSettings {
     });
     protected readonly exportMenuItems = computed<MenuItem[]>(() => {
         this.activeLanguage();
-        return [
-            { label: this.transloco.translate('common.exportFormats.csv'), icon: 'pi pi-file', command: () => this.downloadData('csv') },
-            { label: this.transloco.translate('common.exportFormats.xlsx'), icon: 'pi pi-file-excel', command: () => this.downloadData('xlsx') },
-            { label: this.transloco.translate('common.exportFormats.parquet'), icon: 'pi pi-database', command: () => this.downloadData('parquet') }
-        ];
+        return buildTakeoutExportMenuItems(this.transloco, (format) => this.downloadData(format));
     });
 
     protected readonly languageOptions = computed(() => {
@@ -295,8 +297,22 @@ export class UserSettings {
         return languageName;
     }
 
-    protected downloadData(format: ExportFormat = 'xlsx'): void {
-        window.open(`/api/user/takeout?format=${format}`, '_blank');
+    protected downloadData(format: TakeoutExportFormat = DEFAULT_TAKEOUT_EXPORT_FORMAT): void {
+        if (this.isExporting()) return;
+
+        this.isExporting.set(true);
+        this.exportState.set('idle');
+
+        this.takeoutDownloadService
+            .downloadUserTakeout(format)
+            .pipe(
+                takeUntilDestroyed(this.destroyRef),
+                finalize(() => this.isExporting.set(false))
+            )
+            .subscribe({
+                next: () => this.exportState.set('success'),
+                error: () => this.exportState.set('error')
+            });
     }
 
     protected currentPreferences(): UserPreferences {

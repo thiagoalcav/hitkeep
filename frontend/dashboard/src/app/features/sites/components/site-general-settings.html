@@ -12,6 +12,16 @@
     <div>
         <h3 class="font-bold text-lg mb-2">{{ "sites.settings.general.dataExportTitle" | transloco }}</h3>
         <div class="p-4 border rounded-lg bg-surface-0 dark:bg-surface-900 border-surface-200 dark:border-surface-700">
+            @if (exportState() === "success") {
+                <div class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                    {{ "sites.settings.general.exportStatus.success" | transloco }}
+                </div>
+            }
+            @if (exportState() === "error") {
+                <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {{ "sites.settings.general.exportStatus.error" | transloco }}
+                </div>
+            }
             <div class="flex flex-col md:flex-row md:items-center gap-4 md:justify-between">
                 <div class="flex items-start gap-3">
                     <div class="w-10 h-10 rounded-full bg-[var(--p-surface-100)] dark:bg-[var(--p-surface-800)] flex items-center justify-center text-[var(--p-primary-color)]">

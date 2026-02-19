@@ -59,7 +59,9 @@
         "exportFormats": {
             "csv": "CSV",
             "xlsx": "XLSX",
-            "parquet": "Parquet"
+            "parquet": "Parquet",
+            "json": "JSON",
+            "ndjson": "NDJSON"
         },
         "filters": {
             "country": "Land: {{value}}",
@@ -112,6 +114,10 @@
         "noSiteDescription": "Wählen Sie eine Seite aus oder erstellen Sie eine, um Analysen zu sehen.",
         "openPageInNewTabAria": "Seite in neuem Tab öffnen",
         "openReferrerInNewTabAria": "Referrer in neuem Tab öffnen",
+        "exportStatus": {
+            "success": "Export-Download wurde gestartet.",
+            "error": "Export der gefilterten Daten fehlgeschlagen. Bitte versuchen Sie es erneut."
+        },
         "chartTitleWithRange": "Traffic: {{range}}",
         "chartTitleCustomRange": "Traffic: {{start}} - {{end}}",
         "chartTitleOverview": "Traffic-Übersicht",
@@ -131,7 +137,8 @@
         "empty": {
             "noTrafficTitle": "Noch kein Traffic erfasst",
             "noTrafficDescription": "Installieren Sie das Tracking-Snippet auf Ihrer Website, um Analytics-Daten zu sammeln.",
-            "getTrackingCode": "Tracking-Code anzeigen"
+            "getTrackingCode": "Tracking-Code anzeigen",
+            "createSite": "Seite erstellen"
         }
     },
     "goals": {
@@ -337,7 +344,11 @@
             },
             "dataExportTitle": "Datenexport",
             "exportAllTitle": "Alle Daten exportieren",
-            "exportAllDescription": "Laden Sie alle Ihre Daten über alle Seiten hinweg als CSV, XLSX oder Parquet herunter."
+            "exportAllDescription": "Laden Sie alle Ihre Daten über alle Seiten hinweg als CSV, XLSX, Parquet, JSON oder NDJSON herunter.",
+            "exportStatus": {
+                "success": "Download wurde gestartet.",
+                "error": "Datenexport fehlgeschlagen. Bitte versuchen Sie es erneut."
+            }
         },
         "apiClients": {
             "title": "API-Clients",
@@ -565,7 +576,11 @@
                 "domainLabel": "Domain",
                 "dataExportTitle": "Datenexport",
                 "exportSiteDataTitle": "Seitendaten exportieren",
-                "exportSiteDataDescription": "Laden Sie alle Hits und Events für diese Seite als CSV, XLSX oder Parquet herunter."
+                "exportSiteDataDescription": "Laden Sie alle Hits und Events für diese Seite als CSV, XLSX, Parquet, JSON oder NDJSON herunter.",
+                "exportStatus": {
+                    "success": "Download wurde gestartet.",
+                    "error": "Seitendatenexport fehlgeschlagen. Bitte versuchen Sie es erneut."
+                }
             },
             "unsavedChangesConfirm": "Sie haben ungespeicherte Änderungen. Verwerfen?"
         },

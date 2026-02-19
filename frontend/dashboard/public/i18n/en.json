@@ -59,7 +59,9 @@
         "exportFormats": {
             "csv": "CSV",
             "xlsx": "XLSX",
-            "parquet": "Parquet"
+            "parquet": "Parquet",
+            "json": "JSON",
+            "ndjson": "NDJSON"
         },
         "filters": {
             "country": "Country: {{value}}",
@@ -112,6 +114,10 @@
         "noSiteDescription": "Select or create a site to view analytics.",
         "openPageInNewTabAria": "Open page in new tab",
         "openReferrerInNewTabAria": "Open referrer in new tab",
+        "exportStatus": {
+            "success": "Export download started.",
+            "error": "Failed to export filtered data. Please try again."
+        },
         "chartTitleWithRange": "Traffic: {{range}}",
         "chartTitleCustomRange": "Traffic: {{start}} - {{end}}",
         "chartTitleOverview": "Traffic overview",
@@ -131,7 +137,8 @@
         "empty": {
             "noTrafficTitle": "No traffic recorded yet",
             "noTrafficDescription": "Install the tracking snippet on your website to start collecting analytics data.",
-            "getTrackingCode": "Get tracking code"
+            "getTrackingCode": "Get tracking code",
+            "createSite": "Create site"
         }
     },
     "goals": {
@@ -337,7 +344,11 @@
             },
             "dataExportTitle": "Data export",
             "exportAllTitle": "Export all data",
-            "exportAllDescription": "Download all your data across all sites as CSV, XLSX, or Parquet."
+            "exportAllDescription": "Download all your data across all sites as CSV, XLSX, Parquet, JSON, or NDJSON.",
+            "exportStatus": {
+                "success": "Download started.",
+                "error": "Failed to export data. Please try again."
+            }
         },
         "apiClients": {
             "title": "API clients",
@@ -565,7 +576,11 @@
                 "domainLabel": "Domain",
                 "dataExportTitle": "Data export",
                 "exportSiteDataTitle": "Export site data",
-                "exportSiteDataDescription": "Download all hits and events for this site as CSV, XLSX, or Parquet."
+                "exportSiteDataDescription": "Download all hits and events for this site as CSV, XLSX, Parquet, JSON, or NDJSON.",
+                "exportStatus": {
+                    "success": "Download started.",
+                    "error": "Failed to export site data. Please try again."
+                }
             },
             "unsavedChangesConfirm": "You have unsaved changes. Discard them?"
         },

@@ -55,9 +55,26 @@
                 }
             </div>
             <div class="flex items-center gap-2">
-                <p-splitButton icon="pi pi-download" [label]="'common.actions.exportCsv' | transloco" [model]="exportMenuItems()" [disabled]="!exportUrl()" styleClass="p-button-outlined p-button-sm" (onClick)="exportFiltered('csv')" />
+                <p-splitButton
+                    icon="pi pi-download"
+                    [label]="isExportingFiltered() ? ('common.preparing' | transloco) : ('common.actions.exportCsv' | transloco)"
+                    [model]="exportMenuItems()"
+                    [disabled]="!exportUrl() || isExportingFiltered()"
+                    styleClass="p-button-outlined p-button-sm"
+                    (onClick)="exportFiltered('csv')"
+                />
             </div>
         </div>
+        @if (filteredExportState() === "success") {
+            <div class="mb-6 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                {{ "dashboard.exportStatus.success" | transloco }}
+            </div>
+        }
+        @if (filteredExportState() === "error") {
+            <div class="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {{ "dashboard.exportStatus.error" | transloco }}
+            </div>
+        }
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
             <app-metric-list
@@ -201,7 +218,16 @@
             <i class="pi pi-globe text-6xl text-primary opacity-20"></i>
             <h2 class="text-2xl font-semibold text-muted-color">{{ "common.noSiteSelected" | transloco }}</h2>
             <p class="text-muted-color">{{ "dashboard.noSiteDescription" | transloco }}</p>
+            @if (!isShareMode()) {
+                <p-button [label]="'dashboard.empty.createSite' | transloco" icon="pi pi-plus" size="small" (onClick)="isAddSiteVisible.set(true)" />
+            }
         </div>
+    }
+
+    @if (!isShareMode()) {
+        @defer (when isAddSiteVisible()) {
+            <app-add-site-dialog [visible]="isAddSiteVisible()" (visibleChange)="isAddSiteVisible.set($event)" />
+        }
     }
 </div>
 <!-- Date Range Dialog -->

@@ -6,13 +6,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
+	"hitkeep/internal/exportfmt"
 	"hitkeep/internal/server/shared"
 )
 
@@ -349,6 +352,86 @@ func TestHandleGetSiteHits(t *testing.T) {
 
 			if w.Code != tc.expectedStatus {
 				t.Errorf("expected status %d, got %d", tc.expectedStatus, w.Code)
+			}
+		})
+	}
+}
+
+func TestHandleExportSiteHitsSupportsAllFormats(t *testing.T) {
+	h, store, userID := setupTestEnv(t)
+	t.Cleanup(func() { _ = store.Close() })
+
+	site, err := store.CreateSite(context.Background(), userID, "export-hits.test")
+	if err != nil {
+		t.Fatalf("failed to create export site: %v", err)
+	}
+
+	now := time.Now().UTC()
+	isUnique := true
+	if err := store.CreateHit(context.Background(), &api.Hit{
+		SiteID:      site.ID,
+		SessionID:   uuid.New(),
+		PageID:      uuid.New(),
+		Timestamp:   now,
+		Path:        "/export",
+		UTMSource:   new("newsletter"),
+		UTMMedium:   new("email"),
+		UTMCampaign: new("launch"),
+		UTMTerm:     new("format"),
+		UTMContent:  new("cta"),
+		IsUnique:    &isUnique,
+	}); err != nil {
+		t.Fatalf("failed to seed export hit: %v", err)
+	}
+
+	tests := []struct {
+		name           string
+		siteID         string
+		queryFormat    string
+		expectedExt    string
+		expectedType   string
+		expectedStatus int
+		withAuth       bool
+	}{
+		{name: "csv", siteID: site.ID.String(), queryFormat: "csv", expectedExt: ".csv", expectedType: exportfmt.ContentType(exportfmt.FormatCSV), expectedStatus: http.StatusOK, withAuth: true},
+		{name: "xlsx", siteID: site.ID.String(), queryFormat: "xlsx", expectedExt: ".xlsx", expectedType: exportfmt.ContentType(exportfmt.FormatXLSX), expectedStatus: http.StatusOK, withAuth: true},
+		{name: "parquet", siteID: site.ID.String(), queryFormat: "parquet", expectedExt: ".parquet", expectedType: exportfmt.ContentType(exportfmt.FormatParquet), expectedStatus: http.StatusOK, withAuth: true},
+		{name: "json", siteID: site.ID.String(), queryFormat: "json", expectedExt: ".json", expectedType: exportfmt.ContentType(exportfmt.FormatJSON), expectedStatus: http.StatusOK, withAuth: true},
+		{name: "ndjson", siteID: site.ID.String(), queryFormat: "ndjson", expectedExt: ".ndjson", expectedType: exportfmt.ContentType(exportfmt.FormatNDJSON), expectedStatus: http.StatusOK, withAuth: true},
+		{name: "unknown defaults to csv", siteID: site.ID.String(), queryFormat: "xml", expectedExt: ".csv", expectedType: exportfmt.ContentType(exportfmt.FormatCSV), expectedStatus: http.StatusOK, withAuth: true},
+		{name: "unauthorized", siteID: site.ID.String(), queryFormat: "csv", expectedStatus: http.StatusUnauthorized},
+		{name: "invalid site id", siteID: "invalid-uuid", queryFormat: "csv", expectedStatus: http.StatusBadRequest, withAuth: true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/api/sites/"+tc.siteID+"/hits/export?format="+tc.queryFormat, nil)
+			req.SetPathValue("id", tc.siteID)
+			if tc.withAuth {
+				req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, userID))
+			}
+
+			w := httptest.NewRecorder()
+			h.handleExportSiteHits().ServeHTTP(w, req)
+
+			if w.Code != tc.expectedStatus {
+				t.Fatalf("expected status %d, got %d (body: %s)", tc.expectedStatus, w.Code, w.Body.String())
+			}
+			if tc.expectedStatus != http.StatusOK {
+				return
+			}
+
+			if got := w.Header().Get("Content-Type"); got != tc.expectedType {
+				t.Fatalf("expected content-type %q, got %q", tc.expectedType, got)
+			}
+
+			disposition := w.Header().Get("Content-Disposition")
+			if !strings.Contains(disposition, tc.expectedExt) {
+				t.Fatalf("expected content-disposition %q to contain extension %q", disposition, tc.expectedExt)
+			}
+
+			if w.Body.Len() == 0 {
+				t.Fatalf("expected non-empty export response body")
 			}
 		})
 	}

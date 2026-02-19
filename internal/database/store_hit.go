@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/exportfmt"
 )
 
 func (s *Store) CreateHit(ctx context.Context, hit *api.Hit) error {
@@ -236,21 +238,9 @@ func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w 
 }
 
 func (s *Store) ExportHitsFile(ctx context.Context, params api.HitQueryParams, format string) (string, error) {
-	var ext, duckFormat string
-
-	switch strings.ToLower(format) {
-	case "parquet":
-		ext = "parquet"
-		duckFormat = "PARQUET, COMPRESSION 'SNAPPY'"
-	case "xlsx":
-		ext = "xlsx"
-		duckFormat = "XLSX"
-	case "csv":
-		fallthrough
-	default:
-		ext = "csv"
-		duckFormat = "CSV, HEADER"
-	}
+	normalizedFormat := exportfmt.Normalize(format, exportfmt.FormatCSV)
+	ext := normalizedFormat
+	duckFormat := exportfmt.DuckDBCopyOptions(normalizedFormat)
 
 	tmpFile, err := os.CreateTemp("", fmt.Sprintf("hitkeep_hits_*.%s", ext))
 	if err != nil {
@@ -258,7 +248,7 @@ func (s *Store) ExportHitsFile(ctx context.Context, params api.HitQueryParams, f
 	}
 	filename := tmpFile.Name()
 	if err := tmpFile.Close(); err != nil {
-		_ = os.Remove(filename)
+		cleanupExportTempFile(filename)
 		return "", fmt.Errorf("failed to close export file: %w", err)
 	}
 
@@ -266,11 +256,32 @@ func (s *Store) ExportHitsFile(ctx context.Context, params api.HitQueryParams, f
 	//nolint:gosec // filename is generated locally; selectQuery uses parameter placeholders
 	copyQuery := fmt.Sprintf("COPY (%s) TO '%s' (FORMAT %s);", selectQuery, filename, duckFormat)
 	if _, err := s.db.ExecContext(ctx, copyQuery, args...); err != nil {
-		_ = os.Remove(filename)
+		cleanupExportTempFile(filename)
 		return "", fmt.Errorf("failed to export hits: %w", err)
 	}
 
 	return filename, nil
+}
+
+func cleanupExportTempFile(filename string) {
+	if filename == "" {
+		return
+	}
+
+	cleaned := filepath.Clean(filename)
+	base := filepath.Base(cleaned)
+	if !strings.HasPrefix(base, "hitkeep_hits_") {
+		return
+	}
+
+	tempDir := filepath.Clean(os.TempDir())
+	rel, err := filepath.Rel(tempDir, cleaned)
+	if err != nil || rel == "." || strings.HasPrefix(rel, "..") {
+		return
+	}
+
+	//nolint:gosec // cleaned path is constrained to an app-owned temp file under os.TempDir.
+	_ = os.Remove(cleaned)
 }
 
 func nullString(value sql.NullString) string {

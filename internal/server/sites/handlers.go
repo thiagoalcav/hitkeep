@@ -20,6 +20,7 @@ import (
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/blocking"
 	"hitkeep/internal/database"
+	"hitkeep/internal/exportfmt"
 	"hitkeep/internal/server/shared"
 )
 
@@ -474,7 +475,7 @@ func (h *handler) handleGetSiteHits() http.HandlerFunc {
 	}
 }
 
-// handleExportSiteHits streams filtered hits as CSV.
+// handleExportSiteHits streams filtered hits in the requested export format.
 // Path: GET /api/sites/{id}/hits/export
 func (h *handler) handleExportSiteHits() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -519,13 +520,7 @@ func (h *handler) handleExportSiteHits() http.HandlerFunc {
 			return
 		}
 
-		format := strings.ToLower(q.Get("format"))
-		switch format {
-		case "xlsx", "parquet", "csv":
-			// allowed
-		default:
-			format = "csv"
-		}
+		format := exportfmt.Normalize(q.Get("format"), exportfmt.FormatCSV)
 
 		params := api.HitQueryParams{
 			SiteID:  siteID,
@@ -536,9 +531,9 @@ func (h *handler) handleExportSiteHits() http.HandlerFunc {
 			Filters: filters,
 		}
 
-		if format == "csv" {
+		if format == exportfmt.FormatCSV {
 			filename := fmt.Sprintf("hits_%s_%d.csv", siteID, time.Now().Unix())
-			w.Header().Set("Content-Type", "text/csv")
+			w.Header().Set("Content-Type", exportfmt.ContentType(exportfmt.FormatCSV))
 			w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 
 			if err := h.ctx.Store.ExportHitsCSV(r.Context(), params, w); err != nil {
@@ -555,14 +550,7 @@ func (h *handler) handleExportSiteHits() http.HandlerFunc {
 		}
 		downloadName := fmt.Sprintf("hits_%s_%d.%s", siteID, time.Now().Unix(), format)
 		w.Header().Set("Content-Disposition", "attachment; filename="+downloadName)
-		switch format {
-		case "xlsx":
-			w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-		case "parquet":
-			w.Header().Set("Content-Type", "application/octet-stream")
-		default:
-			w.Header().Set("Content-Type", "application/octet-stream")
-		}
+		w.Header().Set("Content-Type", exportfmt.ContentType(format))
 		http.ServeFile(w, r, filename)
 
 		go func() {
@@ -713,17 +701,32 @@ func validateFilter(filterType, filterValue string) error {
 // GET /api/favicon/{domain}
 func (h *handler) handleGetFavicon() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		domain := strings.TrimSpace(r.PathValue("domain"))
-		if domain == "" || strings.Contains(domain, "/") {
+		domain := normalizeFaviconDomain(r.PathValue("domain"))
+		if !isValidFaviconDomain(domain) {
 			http.Error(w, "Invalid domain", http.StatusBadRequest)
 			return
 		}
 
-		// Use DuckDuckGo's favicon service
-		ddgURL := fmt.Sprintf("https://icons.duckduckgo.com/ip3/%s.ico", domain)
+		ddgURL := (&url.URL{
+			Scheme: "https",
+			Host:   "icons.duckduckgo.com",
+			Path:   fmt.Sprintf("/ip3/%s.ico", domain),
+		}).String()
 
-		client := &http.Client{Timeout: 5 * time.Second}
-		resp, err := client.Get(ddgURL)
+		req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, ddgURL, nil)
+		if err != nil {
+			http.Error(w, "Upstream error", http.StatusBadGateway)
+			return
+		}
+
+		client := &http.Client{
+			Timeout: 5 * time.Second,
+			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		}
+		//nolint:gosec // request URL is constrained to DuckDuckGo's fixed host and validated path segment.
+		resp, err := client.Do(req)
 		if err != nil {
 			slog.Warn("Failed to fetch favicon upstream", "domain", domain, "error", err)
 			http.Error(w, "Upstream error", http.StatusBadGateway)
@@ -744,4 +747,19 @@ func (h *handler) handleGetFavicon() http.HandlerFunc {
 			slog.Warn("Failed to write favicon response", "error", err)
 		}
 	}
+}
+
+func normalizeFaviconDomain(domain string) string {
+	trimmed := strings.TrimSpace(domain)
+	return strings.TrimSuffix(strings.ToLower(trimmed), ".")
+}
+
+func isValidFaviconDomain(domain string) bool {
+	if domain == "" {
+		return false
+	}
+	if strings.ContainsAny(domain, `/\?#`) {
+		return false
+	}
+	return domainRegex.MatchString(domain)
 }

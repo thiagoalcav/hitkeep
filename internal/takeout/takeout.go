@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
 	"hitkeep/internal/database"
+	"hitkeep/internal/exportfmt"
 )
 
 type TakeoutService struct {
@@ -31,54 +31,31 @@ func (s *TakeoutService) ExportUserData(ctx context.Context, userID uuid.UUID, f
 		return "", fmt.Errorf("failed to create export directory: %w", err)
 	}
 
-	ext, duckFormat, allowFallback := resolveExportFormat(format)
-	filename := filepath.Join(s.path, fmt.Sprintf("user_takeout_%s_%d.%s", userID, time.Now().Unix(), ext))
-	fallbackFilename := filepath.Join(s.path, fmt.Sprintf("user_takeout_%s_%d.csv", userID, time.Now().Unix()))
+	normalizedFormat := exportfmt.Normalize(format, exportfmt.FormatXLSX)
+	filename := filepath.Join(s.path, fmt.Sprintf("user_takeout_%s_%d.%s", userID, time.Now().Unix(), normalizedFormat))
 	whereClause := fmt.Sprintf("site_id IN (SELECT site_id FROM site_members WHERE user_id = '%s')", userID)
 
-	return s.exportTakeout(ctx, "user", filename, duckFormat, allowFallback, fallbackFilename, whereClause)
+	return s.exportTakeout(ctx, "user", filename, exportfmt.DuckDBCopyOptions(normalizedFormat), whereClause)
 }
 
 // ExportSiteData exports active data to the specified format.
-// Format is validated by the handler (xlsx, csv, parquet).
+// Format is validated by the handler (xlsx, csv, parquet, json, ndjson).
 func (s *TakeoutService) ExportSiteData(ctx context.Context, siteID uuid.UUID, format string) (string, error) {
 	if err := os.MkdirAll(s.path, 0755); err != nil {
 		return "", fmt.Errorf("failed to create export directory: %w", err)
 	}
 
-	ext, duckFormat, allowFallback := resolveExportFormat(format)
-	filename := filepath.Join(s.path, fmt.Sprintf("site_takeout_%s_%d.%s", siteID, time.Now().Unix(), ext))
-	fallbackFilename := filepath.Join(s.path, fmt.Sprintf("site_takeout_%s_%d.csv", siteID, time.Now().Unix()))
+	normalizedFormat := exportfmt.Normalize(format, exportfmt.FormatXLSX)
+	filename := filepath.Join(s.path, fmt.Sprintf("site_takeout_%s_%d.%s", siteID, time.Now().Unix(), normalizedFormat))
 	whereClause := fmt.Sprintf("site_id = '%s'", siteID)
 
-	return s.exportTakeout(ctx, "site", filename, duckFormat, allowFallback, fallbackFilename, whereClause)
+	return s.exportTakeout(ctx, "site", filename, exportfmt.DuckDBCopyOptions(normalizedFormat), whereClause)
 }
 
-func resolveExportFormat(format string) (string, string, bool) {
-	switch strings.ToLower(format) {
-	case "parquet":
-		return "parquet", "PARQUET, COMPRESSION 'SNAPPY'", false
-	case "csv":
-		return "csv", "CSV, HEADER", false
-	case "xlsx":
-		fallthrough
-	default:
-		return "xlsx", "XLSX", true
-	}
-}
-
-func (s *TakeoutService) exportTakeout(ctx context.Context, label, filename, duckFormat string, allowFallback bool, fallbackFilename string, whereClause string) (string, error) {
+func (s *TakeoutService) exportTakeout(ctx context.Context, label, filename, duckFormat string, whereClause string) (string, error) {
 	query := buildTakeoutQuery(whereClause, filename, duckFormat)
 	if _, err := s.store.DB().ExecContext(ctx, query); err != nil {
-		if !allowFallback {
-			return "", fmt.Errorf("failed to export %s data: %w", label, err)
-		}
-
-		fallbackQuery := buildTakeoutQuery(whereClause, fallbackFilename, "CSV, HEADER")
-		if _, err := s.store.DB().ExecContext(ctx, fallbackQuery); err != nil {
-			return "", fmt.Errorf("failed to export %s data: %w", label, err)
-		}
-		return fallbackFilename, nil
+		return "", fmt.Errorf("failed to export %s data: %w", label, err)
 	}
 
 	return filename, nil

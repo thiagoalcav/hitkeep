@@ -4,11 +4,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/google/uuid"
 
 	authcore "hitkeep/internal/auth"
+	"hitkeep/internal/exportfmt"
 	"hitkeep/internal/server/shared"
 	takeoutsvc "hitkeep/internal/takeout"
 )
@@ -43,13 +43,7 @@ func (h *TakeoutHandler) handleUserTakeout() http.HandlerFunc {
 			return
 		}
 
-		format := strings.ToLower(r.URL.Query().Get("format"))
-		switch format {
-		case "csv", "parquet":
-			// allowed
-		default:
-			format = "xlsx"
-		}
+		format := exportfmt.Normalize(r.URL.Query().Get("format"), exportfmt.FormatXLSX)
 
 		filename, err := h.service.ExportUserData(r.Context(), userID, format)
 		if err != nil {
@@ -59,7 +53,7 @@ func (h *TakeoutHandler) handleUserTakeout() http.HandlerFunc {
 
 		// Serve the file
 		w.Header().Set("Content-Disposition", "attachment; filename="+filepath.Base(filename))
-		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Content-Type", exportfmt.ContentTypeForFilename(filename))
 		http.ServeFile(w, r, filename)
 
 		go func() {
@@ -77,14 +71,8 @@ func (h *TakeoutHandler) handleSiteTakeout() http.HandlerFunc {
 		}
 
 		// Validate format
-		format := r.URL.Query().Get("format")
-		switch format {
-		case "csv", "parquet":
-			// allowed
-		default:
-			// Default to xlsx for better compatibility with mixed schema exports (hits + events)
-			format = "xlsx"
-		}
+		// Default to xlsx for better compatibility with mixed schema exports (hits + events)
+		format := exportfmt.Normalize(r.URL.Query().Get("format"), exportfmt.FormatXLSX)
 
 		filename, err := h.service.ExportSiteData(r.Context(), siteID, format)
 		if err != nil {
@@ -93,7 +81,7 @@ func (h *TakeoutHandler) handleSiteTakeout() http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Disposition", "attachment; filename="+filepath.Base(filename))
-		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Content-Type", exportfmt.ContentTypeForFilename(filename))
 		http.ServeFile(w, r, filename)
 
 		go func() {

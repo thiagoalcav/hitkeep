@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"hitkeep/internal/exportfmt"
 )
 
 func (h *handler) handleGetAPIDocVersions() http.HandlerFunc {
@@ -116,8 +118,13 @@ func openAPISpecV1(publicURL string) map[string]any {
 				"filterValue":   map[string]any{"name": "filter_value", "in": "query", "schema": map[string]any{"type": "string"}},
 				"goalIDQuery":   map[string]any{"name": "goal_id", "in": "query", "schema": map[string]any{"type": "string", "format": "uuid"}},
 				"funnelIDQuery": map[string]any{"name": "funnel_id", "in": "query", "schema": map[string]any{"type": "string", "format": "uuid"}},
-				"format":        map[string]any{"name": "format", "in": "query", "schema": map[string]any{"type": "string", "enum": []string{"xlsx", "csv", "parquet"}}},
-				"avatarSize":    map[string]any{"name": "s", "in": "query", "schema": map[string]any{"type": "integer", "minimum": 32, "maximum": 256}},
+				"format": map[string]any{
+					"name":        "format",
+					"in":          "query",
+					"description": "Export format. Supported values: xlsx, csv, parquet, json, ndjson. Defaults: xlsx for takeout endpoints, csv for hits export endpoints.",
+					"schema":      map[string]any{"type": "string", "enum": exportfmt.SupportedFormats()},
+				},
+				"avatarSize": map[string]any{"name": "s", "in": "query", "schema": map[string]any{"type": "integer", "minimum": 32, "maximum": 256}},
 			},
 			"schemas": map[string]any{
 				"Error": map[string]any{
@@ -694,7 +701,7 @@ func openAPISpecV1(publicURL string) map[string]any {
 				}, nil, map[string]any{"200": jsonRefResp("Paginated hits", "#/components/schemas/PaginatedHits")}),
 			},
 			"/api/sites/{id}/hits/export": map[string]any{
-				"get": op([]string{"Sites"}, "Export site hits", "Exports filtered site hits in csv/xlsx/parquet.", secAnyAuth(), []any{
+				"get": op([]string{"Sites"}, "Export site hits", "Exports filtered site hits in csv/xlsx/parquet/json/ndjson.", secAnyAuth(), []any{
 					paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to"),
 					paramRef("#/components/parameters/query"), paramRef("#/components/parameters/filter"), paramRef("#/components/parameters/filterType"), paramRef("#/components/parameters/filterValue"), paramRef("#/components/parameters/format"),
 				}, nil, map[string]any{"200": desc("Export file stream")}),
@@ -752,10 +759,10 @@ func openAPISpecV1(publicURL string) map[string]any {
 			},
 
 			"/api/user/takeout": map[string]any{
-				"get": op([]string{"Takeout"}, "User takeout", "Exports all user data across sites.", secCookie(), []any{paramRef("#/components/parameters/format")}, nil, map[string]any{"200": desc("Export file stream")}),
+				"get": op([]string{"Takeout"}, "User takeout", "Exports all user data across sites as xlsx/csv/parquet/json/ndjson.", secCookie(), []any{paramRef("#/components/parameters/format")}, nil, map[string]any{"200": desc("Export file stream")}),
 			},
 			"/api/sites/{id}/takeout": map[string]any{
-				"get": op([]string{"Takeout"}, "Site takeout", "Exports site data as xlsx/csv/parquet.", secCookie(), []any{paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/format")}, nil, map[string]any{"200": desc("Export file stream")}),
+				"get": op([]string{"Takeout"}, "Site takeout", "Exports site data as xlsx/csv/parquet/json/ndjson.", secCookie(), []any{paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/format")}, nil, map[string]any{"200": desc("Export file stream")}),
 			},
 
 			"/api/sites/{id}/share": map[string]any{
@@ -776,7 +783,7 @@ func openAPISpecV1(publicURL string) map[string]any {
 				"get": op([]string{"Share"}, "Shared hits", "Returns paginated raw hits through share token.", nil, []any{paramRef("#/components/parameters/token"), paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to"), paramRef("#/components/parameters/limit"), paramRef("#/components/parameters/offset"), paramRef("#/components/parameters/query"), paramRef("#/components/parameters/sort"), paramRef("#/components/parameters/order"), paramRef("#/components/parameters/filter"), paramRef("#/components/parameters/filterType"), paramRef("#/components/parameters/filterValue")}, nil, map[string]any{"200": jsonRefResp("Paginated hits", "#/components/schemas/PaginatedHits")}),
 			},
 			"/api/share/{token}/sites/{id}/hits/export": map[string]any{
-				"get": op([]string{"Share"}, "Export shared hits", "Exports hits through share token.", nil, []any{paramRef("#/components/parameters/token"), paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to"), paramRef("#/components/parameters/query"), paramRef("#/components/parameters/filter"), paramRef("#/components/parameters/filterType"), paramRef("#/components/parameters/filterValue"), paramRef("#/components/parameters/format")}, nil, map[string]any{"200": desc("Export file stream")}),
+				"get": op([]string{"Share"}, "Export shared hits", "Exports hits through share token in csv/xlsx/parquet/json/ndjson.", nil, []any{paramRef("#/components/parameters/token"), paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to"), paramRef("#/components/parameters/query"), paramRef("#/components/parameters/filter"), paramRef("#/components/parameters/filterType"), paramRef("#/components/parameters/filterValue"), paramRef("#/components/parameters/format")}, nil, map[string]any{"200": desc("Export file stream")}),
 			},
 			"/api/share/{token}/sites/{id}/goals": map[string]any{
 				"get": op([]string{"Share"}, "Shared goals", "Lists goals through share token.", nil, []any{paramRef("#/components/parameters/token"), paramRef("#/components/parameters/siteID")}, nil, map[string]any{"200": jsonSchemaResp("Goals", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/Goal"}})}),

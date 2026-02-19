@@ -42,10 +42,28 @@ func (s *Store) Connect() error {
 	}
 
 	s.db = db
+	if err := s.loadExcelExtension(); err != nil {
+		slog.Warn("DuckDB excel extension unavailable; XLSX exports may fail", "error", err)
+	}
 	if _, err := s.db.Exec(fmt.Sprintf("PRAGMA wal_autocheckpoint='%s';", walAutoCheckpointSize)); err != nil {
 		slog.Warn("Failed to set wal_autocheckpoint", "size", walAutoCheckpointSize, "error", err)
 	}
 	slog.Debug("Database connection established successfully.")
+	return nil
+}
+
+func (s *Store) loadExcelExtension() error {
+	if _, err := s.db.Exec("LOAD excel;"); err == nil {
+		return nil
+	} else {
+		loadErr := err
+		if _, err := s.db.Exec("INSTALL excel;"); err != nil {
+			return fmt.Errorf("load excel extension: %w; install excel extension: %v", loadErr, err)
+		}
+		if _, err := s.db.Exec("LOAD excel;"); err != nil {
+			return fmt.Errorf("load excel extension after install: %w", err)
+		}
+	}
 	return nil
 }
 

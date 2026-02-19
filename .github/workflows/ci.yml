@@ -70,9 +70,8 @@ jobs:
         working-directory: frontend/dashboard
         run: npm ci --no-audit --no-fund
       - name: Install Playwright Browsers
+        working-directory: frontend/dashboard
         run: npx playwright install --with-deps
       - name: Test dashboard
         working-directory: frontend/dashboard
-        env:
-          CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
         run: npm run test -- --watch=false --no-progress

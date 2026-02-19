@@ -1,15 +1,17 @@
+import type { Mock } from "vitest";
 import { HttpHeaders, provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { vi } from 'vitest';
 
 import { TakeoutDownloadService } from './takeout-download.service';
 
 describe('TakeoutDownloadService', () => {
     let service: TakeoutDownloadService;
     let httpMock: HttpTestingController;
-    let createObjectURLSpy: jasmine.Spy<(obj: Blob | MediaSource) => string>;
-    let revokeObjectURLSpy: jasmine.Spy<(url: string) => void>;
-    let clickSpy: jasmine.Spy;
+    let createObjectURLSpy: Mock;
+    let revokeObjectURLSpy: Mock;
+    let clickSpy: Mock;
 
     beforeEach(() => {
         TestBed.configureTestingModule({
@@ -19,9 +21,9 @@ describe('TakeoutDownloadService', () => {
         service = TestBed.inject(TakeoutDownloadService);
         httpMock = TestBed.inject(HttpTestingController);
 
-        createObjectURLSpy = spyOn(URL, 'createObjectURL').and.returnValue('blob:test-url');
-        revokeObjectURLSpy = spyOn(URL, 'revokeObjectURL');
-        clickSpy = spyOn(HTMLAnchorElement.prototype, 'click');
+        createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:test-url');
+        revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL');
+        clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click');
     });
 
     afterEach(() => {

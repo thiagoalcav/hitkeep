@@ -84,27 +84,9 @@
                     "builder": "@angular/build:extract-i18n"
                 },
                 "test": {
-                    "builder": "@angular/build:karma",
+                    "builder": "@angular/build:unit-test",
                     "options": {
-                        "tsConfig": "tsconfig.spec.json",
-                        "inlineStyleLanguage": "scss",
-                        "assets": [
-                            {
-                                "glob": "**/*",
-                                "input": "public"
-                            },
-                            {
-                                "glob": "standalone.js",
-                                "input": "node_modules/@scalar/api-reference/dist/browser",
-                                "output": "vendor/scalar"
-                            },
-                            {
-                                "glob": "**/*.svg",
-                                "input": "node_modules/circle-flags/flags",
-                                "output": "flags"
-                            }
-                        ],
-                        "styles": ["src/styles.scss"]
+                      "browsers": ["chromium"]
                     }
                 },
                 "lint": {

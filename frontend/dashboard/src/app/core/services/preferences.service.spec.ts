@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 import { PreferencesService } from '@services/preferences.service';
 
 describe('PreferencesService', () => {
@@ -12,8 +13,10 @@ describe('PreferencesService', () => {
 
         // Mock LocalStorage
         const store: Record<string, string> = {};
-        spyOn(localStorage, 'getItem').and.callFake((key) => store[key] || null);
-        spyOn(localStorage, 'setItem').and.callFake((key, value) => (store[key] = value + ''));
+        vi.spyOn(localStorage, 'getItem').mockImplementation((key: string) => store[key] || null);
+        vi.spyOn(localStorage, 'setItem').mockImplementation((key: string, value: string) => {
+            store[key] = value;
+        });
     });
 
     it('should be created', () => {

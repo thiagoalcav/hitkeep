@@ -76,4 +76,4 @@ jobs:
         working-directory: frontend/dashboard
         env:
           CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
-        run: npm run test -- --watch=false --browsers=ChromeHeadless --no-progress
+        run: npm run test -- --watch=false --no-progress

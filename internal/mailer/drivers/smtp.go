@@ -68,8 +68,8 @@ func (s *SMTPDriver) Send(to []string, subject string, htmlBody string, textBody
 	}
 
 	msg.Subject(subject)
-	msg.SetBodyString(mail.TypeTextHTML, htmlBody)
-	msg.AddAlternativeString(mail.TypeTextPlain, textBody)
+	msg.SetBodyString(mail.TypeTextPlain, textBody)
+	msg.AddAlternativeString(mail.TypeTextHTML, htmlBody)
 
 	return s.client.DialAndSend(msg)
 }

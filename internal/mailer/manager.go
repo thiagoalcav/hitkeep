@@ -6,7 +6,9 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"html/template"
+	htmltpl "html/template"
+	"strings"
+	texttpl "text/template"
 	"time"
 
 	"github.com/Boostport/mjml-go"
@@ -15,7 +17,7 @@ import (
 	"hitkeep/internal/mailer/drivers"
 )
 
-//go:embed templates/*.mjml
+//go:embed templates/*.mjml templates/*.txt
 var templateFS embed.FS
 
 // Mailer acts as the Manager.
@@ -63,20 +65,21 @@ func (m *Mailer) Send(to string, email Mailable) error {
 		return ErrMailerDisabled
 	}
 
-	tmpl, err := template.ParseFS(templateFS, "templates/layout.mjml", "templates/"+email.Template())
-	if err != nil {
-		return fmt.Errorf("failed to parse templates: %w", err)
-	}
-
 	ctx := templateContext{
 		Data: email.Data(),
 	}
 	ctx.Meta.Subject = email.Subject()
 	ctx.Meta.Year = time.Now().Year()
 
+	// Render MJML → HTML
+	htmlTmpl, err := htmltpl.ParseFS(templateFS, "templates/layout.mjml", "templates/"+email.Template())
+	if err != nil {
+		return fmt.Errorf("failed to parse html templates: %w", err)
+	}
+
 	var mjmlBuffer bytes.Buffer
-	if err := tmpl.Execute(&mjmlBuffer, ctx); err != nil {
-		return fmt.Errorf("failed to execute template: %w", err)
+	if err := htmlTmpl.Execute(&mjmlBuffer, ctx); err != nil {
+		return fmt.Errorf("failed to execute html template: %w", err)
 	}
 
 	htmlContent, err := mjml.ToHTML(context.Background(), mjmlBuffer.String(), mjml.WithMinify(true))
@@ -84,6 +87,17 @@ func (m *Mailer) Send(to string, email Mailable) error {
 		return fmt.Errorf("mjml render error: %w", err)
 	}
 
-	// TODO at some point
-	return m.driver.Send([]string{to}, email.Subject(), htmlContent, "Please view this email in an HTML client.")
+	// Render plain-text
+	textTemplateName := strings.TrimSuffix(email.Template(), ".mjml") + ".txt"
+	textTmpl, err := texttpl.ParseFS(templateFS, "templates/layout.txt", "templates/"+textTemplateName)
+	if err != nil {
+		return fmt.Errorf("failed to parse text templates: %w", err)
+	}
+
+	var textBuffer bytes.Buffer
+	if err := textTmpl.Execute(&textBuffer, ctx); err != nil {
+		return fmt.Errorf("failed to execute text template: %w", err)
+	}
+
+	return m.driver.Send([]string{to}, email.Subject(), htmlContent, textBuffer.String())
 }

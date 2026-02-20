@@ -71,14 +71,6 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 
 func (h *handler) handleListUsers() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// TODO: Implement ListUsers in store_user.go if not exists
-		// For now, let's assume it exists or we need to add it.
-		// Based on previous file reads, ListUsers wasn't in store_user.go.
-		// I'll need to add it. For now, I'll stub it or use a placeholder.
-
-		// Actually, I should add ListUsers to store_user.go first.
-		// But let's write the handler assuming it will be there.
-
 		users, err := h.ctx.Store.ListUsers(r.Context())
 		if err != nil {
 			slog.Error("Failed to list users", "error", err)

@@ -1,0 +1,12 @@
+{{ define "content" -}}
+You've been invited!
+====================
+
+Hello,
+
+{{ .Inviter }} has invited you to join {{ .SiteName }} on HitKeep.
+
+Click the link below to accept the invitation and set up your account.
+
+Accept invitation: {{ .Link }}
+{{- end }}

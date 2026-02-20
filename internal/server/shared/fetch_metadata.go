@@ -23,7 +23,7 @@ func FetchMetadataMiddleware(publicURL string, next http.Handler) http.Handler {
 					expectedOrigin = requestOrigin(r)
 				}
 				if !matchesOriginOrReferer(r, expectedOrigin) {
-					http.Error(w, "Missing or invalid Origin/Referer for state-changing API request", http.StatusForbidden)
+					http.Error(w, "Not found", http.StatusNotFound)
 					return
 				}
 			}
@@ -32,17 +32,15 @@ func FetchMetadataMiddleware(publicURL string, next http.Handler) http.Handler {
 			return
 		}
 
-		// Dashboard/API isolation: deny browser requests coming from other sites.
 		if strings.HasPrefix(path, "/api/") && secFetchSite != "same-origin" {
-			http.Error(w, "Cross-site request to API forbidden", http.StatusForbidden)
+			http.Error(w, "Not found", http.StatusNotFound)
 			return
 		}
 
-		// Public ingest endpoints may be cross-site, but should never be navigated directly.
 		if path == "/ingest" || strings.HasPrefix(path, "/ingest/") {
 			mode := strings.ToLower(strings.TrimSpace(r.Header.Get("Sec-Fetch-Mode")))
 			if mode == "navigate" || mode == "nested-navigate" {
-				http.Error(w, "Ingestion endpoint is not navigable", http.StatusForbidden)
+				http.Error(w, "Not found", http.StatusNotFound)
 				return
 			}
 		}

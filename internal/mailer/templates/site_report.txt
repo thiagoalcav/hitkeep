@@ -1,0 +1,34 @@
+{{ define "content" }}{{ .FreqLabel }} Analytics Report
+{{ .SiteDomain }} · {{ .PeriodLabel }}
+
+METRICS
+-------
+Pageviews:    {{ .Current.Pageviews }} ({{ percentChange .Current.Pageviews .Previous.Pageviews }})
+Visitors:     {{ .Current.Visitors }} ({{ percentChange .Current.Visitors .Previous.Visitors }})
+Bounce Rate:  {{ printf "%.1f" .Current.BounceRate }}%
+Avg Duration: {{ formatDuration .Current.AvgSessionDuration }}
+
+{{ if .Current.TopPages }}
+TOP PAGES
+---------
+{{ range $i, $p := .Current.TopPages }}{{ if lt $i 5 }}{{ $p.Name }}: {{ $p.Value }}
+{{ end }}{{ end }}
+{{ end }}
+{{ if .Current.TopReferrers }}
+TOP REFERRERS
+-------------
+{{ range $i, $r := .Current.TopReferrers }}{{ if lt $i 5 }}{{ $r.Name }}: {{ $r.Value }}
+{{ end }}{{ end }}
+{{ end }}
+{{ if .Current.Goals }}
+GOAL COMPLETIONS
+----------------
+{{ range .Current.Goals }}{{ .Name }}: {{ .Conversions }}
+{{ end }}
+{{ end }}
+View full dashboard: {{ .DashURL }}
+
+---
+You received this email because you have analytics reports enabled.
+Manage preferences: {{ .SettingsURL }}
+{{ end }}

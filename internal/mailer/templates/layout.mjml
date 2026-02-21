@@ -1,6 +1,10 @@
 <mjml>
   <mj-head>
     <mj-title>{{ .Meta.Subject }}</mj-title>
+    <mj-raw>
+      <meta name="color-scheme" content="light dark" />
+      <meta name="supported-color-schemes" content="light dark" />
+    </mj-raw>
     <mj-font
       name="Lexend"
       href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;700&display=swap"
@@ -23,32 +27,94 @@
       <mj-divider border-color="#e2e8f0" border-width="1px" />
     </mj-attributes>
     <mj-style>
-      .body-bg {
-        background-color: #f1f5f9;
-      }
-      .card-bg {
-        background-color: #ffffff;
-      }
-      .brand-text {
-        color: #18181a;
-      }
-      .footer-text {
-        color: #94a3b8;
+      :root {
+        color-scheme: light dark;
+        supported-color-schemes: light dark;
       }
 
       @media (prefers-color-scheme: dark) {
+        /* ── Body ── */
         .body-wrapper > div {
-          background-color: #000000 !important;
+          background-color: #0f172a !important;
         }
+
+        /* ── Card ── */
         .card-bg > table {
-          background-color: #18181a !important;
-          background: #18181a !important;
+          background-color: #1e293b !important;
+          background: #1e293b !important;
         }
+
+        /* ── Brand ── */
         .brand-text div {
-          color: #ffffff !important;
+          color: #f8fafc !important;
         }
+
+        /* ── Footer ── */
         .footer-text div {
           color: #64748b !important;
+        }
+
+        /* ── Card text (mj-text elements) ── */
+        .dark-text div {
+          color: #f1f5f9 !important;
+        }
+
+        /* ── Muted / subtitle text ── */
+        .muted div {
+          color: #94a3b8 !important;
+        }
+
+        /* ── Section headings (Top Pages, etc.) ── */
+        .section-heading div {
+          color: #f1f5f9 !important;
+        }
+
+        /* ── Table inherited text color ──
+           Sets inherited color for child cells. Cells with
+           their own inline color (change indicators) are NOT
+           overridden because inheritance has lowest priority. */
+        .dark-table table {
+          color: #e2e8f0 !important;
+        }
+
+        /* ── Table headers (th has inline color, so !important is needed) ── */
+        .dark-table th {
+          color: #94a3b8 !important;
+          border-color: #334155 !important;
+        }
+
+        /* ── Header row border ── */
+        .tbl-header {
+          border-color: #334155 !important;
+        }
+
+        /* ── Alternating rows ── */
+        .alt-row {
+          background-color: #162033 !important;
+        }
+
+        /* ── Change indicators (boost brightness for dark bg) ── */
+        .change-up {
+          color: #4ade80 !important;
+        }
+        .change-down {
+          color: #f87171 !important;
+        }
+        .change-neutral {
+          color: #94a3b8 !important;
+        }
+
+        /* ── Dividers (mj-divider generates <p> with border) ── */
+        .card-bg p {
+          border-color: #334155 !important;
+        }
+
+        /* ── Info / unsubscribe footer ── */
+        .info-text div {
+          color: #475569 !important;
+        }
+        .info-text a {
+          color: #33d399 !important;
         }
       }
     </mj-style>
@@ -61,6 +127,7 @@
           align="center"
           font-size="24px"
           font-weight="700"
+          color="#000000"
           css-class="brand-text"
         >
           HitKeep

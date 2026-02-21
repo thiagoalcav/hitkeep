@@ -76,13 +76,23 @@ func (s *Store) CompletePasswordReset(ctx context.Context, token string, newHash
 		}
 
 		// 3. Cleanup
+		_, _ = tx.ExecContext(ctx, "DELETE FROM remember_me_tokens WHERE user_id = (SELECT id FROM users WHERE email = ?)", email)
 		_, err = tx.ExecContext(ctx, "DELETE FROM password_resets WHERE token = ?", token)
 		return err
 	})
 }
 
 func (s *Store) UpdatePasswordByID(ctx context.Context, userID string, newHashedPassword string) error {
-	return s.Exec(ctx, "UPDATE users SET password = ? WHERE id = ?", newHashedPassword, userID)
+	return s.Transact(ctx, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, "UPDATE users SET password = ? WHERE id = ?", newHashedPassword, userID); err != nil {
+			return err
+		}
+		// Wipe active sessions
+		if _, err := tx.ExecContext(ctx, "DELETE FROM remember_me_tokens WHERE user_id = ?", userID); err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (s *Store) CreateRememberMeToken(ctx context.Context, userID uuid.UUID) (string, error) {

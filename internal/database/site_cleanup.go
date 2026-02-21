@@ -35,6 +35,7 @@ var siteDeleteSteps = []siteDeleteStep{
 	{table: "funnels", query: "DELETE FROM funnels WHERE site_id = ?"},
 	{table: "events", query: "DELETE FROM events WHERE site_id = ?"},
 	{table: "hits", query: "DELETE FROM hits WHERE site_id = ?"},
+	{table: "site_report_subscriptions", query: "DELETE FROM site_report_subscriptions WHERE site_id = ?"},
 }
 
 var knownSiteDeleteTables = func() map[string]struct{} {

@@ -1,0 +1,14 @@
+{{ define "content" }}{{ .FreqLabel }} Analytics Digest
+{{ .PeriodLabel }}
+
+YOUR SITES
+----------
+{{ range .Sites }}{{ .Domain }}: {{ .Pageviews }} pageviews ({{ percentChange .Pageviews .PrevPageviews }})
+  Dashboard: {{ .DashURL }}
+{{ end }}
+View Dashboard: {{ .DashURL }}
+
+---
+You received this email because you have analytics reports enabled.
+Manage preferences: {{ .SettingsURL }}
+{{ end }}

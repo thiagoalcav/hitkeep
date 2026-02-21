@@ -16,7 +16,12 @@
         "funnels": "Entonnoirs",
         "utm": "UTM",
         "apiClients": "Clients API",
-        "apiReference": "Reference API"
+        "apiReference": "Reference API",
+        "account": "Compte",
+        "settings": "Paramètres utilisateur",
+        "settingsAria": "Aller aux paramètres utilisateur",
+        "emailReports": "Rapports par email",
+        "emailReportsAria": "Aller aux rapports par email"
     },
     "common": {
         "actions": {
@@ -25,8 +30,12 @@
             "clearAll": "Tout effacer",
             "close": "Fermer",
             "downloadXlsx": "Telecharger XLSX",
-            "exportCsv": "Exporter CSV"
+            "exportCsv": "Exporter CSV",
+            "save": "Enregistrer"
         },
+        "saved": "Enregistré",
+        "saveFailed": "Échec de l'enregistrement. Veuillez réessayer.",
+        "loading": "Chargement...",
         "columns": {
             "actions": "Actions",
             "added": "Ajoute",
@@ -348,6 +357,27 @@
             "exportStatus": {
                 "success": "Le telechargement a demarre.",
                 "error": "Echec de l'export des donnees. Veuillez reessayer."
+            }
+        },
+        "reports": {
+            "breadcrumb": "Rapports par email",
+            "subtitle": "Configurez des emails d'analyse planifiés pour vos sites.",
+            "digest": {
+                "title": "Résumé consolidé",
+                "description": "Recevez un email récapitulatif pour tous vos sites."
+            },
+            "perSite": {
+                "title": "Rapports par site",
+                "description": "Emails individuels pour chaque site.",
+                "empty": "Aucun site trouvé. Ajoutez un site pour configurer des rapports."
+            },
+            "frequency": {
+                "daily": "Quotidien",
+                "weekly": "Hebdomadaire",
+                "monthly": "Mensuel",
+                "daily.hint": "Statistiques du jour précédent",
+                "weekly.hint": "Chaque lundi, les 7 derniers jours",
+                "monthly.hint": "Le 1er du mois, mois précédent"
             }
         },
         "apiClients": {

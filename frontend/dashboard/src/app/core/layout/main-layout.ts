@@ -95,6 +95,16 @@ import { DrawerModule } from 'primeng/drawer';
                     >
                         <i class="pi pi-book" aria-hidden="true"></i> <span>{{ 'nav.apiReference' | transloco }}</span>
                     </a>
+
+                    <div class="text-xs font-semibold text-muted-color uppercase px-2 mt-4 mb-2" role="presentation">{{ 'nav.account' | transloco }}</div>
+                    <a
+                        routerLink="/settings/reports"
+                        routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
+                        class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        [attr.aria-label]="'nav.emailReportsAria' | transloco"
+                    >
+                        <i class="pi pi-envelope" aria-hidden="true"></i> <span>{{ 'nav.emailReports' | transloco }}</span>
+                    </a>
                 </nav>
             </aside>
 
@@ -174,6 +184,16 @@ import { DrawerModule } from 'primeng/drawer';
                             [attr.aria-label]="'nav.apiReferenceAria' | transloco"
                         >
                             <i class="pi pi-book"></i> <span>{{ 'nav.apiReference' | transloco }}</span>
+                        </a>
+                        <div class="text-xs font-semibold text-muted-color uppercase px-3 mt-4 mb-2" role="presentation">{{ 'nav.account' | transloco }}</div>
+                        <a
+                            routerLink="/settings/reports"
+                            (click)="isMobileDrawerOpen.set(false)"
+                            routerLinkActive="bg-primary-50 text-primary-700"
+                            class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
+                            [attr.aria-label]="'nav.emailReportsAria' | transloco"
+                        >
+                            <i class="pi pi-envelope"></i> <span>{{ 'nav.emailReports' | transloco }}</span>
                         </a>
                     </nav>
                 </div>

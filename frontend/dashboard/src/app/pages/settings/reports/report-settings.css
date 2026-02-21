@@ -1,0 +1,71 @@
+.settings-content {
+    container-type: inline-size;
+}
+
+.settings-grid {
+    display: grid;
+    gap: 1.5rem;
+}
+
+.settings-card-action {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.35rem;
+}
+
+:host ::ng-deep .settings-action-btn {
+    min-width: 11rem;
+    justify-content: center;
+}
+
+.site-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0;
+}
+
+.site-domain {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    min-width: 0;
+    flex: 1;
+}
+
+.site-domain i {
+    color: var(--p-text-muted-color);
+    font-size: 0.875rem;
+    flex-shrink: 0;
+}
+
+.site-domain span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.site-toggles {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-shrink: 0;
+}
+
+.site-toggle-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.site-toggle-label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--p-text-muted-color);
+}

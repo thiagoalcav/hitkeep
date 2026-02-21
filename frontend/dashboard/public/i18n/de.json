@@ -16,7 +16,12 @@
         "funnels": "Funnels",
         "utm": "UTM",
         "apiClients": "API-Clients",
-        "apiReference": "API-Referenz"
+        "apiReference": "API-Referenz",
+        "account": "Konto",
+        "settings": "Benutzereinstellungen",
+        "settingsAria": "Zu den Benutzereinstellungen",
+        "emailReports": "E-Mail-Berichte",
+        "emailReportsAria": "Zu den E-Mail-Berichten"
     },
     "common": {
         "actions": {
@@ -25,8 +30,12 @@
             "clearAll": "Alle entfernen",
             "close": "Schließen",
             "downloadXlsx": "XLSX herunterladen",
-            "exportCsv": "CSV exportieren"
+            "exportCsv": "CSV exportieren",
+            "save": "Speichern"
         },
+        "saved": "Gespeichert",
+        "saveFailed": "Speichern fehlgeschlagen. Bitte erneut versuchen.",
+        "loading": "Laden...",
         "columns": {
             "actions": "Aktionen",
             "added": "Hinzugefügt",
@@ -348,6 +357,27 @@
             "exportStatus": {
                 "success": "Download wurde gestartet.",
                 "error": "Datenexport fehlgeschlagen. Bitte versuchen Sie es erneut."
+            }
+        },
+        "reports": {
+            "breadcrumb": "E-Mail-Berichte",
+            "subtitle": "Konfigurieren Sie geplante Analyse-E-Mails für Ihre Websites.",
+            "digest": {
+                "title": "Konsolidierter Digest",
+                "description": "Erhalten Sie eine Zusammenfassungs-E-Mail für alle Ihre Websites."
+            },
+            "perSite": {
+                "title": "Website-spezifische Berichte",
+                "description": "Einzelne E-Mails für jede Website.",
+                "empty": "Keine Websites gefunden. Fügen Sie eine Website hinzu."
+            },
+            "frequency": {
+                "daily": "Täglich",
+                "weekly": "Wöchentlich",
+                "monthly": "Monatlich",
+                "daily.hint": "Statistiken des Vortages",
+                "weekly.hint": "Jeden Montag, die letzten 7 Tage",
+                "monthly.hint": "Am 1. des Monats, letzter Monat"
             }
         },
         "apiClients": {

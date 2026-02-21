@@ -259,3 +259,35 @@ type IPExclusion struct {
 	CreatedAt   time.Time  `json:"created_at"`
 	CreatedBy   *uuid.UUID `json:"created_by,omitempty"`
 }
+
+// ReportFrequency is the cadence for scheduled analytics emails.
+type ReportFrequency string
+
+const (
+	ReportFrequencyDaily   ReportFrequency = "daily"
+	ReportFrequencyWeekly  ReportFrequency = "weekly"
+	ReportFrequencyMonthly ReportFrequency = "monthly"
+)
+
+// SiteReportSubscription is one site's subscription state for the current user.
+// Domain is read-only, populated server-side.
+type SiteReportSubscription struct {
+	SiteID  uuid.UUID `json:"site_id"`
+	Domain  string    `json:"domain"`
+	Daily   bool      `json:"daily"`
+	Weekly  bool      `json:"weekly"`
+	Monthly bool      `json:"monthly"`
+}
+
+// DigestSubscription holds the per-frequency enabled flags for a consolidated digest.
+type DigestSubscription struct {
+	Daily   bool `json:"daily"`
+	Weekly  bool `json:"weekly"`
+	Monthly bool `json:"monthly"`
+}
+
+// ReportSubscriptions is the full subscription state for a user.
+type ReportSubscriptions struct {
+	Sites  []SiteReportSubscription `json:"sites"`
+	Digest DigestSubscription       `json:"digest"`
+}

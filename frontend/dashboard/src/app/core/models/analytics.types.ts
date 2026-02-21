@@ -143,3 +143,24 @@ export interface SystemStatus {
     needs_setup: boolean;
     version: string;
 }
+
+export type ReportFrequency = 'daily' | 'weekly' | 'monthly';
+
+export interface FrequencyPrefs {
+    daily: boolean;
+    weekly: boolean;
+    monthly: boolean;
+}
+
+export interface SiteReportSubscription {
+    site_id: string;
+    domain: string;
+    daily: boolean;
+    weekly: boolean;
+    monthly: boolean;
+}
+
+export interface ReportSubscriptions {
+    sites: SiteReportSubscription[];
+    digest: FrequencyPrefs;
+}

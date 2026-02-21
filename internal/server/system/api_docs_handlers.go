@@ -72,6 +72,7 @@ func openAPISpecV1(publicURL string) map[string]any {
 			{"name": "Funnels", "description": "Funnel CRUD and analytics endpoints."},
 			{"name": "Share", "description": "Share-link management and public shared analytics endpoints."},
 			{"name": "Takeout", "description": "Data export endpoints for user and site data."},
+			{"name": "Reports", "description": "Report subscription endpoints for digest and per-site scheduled analytics emails."},
 		},
 		"components": map[string]any{
 			"securitySchemes": map[string]any{
@@ -124,7 +125,8 @@ func openAPISpecV1(publicURL string) map[string]any {
 					"description": "Export format. Supported values: xlsx, csv, parquet, json, ndjson. Defaults: xlsx for takeout endpoints, csv for hits export endpoints.",
 					"schema":      map[string]any{"type": "string", "enum": exportfmt.SupportedFormats()},
 				},
-				"avatarSize": map[string]any{"name": "s", "in": "query", "schema": map[string]any{"type": "integer", "minimum": 32, "maximum": 256}},
+				"avatarSize":   map[string]any{"name": "s", "in": "query", "schema": map[string]any{"type": "integer", "minimum": 32, "maximum": 256}},
+				"reportSiteID": map[string]any{"name": "site_id", "in": "path", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}, "description": "Site UUID."},
 			},
 			"schemas": map[string]any{
 				"Error": map[string]any{
@@ -428,6 +430,34 @@ func openAPISpecV1(publicURL string) map[string]any {
 									"latest":      map[string]any{"type": "boolean"},
 								},
 							},
+						},
+					},
+				},
+				"DigestSubscription": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"daily":   map[string]any{"type": "boolean"},
+						"weekly":  map[string]any{"type": "boolean"},
+						"monthly": map[string]any{"type": "boolean"},
+					},
+				},
+				"SiteReportSubscription": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"site_id": map[string]any{"type": "string", "format": "uuid"},
+						"domain":  map[string]any{"type": "string"},
+						"daily":   map[string]any{"type": "boolean"},
+						"weekly":  map[string]any{"type": "boolean"},
+						"monthly": map[string]any{"type": "boolean"},
+					},
+				},
+				"ReportSubscriptions": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"digest": map[string]any{"$ref": "#/components/schemas/DigestSubscription"},
+						"sites": map[string]any{
+							"type":  "array",
+							"items": map[string]any{"$ref": "#/components/schemas/SiteReportSubscription"},
 						},
 					},
 				},
@@ -763,6 +793,21 @@ func openAPISpecV1(publicURL string) map[string]any {
 			},
 			"/api/sites/{id}/takeout": map[string]any{
 				"get": op([]string{"Takeout"}, "Site takeout", "Exports site data as xlsx/csv/parquet/json/ndjson.", secCookie(), []any{paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/format")}, nil, map[string]any{"200": desc("Export file stream")}),
+			},
+
+			"/api/user/report-subscriptions": map[string]any{
+				"get": op([]string{"Reports"}, "Get report subscriptions", "Returns all report subscription preferences for the authenticated user, including per-site and digest settings.", secCookie(), nil, nil,
+					map[string]any{"200": jsonRefResp("Report subscriptions", "#/components/schemas/ReportSubscriptions")}),
+			},
+			"/api/user/report-subscriptions/digest": map[string]any{
+				"put": op([]string{"Reports"}, "Update digest subscription", "Updates the consolidated digest subscription frequencies for the authenticated user.", secCookie(), nil,
+					jsonBody(map[string]any{"$ref": "#/components/schemas/DigestSubscription"}),
+					map[string]any{"204": desc("Updated"), "400": errResp("Invalid request")}),
+			},
+			"/api/user/report-subscriptions/sites/{site_id}": map[string]any{
+				"put": op([]string{"Reports"}, "Update site report subscription", "Updates per-site report subscription frequencies for the authenticated user.", secCookie(), []any{paramRef("#/components/parameters/reportSiteID")},
+					jsonBody(map[string]any{"$ref": "#/components/schemas/DigestSubscription"}),
+					map[string]any{"204": desc("Updated"), "400": errResp("Invalid site ID or request")}),
 			},
 
 			"/api/sites/{id}/share": map[string]any{

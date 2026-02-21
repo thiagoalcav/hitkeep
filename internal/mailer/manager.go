@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	htmltpl "html/template"
+	"math"
 	"strings"
 	texttpl "text/template"
 	"time"
@@ -27,6 +29,88 @@ type Mailer struct {
 }
 
 var ErrMailerDisabled = errors.New("mailer not configured")
+
+// templateFuncs contains helpers available to all email templates.
+var templateFuncs = htmltpl.FuncMap{
+	// percentChange returns a formatted change label like "+12%" or "−3%" or "—".
+	"percentChange": func(current, prev int) string {
+		if prev == 0 {
+			if current == 0 {
+				return "—"
+			}
+			return "+100%"
+		}
+		pct := (float64(current-prev) / float64(prev)) * 100
+		if math.Abs(pct) < 0.05 {
+			return "—"
+		}
+		if pct > 0 {
+			return fmt.Sprintf("+%.0f%%", pct)
+		}
+		return fmt.Sprintf("−%.0f%%", math.Abs(pct))
+	},
+	// formatDuration formats seconds into "Xm Ys" or "Xs".
+	"formatDuration": func(seconds float64) string {
+		s := int(seconds)
+		if s >= 60 {
+			return fmt.Sprintf("%dm %ds", s/60, s%60)
+		}
+		return fmt.Sprintf("%ds", s)
+	},
+	// mod2 returns i % 2 for alternating row shading.
+	"mod2": func(i int) int { return i % 2 },
+	// svgBarChart renders a simple bar chart from a slice of pageview counts and
+	// returns an mj-image tag embedding the SVG as a base64 data URI.
+	"svgBarChart": func(values []int) htmltpl.HTML {
+		const (
+			svgW   = 500
+			svgH   = 64
+			gap    = 2
+			radius = 2
+			color  = "#3b82f6"
+		)
+		n := len(values)
+		if n == 0 {
+			return ""
+		}
+		maxV := 0
+		for _, v := range values {
+			if v > maxV {
+				maxV = v
+			}
+		}
+		if maxV == 0 {
+			return ""
+		}
+		barW := (svgW - gap*(n-1)) / n
+		if barW < 1 {
+			barW = 1
+		}
+		var sb strings.Builder
+		fmt.Fprintf(&sb, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d">`, svgW, svgH)
+		for i, v := range values {
+			barH := int(math.Round(float64(v) / float64(maxV) * float64(svgH)))
+			if barH < 1 && v > 0 {
+				barH = 1
+			}
+			x := i * (barW + gap)
+			y := svgH - barH
+			fmt.Fprintf(&sb, `<rect x="%d" y="%d" width="%d" height="%d" fill="%s" rx="%d"/>`,
+				x, y, barW, barH, color, radius)
+		}
+		sb.WriteString(`</svg>`)
+		encoded := base64.StdEncoding.EncodeToString([]byte(sb.String()))
+		//nolint:gosec // G203: encoded is pure base64 of an SVG built from integer math and constants; no user input enters the string.
+		return htmltpl.HTML(`<mj-image src="data:image/svg+xml;base64,` + encoded + `" padding-bottom="20px" width="500px" />`)
+	},
+}
+
+// textTemplateFuncs is the same set but for text/template (no html.HTML safety wrapper needed).
+var textTemplateFuncs = texttpl.FuncMap{
+	"percentChange":  templateFuncs["percentChange"],
+	"formatDuration": templateFuncs["formatDuration"],
+	"mod2":           templateFuncs["mod2"],
+}
 
 type templateContext struct {
 	Meta struct {
@@ -72,7 +156,7 @@ func (m *Mailer) Send(to string, email Mailable) error {
 	ctx.Meta.Year = time.Now().Year()
 
 	// Render MJML → HTML
-	htmlTmpl, err := htmltpl.ParseFS(templateFS, "templates/layout.mjml", "templates/"+email.Template())
+	htmlTmpl, err := htmltpl.New("layout.mjml").Funcs(templateFuncs).ParseFS(templateFS, "templates/layout.mjml", "templates/"+email.Template())
 	if err != nil {
 		return fmt.Errorf("failed to parse html templates: %w", err)
 	}
@@ -89,7 +173,7 @@ func (m *Mailer) Send(to string, email Mailable) error {
 
 	// Render plain-text
 	textTemplateName := strings.TrimSuffix(email.Template(), ".mjml") + ".txt"
-	textTmpl, err := texttpl.ParseFS(templateFS, "templates/layout.txt", "templates/"+textTemplateName)
+	textTmpl, err := texttpl.New("layout.txt").Funcs(textTemplateFuncs).ParseFS(templateFS, "templates/layout.txt", "templates/"+textTemplateName)
 	if err != nil {
 		return fmt.Errorf("failed to parse text templates: %w", err)
 	}

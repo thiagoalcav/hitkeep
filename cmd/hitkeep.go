@@ -21,6 +21,7 @@ import (
 	"hitkeep/internal/database"
 	"hitkeep/internal/hklog"
 	"hitkeep/internal/ingest"
+	"hitkeep/internal/mailer"
 	"hitkeep/internal/server"
 	"hitkeep/internal/worker"
 	"hitkeep/public"
@@ -82,6 +83,11 @@ func Run() {
 	publicFS := public.FS()
 	check(err)
 
+	mailSvc, err := mailer.New(conf)
+	if err != nil {
+		slog.Warn("Mailer not configured, email features will not work", "error", err)
+	}
+
 	var store *database.Store
 	var producer *nsq.Producer
 
@@ -99,6 +105,10 @@ func Run() {
 		rollupWorker := worker.NewRollupBackfillWorker(store)
 		go rollupWorker.Start(gCtx)
 
+		// Start Report Worker
+		reportWorker := worker.NewReportWorker(store, mailSvc, conf.PublicURL)
+		go reportWorker.Start(gCtx)
+
 		g.Go(func() error {
 			<-gCtx.Done()
 			leaderShutdown()
@@ -108,7 +118,7 @@ func Run() {
 		slog.Debug("Node is a follower, skipping stateful service initialization.")
 	}
 
-	httpServer := server.New(conf, publicFS, store, clusterManager, producer)
+	httpServer := server.New(conf, publicFS, store, clusterManager, producer, mailSvc)
 
 	g.Go(func() error {
 		slog.Info("HTTP server starting", "addr", conf.HTTPAddr)

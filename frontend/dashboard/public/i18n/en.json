@@ -16,7 +16,12 @@
         "funnels": "Funnels",
         "utm": "UTM",
         "apiClients": "API Clients",
-        "apiReference": "API Reference"
+        "apiReference": "API Reference",
+        "account": "Account",
+        "settings": "User Settings",
+        "settingsAria": "Go to user settings",
+        "emailReports": "Email Reports",
+        "emailReportsAria": "Go to email reports"
     },
     "common": {
         "actions": {
@@ -25,8 +30,12 @@
             "clearAll": "Clear all",
             "close": "Close",
             "downloadXlsx": "Download XLSX",
-            "exportCsv": "Export CSV"
+            "exportCsv": "Export CSV",
+            "save": "Save"
         },
+        "saved": "Saved",
+        "saveFailed": "Save failed. Please try again.",
+        "loading": "Loading...",
         "columns": {
             "actions": "Actions",
             "added": "Added",
@@ -348,6 +357,27 @@
             "exportStatus": {
                 "success": "Download started.",
                 "error": "Failed to export data. Please try again."
+            }
+        },
+        "reports": {
+            "breadcrumb": "Email Reports",
+            "subtitle": "Configure scheduled analytics emails for your sites.",
+            "digest": {
+                "title": "Consolidated Digest",
+                "description": "Receive one summary email across all your sites."
+            },
+            "perSite": {
+                "title": "Per-site Reports",
+                "description": "Individual emails for each site.",
+                "empty": "No sites found. Add a site to configure per-site reports."
+            },
+            "frequency": {
+                "daily": "Daily",
+                "weekly": "Weekly",
+                "monthly": "Monthly",
+                "daily.hint": "Previous day's stats",
+                "weekly.hint": "Every Monday, covers past 7 days",
+                "monthly.hint": "1st of each month, covers last month"
             }
         },
         "apiClients": {

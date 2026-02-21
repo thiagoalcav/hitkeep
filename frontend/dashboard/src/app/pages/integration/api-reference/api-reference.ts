@@ -57,7 +57,9 @@ export class APIReferencePage implements OnInit, OnDestroy {
             theme,
             hideThemeToggle: '1',
             agent: '0',
-            defaultFonts: '0'
+            defaultFonts: '0',
+            showClient: '0',
+            telemetry: '0'
         });
 
         const frameUrl = `/scalar/index.html?${query.toString()}`;

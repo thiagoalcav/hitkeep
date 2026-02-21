@@ -54,15 +54,10 @@ type Server struct {
 	scalarIndex []byte
 }
 
-func New(conf *config.Config, publicFS fs.FS, store *database.Store, cluster *cluster.Manager, producer *nsq.Producer) *Server {
+func New(conf *config.Config, publicFS fs.FS, store *database.Store, cluster *cluster.Manager, producer *nsq.Producer, mailService *mailer.Mailer) *Server {
 	ingestLim := shared.NewIPRateLimiter(rate.Limit(conf.IngestRateLimit), conf.IngestBurst)
 	apiLim := shared.NewIPRateLimiter(rate.Limit(conf.ApiRateLimit), conf.ApiBurst)
 	authLim := shared.NewIPRateLimiter(rate.Limit(conf.AuthRateLimit), conf.AuthBurst)
-
-	mailService, err := mailer.New(conf)
-	if err != nil {
-		slog.Warn("Failed to initialize mailer. Email features will not work.", "error", err)
-	}
 
 	takeoutService := takeout.NewTakeoutService(store, "archive/takeout")
 

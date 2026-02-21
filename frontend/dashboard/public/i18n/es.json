@@ -16,7 +16,12 @@
         "funnels": "Embudos",
         "utm": "UTM",
         "apiClients": "Clientes API",
-        "apiReference": "Referencia API"
+        "apiReference": "Referencia API",
+        "account": "Cuenta",
+        "settings": "Configuración de usuario",
+        "settingsAria": "Ir a configuración de usuario",
+        "emailReports": "Informes por email",
+        "emailReportsAria": "Ir a informes por email"
     },
     "common": {
         "actions": {
@@ -25,8 +30,12 @@
             "clearAll": "Limpiar todo",
             "close": "Cerrar",
             "downloadXlsx": "Descargar XLSX",
-            "exportCsv": "Exportar CSV"
+            "exportCsv": "Exportar CSV",
+            "save": "Guardar"
         },
+        "saved": "Guardado",
+        "saveFailed": "Error al guardar. Inténtalo de nuevo.",
+        "loading": "Cargando...",
         "columns": {
             "actions": "Acciones",
             "added": "Agregado",
@@ -348,6 +357,27 @@
             "exportStatus": {
                 "success": "La descarga se ha iniciado.",
                 "error": "No se pudieron exportar los datos. Inténtalo de nuevo."
+            }
+        },
+        "reports": {
+            "breadcrumb": "Informes por email",
+            "subtitle": "Configura emails de analíticas programados para tus sitios.",
+            "digest": {
+                "title": "Resumen consolidado",
+                "description": "Recibe un email de resumen de todos tus sitios."
+            },
+            "perSite": {
+                "title": "Informes por sitio",
+                "description": "Emails individuales por cada sitio.",
+                "empty": "No hay sitios. Añade un sitio para configurar informes."
+            },
+            "frequency": {
+                "daily": "Diario",
+                "weekly": "Semanal",
+                "monthly": "Mensual",
+                "daily.hint": "Estadísticas del día anterior",
+                "weekly.hint": "Cada lunes, últimos 7 días",
+                "monthly.hint": "El 1 de cada mes, mes anterior"
             }
         },
         "apiClients": {

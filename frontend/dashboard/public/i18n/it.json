@@ -16,7 +16,12 @@
         "funnels": "Funnel",
         "utm": "UTM",
         "apiClients": "Client API",
-        "apiReference": "Riferimento API"
+        "apiReference": "Riferimento API",
+        "account": "Account",
+        "settings": "Impostazioni utente",
+        "settingsAria": "Vai alle impostazioni utente",
+        "emailReports": "Report email",
+        "emailReportsAria": "Vai ai report email"
     },
     "common": {
         "actions": {
@@ -25,8 +30,12 @@
             "clearAll": "Cancella tutto",
             "close": "Chiudi",
             "downloadXlsx": "Scarica XLSX",
-            "exportCsv": "Esporta CSV"
+            "exportCsv": "Esporta CSV",
+            "save": "Salva"
         },
+        "saved": "Salvato",
+        "saveFailed": "Salvataggio fallito. Riprova.",
+        "loading": "Caricamento...",
         "columns": {
             "actions": "Azioni",
             "added": "Aggiunto",
@@ -348,6 +357,27 @@
             "exportStatus": {
                 "success": "Download avviato.",
                 "error": "Impossibile esportare i dati. Riprova."
+            }
+        },
+        "reports": {
+            "breadcrumb": "Report email",
+            "subtitle": "Configura email di analisi pianificate per i tuoi siti.",
+            "digest": {
+                "title": "Riepilogo consolidato",
+                "description": "Ricevi un'email riepilogativa per tutti i tuoi siti."
+            },
+            "perSite": {
+                "title": "Report per sito",
+                "description": "Email individuali per ogni sito.",
+                "empty": "Nessun sito trovato. Aggiungi un sito per configurare i report."
+            },
+            "frequency": {
+                "daily": "Giornaliero",
+                "weekly": "Settimanale",
+                "monthly": "Mensile",
+                "daily.hint": "Statistiche del giorno precedente",
+                "weekly.hint": "Ogni lunedì, ultimi 7 giorni",
+                "monthly.hint": "Il 1° del mese, mese precedente"
             }
         },
         "apiClients": {

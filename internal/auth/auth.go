@@ -12,7 +12,7 @@ import (
 const (
 	CookieName           = "hk_token"
 	RememberMeCookieName = "hk_remember_me"
-	TokenDuration        = 24 * time.Hour
+	TokenDuration        = 15 * time.Minute
 	RememberMeDuration   = 30 * 24 * time.Hour
 )
 

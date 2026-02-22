@@ -9,6 +9,8 @@
         "goalsAria": "Ir a objetivos",
         "funnelsAria": "Ir a embudos",
         "utmAria": "Ir al panel UTM",
+        "utmBuilder": "Generador UTM",
+        "utmBuilderAria": "Ir al generador UTM",
         "apiClientsAria": "Ir a clientes API",
         "apiReferenceAria": "Ir a referencia API",
         "dashboard": "Panel",
@@ -265,6 +267,46 @@
             "medium": "Medio",
             "source": "Fuente",
             "term": "Término"
+        }
+    },
+    "utmBuilder": {
+        "breadcrumb": "Generador UTM",
+        "subtitle": "Genera enlaces de campaña etiquetados para rastrear fuentes de tráfico en tus análisis.",
+        "form": {
+            "title": "Construye tu enlace",
+            "siteSelectLabel": "Rellenar desde un sitio",
+            "siteSelectPlaceholder": "Seleccionar un sitio…",
+            "siteSelectHint": "Al seleccionar un sitio se rellena el campo de URL abajo.",
+            "websiteUrlLabel": "URL del sitio web",
+            "websiteUrlHint": "La URL completa que deseas rastrear, incluyendo https://.",
+            "sourceLabel": "Fuente de campaña",
+            "sourceHint": "De dónde proviene el tráfico — p. ej. google, newsletter, twitter.",
+            "mediumLabel": "Medio de campaña",
+            "mediumHint": "El canal de marketing — p. ej. cpc, email, social.",
+            "campaignLabel": "Nombre de campaña",
+            "campaignHint": "Nombre para identificar esta campaña — p. ej. oferta_verano.",
+            "termLabel": "Término de campaña",
+            "termHint": "Identifica palabras clave de búsqueda de pago.",
+            "contentLabel": "Contenido de campaña",
+            "contentHint": "Diferencia anuncios o enlaces dentro de la misma campaña."
+        },
+        "preview": {
+            "title": "URL generada",
+            "description": "Completa la URL del sitio web y la fuente de campaña para generar un enlace etiquetado.",
+            "copyAction": "Copiar URL"
+        },
+        "reference": {
+            "title": "Referencia de parámetros",
+            "source": "Identifica de dónde proviene el tráfico (p. ej. google, newsletter).",
+            "medium": "El canal de marketing (p. ej. cpc, email, social).",
+            "campaign": "Asocia uno o más enlaces a una campaña específica.",
+            "term": "Identifica palabras clave de búsqueda de pago.",
+            "content": "Diferencia anuncios o enlaces dentro de la misma campaña."
+        },
+        "validation": {
+            "urlRequired": "La URL del sitio web es obligatoria.",
+            "urlInvalid": "Introduce una URL válida que empiece por https:// o http://.",
+            "sourceRequired": "La fuente de campaña es obligatoria."
         }
     },
     "settings": {

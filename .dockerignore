@@ -5,3 +5,6 @@
 hitkeep
 hitkeep.d*
 examples
+charts
+.githooks
+scripts

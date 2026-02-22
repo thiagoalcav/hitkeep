@@ -47,6 +47,10 @@ export const routes: Routes = [
                 loadComponent: () => import('@pages/utm/utm').then((m) => m.UtmDashboard)
             },
             {
+                path: 'utm/builder',
+                loadComponent: () => import('@pages/utm/builder/utm-builder').then((m) => m.UtmBuilder)
+            },
+            {
                 path: 'settings',
                 loadChildren: () => import('@pages/settings/settings.routes').then((m) => m.SETTINGS_ROUTES)
             },

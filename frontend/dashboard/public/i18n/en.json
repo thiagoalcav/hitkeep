@@ -9,6 +9,8 @@
         "goalsAria": "Go to goals",
         "funnelsAria": "Go to funnels",
         "utmAria": "Go to UTM dashboard",
+        "utmBuilder": "UTM Builder",
+        "utmBuilderAria": "Go to UTM Builder",
         "apiClientsAria": "Go to API clients",
         "apiReferenceAria": "Go to API reference",
         "dashboard": "Dashboard",
@@ -265,6 +267,46 @@
             "medium": "Medium",
             "source": "Source",
             "term": "Term"
+        }
+    },
+    "utmBuilder": {
+        "breadcrumb": "UTM Builder",
+        "subtitle": "Generate tagged campaign links to track traffic sources in your analytics.",
+        "form": {
+            "title": "Build your link",
+            "siteSelectLabel": "Pre-fill from site",
+            "siteSelectPlaceholder": "Select a site…",
+            "siteSelectHint": "Selecting a site fills the website URL field below.",
+            "websiteUrlLabel": "Website URL",
+            "websiteUrlHint": "The full URL you want to track, including https://.",
+            "sourceLabel": "Campaign source",
+            "sourceHint": "Where the traffic comes from — e.g. google, newsletter, twitter.",
+            "mediumLabel": "Campaign medium",
+            "mediumHint": "The marketing channel — e.g. cpc, email, social.",
+            "campaignLabel": "Campaign name",
+            "campaignHint": "Name to identify this campaign — e.g. summer_sale.",
+            "termLabel": "Campaign term",
+            "termHint": "Identifies paid search keywords.",
+            "contentLabel": "Campaign content",
+            "contentHint": "Differentiates ads or links within the same campaign."
+        },
+        "preview": {
+            "title": "Generated URL",
+            "description": "Fill in the Website URL and Campaign source to generate a tagged link.",
+            "copyAction": "Copy URL"
+        },
+        "reference": {
+            "title": "Parameter reference",
+            "source": "Identifies where the traffic comes from (e.g. google, newsletter).",
+            "medium": "The marketing channel (e.g. cpc, email, social).",
+            "campaign": "Associates one or more links with a specific campaign.",
+            "term": "Identifies paid search keywords.",
+            "content": "Differentiates ads or links within the same campaign."
+        },
+        "validation": {
+            "urlRequired": "Website URL is required.",
+            "urlInvalid": "Enter a valid URL starting with https:// or http://.",
+            "sourceRequired": "Campaign source is required."
         }
     },
     "settings": {

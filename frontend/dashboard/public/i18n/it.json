@@ -9,6 +9,8 @@
         "goalsAria": "Vai agli obiettivi",
         "funnelsAria": "Vai ai funnel",
         "utmAria": "Vai alla dashboard UTM",
+        "utmBuilder": "Generatore UTM",
+        "utmBuilderAria": "Vai al generatore UTM",
         "apiClientsAria": "Vai ai client API",
         "apiReferenceAria": "Vai al riferimento API",
         "dashboard": "Dashboard",
@@ -265,6 +267,46 @@
             "medium": "Medium",
             "source": "Sorgente",
             "term": "Termine"
+        }
+    },
+    "utmBuilder": {
+        "breadcrumb": "Generatore UTM",
+        "subtitle": "Genera link di campagna taggati per tracciare le fonti di traffico nelle tue analisi.",
+        "form": {
+            "title": "Crea il tuo link",
+            "siteSelectLabel": "Precompila da un sito",
+            "siteSelectPlaceholder": "Seleziona un sito…",
+            "siteSelectHint": "Selezionando un sito si compila il campo URL sottostante.",
+            "websiteUrlLabel": "URL del sito web",
+            "websiteUrlHint": "L'URL completo da tracciare, incluso https://.",
+            "sourceLabel": "Sorgente campagna",
+            "sourceHint": "Da dove proviene il traffico — es. google, newsletter, twitter.",
+            "mediumLabel": "Medium campagna",
+            "mediumHint": "Il canale di marketing — es. cpc, email, social.",
+            "campaignLabel": "Nome campagna",
+            "campaignHint": "Nome per identificare questa campagna — es. saldi_estate.",
+            "termLabel": "Termine campagna",
+            "termHint": "Identifica le parole chiave della ricerca a pagamento.",
+            "contentLabel": "Contenuto campagna",
+            "contentHint": "Differenzia annunci o link all'interno della stessa campagna."
+        },
+        "preview": {
+            "title": "URL generato",
+            "description": "Compila l'URL del sito web e la sorgente campagna per generare un link taggato.",
+            "copyAction": "Copia URL"
+        },
+        "reference": {
+            "title": "Riferimento parametri",
+            "source": "Identifica la provenienza del traffico (es. google, newsletter).",
+            "medium": "Il canale di marketing (es. cpc, email, social).",
+            "campaign": "Associa uno o più link a una campagna specifica.",
+            "term": "Identifica le parole chiave della ricerca a pagamento.",
+            "content": "Differenzia annunci o link all'interno della stessa campagna."
+        },
+        "validation": {
+            "urlRequired": "L'URL del sito web è obbligatorio.",
+            "urlInvalid": "Inserisci un URL valido che inizi con https:// o http://.",
+            "sourceRequired": "La sorgente campagna è obbligatoria."
         }
     },
     "settings": {

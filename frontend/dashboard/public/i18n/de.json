@@ -9,6 +9,8 @@
         "goalsAria": "Zu den Zielen",
         "funnelsAria": "Zu den Funnels",
         "utmAria": "Zum UTM-Dashboard",
+        "utmBuilder": "UTM-Generator",
+        "utmBuilderAria": "Zum UTM-Generator",
         "apiClientsAria": "Zu API-Clients",
         "apiReferenceAria": "Zur API-Referenz",
         "dashboard": "Dashboard",
@@ -265,6 +267,46 @@
             "medium": "Medium",
             "source": "Quelle",
             "term": "Begriff"
+        }
+    },
+    "utmBuilder": {
+        "breadcrumb": "UTM-Generator",
+        "subtitle": "Erstellen Sie getaggte Kampagnenlinks, um Traffic-Quellen in Ihren Analysen zu verfolgen.",
+        "form": {
+            "title": "Link erstellen",
+            "siteSelectLabel": "URL von Website vorausfüllen",
+            "siteSelectPlaceholder": "Website auswählen…",
+            "siteSelectHint": "Durch Auswahl einer Website wird die URL unten vorausgefüllt.",
+            "websiteUrlLabel": "Website-URL",
+            "websiteUrlHint": "Die vollständige URL mit https://, die Sie verfolgen möchten.",
+            "sourceLabel": "Kampagnenquelle",
+            "sourceHint": "Herkunft des Traffics — z. B. google, newsletter, twitter.",
+            "mediumLabel": "Kampagnenmedium",
+            "mediumHint": "Das Marketingmedium — z. B. cpc, email, social.",
+            "campaignLabel": "Kampagnenname",
+            "campaignHint": "Bezeichnung der Kampagne — z. B. summer_sale.",
+            "termLabel": "Kampagnenbegriff",
+            "termHint": "Identifiziert bezahlte Suchbegriffe.",
+            "contentLabel": "Kampagneninhalt",
+            "contentHint": "Unterscheidet Anzeigen oder Links innerhalb derselben Kampagne."
+        },
+        "preview": {
+            "title": "Generierte URL",
+            "description": "Füllen Sie mindestens Website-URL und Kampagnenquelle aus, um einen getaggten Link zu erzeugen.",
+            "copyAction": "URL kopieren"
+        },
+        "reference": {
+            "title": "Parameter-Referenz",
+            "source": "Gibt an, woher der Traffic kommt (z. B. google, newsletter).",
+            "medium": "Das Marketingmedium (z. B. cpc, email, social).",
+            "campaign": "Verknüpft Links mit einer bestimmten Kampagne.",
+            "term": "Identifiziert bezahlte Suchbegriffe.",
+            "content": "Unterscheidet Anzeigen oder Links innerhalb derselben Kampagne."
+        },
+        "validation": {
+            "urlRequired": "Website-URL ist erforderlich.",
+            "urlInvalid": "Geben Sie eine gültige URL mit https:// oder http:// ein.",
+            "sourceRequired": "Kampagnenquelle ist erforderlich."
         }
     },
     "settings": {

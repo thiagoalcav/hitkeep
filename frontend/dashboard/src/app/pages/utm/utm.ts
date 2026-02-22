@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, u
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { compatForm } from '@angular/forms/signals/compat';
+import { RouterLink } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { DatePickerModule } from 'primeng/datepicker';
 import { DialogModule } from 'primeng/dialog';
@@ -32,7 +33,7 @@ interface MetricFilter {
 @Component({
     selector: 'app-utm-dashboard',
     standalone: true,
-    imports: [ReactiveFormsModule, TranslocoPipe, DatePickerModule, DialogModule, ButtonModule, CardModule, PageHeader, PageBreadcrumb, RangeToolbar, KpiCard, MetricList, SeriesChart],
+    imports: [ReactiveFormsModule, RouterLink, TranslocoPipe, DatePickerModule, DialogModule, ButtonModule, CardModule, PageHeader, PageBreadcrumb, RangeToolbar, KpiCard, MetricList, SeriesChart],
     templateUrl: './utm.html',
     styleUrl: './utm.css',
     changeDetection: ChangeDetectionStrategy.OnPush

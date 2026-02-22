@@ -72,10 +72,19 @@ import { DrawerModule } from 'primeng/drawer';
                     <a
                         routerLink="/utm"
                         routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
+                        [routerLinkActiveOptions]="{ exact: true }"
                         class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
                         [attr.aria-label]="'nav.utmAria' | transloco"
                     >
                         <i class="pi pi-tags" aria-hidden="true"></i> <span>{{ 'nav.utm' | transloco }}</span>
+                    </a>
+                    <a
+                        routerLink="/utm/builder"
+                        routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
+                        class="flex items-center gap-3 pl-8 pr-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        [attr.aria-label]="'nav.utmBuilderAria' | transloco"
+                    >
+                        <i class="pi pi-link" aria-hidden="true"></i> <span>{{ 'nav.utmBuilder' | transloco }}</span>
                     </a>
 
                     <div class="text-xs font-semibold text-muted-color uppercase px-2 mt-4 mb-2" role="presentation">{{ 'nav.integration' | transloco }}</div>
@@ -163,8 +172,24 @@ import { DrawerModule } from 'primeng/drawer';
                         >
                             <i class="pi pi-filter"></i> <span>{{ 'nav.funnels' | transloco }}</span>
                         </a>
-                        <a routerLink="/utm" (click)="isMobileDrawerOpen.set(false)" routerLinkActive="bg-primary-50 text-primary-700" class="flex items-center gap-3 px-3 py-2 rounded-md font-medium" [attr.aria-label]="'nav.utmAria' | transloco">
+                        <a
+                            routerLink="/utm"
+                            [routerLinkActiveOptions]="{ exact: true }"
+                            (click)="isMobileDrawerOpen.set(false)"
+                            routerLinkActive="bg-primary-50 text-primary-700"
+                            class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
+                            [attr.aria-label]="'nav.utmAria' | transloco"
+                        >
                             <i class="pi pi-tags"></i> <span>{{ 'nav.utm' | transloco }}</span>
+                        </a>
+                        <a
+                            routerLink="/utm/builder"
+                            (click)="isMobileDrawerOpen.set(false)"
+                            routerLinkActive="bg-primary-50 text-primary-700"
+                            class="flex items-center gap-3 pl-8 pr-3 py-2 rounded-md text-sm font-medium"
+                            [attr.aria-label]="'nav.utmBuilderAria' | transloco"
+                        >
+                            <i class="pi pi-link"></i> <span>{{ 'nav.utmBuilder' | transloco }}</span>
                         </a>
                         <div class="text-xs font-semibold text-muted-color uppercase px-3 mt-4 mb-2" role="presentation">{{ 'nav.integration' | transloco }}</div>
                         <a

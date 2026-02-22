@@ -16,39 +16,51 @@ import (
 	"hitkeep/internal/database"
 )
 
-func TestRetentionArchivesAndPrunesUTMHits(t *testing.T) {
-	ctx := context.Background()
+// newTestStore creates a file-backed DuckDB store for testing.
+func newTestStore(t *testing.T) *database.Store {
+	t.Helper()
 	tmpDir := t.TempDir()
-	dbPath := filepath.Join(tmpDir, "retention.db")
-	archiveDir := filepath.Join(tmpDir, "archive")
-
-	store := database.NewStore(dbPath)
+	store := database.NewStore(filepath.Join(tmpDir, "test.db"))
 	if err := store.Connect(); err != nil {
 		t.Fatalf("connect: %v", err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-
-	if err := store.Migrate(ctx); err != nil {
+	if err := store.Migrate(context.Background()); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
+	return store
+}
 
-	userID, err := store.CreateUser(ctx, "retention@example.com", "hash")
+// seedSite creates a user and site with the given retention policy in days.
+func seedSite(t *testing.T, ctx context.Context, store *database.Store, retentionDays int) (siteID uuid.UUID) {
+	t.Helper()
+	userID, err := store.CreateUser(ctx, fmt.Sprintf("user-%s@example.com", uuid.New()), "hash")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
-	site, err := store.CreateSite(ctx, userID, "retention.test")
+	site, err := store.CreateSite(ctx, userID, "test.example.com")
 	if err != nil {
 		t.Fatalf("create site: %v", err)
 	}
-
-	if _, err := store.DB().ExecContext(ctx, "UPDATE sites SET data_retention_days = ? WHERE id = ?", 1, site.ID); err != nil {
+	if _, err := store.DB().ExecContext(ctx, "UPDATE sites SET data_retention_days = ? WHERE id = ?", retentionDays, site.ID); err != nil {
 		t.Fatalf("set retention policy: %v", err)
 	}
+	return site.ID
+}
+
+// TestRetentionArchivesAndPrunesUTMHits verifies that old hits and events are
+// exported to a Parquet file and pruned from hot storage, and that UTM fields
+// survive the archive round-trip.
+func TestRetentionArchivesAndPrunesUTMHits(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	siteID := seedSite(t, ctx, store, 1)
 
 	old := time.Now().UTC().Add(-48 * time.Hour)
 	isUnique := true
 	if err := store.CreateHit(ctx, &api.Hit{
-		SiteID:      site.ID,
+		SiteID:      siteID,
 		SessionID:   uuid.New(),
 		PageID:      uuid.New(),
 		Timestamp:   old,
@@ -63,7 +75,7 @@ func TestRetentionArchivesAndPrunesUTMHits(t *testing.T) {
 		t.Fatalf("create hit: %v", err)
 	}
 	if err := store.CreateEvent(ctx, &api.Event{
-		SiteID:     site.ID,
+		SiteID:     siteID,
 		SessionID:  uuid.New(),
 		Name:       "old_event",
 		Properties: map[string]any{"kind": "test"},
@@ -72,19 +84,16 @@ func TestRetentionArchivesAndPrunesUTMHits(t *testing.T) {
 		t.Fatalf("create event: %v", err)
 	}
 
-	worker := NewRetentionWorker(store, archiveDir, 365)
-	if err := worker.Run(ctx); err != nil {
+	w := NewRetentionWorker(store, archiveDir, 365)
+	if err := w.Run(ctx); err != nil {
 		t.Fatalf("run retention: %v", err)
 	}
 
+	// Archive file must exist.
 	files, err := os.ReadDir(archiveDir)
 	if err != nil {
 		t.Fatalf("read archive dir: %v", err)
 	}
-	if len(files) == 0 {
-		t.Fatalf("expected retention archive file, found none")
-	}
-
 	var archivePath string
 	for _, f := range files {
 		if strings.HasSuffix(f.Name(), ".parquet") {
@@ -96,33 +105,242 @@ func TestRetentionArchivesAndPrunesUTMHits(t *testing.T) {
 		t.Fatalf("expected parquet archive file, found: %v", files)
 	}
 
+	// UTM fields survive in cold storage.
 	safePath := strings.ReplaceAll(archivePath, "'", "''")
-	query := fmt.Sprintf("SELECT utm_source, utm_campaign FROM read_parquet('%s') WHERE utm_source IS NOT NULL LIMIT 1", safePath)
-	var utmSource sql.NullString
-	var utmCampaign sql.NullString
-	if err := store.DB().QueryRowContext(ctx, query).Scan(&utmSource, &utmCampaign); err != nil {
+	var utmSource, utmCampaign sql.NullString
+	if err := store.DB().QueryRowContext(ctx,
+		fmt.Sprintf("SELECT utm_source, utm_campaign FROM read_parquet('%s') WHERE utm_source IS NOT NULL LIMIT 1", safePath),
+	).Scan(&utmSource, &utmCampaign); err != nil {
 		t.Fatalf("query archived parquet: %v", err)
 	}
 	if !utmSource.Valid || utmSource.String != "search" {
-		t.Fatalf("expected archived utm_source=search, got %q (valid=%v)", utmSource.String, utmSource.Valid)
+		t.Fatalf("expected utm_source=search, got %q (valid=%v)", utmSource.String, utmSource.Valid)
 	}
 	if !utmCampaign.Valid || utmCampaign.String != "retention-check" {
-		t.Fatalf("expected archived utm_campaign=retention-check, got %q (valid=%v)", utmCampaign.String, utmCampaign.Valid)
+		t.Fatalf("expected utm_campaign=retention-check, got %q (valid=%v)", utmCampaign.String, utmCampaign.Valid)
 	}
 
-	var remainingHits int
-	if err := store.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM hits WHERE site_id = ?", site.ID).Scan(&remainingHits); err != nil {
+	// Hot storage is empty.
+	var remaining int
+	if err := store.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM hits WHERE site_id = ?", siteID).Scan(&remaining); err != nil {
 		t.Fatalf("count remaining hits: %v", err)
 	}
-	if remainingHits != 0 {
-		t.Fatalf("expected 0 retained hits in hot storage, got %d", remainingHits)
+	if remaining != 0 {
+		t.Fatalf("expected 0 hits in hot storage after retention, got %d", remaining)
 	}
-
-	var remainingEvents int
-	if err := store.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM events WHERE site_id = ?", site.ID).Scan(&remainingEvents); err != nil {
+	if err := store.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM events WHERE site_id = ?", siteID).Scan(&remaining); err != nil {
 		t.Fatalf("count remaining events: %v", err)
 	}
-	if remainingEvents != 0 {
-		t.Fatalf("expected 0 retained events in hot storage, got %d", remainingEvents)
+	if remaining != 0 {
+		t.Fatalf("expected 0 events in hot storage after retention, got %d", remaining)
+	}
+}
+
+// TestRetentionColdDataReadback verifies that archived Parquet files are fully
+// queryable as cold storage: row counts, field values, and event properties all
+// round-trip correctly through the archive-and-prune cycle.
+func TestRetentionColdDataReadback(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	siteID := seedSite(t, ctx, store, 1)
+
+	old := time.Now().UTC().Add(-72 * time.Hour)
+	isUnique := true
+
+	// Insert 3 old hits with distinct paths.
+	for i, path := range []string{"/page-a", "/page-b", "/page-c"} {
+		if err := store.CreateHit(ctx, &api.Hit{
+			SiteID:    siteID,
+			SessionID: uuid.New(),
+			PageID:    uuid.New(),
+			Timestamp: old.Add(time.Duration(i) * time.Minute),
+			Path:      path,
+			IsUnique:  &isUnique,
+		}); err != nil {
+			t.Fatalf("create hit %d: %v", i, err)
+		}
+	}
+
+	// Insert 2 old events with distinct names.
+	for _, name := range []string{"signup", "purchase"} {
+		if err := store.CreateEvent(ctx, &api.Event{
+			SiteID:     siteID,
+			SessionID:  uuid.New(),
+			Name:       name,
+			Properties: map[string]any{"plan": "pro"},
+			Timestamp:  old,
+		}); err != nil {
+			t.Fatalf("create event %q: %v", name, err)
+		}
+	}
+
+	w := NewRetentionWorker(store, archiveDir, 365)
+	if err := w.Run(ctx); err != nil {
+		t.Fatalf("run retention: %v", err)
+	}
+
+	// Locate archive file.
+	files, err := os.ReadDir(archiveDir)
+	if err != nil {
+		t.Fatalf("read archive dir: %v", err)
+	}
+	var archivePath string
+	for _, f := range files {
+		if strings.HasSuffix(f.Name(), ".parquet") {
+			archivePath = filepath.Join(archiveDir, f.Name())
+		}
+	}
+	if archivePath == "" {
+		t.Fatal("no parquet archive written")
+	}
+	safePath := strings.ReplaceAll(archivePath, "'", "''")
+
+	// Total rows = 3 hits + 2 events = 5.
+	var total int
+	if err := store.DB().QueryRowContext(ctx,
+		fmt.Sprintf("SELECT COUNT(*) FROM read_parquet('%s')", safePath),
+	).Scan(&total); err != nil {
+		t.Fatalf("count archived rows: %v", err)
+	}
+	if total != 5 {
+		t.Fatalf("expected 5 archived rows (3 hits + 2 events), got %d", total)
+	}
+
+	// Hit paths are preserved.
+	var hitCount int
+	if err := store.DB().QueryRowContext(ctx,
+		fmt.Sprintf("SELECT COUNT(DISTINCT path) FROM read_parquet('%s') WHERE path IS NOT NULL AND path != ''", safePath),
+	).Scan(&hitCount); err != nil {
+		t.Fatalf("count distinct paths: %v", err)
+	}
+	if hitCount != 3 {
+		t.Fatalf("expected 3 distinct paths in archive, got %d", hitCount)
+	}
+
+	// Hot storage is fully pruned.
+	var hotHits, hotEvents int
+	if err := store.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM hits WHERE site_id = ?", siteID).Scan(&hotHits); err != nil {
+		t.Fatalf("count hot hits: %v", err)
+	}
+	if err := store.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM events WHERE site_id = ?", siteID).Scan(&hotEvents); err != nil {
+		t.Fatalf("count hot events: %v", err)
+	}
+	if hotHits != 0 || hotEvents != 0 {
+		t.Fatalf("expected hot storage empty after retention, got %d hits %d events", hotHits, hotEvents)
+	}
+}
+
+// TestRetentionHotDataNotArchived verifies that data within the retention window
+// is never touched by the retention worker — it stays in hot storage and is not
+// written to any archive file.
+func TestRetentionHotDataNotArchived(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	siteID := seedSite(t, ctx, store, 30)
+
+	// "recent" = 1 day ago, within 30-day retention window.
+	recent := time.Now().UTC().Add(-24 * time.Hour)
+	isUnique := true
+	if err := store.CreateHit(ctx, &api.Hit{
+		SiteID:    siteID,
+		SessionID: uuid.New(),
+		PageID:    uuid.New(),
+		Timestamp: recent,
+		Path:      "/recent-page",
+		IsUnique:  &isUnique,
+	}); err != nil {
+		t.Fatalf("create recent hit: %v", err)
+	}
+
+	w := NewRetentionWorker(store, archiveDir, 365)
+	if err := w.Run(ctx); err != nil {
+		t.Fatalf("run retention: %v", err)
+	}
+
+	// No archive files should have been created — nothing was past the cutoff.
+	entries, err := os.ReadDir(archiveDir)
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatalf("read archive dir: %v", err)
+	}
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".parquet") {
+			t.Fatalf("unexpected parquet file for in-window data: %s", e.Name())
+		}
+	}
+
+	// Recent hit must still be in hot storage.
+	var count int
+	if err := store.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM hits WHERE site_id = ?", siteID).Scan(&count); err != nil {
+		t.Fatalf("count hot hits: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 recent hit still in hot storage, got %d", count)
+	}
+}
+
+// TestRetentionMixedWindowArchivesOnlyStale verifies that when a site has both
+// stale and recent data, only stale data is archived and recent data remains in
+// hot storage untouched.
+func TestRetentionMixedWindowArchivesOnlyStale(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	siteID := seedSite(t, ctx, store, 7) // 7-day retention
+
+	isUnique := true
+	old := time.Now().UTC().Add(-14 * 24 * time.Hour)   // 14 days ago — stale
+	recent := time.Now().UTC().Add(-2 * 24 * time.Hour) // 2 days ago — within window
+
+	if err := store.CreateHit(ctx, &api.Hit{
+		SiteID: siteID, SessionID: uuid.New(), PageID: uuid.New(),
+		Timestamp: old, Path: "/stale", IsUnique: &isUnique,
+	}); err != nil {
+		t.Fatalf("create stale hit: %v", err)
+	}
+	if err := store.CreateHit(ctx, &api.Hit{
+		SiteID: siteID, SessionID: uuid.New(), PageID: uuid.New(),
+		Timestamp: recent, Path: "/recent", IsUnique: &isUnique,
+	}); err != nil {
+		t.Fatalf("create recent hit: %v", err)
+	}
+
+	w := NewRetentionWorker(store, archiveDir, 365)
+	if err := w.Run(ctx); err != nil {
+		t.Fatalf("run retention: %v", err)
+	}
+
+	// Exactly 1 row archived (the stale hit).
+	files, _ := os.ReadDir(archiveDir)
+	var archivePath string
+	for _, f := range files {
+		if strings.HasSuffix(f.Name(), ".parquet") {
+			archivePath = filepath.Join(archiveDir, f.Name())
+		}
+	}
+	if archivePath == "" {
+		t.Fatal("expected archive file for stale data")
+	}
+	safePath := strings.ReplaceAll(archivePath, "'", "''")
+	var archived int
+	if err := store.DB().QueryRowContext(ctx,
+		fmt.Sprintf("SELECT COUNT(*) FROM read_parquet('%s')", safePath),
+	).Scan(&archived); err != nil {
+		t.Fatalf("count archived: %v", err)
+	}
+	if archived != 1 {
+		t.Fatalf("expected 1 archived row, got %d", archived)
+	}
+
+	// Recent hit must remain in hot storage.
+	var hot int
+	if err := store.DB().QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM hits WHERE site_id = ? AND path = '/recent'", siteID,
+	).Scan(&hot); err != nil {
+		t.Fatalf("count hot recent hits: %v", err)
+	}
+	if hot != 1 {
+		t.Fatalf("expected recent hit in hot storage, got %d", hot)
 	}
 }

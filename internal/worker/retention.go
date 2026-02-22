@@ -27,6 +27,12 @@ func NewRetentionWorker(store *database.Store, archivePath string, defaultDays i
 	}
 }
 
+// archiveFilename returns the full destination path for a site's Parquet archive.
+func (w *RetentionWorker) archiveFilename(siteID uuid.UUID) string {
+	name := fmt.Sprintf("site_%s_%d.parquet", siteID, time.Now().Unix())
+	return filepath.Join(w.path, name)
+}
+
 func (w *RetentionWorker) Start(ctx context.Context) {
 	// Run once on startup after a short delay to let DB settle
 	go func() {
@@ -55,12 +61,12 @@ func (w *RetentionWorker) Start(ctx context.Context) {
 func (w *RetentionWorker) Run(ctx context.Context) error {
 	slog.Debug("Checking for data retention cleanup...")
 
-	// 1. Ensure archive directory exists
+	// Ensure the archive directory exists.
 	if err := os.MkdirAll(w.path, 0755); err != nil {
 		return fmt.Errorf("failed to create archive directory: %w", err)
 	}
 
-	// 2. Get all sites with retention policy
+	// Get all sites with a retention policy.
 	rows, err := w.store.DB().QueryContext(ctx, "SELECT id, data_retention_days FROM sites WHERE data_retention_days IS NOT NULL AND data_retention_days > 0")
 	if err != nil {
 		return fmt.Errorf("failed to query sites: %w", err)
@@ -104,7 +110,7 @@ func (w *RetentionWorker) Run(ctx context.Context) error {
 
 		slog.Info("Archiving old data", "site_id", p.ID, "hits", hitCount, "events", eventCount, "cutoff", cutoff.Format(time.DateOnly))
 
-		filename := filepath.Join(w.path, fmt.Sprintf("site_%s_%d.parquet", p.ID, time.Now().Unix()))
+		filename := w.archiveFilename(p.ID)
 
 		exportQuery := fmt.Sprintf(`
 			COPY (

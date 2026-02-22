@@ -16,6 +16,12 @@ Unlike other solutions that require you to manage a complex stack (PostgreSQL, R
 <details>
 <summary>More screenshots</summary>
 
+### Login
+![HitKeep login page](./.github/assets/page-login.png)
+
+### Share Dashboard
+![HitKeep shareable read-only dashboard link](./.github/assets/feature-share-dashboard.png)
+
 ### Goals & Conversion Tracking
 ![HitKeep goals and conversion tracking](./.github/assets/analytics-goals.png)
 
@@ -25,14 +31,29 @@ Unlike other solutions that require you to manage a complex stack (PostgreSQL, R
 ### UTM Campaign Attribution
 ![HitKeep UTM tracking and campaign attribution](./.github/assets/analytics-utm.png)
 
+### UTM Link Builder
+![HitKeep built-in UTM link builder](./.github/assets/tools-utm-builder.png)
+
 ### Email Reports
 ![HitKeep scheduled email reports](./.github/assets/feature-email-reports.png)
+
+### Weekly Report Email
+![HitKeep weekly analytics report email](./.github/assets/weekly-report.png)
+
+### Digest Report Email
+![HitKeep digest report email with multi-site summary](./.github/assets/digest-report.png)
+
+### Profile & Settings
+![HitKeep user profile and settings](./.github/assets/settings-profile.png)
 
 ### TOTP & WebAuthn / Passkeys
 ![HitKeep two-factor authentication setup — TOTP and WebAuthn Passkeys](./.github/assets/security-2fa-setup.png)
 
 ### API Clients & Bearer Tokens
 ![HitKeep API client management](./.github/assets/security-api-clients.png)
+
+### API Reference
+![HitKeep built-in OpenAPI reference](./.github/assets/integration-api-reference.png)
 
 ### Admin — User Management
 ![HitKeep admin panel — user management](./.github/assets/admin-users.png)

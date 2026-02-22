@@ -11,7 +11,36 @@ HitKeep is a self-hostable, privacy-first web analytics platform designed for **
 
 Unlike other solutions that require you to manage a complex stack (PostgreSQL, Redis, ClickHouse, Nginx), HitKeep runs as a **single, self-contained executable**. It embeds a high-performance OLAP database (DuckDB) and a distributed message queue (NSQ) directly into the binary.
 
-![dashboard](./.github/assets/dashboard.png)
+![HitKeep analytics dashboard — traffic overview, geographic breakdown, goals, funnels, and UTM attribution](./.github/assets/dashboard-overview.png)
+
+<details>
+<summary>More screenshots</summary>
+
+### Goals & Conversion Tracking
+![HitKeep goals and conversion tracking](./.github/assets/analytics-goals.png)
+
+### Multi-Step Funnels
+![HitKeep multi-step funnel analytics](./.github/assets/analytics-funnels.png)
+
+### UTM Campaign Attribution
+![HitKeep UTM tracking and campaign attribution](./.github/assets/analytics-utm.png)
+
+### Email Reports
+![HitKeep scheduled email reports](./.github/assets/feature-email-reports.png)
+
+### TOTP & WebAuthn / Passkeys
+![HitKeep two-factor authentication setup — TOTP and WebAuthn Passkeys](./.github/assets/security-2fa-setup.png)
+
+### API Clients & Bearer Tokens
+![HitKeep API client management](./.github/assets/security-api-clients.png)
+
+### Admin — User Management
+![HitKeep admin panel — user management](./.github/assets/admin-users.png)
+
+### Admin — Site Management
+![HitKeep admin panel — site management](./.github/assets/admin-sites-list.png)
+
+</details>
 
 > **HitKeep Cloud is coming!**
 >

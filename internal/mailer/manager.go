@@ -82,10 +82,7 @@ var templateFuncs = htmltpl.FuncMap{
 		if maxV == 0 {
 			return ""
 		}
-		barW := (svgW - gap*(n-1)) / n
-		if barW < 1 {
-			barW = 1
-		}
+		barW := max((svgW-gap*(n-1))/n, 1)
 		var sb strings.Builder
 		fmt.Fprintf(&sb, `<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d">`, svgW, svgH)
 		for i, v := range values {

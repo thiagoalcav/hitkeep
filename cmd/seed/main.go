@@ -35,9 +35,6 @@ import (
 	"hitkeep/internal/worker"
 )
 
-// ptr returns a pointer to v. Avoids verbose &local boilerplate for optional fields.
-func ptr[T any](v T) *T { return &v }
-
 // hashPassword produces an argon2id hash in the same format the server expects.
 // Must match auth.HashPassword in internal/server/auth/handlers.go.
 func hashPassword(password string) (string, error) {
@@ -107,37 +104,37 @@ var pages = []weightedEntry[string]{
 
 var referrers = []weightedEntry[*string]{
 	{nil, 380},                                       // direct / typed
-	{ptr("https://www.google.com"), 200},             // Google search
-	{ptr("https://news.ycombinator.com"), 120},       // HN
-	{ptr("https://twitter.com"), 80},                 // Twitter/X
-	{ptr("https://www.reddit.com/r/selfhosted"), 60}, // Reddit
-	{ptr("https://www.linkedin.com"), 50},            // LinkedIn
-	{ptr("https://github.com/hitkeep/hitkeep"), 50},  // GitHub
-	{ptr("https://dev.to"), 40},                      // dev.to
-	{ptr("https://lobste.rs"), 30},                   // Lobsters
-	{ptr("https://www.producthunt.com"), 20},         // Product Hunt
+	{new("https://www.google.com"), 200},             // Google search
+	{new("https://news.ycombinator.com"), 120},       // HN
+	{new("https://twitter.com"), 80},                 // Twitter/X
+	{new("https://www.reddit.com/r/selfhosted"), 60}, // Reddit
+	{new("https://www.linkedin.com"), 50},            // LinkedIn
+	{new("https://github.com/hitkeep/hitkeep"), 50},  // GitHub
+	{new("https://dev.to"), 40},                      // dev.to
+	{new("https://lobste.rs"), 30},                   // Lobsters
+	{new("https://www.producthunt.com"), 20},         // Product Hunt
 }
 
 var countries = []weightedEntry[*string]{
-	{ptr("US"), 350},
-	{ptr("DE"), 100},
-	{ptr("GB"), 80},
-	{ptr("CA"), 60},
-	{ptr("FR"), 50},
-	{ptr("NL"), 50},
-	{ptr("AU"), 40},
-	{ptr("SE"), 30},
-	{ptr("CH"), 30},
-	{ptr("IN"), 35},
-	{ptr("JP"), 25},
-	{ptr("BR"), 25},
-	{ptr("PL"), 20},
-	{ptr("ES"), 20},
-	{ptr("IT"), 20},
-	{ptr("NO"), 15},
-	{ptr("FI"), 15},
-	{ptr("DK"), 15},
-	{ptr("SG"), 15},
+	{new("US"), 350},
+	{new("DE"), 100},
+	{new("GB"), 80},
+	{new("CA"), 60},
+	{new("FR"), 50},
+	{new("NL"), 50},
+	{new("AU"), 40},
+	{new("SE"), 30},
+	{new("CH"), 30},
+	{new("IN"), 35},
+	{new("JP"), 25},
+	{new("BR"), 25},
+	{new("PL"), 20},
+	{new("ES"), 20},
+	{new("IT"), 20},
+	{new("NO"), 15},
+	{new("FI"), 15},
+	{new("DK"), 15},
+	{new("SG"), 15},
 }
 
 type viewportPreset struct {
@@ -184,17 +181,17 @@ var userAgents = []weightedEntry[uaGroup]{
 }
 
 var languages = []weightedEntry[*string]{
-	{ptr("en-US"), 380},
-	{ptr("en-GB"), 80},
-	{ptr("de-DE"), 100},
-	{ptr("fr-FR"), 50},
-	{ptr("nl-NL"), 50},
-	{ptr("sv-SE"), 30},
-	{ptr("pt-BR"), 25},
-	{ptr("ja-JP"), 25},
-	{ptr("es-ES"), 20},
-	{ptr("pl-PL"), 20},
-	{ptr("it-IT"), 20},
+	{new("en-US"), 380},
+	{new("en-GB"), 80},
+	{new("de-DE"), 100},
+	{new("fr-FR"), 50},
+	{new("nl-NL"), 50},
+	{new("sv-SE"), 30},
+	{new("pt-BR"), 25},
+	{new("ja-JP"), 25},
+	{new("es-ES"), 20},
+	{new("pl-PL"), 20},
+	{new("it-IT"), 20},
 }
 
 type utmParams struct {
@@ -209,11 +206,11 @@ var utmCampaigns = []weightedEntry[*utmParams]{
 	}, 40},
 	{&utmParams{
 		source: "google", medium: "cpc", campaign: "self-hosted-analytics",
-		term: ptr("self hosted analytics"), content: ptr("headline-a"),
+		term: new("self hosted analytics"), content: new("headline-a"),
 	}, 35},
 	{&utmParams{
 		source: "google", medium: "cpc", campaign: "self-hosted-analytics",
-		term: ptr("open source analytics"), content: ptr("headline-b"),
+		term: new("open source analytics"), content: new("headline-b"),
 	}, 25},
 	{&utmParams{
 		source: "newsletter", medium: "email", campaign: "monthly-digest-jan",
@@ -432,7 +429,7 @@ func seedTraffic(ctx context.Context, store *database.Store, siteID uuid.UUID, g
 
 	var stats seedStats
 
-	for d := 0; d < numDays; d++ {
+	for d := range numDays {
 		day := start.Add(time.Duration(d) * 24 * time.Hour)
 		weekday := day.Weekday()
 
@@ -452,18 +449,12 @@ func seedTraffic(ctx context.Context, store *database.Store, siteID uuid.UUID, g
 			variation *= 2.5 + rng.Float64()*2.0
 		}
 
-		dailyHits := int(float64(base) * growth * variation)
-		if dailyHits < 10 {
-			dailyHits = 10
-		}
+		dailyHits := max(int(float64(base)*growth*variation), 10)
 
 		// Distribute hits across the day in sessions of 1-5 pages.
 		hitsLeft := dailyHits
 		for hitsLeft > 0 {
-			sessionLen := 1 + rng.Intn(5)
-			if sessionLen > hitsLeft {
-				sessionLen = hitsLeft
-			}
+			sessionLen := min(1+rng.Intn(5), hitsLeft)
 			hitsLeft -= sessionLen
 
 			sessionID := uuid.New()
@@ -500,14 +491,14 @@ func seedTraffic(ctx context.Context, store *database.Store, siteID uuid.UUID, g
 					PageID:         uuid.New(),
 					Timestamp:      ts,
 					Path:           page,
-					UserAgent:      ptr(uaEntry.ua),
+					UserAgent:      new(uaEntry.ua),
 					CountryCode:    country,
 					Language:       lang,
-					ViewportWidth:  ptr(vw),
-					ViewportHeight: ptr(vh),
-					ScreenWidth:    ptr(sw),
-					ScreenHeight:   ptr(sh),
-					IsUnique:       ptr(i == 0), // only the first hit in a session is unique
+					ViewportWidth:  new(vw),
+					ViewportHeight: new(vh),
+					ScreenWidth:    new(sw),
+					ScreenHeight:   new(sh),
+					IsUnique:       new(i == 0), // only the first hit in a session is unique
 				}
 
 				// Referrer only on the first hit of a session.
@@ -517,9 +508,9 @@ func seedTraffic(ctx context.Context, store *database.Store, siteID uuid.UUID, g
 
 				// UTM params only on the first hit.
 				if i == 0 && utmEntry != nil {
-					h.UTMSource = ptr(utmEntry.source)
-					h.UTMMedium = ptr(utmEntry.medium)
-					h.UTMCampaign = ptr(utmEntry.campaign)
+					h.UTMSource = new(utmEntry.source)
+					h.UTMMedium = new(utmEntry.medium)
+					h.UTMCampaign = new(utmEntry.campaign)
 					h.UTMTerm = utmEntry.term
 					h.UTMContent = utmEntry.content
 				}

@@ -1,9 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { CardModule } from 'primeng/card';
-import { SkeletonModule } from 'primeng/skeleton';
+import { ChangeDetectionStrategy, Component, computed, input } from "@angular/core";
+import { CardModule } from "primeng/card";
+import { SkeletonModule } from "primeng/skeleton";
 
 @Component({
-    selector: 'app-kpi-card',
+    selector: "app-kpi-card",
     standalone: true,
     imports: [CardModule, SkeletonModule],
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -18,6 +18,11 @@ import { SkeletonModule } from 'primeng/skeleton';
                         {{ value() }}
                     }
                 </div>
+                @if (!loading() && delta() !== null) {
+                    <div class="flex items-center gap-1">
+                        <span [class]="deltaClass()">{{ deltaLabel() }}</span>
+                    </div>
+                }
             </div>
         </p-card>
     `
@@ -26,7 +31,24 @@ export class KpiCard {
     label = input.required<string>();
     value = input.required<string | number>();
     loading = input<boolean>(false);
-    valueClass = input<string>('');
+    valueClass = input<string>("");
+    delta = input<number | null>(null);
 
-    protected displayClass = computed(() => this.valueClass() || 'text-2xl xl:text-3xl font-bold');
+    protected displayClass = computed(() => this.valueClass() || "text-2xl xl:text-3xl font-bold");
+
+    protected deltaClass = computed(() => {
+        const d = this.delta();
+        if (d === null) return "";
+        const positive = d >= 0;
+        return positive
+            ? "text-xs font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+            : "text-xs font-medium px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+    });
+
+    protected deltaLabel = computed(() => {
+        const d = this.delta();
+        if (d === null) return "";
+        const sign = d >= 0 ? "+" : "";
+        return `${sign}${d.toFixed(1)}%`;
+    });
 }

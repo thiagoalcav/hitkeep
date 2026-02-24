@@ -1,9 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, input, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { ChartModule } from 'primeng/chart';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { TranslocoLocaleService } from '@jsverse/transloco-locale';
-import { PreferencesService } from '@services/preferences.service';
+import { ChangeDetectionStrategy, Component, computed, input, inject } from "@angular/core";
+import { toSignal } from "@angular/core/rxjs-interop";
+import { ChartModule } from "primeng/chart";
+import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
+import { TranslocoLocaleService } from "@jsverse/transloco-locale";
+import { PreferencesService } from "@services/preferences.service";
 
 export type SeriesChartPoint = Record<string, number | string> & { time: string };
 
@@ -22,7 +22,7 @@ interface ChartContext {
 }
 
 @Component({
-    selector: 'app-series-chart',
+    selector: "app-series-chart",
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [ChartModule, TranslocoPipe],
     template: `
@@ -35,20 +35,25 @@ interface ChartContext {
                 <p-chart type="line" [data]="chartPayload()" [options]="chartOptions()" height="100%" />
             } @else {
                 <div class="absolute inset-0 flex flex-col items-center justify-center text-[var(--p-text-muted-color)] bg-[var(--p-surface-ground)]/50 rounded-lg border-2 border-dashed border-[var(--p-surface-border)] p-6 text-center">
-                    <h3 class="font-semibold text-[var(--p-text-color)] text-lg mb-1">{{ emptyTitle() || ('common.empty.noDataTitle' | transloco) }}</h3>
-                    <p class="text-sm max-w-xs">{{ emptyDescription() || ('common.empty.noDataDescription' | transloco) }}</p>
+                    <h3 class="font-semibold text-[var(--p-text-color)] text-lg mb-1">{{ emptyTitle() || ("common.empty.noDataTitle" | transloco) }}</h3>
+                    <p class="text-sm max-w-xs">{{ emptyDescription() || ("common.empty.noDataDescription" | transloco) }}</p>
                 </div>
             }
         </div>
+        @if (comparisonLabel()) {
+            <p class="text-xs text-[var(--p-text-muted-color)] text-right mt-2">{{ "comparison.vsLabel" | transloco }} {{ comparisonLabel() }}</p>
+        }
     `
 })
 export class SeriesChart {
     data = input.required<SeriesChartPoint[]>();
     series = input.required<SeriesDefinition[]>();
+    comparisonData = input<SeriesChartPoint[]>([]);
     isLoading = input<boolean>(false);
     isShortRange = input<boolean>(false);
-    emptyTitle = input<string>('');
-    emptyDescription = input<string>('');
+    emptyTitle = input<string>("");
+    emptyDescription = input<string>("");
+    comparisonLabel = input<string>("");
 
     private prefs = inject(PreferencesService);
     private localeService = inject(TranslocoLocaleService);
@@ -65,53 +70,71 @@ export class SeriesChart {
     protected accessibilityLabel = computed(() => {
         this.activeLanguage();
         const count = this.data()?.length || 0;
-        return this.transloco.translate('common.seriesChartAria', { count });
+        return this.transloco.translate("common.seriesChartAria", { count });
     });
 
     protected chartPayload = computed(() => {
+        this.activeLanguage();
         const raw = this.data() || [];
+        const cmp = this.comparisonData() || [];
         const series = this.series() || [];
 
         const labels = raw.map((d) => {
             const date = new Date(d.time);
-            if (this.isShortRange()) return this.localeService.localizeDate(date, undefined, { hour: 'numeric', minute: '2-digit' });
-            return this.localeService.localizeDate(date, undefined, { month: 'short', day: 'numeric' });
+            if (this.isShortRange()) return this.localeService.localizeDate(date, undefined, { hour: "numeric", minute: "2-digit" });
+            return this.localeService.localizeDate(date, undefined, { month: "short", day: "numeric" });
         });
 
-        return {
-            labels,
-            datasets: series.map((s) => ({
-                label: s.label,
-                data: raw.map((d) => Number(d[s.key] ?? 0)),
-                fill: true,
-                backgroundColor: (ctx: ChartContext) => this.getGradient(ctx, s.gradientFrom, s.gradientTo),
-                borderColor: s.color,
-                pointBackgroundColor: s.color,
-                tension: 0.4,
-                borderWidth: 2,
-                pointRadius: 0,
-                pointHoverRadius: 4
-            }))
-        };
+        const datasets: object[] = series.map((s) => ({
+            label: s.label,
+            data: raw.map((d) => Number(d[s.key] ?? 0)),
+            fill: true,
+            backgroundColor: (ctx: ChartContext) => this.getGradient(ctx, s.gradientFrom, s.gradientTo),
+            borderColor: s.color,
+            pointBackgroundColor: s.color,
+            tension: 0.4,
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 4
+        }));
+
+        if (cmp.length > 0) {
+            for (const s of series) {
+                datasets.push({
+                    label: `${s.label} (prev.)`,
+                    data: cmp.map((d) => Number(d[s.key] ?? 0)),
+                    fill: false,
+                    borderColor: this.hexToRgba(s.color, 0.4),
+                    pointBackgroundColor: this.hexToRgba(s.color, 0.4),
+                    tension: 0.4,
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    pointHoverRadius: 3,
+                    borderDash: [5, 5]
+                });
+            }
+        }
+
+        return { labels, datasets };
     });
 
     protected chartOptions = computed(() => {
         const isDark = this.prefs.isDarkMode();
-        const textColor = isDark ? '#94a3b8' : '#64748b';
-        const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
-        const tooltipBg = isDark ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.9)';
-        const tooltipText = isDark ? '#f8fafc' : '#0f172a';
-        const tooltipBorder = isDark ? '#334155' : '#e2e8f0';
+        const textColor = isDark ? "#94a3b8" : "#64748b";
+        const gridColor = isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.05)";
+        const tooltipBg = isDark ? "rgba(15, 23, 42, 0.9)" : "rgba(255, 255, 255, 0.9)";
+        const tooltipText = isDark ? "#f8fafc" : "#0f172a";
+        const tooltipBorder = isDark ? "#334155" : "#e2e8f0";
 
         return {
             maintainAspectRatio: false,
             aspectRatio: 0.5,
             responsive: true,
-            interaction: { mode: 'index', intersect: false },
+            interaction: { mode: "index", intersect: false },
             plugins: {
-                legend: { labels: { color: textColor, usePointStyle: true, boxWidth: 8 }, position: 'bottom' },
+                legend: { labels: { color: textColor, usePointStyle: true, boxWidth: 8 }, position: "bottom" },
                 tooltip: {
-                    mode: 'index',
+                    mode: "index",
                     intersect: false,
                     backgroundColor: tooltipBg,
                     titleColor: tooltipText,
@@ -146,5 +169,14 @@ export class SeriesChart {
         gradient.addColorStop(0, c1);
         gradient.addColorStop(1, c2);
         return gradient;
+    }
+
+    private hexToRgba(hex: string, alpha: number): string {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        if (!result) return hex;
+        const r = parseInt(result[1]!, 16);
+        const g = parseInt(result[2]!, 16);
+        const b = parseInt(result[3]!, 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     }
 }

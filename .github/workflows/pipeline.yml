@@ -152,10 +152,16 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-      - uses: actions/attest-build-provenance@v3
+      - name: Attest GHCR Image
+        uses: actions/attest-build-provenance@v3
         with:
-          subject-name: |
-            ghcr.io/${{ github.repository }}
-            index.docker.io/${{ secrets.DOCKERHUB_USERNAME }}/hitkeep
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Attest Docker Hub Image
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: index.docker.io/${{ secrets.DOCKERHUB_USERNAME }}/hitkeep
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true

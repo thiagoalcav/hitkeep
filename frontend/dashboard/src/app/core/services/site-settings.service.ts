@@ -1,11 +1,11 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed } from "@angular/core";
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class SiteSettingsService {
     private readonly requestedTab = signal<string | null>(null);
     readonly request = computed(() => this.requestedTab());
 
-    open(tab = '0') {
+    open(tab = "0") {
         this.requestedTab.set(tab);
     }
 

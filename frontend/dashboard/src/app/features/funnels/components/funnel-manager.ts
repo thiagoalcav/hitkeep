@@ -1,30 +1,30 @@
-import { Component, Input, Output, EventEmitter, inject, signal, OnChanges, computed } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, signal, OnChanges, computed } from "@angular/core";
 
-import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import { compatForm } from '@angular/forms/signals/compat';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { DialogModule } from 'primeng/dialog';
-import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
-import { SelectModule } from 'primeng/select';
-import { TableModule } from 'primeng/table';
-import { TooltipModule } from 'primeng/tooltip';
-import { AnalyticsService } from '@services/analytics.service';
-import { Funnel, FunnelStep } from '@models/analytics.types';
+import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
+import { compatForm } from "@angular/forms/signals/compat";
+import { toSignal } from "@angular/core/rxjs-interop";
+import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
+import { DialogModule } from "primeng/dialog";
+import { ButtonModule } from "primeng/button";
+import { InputTextModule } from "primeng/inputtext";
+import { SelectModule } from "primeng/select";
+import { TableModule } from "primeng/table";
+import { TooltipModule } from "primeng/tooltip";
+import { AnalyticsService } from "@services/analytics.service";
+import { Funnel, FunnelStep } from "@models/analytics.types";
 
 interface FunnelStepControl {
-    typeControl: FormControl<FunnelStep['type']>;
+    typeControl: FormControl<FunnelStep["type"]>;
     valueControl: FormControl<string>;
 }
 
 @Component({
-    selector: 'app-funnel-manager',
+    selector: "app-funnel-manager",
     standalone: true,
     imports: [ReactiveFormsModule, DialogModule, ButtonModule, InputTextModule, SelectModule, TableModule, TooltipModule, TranslocoPipe],
     template: `
         <p-dialog [header]="'funnels.manager.dialogTitle' | transloco" [(visible)]="visible" [modal]="true" [style]="{ width: '800px', maxWidth: '90vw' }" [draggable]="false" [resizable]="false" (onHide)="onHide()">
-            <p class="text-sm text-muted-color mb-4">{{ 'funnels.manager.dialogDescription' | transloco }}</p>
+            <p class="text-sm text-muted-color mb-4">{{ "funnels.manager.dialogDescription" | transloco }}</p>
 
             <!-- List Funnels -->
             <div class="flex justify-end mb-3">
@@ -39,10 +39,10 @@ interface FunnelStepControl {
                     <ng-template pTemplate="header">
                         <tr>
                             <th pSortableColumn="name">
-                                {{ 'common.columns.name' | transloco }}
+                                {{ "common.columns.name" | transloco }}
                                 <p-sortIcon field="name" />
                             </th>
-                            <th>{{ 'funnels.manager.stepsLabel' | transloco }}</th>
+                            <th>{{ "funnels.manager.stepsLabel" | transloco }}</th>
                             <th style="width: 8rem"></th>
                         </tr>
                     </ng-template>
@@ -52,7 +52,7 @@ interface FunnelStepControl {
                             <td>
                                 <div class="flex items-center gap-1 flex-wrap">
                                     @for (step of funnel.steps; track $index; let last = $last) {
-                                        <span class="text-xs bg-surface-100 dark:bg-surface-800 px-2 py-1 rounded border border-surface-200 dark:border-surface-700" [title]="step.value"> {{ step.type === 'path' ? '/' : '' }}{{ step.value }} </span>
+                                        <span class="text-xs bg-surface-100 dark:bg-surface-800 px-2 py-1 rounded border border-surface-200 dark:border-surface-700" [title]="step.value"> {{ step.type === "path" ? "/" : "" }}{{ step.value }} </span>
                                         @if (!last) {
                                             <i class="pi pi-arrow-right text-xs text-muted-color"></i>
                                         }
@@ -69,7 +69,7 @@ interface FunnelStepControl {
                     </ng-template>
                     <ng-template pTemplate="emptymessage">
                         <tr>
-                            <td colspan="3" class="text-center text-muted-color py-4">{{ 'funnels.manager.empty' | transloco }}</td>
+                            <td colspan="3" class="text-center text-muted-color py-4">{{ "funnels.manager.empty" | transloco }}</td>
                         </tr>
                     </ng-template>
                 </p-table>
@@ -78,17 +78,17 @@ interface FunnelStepControl {
             <!-- Add Funnel Form -->
             <div class="flex flex-col gap-4 p-4 border border-surface-200 dark:border-surface-700 rounded-lg bg-surface-50 dark:bg-surface-900">
                 <div class="flex items-center justify-between">
-                    <h4 class="font-semibold text-sm m-0">{{ 'funnels.manager.createTitle' | transloco }}</h4>
+                    <h4 class="font-semibold text-sm m-0">{{ "funnels.manager.createTitle" | transloco }}</h4>
                 </div>
 
                 <div class="flex flex-col gap-3">
                     <div class="flex flex-col gap-1">
-                        <label for="f-name" class="text-xs font-medium">{{ 'common.columns.name' | transloco }}</label>
+                        <label for="f-name" class="text-xs font-medium">{{ "common.columns.name" | transloco }}</label>
                         <input pInputText id="f-name" [formControl]="newFunnelForm.name().control()" [placeholder]="'funnels.manager.namePlaceholder' | transloco" class="p-inputtext-sm w-full" />
                     </div>
 
                     <div class="flex flex-col gap-2">
-                        <span class="text-xs font-medium">{{ 'funnels.manager.stepsLabel' | transloco }}</span>
+                        <span class="text-xs font-medium">{{ "funnels.manager.stepsLabel" | transloco }}</span>
                         @for (step of stepControls(); track $index) {
                             <div class="flex gap-2 items-center">
                                 <span class="text-xs font-bold text-muted-color w-4">{{ $index + 1 }}.</span>
@@ -133,13 +133,13 @@ export class FunnelManager implements OnChanges {
     protected readonly types = computed(() => {
         this.activeLanguage();
         return [
-            { label: this.transloco.translate('funnels.manager.typePagePath'), value: 'path' },
-            { label: this.transloco.translate('funnels.manager.typeCustomEvent'), value: 'event' }
+            { label: this.transloco.translate("funnels.manager.typePagePath"), value: "path" },
+            { label: this.transloco.translate("funnels.manager.typeCustomEvent"), value: "event" }
         ];
     });
 
     private readonly newFunnelModel = signal({
-        name: new FormControl('', { nonNullable: true, validators: [Validators.required] })
+        name: new FormControl("", { nonNullable: true, validators: [Validators.required] })
     });
     protected readonly newFunnelForm = compatForm(this.newFunnelModel);
     protected readonly stepControls = signal<FunnelStepControl[]>([this.createStepControl(), this.createStepControl()]);
@@ -184,7 +184,7 @@ export class FunnelManager implements OnChanges {
         this.analyticsService.createFunnel(this.siteId, payload).subscribe({
             next: () => {
                 this.creating.set(false);
-                this.newFunnelForm.name().control().reset('');
+                this.newFunnelForm.name().control().reset("");
                 this.stepControls.set([this.createStepControl(), this.createStepControl()]);
                 this.loadFunnels();
                 this.funnelsChanged.emit();
@@ -212,7 +212,7 @@ export class FunnelManager implements OnChanges {
         this.visibleChange.emit(false);
     }
 
-    private createStepControl(type: FunnelStep['type'] = 'path', value = ''): FunnelStepControl {
+    private createStepControl(type: FunnelStep["type"] = "path", value = ""): FunnelStepControl {
         return {
             typeControl: new FormControl(type, { nonNullable: true, validators: [Validators.required] }),
             valueControl: new FormControl(value, { nonNullable: true, validators: [Validators.required] })

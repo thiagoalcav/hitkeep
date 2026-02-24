@@ -1,25 +1,25 @@
-import { HttpErrorResponse } from '@angular/common/http';
-import { CommonModule } from '@angular/common';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, DestroyRef } from '@angular/core';
-import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
-import { compatForm } from '@angular/forms/signals/compat';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
-import { PageHeader } from '@components/page-header/page-header';
-import { getBaseLanguage, getLocaleDirection, normalizeLocaleTag, TextDirection } from '@core/i18n/locale-utils';
-import { buildTakeoutExportMenuItems, DEFAULT_TAKEOUT_EXPORT_FORMAT, TakeoutExportFormat } from '@core/export/export-formats';
-import { SettingsCard } from '@features/settings/components/settings-card';
-import { SettingsSecurity } from '@features/settings/components/settings-security';
-import { UserPreferences, UserPreferencesService } from '@services/user-preferences.service';
-import { UserProfile, UserProfileService } from '@services/user-profile.service';
-import { TakeoutDownloadService } from '@services/takeout-download.service';
-import { MenuItem } from 'primeng/api';
-import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
-import { SelectModule } from 'primeng/select';
-import { SplitButtonModule } from 'primeng/splitbutton';
-import { finalize } from 'rxjs';
+import { HttpErrorResponse } from "@angular/common/http";
+import { CommonModule } from "@angular/common";
+import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, DestroyRef } from "@angular/core";
+import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
+import { compatForm } from "@angular/forms/signals/compat";
+import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
+import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
+import { PageHeader } from "@components/page-header/page-header";
+import { getBaseLanguage, getLocaleDirection, normalizeLocaleTag, TextDirection } from "@core/i18n/locale-utils";
+import { buildTakeoutExportMenuItems, DEFAULT_TAKEOUT_EXPORT_FORMAT, TakeoutExportFormat } from "@core/export/export-formats";
+import { SettingsCard } from "@features/settings/components/settings-card";
+import { SettingsSecurity } from "@features/settings/components/settings-security";
+import { UserPreferences, UserPreferencesService } from "@services/user-preferences.service";
+import { UserProfile, UserProfileService } from "@services/user-profile.service";
+import { TakeoutDownloadService } from "@services/takeout-download.service";
+import { MenuItem } from "primeng/api";
+import { ButtonModule } from "primeng/button";
+import { InputTextModule } from "primeng/inputtext";
+import { SelectModule } from "primeng/select";
+import { SplitButtonModule } from "primeng/splitbutton";
+import { finalize } from "rxjs";
 
 interface LanguageOption {
     label: string;
@@ -37,37 +37,37 @@ interface EditableProfile {
 type AvailableLang = string | { id: string; label: string };
 
 const LANGUAGE_FLAG_FALLBACK: Record<string, string> = {
-    en: 'us',
-    es: 'es',
-    fr: 'fr',
-    de: 'de',
-    it: 'it',
-    pt: 'pt',
-    nl: 'nl',
-    sv: 'se',
-    da: 'dk',
-    fi: 'fi',
-    pl: 'pl',
-    cs: 'cz',
-    tr: 'tr',
-    ru: 'ru',
-    uk: 'ua',
-    ar: 'sa',
-    he: 'il',
-    hi: 'in',
-    id: 'id',
-    th: 'th',
-    vi: 'vn',
-    zh: 'cn',
-    ja: 'jp',
-    ko: 'kr'
+    en: "us",
+    es: "es",
+    fr: "fr",
+    de: "de",
+    it: "it",
+    pt: "pt",
+    nl: "nl",
+    sv: "se",
+    da: "dk",
+    fi: "fi",
+    pl: "pl",
+    cs: "cz",
+    tr: "tr",
+    ru: "ru",
+    uk: "ua",
+    ar: "sa",
+    he: "il",
+    hi: "in",
+    id: "id",
+    th: "th",
+    vi: "vn",
+    zh: "cn",
+    ja: "jp",
+    ko: "kr"
 };
 
 @Component({
-    selector: 'app-user-settings',
+    selector: "app-user-settings",
     imports: [CommonModule, ReactiveFormsModule, ButtonModule, InputTextModule, SelectModule, SplitButtonModule, SettingsCard, SettingsSecurity, PageHeader, PageBreadcrumb, TranslocoPipe],
-    templateUrl: './user-settings.html',
-    styleUrl: './user-settings.css',
+    templateUrl: "./user-settings.html",
+    styleUrl: "./user-settings.css",
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UserSettings {
@@ -79,9 +79,9 @@ export class UserSettings {
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
     private readonly profileFormModel = signal({
-        email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email, Validators.maxLength(320)] }),
-        givenName: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(120)] }),
-        lastName: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(120)] })
+        email: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.email, Validators.maxLength(320)] }),
+        givenName: new FormControl("", { nonNullable: true, validators: [Validators.maxLength(120)] }),
+        lastName: new FormControl("", { nonNullable: true, validators: [Validators.maxLength(120)] })
     });
     protected readonly profileForm = compatForm(this.profileFormModel);
 
@@ -94,20 +94,20 @@ export class UserSettings {
     protected readonly isProfileSaving = this.profileService.isSaving;
     protected readonly profileLoadError = signal<string | null>(null);
     protected readonly profileSaveError = signal<string | null>(null);
-    protected readonly profileSaveState = signal<'idle' | 'saved' | 'error'>('idle');
+    protected readonly profileSaveState = signal<"idle" | "saved" | "error">("idle");
     protected readonly initialProfile = signal<EditableProfile | null>(null);
 
     protected readonly isLoading = this.preferencesService.isLoading;
     protected readonly isSaving = this.preferencesService.isSaving;
     protected readonly loadError = signal<string | null>(null);
-    protected readonly saveState = signal<'idle' | 'saved' | 'error'>('idle');
+    protected readonly saveState = signal<"idle" | "saved" | "error">("idle");
     protected readonly initialPreferences = signal<UserPreferences | null>(null);
     protected readonly isExporting = signal(false);
-    protected readonly exportState = signal<'idle' | 'success' | 'error'>('idle');
+    protected readonly exportState = signal<"idle" | "success" | "error">("idle");
 
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         this.activeLanguage();
-        return [{ label: this.transloco.translate('settings.user.breadcrumb'), isCurrent: true }];
+        return [{ label: this.transloco.translate("settings.user.breadcrumb"), isCurrent: true }];
     });
     protected readonly exportMenuItems = computed<MenuItem[]>(() => {
         this.activeLanguage();
@@ -121,7 +121,7 @@ export class UserSettings {
         const available = this.transloco.getAvailableLangs() as AvailableLang[];
 
         for (const entry of available) {
-            const raw = typeof entry === 'string' ? entry : entry.id;
+            const raw = typeof entry === "string" ? entry : entry.id;
             const normalized = normalizeLocaleTag(raw);
             const base = getBaseLanguage(normalized) || normalized;
             if (!base || seen.has(base)) {
@@ -138,7 +138,7 @@ export class UserSettings {
             });
         }
 
-        return options.sort((a, b) => a.label.localeCompare(b.label, 'en', { sensitivity: 'base' }));
+        return options.sort((a, b) => a.label.localeCompare(b.label, "en", { sensitivity: "base" }));
     });
     protected readonly languageOptionsByValue = computed(() => {
         const byValue = new Map<string, LanguageOption>();
@@ -170,14 +170,14 @@ export class UserSettings {
         if (!this.profileService.profile()) {
             this.profileService.loadProfile().subscribe({
                 error: () => {
-                    this.profileLoadError.set('settings.user.profile.errors.loadFailed');
+                    this.profileLoadError.set("settings.user.profile.errors.loadFailed");
                 }
             });
         }
 
         this.preferencesService.load().subscribe({
             error: () => {
-                this.loadError.set('preferences.errors.loadFailed');
+                this.loadError.set("preferences.errors.loadFailed");
             }
         });
 
@@ -201,7 +201,7 @@ export class UserSettings {
             this.profileForm.givenName().control().setValue(editable.given_name, { emitEvent: false });
             this.profileForm.lastName().control().setValue(editable.last_name, { emitEvent: false });
             this.initialProfile.set(editable);
-            this.profileSaveState.set('idle');
+            this.profileSaveState.set("idle");
             this.profileSaveError.set(null);
             this.profileLoadError.set(null);
         });
@@ -226,7 +226,7 @@ export class UserSettings {
             this.initialPreferences.set({
                 default_locale: selectedLocale
             });
-            this.saveState.set('idle');
+            this.saveState.set("idle");
             this.loadError.set(null);
         });
     }
@@ -240,25 +240,25 @@ export class UserSettings {
             return;
         }
 
-        this.profileSaveState.set('idle');
+        this.profileSaveState.set("idle");
         this.profileSaveError.set(null);
         const payload = this.currentProfile();
 
         this.profileService.updateProfile(payload).subscribe({
             next: (profile) => {
                 this.initialProfile.set(this.editableProfile(profile));
-                this.profileSaveState.set('saved');
+                this.profileSaveState.set("saved");
             },
             error: (error) => {
-                this.profileSaveState.set('error');
+                this.profileSaveState.set("error");
                 this.profileSaveError.set(this.profileErrorKey(error));
             }
         });
     }
 
     protected onProfileFieldChange(): void {
-        if (this.profileSaveState() !== 'idle') {
-            this.profileSaveState.set('idle');
+        if (this.profileSaveState() !== "idle") {
+            this.profileSaveState.set("idle");
         }
         if (this.profileSaveError()) {
             this.profileSaveError.set(null);
@@ -268,21 +268,21 @@ export class UserSettings {
     protected save() {
         if (!this.canSave()) return;
         const payload = this.currentPreferences();
-        this.saveState.set('idle');
+        this.saveState.set("idle");
         this.preferencesService.save(payload).subscribe({
             next: (prefs) => {
                 this.initialPreferences.set(prefs);
-                this.saveState.set('saved');
+                this.saveState.set("saved");
             },
             error: () => {
-                this.saveState.set('error');
+                this.saveState.set("error");
             }
         });
     }
 
     protected onLocaleChange(option: LanguageOption | null | undefined): void {
-        if (this.saveState() !== 'idle') {
-            this.saveState.set('idle');
+        if (this.saveState() !== "idle") {
+            this.saveState.set("idle");
         }
         this.applyLocalePreview(option ?? null);
     }
@@ -290,9 +290,9 @@ export class UserSettings {
     protected optionLabel(locale: string): string {
         const normalized = normalizeLocaleTag(locale);
         if (!normalized) return locale;
-        const uiLanguage = getBaseLanguage(this.activeLanguage()) || 'en';
-        const languageNames = this.displayNames('language', uiLanguage);
-        const language = normalized.split('-')[0];
+        const uiLanguage = getBaseLanguage(this.activeLanguage()) || "en";
+        const languageNames = this.displayNames("language", uiLanguage);
+        const language = normalized.split("-")[0];
         const languageName = languageNames?.of(language) ?? language;
         return languageName;
     }
@@ -301,7 +301,7 @@ export class UserSettings {
         if (this.isExporting()) return;
 
         this.isExporting.set(true);
-        this.exportState.set('idle');
+        this.exportState.set("idle");
 
         this.takeoutDownloadService
             .downloadUserTakeout(format)
@@ -310,16 +310,16 @@ export class UserSettings {
                 finalize(() => this.isExporting.set(false))
             )
             .subscribe({
-                next: () => this.exportState.set('success'),
-                error: () => this.exportState.set('error')
+                next: () => this.exportState.set("success"),
+                error: () => this.exportState.set("error")
             });
     }
 
     protected currentPreferences(): UserPreferences {
         const selected = this.preferencesForm.defaultLocale().value();
-        const defaultLocale = normalizeLocaleTag(selected?.value ?? '');
+        const defaultLocale = normalizeLocaleTag(selected?.value ?? "");
         const base = getBaseLanguage(defaultLocale);
-        const normalizedDefault = base || '';
+        const normalizedDefault = base || "";
         return {
             default_locale: normalizedDefault
         };
@@ -340,8 +340,8 @@ export class UserSettings {
     private editableProfile(profile: UserProfile): EditableProfile {
         return {
             email: profile.email,
-            given_name: (profile.given_name ?? '').trim(),
-            last_name: (profile.last_name ?? '').trim()
+            given_name: (profile.given_name ?? "").trim(),
+            last_name: (profile.last_name ?? "").trim()
         };
     }
 
@@ -351,20 +351,20 @@ export class UserSettings {
 
     private profileErrorKey(error: unknown): string {
         if (!(error instanceof HttpErrorResponse)) {
-            return 'settings.user.profile.errors.updateFailed';
+            return "settings.user.profile.errors.updateFailed";
         }
 
         if (error.status === 409) {
-            return 'settings.user.profile.errors.emailTaken';
+            return "settings.user.profile.errors.emailTaken";
         }
         if (error.status === 404) {
-            return 'settings.user.profile.errors.notFound';
+            return "settings.user.profile.errors.notFound";
         }
         if (error.status === 400) {
-            return 'settings.user.profile.errors.invalidInput';
+            return "settings.user.profile.errors.invalidInput";
         }
 
-        return 'settings.user.profile.errors.updateFailed';
+        return "settings.user.profile.errors.updateFailed";
     }
 
     private markProfileFieldsTouched(): void {
@@ -375,8 +375,8 @@ export class UserSettings {
 
     private flagUrlForLocale(locale: string): string {
         const normalized = normalizeLocaleTag(locale);
-        if (!normalized) return '/flags/other/earth.svg';
-        const [language, ...subtags] = normalized.split('-');
+        if (!normalized) return "/flags/other/earth.svg";
+        const [language, ...subtags] = normalized.split("-");
         const region = subtags.find((part) => /^[A-Z]{2}$/.test(part));
         if (region) {
             return `/flags/${region.toLowerCase()}.svg`;
@@ -385,11 +385,11 @@ export class UserSettings {
         if (fallback) {
             return `/flags/${fallback}.svg`;
         }
-        return '/flags/other/earth.svg';
+        return "/flags/other/earth.svg";
     }
 
     private applyLocalePreview(locale: LanguageOption | string | null | undefined): void {
-        const resolvedLocale = typeof locale === 'string' ? locale : locale?.value;
+        const resolvedLocale = typeof locale === "string" ? locale : locale?.value;
         if (!resolvedLocale) {
             return;
         }
@@ -405,7 +405,7 @@ export class UserSettings {
             this.transloco.setActiveLang(translationLang);
         }
 
-        if (typeof document !== 'undefined') {
+        if (typeof document !== "undefined") {
             document.documentElement.lang = base;
             document.documentElement.dir = getLocaleDirection(base);
         }
@@ -416,7 +416,7 @@ export class UserSettings {
         const base = getBaseLanguage(normalized) || normalized;
         const available = this.transloco.getAvailableLangs() as AvailableLang[];
         const availableIds = available
-            .map((entry) => (typeof entry === 'string' ? entry : entry.id))
+            .map((entry) => (typeof entry === "string" ? entry : entry.id))
             .map((entry) => normalizeLocaleTag(entry))
             .filter((entry): entry is string => Boolean(entry));
 
@@ -432,8 +432,8 @@ export class UserSettings {
         return this.transloco.getDefaultLang();
     }
 
-    private displayNames(type: 'language' | 'region' | 'script', locale: string): Intl.DisplayNames | null {
-        if (typeof Intl === 'undefined' || !('DisplayNames' in Intl)) {
+    private displayNames(type: "language" | "region" | "script", locale: string): Intl.DisplayNames | null {
+        if (typeof Intl === "undefined" || !("DisplayNames" in Intl)) {
             return null;
         }
         try {

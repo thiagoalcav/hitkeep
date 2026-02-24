@@ -1,9 +1,9 @@
-import { Injectable, inject, signal } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { finalize } from 'rxjs';
-import { Hit, PaginatedHits } from '@models/analytics.types';
+import { Injectable, inject, signal } from "@angular/core";
+import { HttpClient, HttpParams } from "@angular/common/http";
+import { finalize } from "rxjs";
+import { Hit, PaginatedHits } from "@models/analytics.types";
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class HitService {
     private http = inject(HttpClient);
 
@@ -15,16 +15,16 @@ export class HitService {
         this.isLoading.set(true);
 
         let params = new HttpParams()
-            .set('from', from)
-            .set('to', to)
-            .set('limit', pageSize)
-            .set('offset', (page - 1) * pageSize);
+            .set("from", from)
+            .set("to", to)
+            .set("limit", pageSize)
+            .set("offset", (page - 1) * pageSize);
 
-        if (sortField) params = params.set('sort', sortField);
-        if (sortOrder) params = params.set('order', sortOrder);
-        if (query) params = params.set('q', query);
+        if (sortField) params = params.set("sort", sortField);
+        if (sortOrder) params = params.set("order", sortOrder);
+        if (query) params = params.set("q", query);
         for (const filter of filters) {
-            params = params.append('filter', `${filter.type}:${filter.value}`);
+            params = params.append("filter", `${filter.type}:${filter.value}`);
         }
 
         this.http

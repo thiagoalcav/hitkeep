@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { compatForm } from '@angular/forms/signals/compat';
-import { TranslocoPipe } from '@jsverse/transloco';
-import { ButtonModule } from 'primeng/button';
-import { SelectModule } from 'primeng/select';
-import { TooltipModule } from 'primeng/tooltip';
+import { ChangeDetectionStrategy, Component, effect, input, output, signal } from "@angular/core";
+import { FormControl, ReactiveFormsModule } from "@angular/forms";
+import { compatForm } from "@angular/forms/signals/compat";
+import { TranslocoPipe } from "@jsverse/transloco";
+import { ButtonModule } from "primeng/button";
+import { SelectModule } from "primeng/select";
+import { TooltipModule } from "primeng/tooltip";
 
 export interface RangeOption {
     label: string;
@@ -16,10 +16,10 @@ export interface RangeSelectEvent {
 }
 
 @Component({
-    selector: 'app-range-toolbar',
+    selector: "app-range-toolbar",
     imports: [ReactiveFormsModule, SelectModule, ButtonModule, TooltipModule, TranslocoPipe],
-    templateUrl: './range-toolbar.html',
-    styleUrl: './range-toolbar.css',
+    templateUrl: "./range-toolbar.html",
+    styleUrl: "./range-toolbar.css",
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RangeToolbar {
@@ -32,7 +32,7 @@ export class RangeToolbar {
     refresh = output<void>();
 
     private readonly rangeModel = signal({
-        selectedValue: new FormControl('', { nonNullable: true })
+        selectedValue: new FormControl("", { nonNullable: true })
     });
     protected readonly rangeForm = compatForm(this.rangeModel);
 

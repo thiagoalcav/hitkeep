@@ -1,22 +1,22 @@
-import { Component, computed, effect, inject, OnInit, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { CommonModule } from '@angular/common';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { TableModule } from 'primeng/table';
-import { ButtonModule } from 'primeng/button';
-import { SelectModule } from 'primeng/select';
-import { CardModule } from 'primeng/card';
-import { TabsModule } from 'primeng/tabs';
-import { InputTextModule } from 'primeng/inputtext';
-import { HttpClient } from '@angular/common/http';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { PageHeader } from '@components/page-header/page-header';
-import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
-import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
-import { UserProfileService } from '@services/user-profile.service';
-import { AdminGlobalExclusionSettings } from './components/admin-global-exclusion-settings';
+import { Component, computed, effect, inject, OnInit, signal } from "@angular/core";
+import { toSignal } from "@angular/core/rxjs-interop";
+import { CommonModule } from "@angular/common";
+import { FormControl, ReactiveFormsModule } from "@angular/forms";
+import { TableModule } from "primeng/table";
+import { ButtonModule } from "primeng/button";
+import { SelectModule } from "primeng/select";
+import { CardModule } from "primeng/card";
+import { TabsModule } from "primeng/tabs";
+import { InputTextModule } from "primeng/inputtext";
+import { HttpClient } from "@angular/common/http";
+import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
+import { PageHeader } from "@components/page-header/page-header";
+import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
+import { RelativeDateTime } from "@components/relative-date-time/relative-date-time";
+import { UserProfileService } from "@services/user-profile.service";
+import { AdminGlobalExclusionSettings } from "./components/admin-global-exclusion-settings";
 
-type InstanceRole = 'owner' | 'admin' | 'user';
+type InstanceRole = "owner" | "admin" | "user";
 
 interface User {
     id: string;
@@ -34,11 +34,11 @@ interface Site {
 }
 
 @Component({
-    selector: 'app-admin-settings',
+    selector: "app-admin-settings",
     standalone: true,
     imports: [CommonModule, ReactiveFormsModule, TableModule, ButtonModule, SelectModule, CardModule, TabsModule, InputTextModule, PageHeader, PageBreadcrumb, AdminGlobalExclusionSettings, RelativeDateTime, TranslocoPipe],
-    templateUrl: './admin-settings.html',
-    styleUrl: './admin-settings.css'
+    templateUrl: "./admin-settings.html",
+    styleUrl: "./admin-settings.css"
 })
 export class AdminSettings implements OnInit {
     private http = inject(HttpClient);
@@ -50,26 +50,26 @@ export class AdminSettings implements OnInit {
     protected sites = signal<Site[]>([]);
     protected isLoading = signal(false);
     protected isLoadingSites = signal(false);
-    protected currentUserId = signal<string>('');
+    protected currentUserId = signal<string>("");
     protected roleControls = signal<Record<string, FormControl<InstanceRole>>>({});
     protected readonly usersByID = computed(() => new Map(this.users().map((user) => [user.id, user] as const)));
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         this.activeLanguage();
-        return [{ label: this.transloco.translate('admin.breadcrumb'), isCurrent: true }];
+        return [{ label: this.transloco.translate("admin.breadcrumb"), isCurrent: true }];
     });
 
     protected roleOptions = computed(() => {
         this.activeLanguage();
         return [
-            { label: this.transloco.translate('admin.roles.instanceOwner'), value: 'owner' },
-            { label: this.transloco.translate('admin.roles.instanceAdmin'), value: 'admin' },
-            { label: this.transloco.translate('admin.roles.user'), value: 'user' }
+            { label: this.transloco.translate("admin.roles.instanceOwner"), value: "owner" },
+            { label: this.transloco.translate("admin.roles.instanceAdmin"), value: "admin" },
+            { label: this.transloco.translate("admin.roles.user"), value: "user" }
         ];
     });
 
     constructor() {
         effect(() => {
-            this.currentUserId.set(this.profile.profile()?.id ?? '');
+            this.currentUserId.set(this.profile.profile()?.id ?? "");
         });
 
         effect(() => {
@@ -93,7 +93,7 @@ export class AdminSettings implements OnInit {
 
     ngOnInit() {
         if (!this.profile.profile()) {
-            this.profile.loadProfile().subscribe({ error: (err) => console.error('Failed to load profile', err) });
+            this.profile.loadProfile().subscribe({ error: (err) => console.error("Failed to load profile", err) });
         }
 
         this.loadUsers();
@@ -102,7 +102,7 @@ export class AdminSettings implements OnInit {
 
     loadUsers() {
         this.isLoading.set(true);
-        this.http.get<User[]>('/api/admin/users').subscribe({
+        this.http.get<User[]>("/api/admin/users").subscribe({
             next: (users) => {
                 const normalizedUsers = users.map((user) => ({
                     ...user,
@@ -124,7 +124,7 @@ export class AdminSettings implements OnInit {
                 this.isLoading.set(false);
             },
             error: (err) => {
-                console.error('Failed to load users', err);
+                console.error("Failed to load users", err);
                 this.isLoading.set(false);
             }
         });
@@ -132,18 +132,18 @@ export class AdminSettings implements OnInit {
 
     loadSites() {
         this.isLoadingSites.set(true);
-        this.http.get<Site[]>('/api/admin/sites').subscribe({
+        this.http.get<Site[]>("/api/admin/sites").subscribe({
             next: (sites) => {
                 this.sites.set(
                     sites.map((site) => ({
                         ...site,
-                        owner_email: (site.owner_email ?? '').trim()
+                        owner_email: (site.owner_email ?? "").trim()
                     }))
                 );
                 this.isLoadingSites.set(false);
             },
             error: (err) => {
-                console.error('Failed to load sites', err);
+                console.error("Failed to load sites", err);
                 this.isLoadingSites.set(false);
             }
         });
@@ -159,7 +159,7 @@ export class AdminSettings implements OnInit {
                 error: (err) => {
                     user.instance_role = previousRole;
                     this.roleControl(user.id).setValue(previousRole, { emitEvent: false });
-                    console.error('Failed to update role', err);
+                    console.error("Failed to update role", err);
                 }
             });
     }
@@ -170,7 +170,7 @@ export class AdminSettings implements OnInit {
             return existing;
         }
 
-        const fallback = new FormControl<InstanceRole>('user', { nonNullable: true });
+        const fallback = new FormControl<InstanceRole>("user", { nonNullable: true });
         this.roleControls.update((controls) => ({ ...controls, [userId]: fallback }));
         return fallback;
     }
@@ -186,11 +186,11 @@ export class AdminSettings implements OnInit {
     }
 
     protected isInstanceOwner(user: User): boolean {
-        return user.instance_role === 'owner';
+        return user.instance_role === "owner";
     }
 
     protected siteOwnerEmail(site: Site): string {
-        return site.owner_email || this.usersByID().get(site.user_id)?.email || this.transloco.translate('admin.sites.ownerUnknown');
+        return site.owner_email || this.usersByID().get(site.user_id)?.email || this.transloco.translate("admin.sites.ownerUnknown");
     }
 
     protected siteOwnerInstanceRole(site: Site): InstanceRole | null {
@@ -202,29 +202,29 @@ export class AdminSettings implements OnInit {
     }
 
     private normalizeInstanceRole(role: string | null | undefined): InstanceRole {
-        if (role === 'owner' || role === 'admin' || role === 'user') {
+        if (role === "owner" || role === "admin" || role === "user") {
             return role;
         }
-        return 'user';
+        return "user";
     }
 
     deleteUser(user: User) {
-        const message = this.transloco.translate('admin.confirmDeleteUser', { email: user.email });
+        const message = this.transloco.translate("admin.confirmDeleteUser", { email: user.email });
         if (!confirm(message)) {
             return;
         }
         this.http.delete(`/api/admin/users/${user.id}`).subscribe({
             next: () => this.loadUsers(),
-            error: (err) => console.error('Failed to delete user', err)
+            error: (err) => console.error("Failed to delete user", err)
         });
     }
 
     deleteSite(site: Site) {
-        const message = this.transloco.translate('admin.confirmDeleteSite', { domain: site.domain });
+        const message = this.transloco.translate("admin.confirmDeleteSite", { domain: site.domain });
         if (confirm(message)) {
             this.http.delete(`/api/admin/sites/${site.id}`).subscribe({
                 next: () => this.loadSites(),
-                error: (err) => console.error('Failed to delete site', err)
+                error: (err) => console.error("Failed to delete site", err)
             });
         }
     }

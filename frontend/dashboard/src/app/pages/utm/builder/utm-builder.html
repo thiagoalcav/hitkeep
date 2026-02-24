@@ -15,36 +15,36 @@
 
             <form [formGroup]="form" class="flex flex-col gap-5" autocomplete="off">
                 @if (siteService.sites().length) {
-                    <div class="flex flex-col gap-1">
-                        <p-iftalabel class="w-full">
-                            <p-select
-                                inputId="utm-site"
-                                [options]="siteService.sites()"
-                                optionLabel="domain"
-                                [ngModel]="selectedSite()"
-                                [ngModelOptions]="{ standalone: true }"
-                                (ngModelChange)="prefillFromSite($event)"
-                                [placeholder]="'utmBuilder.form.siteSelectPlaceholder' | transloco"
-                                [fluid]="true"
-                                appendTo="body"
-                            >
-                                <ng-template #selecteditem let-site>
-                                    <div class="flex items-center gap-2">
-                                        <app-site-favicon [site]="site" />
-                                        <span>{{ site.domain }}</span>
-                                    </div>
-                                </ng-template>
-                                <ng-template #item let-site>
-                                    <div class="flex items-center gap-2">
-                                        <app-site-favicon [site]="site" />
-                                        <span>{{ site.domain }}</span>
-                                    </div>
-                                </ng-template>
-                            </p-select>
-                            <label for="utm-site">{{ "utmBuilder.form.siteSelectLabel" | transloco }}</label>
-                        </p-iftalabel>
-                        <small class="text-[var(--p-text-muted-color)] text-xs">{{ "utmBuilder.form.siteSelectHint" | transloco }}</small>
-                    </div>
+                <div class="flex flex-col gap-1">
+                    <p-iftalabel class="w-full">
+                        <p-select
+                            inputId="utm-site"
+                            [options]="siteService.sites()"
+                            optionLabel="domain"
+                            [ngModel]="selectedSite()"
+                            [ngModelOptions]="{ standalone: true }"
+                            (ngModelChange)="prefillFromSite($event)"
+                            [placeholder]="'utmBuilder.form.siteSelectPlaceholder' | transloco"
+                            [fluid]="true"
+                            appendTo="body"
+                        >
+                            <ng-template #selecteditem let-site>
+                                <div class="flex items-center gap-2">
+                                    <app-site-favicon [site]="site" />
+                                    <span>{{ site.domain }}</span>
+                                </div>
+                            </ng-template>
+                            <ng-template #item let-site>
+                                <div class="flex items-center gap-2">
+                                    <app-site-favicon [site]="site" />
+                                    <span>{{ site.domain }}</span>
+                                </div>
+                            </ng-template>
+                        </p-select>
+                        <label for="utm-site">{{ "utmBuilder.form.siteSelectLabel" | transloco }}</label>
+                    </p-iftalabel>
+                    <small class="text-[var(--p-text-muted-color)] text-xs">{{ "utmBuilder.form.siteSelectHint" | transloco }}</small>
+                </div>
                 }
 
                 <div class="flex flex-col gap-1">
@@ -53,11 +53,11 @@
                         <label for="utm-url">{{ "utmBuilder.form.websiteUrlLabel" | transloco }} *</label>
                     </p-iftalabel>
                     @if (form.controls.url.errors?.["required"] && form.controls.url.touched) {
-                        <small class="text-red-500 text-xs">{{ "utmBuilder.validation.urlRequired" | transloco }}</small>
+                    <small class="text-red-500 text-xs">{{ "utmBuilder.validation.urlRequired" | transloco }}</small>
                     } @else if (form.controls.url.errors?.["urlInvalid"] && form.controls.url.touched) {
-                        <small class="text-red-500 text-xs">{{ "utmBuilder.validation.urlInvalid" | transloco }}</small>
+                    <small class="text-red-500 text-xs">{{ "utmBuilder.validation.urlInvalid" | transloco }}</small>
                     } @else {
-                        <small class="text-[var(--p-text-muted-color)] text-xs">{{ "utmBuilder.form.websiteUrlHint" | transloco }}</small>
+                    <small class="text-[var(--p-text-muted-color)] text-xs">{{ "utmBuilder.form.websiteUrlHint" | transloco }}</small>
                     }
                 </div>
 
@@ -67,9 +67,9 @@
                         <label for="utm-source">{{ "utmBuilder.form.sourceLabel" | transloco }} *</label>
                     </p-iftalabel>
                     @if (form.controls.source.errors?.["required"] && form.controls.source.touched) {
-                        <small class="text-red-500 text-xs">{{ "utmBuilder.validation.sourceRequired" | transloco }}</small>
+                    <small class="text-red-500 text-xs">{{ "utmBuilder.validation.sourceRequired" | transloco }}</small>
                     } @else {
-                        <small class="text-[var(--p-text-muted-color)] text-xs">{{ "utmBuilder.form.sourceHint" | transloco }}</small>
+                    <small class="text-[var(--p-text-muted-color)] text-xs">{{ "utmBuilder.form.sourceHint" | transloco }}</small>
                     }
                 </div>
 
@@ -118,28 +118,28 @@
                 <h3 class="text-lg font-semibold mb-4">{{ "utmBuilder.preview.title" | transloco }}</h3>
 
                 @if (generatedUrl()) {
-                    <div
-                        class="bg-[var(--p-surface-ground)] border border-surface-200 dark:border-surface-700 rounded-lg p-4 font-mono text-sm break-all leading-relaxed text-[var(--p-text-color)] select-all min-h-16 mb-4"
-                        role="textbox"
-                        aria-readonly="true"
-                        [attr.aria-label]="'utmBuilder.preview.title' | transloco"
-                    >
-                        {{ generatedUrl() }}
-                    </div>
+                <div
+                    class="bg-[var(--p-surface-ground)] border border-surface-200 dark:border-surface-700 rounded-lg p-4 font-mono text-sm break-all leading-relaxed text-[var(--p-text-color)] select-all min-h-16 mb-4"
+                    role="textbox"
+                    aria-readonly="true"
+                    [attr.aria-label]="'utmBuilder.preview.title' | transloco"
+                >
+                    {{ generatedUrl() }}
+                </div>
 
-                    <p-button
-                        [icon]="copied() ? 'pi pi-check' : 'pi pi-copy'"
-                        [label]="(copied() ? 'common.copied' : 'utmBuilder.preview.copyAction') | transloco"
-                        [severity]="copied() ? 'success' : 'primary'"
-                        class="w-full"
-                        styleClass="w-full justify-center"
-                        (onClick)="copyUrl()"
-                    />
+                <p-button
+                    [icon]="copied() ? 'pi pi-check' : 'pi pi-copy'"
+                    [label]="(copied() ? 'common.copied' : 'utmBuilder.preview.copyAction') | transloco"
+                    [severity]="copied() ? 'success' : 'primary'"
+                    class="w-full"
+                    styleClass="w-full justify-center"
+                    (onClick)="copyUrl()"
+                />
                 } @else {
-                    <div class="flex flex-col items-center justify-center py-10 gap-3 text-center">
-                        <i class="pi pi-link text-5xl opacity-20" style="color: var(--p-primary-color)" aria-hidden="true"></i>
-                        <p class="text-sm text-[var(--p-text-muted-color)] max-w-xs">{{ "utmBuilder.preview.description" | transloco }}</p>
-                    </div>
+                <div class="flex flex-col items-center justify-center py-10 gap-3 text-center">
+                    <i class="pi pi-link text-5xl opacity-20" style="color: var(--p-primary-color)" aria-hidden="true"></i>
+                    <p class="text-sm text-[var(--p-text-muted-color)] max-w-xs">{{ "utmBuilder.preview.description" | transloco }}</p>
+                </div>
                 }
             </p-card>
 
@@ -148,13 +148,13 @@
                 <h4 class="text-base font-semibold mb-4">{{ "utmBuilder.reference.title" | transloco }}</h4>
                 <div class="flex flex-col divide-y divide-surface-200 dark:divide-surface-700">
                     @for (key of utmParamKeys; track key) {
-                        <div class="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-                            <code class="shrink-0 text-xs bg-[var(--p-surface-ground)] border border-surface-200 dark:border-surface-700 rounded px-2 py-1 font-mono text-[var(--p-primary-color)] mt-0.5 whitespace-nowrap">utm_{{ key }}</code>
-                            <div>
-                                <p class="text-sm font-medium">{{ "utm.kpis." + key | transloco }}</p>
-                                <p class="text-xs text-[var(--p-text-muted-color)] mt-0.5">{{ "utmBuilder.reference." + key | transloco }}</p>
-                            </div>
+                    <div class="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                        <code class="shrink-0 text-xs bg-[var(--p-surface-ground)] border border-surface-200 dark:border-surface-700 rounded px-2 py-1 font-mono text-[var(--p-primary-color)] mt-0.5 whitespace-nowrap">utm_{{ key }}</code>
+                        <div>
+                            <p class="text-sm font-medium">{{ "utm.kpis." + key | transloco }}</p>
+                            <p class="text-xs text-[var(--p-text-muted-color)] mt-0.5">{{ "utmBuilder.reference." + key | transloco }}</p>
                         </div>
+                    </div>
                     }
                 </div>
             </p-card>

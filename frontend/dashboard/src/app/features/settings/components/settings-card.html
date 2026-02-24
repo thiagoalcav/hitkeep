@@ -2,12 +2,11 @@
     <header class="settings-card-header">
         <h2 class="settings-card-title">
             @if (icon()) {
-                <i [class]="icon() + ' settings-card-icon'" aria-hidden="true"></i>
-            }
-            {{ title() }}
+            <i [class]="icon() + ' settings-card-icon'" aria-hidden="true"></i>
+            } {{ title() }}
         </h2>
         @if (subtitle()) {
-            <p class="settings-card-subtitle">{{ subtitle() }}</p>
+        <p class="settings-card-subtitle">{{ subtitle() }}</p>
         }
     </header>
 

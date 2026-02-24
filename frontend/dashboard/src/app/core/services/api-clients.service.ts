@@ -1,9 +1,9 @@
-import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Injectable, inject } from "@angular/core";
+import { HttpClient } from "@angular/common/http";
+import { Observable } from "rxjs";
 
-export type InstanceRole = 'owner' | 'admin' | 'user';
-export type SiteRole = 'owner' | 'admin' | 'editor' | 'viewer';
+export type InstanceRole = "owner" | "admin" | "user";
+export type SiteRole = "owner" | "admin" | "editor" | "viewer";
 
 export interface APIClientSiteRole {
     site_id: string;
@@ -51,16 +51,16 @@ export interface SiteSummary {
     domain: string;
 }
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class APIClientsService {
     private http = inject(HttpClient);
 
     listClients(): Observable<APIClient[]> {
-        return this.http.get<APIClient[]>('/api/user/api-clients');
+        return this.http.get<APIClient[]>("/api/user/api-clients");
     }
 
     createClient(payload: CreateAPIClientRequest): Observable<CreateAPIClientResponse> {
-        return this.http.post<CreateAPIClientResponse>('/api/user/api-clients', payload);
+        return this.http.post<CreateAPIClientResponse>("/api/user/api-clients", payload);
     }
 
     updateClient(clientID: string, payload: UpdateAPIClientRequest): Observable<APIClient> {
@@ -72,6 +72,6 @@ export class APIClientsService {
     }
 
     listSites(): Observable<SiteSummary[]> {
-        return this.http.get<SiteSummary[]>('/api/sites');
+        return this.http.get<SiteSummary[]>("/api/sites");
     }
 }

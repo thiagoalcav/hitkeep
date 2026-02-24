@@ -1,11 +1,11 @@
-import { Injectable, inject, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { tap } from 'rxjs';
-import { Site } from '@models/analytics.types';
+import { Injectable, inject, signal } from "@angular/core";
+import { HttpClient } from "@angular/common/http";
+import { tap } from "rxjs";
+import { Site } from "@models/analytics.types";
 
-const LAST_SITE_KEY = 'hk_last_site_id';
+const LAST_SITE_KEY = "hk_last_site_id";
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class SiteService {
     private http = inject(HttpClient);
 
@@ -16,7 +16,7 @@ export class SiteService {
 
     loadSites() {
         this.isLoading.set(true);
-        this.http.get<Site[]>('/api/sites').subscribe({
+        this.http.get<Site[]>("/api/sites").subscribe({
             next: (data) => {
                 this.sites.set(data);
 
@@ -40,7 +40,7 @@ export class SiteService {
     }
 
     createSite(domain: string) {
-        return this.http.post<Site>('/api/sites', { domain }).pipe(
+        return this.http.post<Site>("/api/sites", { domain }).pipe(
             tap((newSite) => {
                 this.sites.update((list) => [newSite, ...list]);
                 this.selectSite(newSite);

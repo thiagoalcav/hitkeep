@@ -9,115 +9,108 @@
 
             <form (submit)="onSubmit($event)" class="hk-auth-form" novalidate>
                 @if (errorMessage(); as errorMessageKey) {
-                    <div class="hk-auth-alert hk-auth-alert-error" role="alert" aria-live="assertive">
-                        <i class="pi pi-exclamation-circle mt-0.5" aria-hidden="true"></i>
-                        <span class="text-sm font-medium">{{ errorMessageKey | transloco }}</span>
+                <div class="hk-auth-alert hk-auth-alert-error" role="alert" aria-live="assertive">
+                    <i class="pi pi-exclamation-circle mt-0.5" aria-hidden="true"></i>
+                    <span class="text-sm font-medium">{{ errorMessageKey | transloco }}</span>
+                </div>
+                } @if (!isMfaRequired()) {
+                <div class="hk-auth-field">
+                    <label for="email" class="hk-auth-field-label">{{ "login.emailLabel" | transloco }}</label>
+                    <input
+                        pInputText
+                        id="email"
+                        type="email"
+                        inputmode="email"
+                        autocapitalize="none"
+                        spellcheck="false"
+                        [formControl]="loginForm.email().control()"
+                        autocomplete="username webauthn"
+                        class="w-full"
+                        [class.ng-invalid]="loginForm.email().touched() && loginForm.email().invalid()"
+                        [class.ng-dirty]="loginForm.email().dirty()"
+                        [attr.aria-invalid]="loginForm.email().touched() && loginForm.email().invalid() ? true : null"
+                        [attr.aria-describedby]="loginForm.email().touched() && loginForm.email().invalid() ? 'login-email-error' : null"
+                        [placeholder]="'login.emailPlaceholder' | transloco"
+                    />
+                    @if (loginForm.email().touched() && loginForm.email().invalid()) {
+                    <small id="login-email-error" class="hk-auth-field-error" role="status">{{ "login.emailInvalid" | transloco }}</small>
+                    }
+                </div>
+
+                <div class="hk-auth-field">
+                    <div class="flex items-center justify-between gap-3">
+                        <label for="password" class="hk-auth-field-label">{{ "login.passwordLabel" | transloco }}</label>
+                        <a routerLink="/forgot-password" class="hk-auth-link">{{ "login.forgotPassword" | transloco }}</a>
                     </div>
+                    <p-password
+                        id="password"
+                        [formControl]="loginForm.password().control()"
+                        autocomplete="current-password"
+                        [toggleMask]="true"
+                        [feedback]="false"
+                        class="w-full"
+                        inputclass="w-full"
+                        [placeholder]="'login.passwordPlaceholder' | transloco"
+                        [class.ng-invalid]="loginForm.password().touched() && loginForm.password().invalid()"
+                        [class.ng-dirty]="loginForm.password().dirty()"
+                    ></p-password>
+                    @if (loginForm.password().touched() && loginForm.password().invalid()) {
+                    <small class="hk-auth-field-error" role="status">{{ "login.passwordRequired" | transloco }}</small>
+                    }
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <p-checkbox [formControl]="loginForm.rememberMe().control()" [binary]="true" inputId="rememberMe"></p-checkbox>
+                    <label for="rememberMe" class="text-sm text-[var(--p-text-color)] cursor-pointer select-none">{{ "login.rememberMe" | transloco }}</label>
+                </div>
+
+                <p-button [label]="'login.signIn' | transloco" type="submit" [loading]="isLoading()" class="w-full" [disabled]="isLoading() || loginForm.email().invalid() || loginForm.password().invalid()"> </p-button>
+
+                @if (isPasskeySupported()) {
+                <div class="hk-auth-divider">{{ "login.or" | transloco }}</div>
+
+                <div class="hk-auth-actions-center">
+                    <p-button
+                        [label]="'login.signInWithPasskey' | transloco"
+                        type="button"
+                        icon="pi pi-key"
+                        severity="secondary"
+                        [outlined]="true"
+                        [loading]="isPasskeyLoading()"
+                        [disabled]="isLoading() || isPasskeyLoading()"
+                        (onClick)="onPasskeyLogin()"
+                    />
+                </div>
+                } } @else {
+                <div class="hk-auth-field">
+                    <h2 class="text-base font-semibold text-[var(--p-text-color)] m-0">{{ "login.mfaTitle" | transloco }}</h2>
+                    <p class="hk-auth-subtitle">{{ "login.mfaSubtitle" | transloco }}</p>
+                </div>
+
+                @if (mfaHasTotp()) {
+                <div class="hk-auth-field">
+                    <label for="mfaCode" class="hk-auth-field-label">{{ "login.totpCodeLabel" | transloco }}</label>
+                    <p-inputotp inputId="mfaCode" [formControl]="loginForm.mfaCode().control()" [length]="6" [integerOnly]="true" [invalid]="loginForm.mfaCode().touched() && loginForm.mfaCode().invalid()" />
+                </div>
+
+                <p-button [label]="'login.verifyTotp' | transloco" type="submit" [loading]="isLoading()" class="w-full" [disabled]="isLoading() || loginForm.mfaCode().invalid()"> </p-button>
+                } @if (isPasskeySupported() && mfaHasPasskey()) { @if (mfaHasTotp()) {
+                <div class="hk-auth-divider">{{ "login.or" | transloco }}</div>
                 }
 
-                @if (!isMfaRequired()) {
-                    <div class="hk-auth-field">
-                        <label for="email" class="hk-auth-field-label">{{ "login.emailLabel" | transloco }}</label>
-                        <input
-                            pInputText
-                            id="email"
-                            type="email"
-                            inputmode="email"
-                            autocapitalize="none"
-                            spellcheck="false"
-                            [formControl]="loginForm.email().control()"
-                            autocomplete="username webauthn"
-                            class="w-full"
-                            [class.ng-invalid]="loginForm.email().touched() && loginForm.email().invalid()"
-                            [class.ng-dirty]="loginForm.email().dirty()"
-                            [attr.aria-invalid]="loginForm.email().touched() && loginForm.email().invalid() ? true : null"
-                            [attr.aria-describedby]="loginForm.email().touched() && loginForm.email().invalid() ? 'login-email-error' : null"
-                            [placeholder]="'login.emailPlaceholder' | transloco"
-                        />
-                        @if (loginForm.email().touched() && loginForm.email().invalid()) {
-                            <small id="login-email-error" class="hk-auth-field-error" role="status">{{ "login.emailInvalid" | transloco }}</small>
-                        }
-                    </div>
-
-                    <div class="hk-auth-field">
-                        <div class="flex items-center justify-between gap-3">
-                            <label for="password" class="hk-auth-field-label">{{ "login.passwordLabel" | transloco }}</label>
-                            <a routerLink="/forgot-password" class="hk-auth-link">{{ "login.forgotPassword" | transloco }}</a>
-                        </div>
-                        <p-password
-                            id="password"
-                            [formControl]="loginForm.password().control()"
-                            autocomplete="current-password"
-                            [toggleMask]="true"
-                            [feedback]="false"
-                            class="w-full"
-                            inputclass="w-full"
-                            [placeholder]="'login.passwordPlaceholder' | transloco"
-                            [class.ng-invalid]="loginForm.password().touched() && loginForm.password().invalid()"
-                            [class.ng-dirty]="loginForm.password().dirty()"
-                        ></p-password>
-                        @if (loginForm.password().touched() && loginForm.password().invalid()) {
-                            <small class="hk-auth-field-error" role="status">{{ "login.passwordRequired" | transloco }}</small>
-                        }
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <p-checkbox [formControl]="loginForm.rememberMe().control()" [binary]="true" inputId="rememberMe"></p-checkbox>
-                        <label for="rememberMe" class="text-sm text-[var(--p-text-color)] cursor-pointer select-none">{{ "login.rememberMe" | transloco }}</label>
-                    </div>
-
-                    <p-button [label]="'login.signIn' | transloco" type="submit" [loading]="isLoading()" class="w-full" [disabled]="isLoading() || loginForm.email().invalid() || loginForm.password().invalid()"> </p-button>
-
-                    @if (isPasskeySupported()) {
-                        <div class="hk-auth-divider">{{ "login.or" | transloco }}</div>
-
-                        <div class="hk-auth-actions-center">
-                            <p-button
-                                [label]="'login.signInWithPasskey' | transloco"
-                                type="button"
-                                icon="pi pi-key"
-                                severity="secondary"
-                                [outlined]="true"
-                                [loading]="isPasskeyLoading()"
-                                [disabled]="isLoading() || isPasskeyLoading()"
-                                (onClick)="onPasskeyLogin()"
-                            />
-                        </div>
-                    }
-                } @else {
-                    <div class="hk-auth-field">
-                        <h2 class="text-base font-semibold text-[var(--p-text-color)] m-0">{{ "login.mfaTitle" | transloco }}</h2>
-                        <p class="hk-auth-subtitle">{{ "login.mfaSubtitle" | transloco }}</p>
-                    </div>
-
-                    @if (mfaHasTotp()) {
-                        <div class="hk-auth-field">
-                            <label for="mfaCode" class="hk-auth-field-label">{{ "login.totpCodeLabel" | transloco }}</label>
-                            <p-inputotp inputId="mfaCode" [formControl]="loginForm.mfaCode().control()" [length]="6" [integerOnly]="true" [invalid]="loginForm.mfaCode().touched() && loginForm.mfaCode().invalid()" />
-                        </div>
-
-                        <p-button [label]="'login.verifyTotp' | transloco" type="submit" [loading]="isLoading()" class="w-full" [disabled]="isLoading() || loginForm.mfaCode().invalid()"> </p-button>
-                    }
-
-                    @if (isPasskeySupported() && mfaHasPasskey()) {
-                        @if (mfaHasTotp()) {
-                            <div class="hk-auth-divider">{{ "login.or" | transloco }}</div>
-                        }
-
-                        <div class="hk-auth-actions-center">
-                            <p-button
-                                [label]="'login.signInWithPasskey' | transloco"
-                                type="button"
-                                icon="pi pi-key"
-                                severity="secondary"
-                                [outlined]="true"
-                                [loading]="isPasskeyLoading()"
-                                [disabled]="isLoading() || isPasskeyLoading()"
-                                (onClick)="onPasskeyLogin()"
-                            />
-                        </div>
-                    }
-                }
+                <div class="hk-auth-actions-center">
+                    <p-button
+                        [label]="'login.signInWithPasskey' | transloco"
+                        type="button"
+                        icon="pi pi-key"
+                        severity="secondary"
+                        [outlined]="true"
+                        [loading]="isPasskeyLoading()"
+                        [disabled]="isLoading() || isPasskeyLoading()"
+                        (onClick)="onPasskeyLogin()"
+                    />
+                </div>
+                } }
             </form>
         </div>
 

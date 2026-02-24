@@ -95,12 +95,6 @@
                         "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"]
                     }
                 }
-            },
-            "i18n": {
-                "sourceLocale": "en-US",
-                "locales": {
-                    "de": "src/locale/messages.de.xlf"
-                }
             }
         }
     },

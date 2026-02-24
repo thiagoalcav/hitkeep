@@ -1,30 +1,29 @@
-import { Component, inject, signal, effect, computed, untracked } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { compatForm } from '@angular/forms/signals/compat';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { TranslocoLocaleService } from '@jsverse/transloco-locale';
-import { ButtonModule } from 'primeng/button';
-import { CardModule } from 'primeng/card';
-import { SelectModule } from 'primeng/select';
-import { DatePickerModule } from 'primeng/datepicker';
-import { DialogModule } from 'primeng/dialog';
-import { SiteService } from '@features/sites/services/site.service';
-import { AnalyticsService } from '@services/analytics.service';
-import { StatsService } from '@features/analytics/services/stats.service';
-import { FunnelList } from '@features/analytics/components/funnel-list';
-import { MetricList } from '@features/analytics/components/metric-list';
-import { FunnelManager } from '@features/funnels/components/funnel-manager';
-import { FunnelViewer } from '@features/funnels/components/funnel-viewer';
-import { Funnel } from '@models/analytics.types';
-import { PageHeader } from '@components/page-header/page-header';
-import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
-import { SeriesChart, SeriesDefinition, SeriesChartPoint } from '@features/analytics/components/series-chart';
-import { FunnelSeriesPoint } from '@models/analytics.types';
-import { KpiCard } from '@features/analytics/components/kpi-card';
-import { RangeToolbar } from '@components/range-toolbar/range-toolbar';
-import { finalize } from 'rxjs';
+import { ChangeDetectionStrategy, Component, inject, signal, effect, computed, untracked } from "@angular/core";
+import { injectActiveLang } from "@core/i18n/active-lang";
+import { FormControl, ReactiveFormsModule } from "@angular/forms";
+import { compatForm } from "@angular/forms/signals/compat";
+import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
+import { TranslocoLocaleService } from "@jsverse/transloco-locale";
+import { ButtonModule } from "primeng/button";
+import { CardModule } from "primeng/card";
+import { SelectModule } from "primeng/select";
+import { DatePickerModule } from "primeng/datepicker";
+import { DialogModule } from "primeng/dialog";
+import { SiteService } from "@features/sites/services/site.service";
+import { AnalyticsService } from "@services/analytics.service";
+import { StatsService } from "@features/analytics/services/stats.service";
+import { FunnelList } from "@features/analytics/components/funnel-list";
+import { MetricList } from "@features/analytics/components/metric-list";
+import { FunnelManager } from "@features/funnels/components/funnel-manager";
+import { FunnelViewer } from "@features/funnels/components/funnel-viewer";
+import { Funnel } from "@models/analytics.types";
+import { PageHeader } from "@components/page-header/page-header";
+import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
+import { SeriesChart, SeriesDefinition, SeriesChartPoint } from "@features/analytics/components/series-chart";
+import { FunnelSeriesPoint } from "@models/analytics.types";
+import { KpiCard } from "@features/analytics/components/kpi-card";
+import { RangeToolbar } from "@components/range-toolbar/range-toolbar";
+import { finalize } from "rxjs";
 
 interface RangeSelectEvent {
     value: {
@@ -33,18 +32,19 @@ interface RangeSelectEvent {
     };
 }
 
-type MetricFilterType = 'path' | 'referrer' | 'device' | 'country';
+type MetricFilterType = "path" | "referrer" | "device" | "country";
 interface MetricFilter {
     type: MetricFilterType;
     value: string;
 }
 
 @Component({
-    selector: 'app-funnels',
+    selector: "app-funnels",
     standalone: true,
     imports: [ReactiveFormsModule, ButtonModule, CardModule, SelectModule, DatePickerModule, DialogModule, PageHeader, PageBreadcrumb, RangeToolbar, SeriesChart, KpiCard, MetricList, FunnelList, FunnelManager, FunnelViewer, TranslocoPipe],
-    templateUrl: './funnels.html',
-    styleUrl: './funnels.css'
+    templateUrl: "./funnels.html",
+    styleUrl: "./funnels.css",
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Funnels {
     protected siteService = inject(SiteService);
@@ -52,16 +52,16 @@ export class Funnels {
     protected statsService = inject(StatsService);
     private localeService = inject(TranslocoLocaleService);
     private transloco = inject(TranslocoService);
-    private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+    private readonly activeLanguage = injectActiveLang();
 
     protected timeRanges = signal([
-        { label: '', value: '24h' },
-        { label: '', value: '7d' },
-        { label: '', value: '30d' },
-        { label: '', value: '1y' },
-        { label: '', value: 'custom' }
+        { label: "", value: "24h" },
+        { label: "", value: "7d" },
+        { label: "", value: "30d" },
+        { label: "", value: "1y" },
+        { label: "", value: "custom" }
     ]);
-    protected selectedRange = signal({ label: '', value: '30d' });
+    protected selectedRange = signal({ label: "", value: "30d" });
     protected isCustomRangeVisible = signal(false);
     private readonly funnelFilterFormModel = signal({
         funnelFilter: new FormControl<{ id: string; name: string } | null>(null),
@@ -69,9 +69,9 @@ export class Funnels {
     });
     protected readonly funnelFilterForm = compatForm(this.funnelFilterFormModel);
     protected isShortRange = computed(() => {
-        if (this.selectedRange().value === '24h') return true;
+        if (this.selectedRange().value === "24h") return true;
         const customRangeDates = this.funnelFilterForm.customRangeDates().value();
-        if (this.selectedRange().value === 'custom' && customRangeDates) {
+        if (this.selectedRange().value === "custom" && customRangeDates) {
             const d = customRangeDates;
             if (d.length === 2 && d[0] && d[1]) {
                 const diff = d[1].getTime() - d[0].getTime();
@@ -96,7 +96,16 @@ export class Funnels {
             completions: point.completions
         }))
     );
+    protected comparisonFunnelSeries = signal<FunnelSeriesPoint[]>([]);
+    protected comparisonFunnelSeriesChart = computed<SeriesChartPoint[]>(() =>
+        this.comparisonFunnelSeries().map((point) => ({
+            time: point.time,
+            entries: point.entries,
+            completions: point.completions
+        }))
+    );
     protected isFunnelSeriesLoading = signal(false);
+    protected isComparisonFunnelSeriesLoading = signal(false);
     protected activeFunnelFilters = signal<{ id: string; name: string }[]>([]);
     protected activeFilters = signal<{ type: MetricFilterType; value: string }[]>([]);
     protected hasFilters = computed(() => this.activeFilters().length > 0);
@@ -106,6 +115,17 @@ export class Funnels {
             label: this.filterLabel(filter)
         }))
     );
+
+    protected comparisonLabel = computed(() => {
+        this.activeLanguage();
+        const r = this.statsService.currentComparisonRange();
+        if (!r) return "";
+        const showYear = new Date(r.from).getFullYear() !== new Date().getFullYear();
+        const opts = showYear ? ({ month: "short", day: "numeric", year: "numeric" } as const) : ({ month: "short", day: "numeric" } as const);
+        const fmt = (d: string) => this.localeService.localizeDate(new Date(d), undefined, opts);
+        return `${fmt(r.from)} – ${fmt(r.to)}`;
+    });
+
     protected readonly funnelKpis = computed(() => {
         this.activeLanguage();
         const activeIds = new Set(this.activeFunnelFilters().map((filter) => filter.id));
@@ -113,31 +133,38 @@ export class Funnels {
         const entries = this.funnelSeries().reduce((sum, point) => sum + point.entries, 0);
         const completions = this.funnelSeries().reduce((sum, point) => sum + point.completions, 0);
         const completionRate = entries > 0 ? (completions / entries) * 100 : 0;
+        const cmpEntries = this.comparisonFunnelSeries().reduce((sum, point) => sum + point.entries, 0);
+        const cmpCompletions = this.comparisonFunnelSeries().reduce((sum, point) => sum + point.completions, 0);
+        const cmpCompletionRate = cmpEntries > 0 ? (cmpCompletions / cmpEntries) * 100 : 0;
 
         return [
             {
-                label: this.transloco.translate('funnels.kpis.funnels'),
+                label: this.transloco.translate("funnels.kpis.funnels"),
                 value: funnelsCount,
                 loading: this.loading(),
-                valueClass: 'text-2xl xl:text-3xl font-bold'
+                valueClass: "text-2xl xl:text-3xl font-bold",
+                delta: null as number | null
             },
             {
-                label: this.transloco.translate('funnels.kpis.entries'),
+                label: this.transloco.translate("funnels.kpis.entries"),
                 value: entries,
                 loading: this.isFunnelSeriesLoading(),
-                valueClass: 'text-2xl xl:text-3xl font-bold'
+                valueClass: "text-2xl xl:text-3xl font-bold",
+                delta: this.calcDelta(entries, cmpEntries)
             },
             {
-                label: this.transloco.translate('funnels.kpis.completions'),
+                label: this.transloco.translate("funnels.kpis.completions"),
                 value: completions,
                 loading: this.isFunnelSeriesLoading(),
-                valueClass: 'text-2xl xl:text-3xl font-bold'
+                valueClass: "text-2xl xl:text-3xl font-bold",
+                delta: this.calcDelta(completions, cmpCompletions)
             },
             {
-                label: this.transloco.translate('funnels.kpis.completionRate'),
-                value: `${this.localeService.localizeNumber(completionRate, 'decimal', undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
+                label: this.transloco.translate("funnels.kpis.completionRate"),
+                value: `${this.localeService.localizeNumber(completionRate, "decimal", undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
                 loading: this.isFunnelSeriesLoading(),
-                valueClass: 'text-2xl xl:text-3xl font-bold'
+                valueClass: "text-2xl xl:text-3xl font-bold",
+                delta: this.calcDelta(completionRate, cmpCompletionRate)
             }
         ];
     });
@@ -145,18 +172,18 @@ export class Funnels {
         this.activeLanguage();
         return [
             {
-                key: 'entries',
-                label: this.transloco.translate('funnels.kpis.entries'),
-                color: '#6366f1',
-                gradientFrom: 'rgba(99, 102, 241, 0.5)',
-                gradientTo: 'rgba(99, 102, 241, 0.0)'
+                key: "entries",
+                label: this.transloco.translate("funnels.kpis.entries"),
+                color: "#6366f1",
+                gradientFrom: "rgba(99, 102, 241, 0.5)",
+                gradientTo: "rgba(99, 102, 241, 0.0)"
             },
             {
-                key: 'completions',
-                label: this.transloco.translate('funnels.kpis.completions'),
-                color: '#14b8a6',
-                gradientFrom: 'rgba(20, 184, 166, 0.5)',
-                gradientTo: 'rgba(20, 184, 166, 0.0)'
+                key: "completions",
+                label: this.transloco.translate("funnels.kpis.completions"),
+                color: "#14b8a6",
+                gradientFrom: "rgba(20, 184, 166, 0.5)",
+                gradientTo: "rgba(20, 184, 166, 0.0)"
             }
         ];
     });
@@ -164,11 +191,11 @@ export class Funnels {
         this.activeLanguage();
         const site = this.siteService.activeSite();
         if (!site) {
-            return [{ label: this.transloco.translate('nav.funnels'), isCurrent: true }];
+            return [{ label: this.transloco.translate("nav.funnels"), isCurrent: true }];
         }
         return [
-            { label: site.domain, favicon: site, routerLink: '/dashboard' },
-            { label: this.transloco.translate('nav.funnels'), isCurrent: true }
+            { label: site.domain, favicon: site, routerLink: "/dashboard" },
+            { label: this.transloco.translate("nav.funnels"), isCurrent: true }
         ];
     });
 
@@ -203,13 +230,12 @@ export class Funnels {
                     this.statsService.stats.set(null);
                     return;
                 }
-                this.loadFunnelSeries(
-                    site.id,
-                    dates.from,
-                    dates.to,
-                    filters.map((filter) => filter.id)
-                );
+                this.loadFunnelSeries(site.id, dates.from, dates.to, funnelIds);
                 this.statsService.loadStats(site.id, dates.from, dates.to, metricFilters, [], funnelIds);
+                const cmpRange = untracked(() => this.statsService.currentComparisonRange());
+                if (cmpRange) {
+                    this.loadComparisonFunnelSeries(site.id, cmpRange.from, cmpRange.to, funnelIds);
+                }
             }
         });
     }
@@ -298,14 +324,14 @@ export class Funnels {
 
     private filterLabel(filter: MetricFilter): string {
         switch (filter.type) {
-            case 'path':
-                return this.transloco.translate('common.filters.page', { value: filter.value });
-            case 'referrer':
-                return this.transloco.translate('common.filters.source', { value: filter.value });
-            case 'device':
-                return this.transloco.translate('common.filters.device', { value: filter.value });
-            case 'country':
-                return this.transloco.translate('common.filters.country', { value: filter.value });
+            case "path":
+                return this.transloco.translate("common.filters.page", { value: filter.value });
+            case "referrer":
+                return this.transloco.translate("common.filters.source", { value: filter.value });
+            case "device":
+                return this.transloco.translate("common.filters.device", { value: filter.value });
+            case "country":
+                return this.transloco.translate("common.filters.country", { value: filter.value });
             default:
                 return `${filter.type}: ${filter.value}`;
         }
@@ -313,11 +339,11 @@ export class Funnels {
 
     private buildTimeRanges(): { label: string; value: string }[] {
         return [
-            { label: this.transloco.translate('common.timeRanges.last24Hours'), value: '24h' },
-            { label: this.transloco.translate('common.timeRanges.last7Days'), value: '7d' },
-            { label: this.transloco.translate('common.timeRanges.last30Days'), value: '30d' },
-            { label: this.transloco.translate('common.timeRanges.lastYear'), value: '1y' },
-            { label: this.transloco.translate('common.timeRanges.customRange'), value: 'custom' }
+            { label: this.transloco.translate("common.timeRanges.last24Hours"), value: "24h" },
+            { label: this.transloco.translate("common.timeRanges.last7Days"), value: "7d" },
+            { label: this.transloco.translate("common.timeRanges.last30Days"), value: "30d" },
+            { label: this.transloco.translate("common.timeRanges.lastYear"), value: "1y" },
+            { label: this.transloco.translate("common.timeRanges.customRange"), value: "custom" }
         ];
     }
 
@@ -332,8 +358,24 @@ export class Funnels {
             });
     }
 
+    private loadComparisonFunnelSeries(siteId: string, from: string, to: string, funnelIds: string[]) {
+        this.isComparisonFunnelSeriesLoading.set(true);
+        this.analyticsService
+            .getFunnelTimeseries(siteId, from, to, funnelIds)
+            .pipe(finalize(() => this.isComparisonFunnelSeriesLoading.set(false)))
+            .subscribe({
+                next: (data) => this.comparisonFunnelSeries.set(data ?? []),
+                error: () => this.comparisonFunnelSeries.set([])
+            });
+    }
+
+    protected calcDelta(current: number, previous: number): number | null {
+        if (previous === 0) return null;
+        return ((current - previous) / previous) * 100;
+    }
+
     protected onRangeChange(event: RangeSelectEvent) {
-        if (event.value.value === 'custom') this.isCustomRangeVisible.set(true);
+        if (event.value.value === "custom") this.isCustomRangeVisible.set(true);
     }
 
     protected refreshStats() {
@@ -350,13 +392,12 @@ export class Funnels {
             return;
         }
 
-        this.loadFunnelSeries(
-            site.id,
-            dates.from,
-            dates.to,
-            filters.map((filter) => filter.id)
-        );
+        this.loadFunnelSeries(site.id, dates.from, dates.to, funnelIds);
         this.statsService.loadStats(site.id, dates.from, dates.to, metricFilters, [], funnelIds);
+        const cmpRange = this.statsService.currentComparisonRange();
+        if (cmpRange) {
+            this.loadComparisonFunnelSeries(site.id, cmpRange.from, cmpRange.to, funnelIds);
+        }
     }
 
     protected applyCustomRange() {
@@ -369,7 +410,7 @@ export class Funnels {
         const end = new Date();
         const start = new Date();
 
-        if (range.value === 'custom') {
+        if (range.value === "custom") {
             const d = this.funnelFilterForm.customRangeDates().value();
             if (d && d.length === 2 && d[0] && d[1]) {
                 return { from: d[0].toISOString(), to: d[1].toISOString() };
@@ -378,16 +419,16 @@ export class Funnels {
         }
 
         switch (range.value) {
-            case '24h':
+            case "24h":
                 start.setHours(end.getHours() - 24);
                 break;
-            case '7d':
+            case "7d":
                 start.setDate(end.getDate() - 7);
                 break;
-            case '30d':
+            case "30d":
                 start.setDate(end.getDate() - 30);
                 break;
-            case '1y':
+            case "1y":
                 start.setFullYear(end.getFullYear() - 1);
                 break;
         }

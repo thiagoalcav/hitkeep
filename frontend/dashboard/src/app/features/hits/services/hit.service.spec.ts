@@ -1,9 +1,9 @@
-import { TestBed } from '@angular/core/testing';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideHttpClient } from '@angular/common/http';
-import { HitService } from '@features/hits/services/hit.service';
+import { TestBed } from "@angular/core/testing";
+import { HttpTestingController, provideHttpClientTesting } from "@angular/common/http/testing";
+import { provideHttpClient } from "@angular/common/http";
+import { HitService } from "@features/hits/services/hit.service";
 
-describe('HitService', () => {
+describe("HitService", () => {
     let service: HitService;
     let httpMock: HttpTestingController;
 
@@ -19,7 +19,7 @@ describe('HitService', () => {
         httpMock.verify();
     });
 
-    it('should be created', () => {
+    it("should be created", () => {
         expect(service).toBeTruthy();
     });
 });

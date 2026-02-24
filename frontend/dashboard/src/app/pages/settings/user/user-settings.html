@@ -11,20 +11,11 @@
             <app-settings-card [title]="'settings.user.profile.title' | transloco" [subtitle]="'settings.user.profile.description' | transloco" icon="pi pi-user">
                 <div settings-card-body class="flex flex-col gap-4">
                     @if (profileLoadError(); as profileLoadErrorKey) {
-                        <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                            {{ profileLoadErrorKey | transloco }}
-                        </div>
-                    }
-
-                    @if (profileSaveError(); as profileSaveErrorKey) {
-                        <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                            {{ profileSaveErrorKey | transloco }}
-                        </div>
-                    }
-                    @if (profileSaveState() === "saved") {
-                        <div class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-                            {{ "settings.user.profile.status.saved" | transloco }}
-                        </div>
+                    <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ profileLoadErrorKey | transloco }}</div>
+                    } @if (profileSaveError(); as profileSaveErrorKey) {
+                    <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ profileSaveErrorKey | transloco }}</div>
+                    } @if (profileSaveState() === "saved") {
+                    <div class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{{ "settings.user.profile.status.saved" | transloco }}</div>
                     }
 
                     <div class="grid gap-4 md:grid-cols-2">
@@ -41,7 +32,7 @@
                                 (input)="onProfileFieldChange()"
                             />
                             @if (profileForm.givenName().touched() && profileForm.givenName().control().hasError("maxlength")) {
-                                <small class="settings-field-error">{{ "settings.user.profile.validation.nameTooLong" | transloco }}</small>
+                            <small class="settings-field-error">{{ "settings.user.profile.validation.nameTooLong" | transloco }}</small>
                             }
                         </div>
 
@@ -58,7 +49,7 @@
                                 (input)="onProfileFieldChange()"
                             />
                             @if (profileForm.lastName().touched() && profileForm.lastName().control().hasError("maxlength")) {
-                                <small class="settings-field-error">{{ "settings.user.profile.validation.nameTooLong" | transloco }}</small>
+                            <small class="settings-field-error">{{ "settings.user.profile.validation.nameTooLong" | transloco }}</small>
                             }
                         </div>
                     </div>
@@ -83,11 +74,11 @@
                             (input)="onProfileFieldChange()"
                         />
                         @if (profileForm.email().touched() && profileForm.email().control().hasError("required")) {
-                            <small class="settings-field-error">{{ "settings.user.profile.validation.emailRequired" | transloco }}</small>
+                        <small class="settings-field-error">{{ "settings.user.profile.validation.emailRequired" | transloco }}</small>
                         } @else if (profileForm.email().touched() && profileForm.email().control().hasError("email")) {
-                            <small class="settings-field-error">{{ "settings.user.profile.validation.emailInvalid" | transloco }}</small>
+                        <small class="settings-field-error">{{ "settings.user.profile.validation.emailInvalid" | transloco }}</small>
                         } @else if (profileForm.email().touched() && profileForm.email().control().hasError("maxlength")) {
-                            <small class="settings-field-error">{{ "settings.user.profile.validation.emailTooLong" | transloco }}</small>
+                        <small class="settings-field-error">{{ "settings.user.profile.validation.emailTooLong" | transloco }}</small>
                         }
                     </div>
                 </div>
@@ -102,19 +93,11 @@
             <app-settings-card [title]="'preferences.language.heading' | transloco" [subtitle]="'preferences.language.description' | transloco" icon="pi pi-language">
                 <div settings-card-body class="flex flex-col gap-4">
                     @if (loadError(); as loadErrorKey) {
-                        <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                            {{ loadErrorKey | transloco }}
-                        </div>
-                    }
-                    @if (saveState() === "saved") {
-                        <div class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-                            {{ "preferences.status.saved" | transloco }}
-                        </div>
-                    }
-                    @if (saveState() === "error") {
-                        <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                            {{ "preferences.status.saveFailed" | transloco }}
-                        </div>
+                    <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ loadErrorKey | transloco }}</div>
+                    } @if (saveState() === "saved") {
+                    <div class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{{ "preferences.status.saved" | transloco }}</div>
+                    } @if (saveState() === "error") {
+                    <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ "preferences.status.saveFailed" | transloco }}</div>
                     }
 
                     <div class="grid gap-5">
@@ -131,15 +114,13 @@
                             >
                                 <ng-template #selectedItem let-selectedOption>
                                     @if (selectedOption) {
-                                        <div class="flex items-center gap-2">
-                                            <img [src]="selectedOption.flagUrl" class="size-4 shrink-0 rounded-full" width="16" height="16" alt="" />
-                                            <span class="font-medium text-[var(--p-text-color)]">{{ selectedOption.label }}</span>
-                                            @if (selectedOption.direction === "rtl") {
-                                                <span class="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[var(--p-surface-200)] text-[var(--p-text-muted-color)]">
-                                                    {{ "preferences.language.rtlBadge" | transloco }}
-                                                </span>
-                                            }
-                                        </div>
+                                    <div class="flex items-center gap-2">
+                                        <img [src]="selectedOption.flagUrl" class="size-4 shrink-0 rounded-full" width="16" height="16" alt="" />
+                                        <span class="font-medium text-[var(--p-text-color)]">{{ selectedOption.label }}</span>
+                                        @if (selectedOption.direction === "rtl") {
+                                        <span class="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[var(--p-surface-200)] text-[var(--p-text-muted-color)]"> {{ "preferences.language.rtlBadge" | transloco }} </span>
+                                        }
+                                    </div>
                                     }
                                 </ng-template>
                                 <ng-template #item let-option>
@@ -150,9 +131,7 @@
                                             <span class="text-xs text-[var(--p-text-muted-color)]">{{ option.value }}</span>
                                         </div>
                                         @if (option.direction === "rtl") {
-                                            <span class="ml-auto text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[var(--p-surface-200)] text-[var(--p-text-muted-color)]">
-                                                {{ "preferences.language.rtlBadge" | transloco }}
-                                            </span>
+                                        <span class="ml-auto text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[var(--p-surface-200)] text-[var(--p-text-muted-color)]"> {{ "preferences.language.rtlBadge" | transloco }} </span>
                                         }
                                     </div>
                                 </ng-template>
@@ -174,14 +153,9 @@
             <app-settings-card [title]="'settings.user.dataExportTitle' | transloco" [subtitle]="'settings.user.exportAllDescription' | transloco" icon="pi pi-download">
                 <div settings-card-body class="flex flex-col gap-4">
                     @if (exportState() === "success") {
-                        <div class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-                            {{ "settings.user.exportStatus.success" | transloco }}
-                        </div>
-                    }
-                    @if (exportState() === "error") {
-                        <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                            {{ "settings.user.exportStatus.error" | transloco }}
-                        </div>
+                    <div class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{{ "settings.user.exportStatus.success" | transloco }}</div>
+                    } @if (exportState() === "error") {
+                    <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ "settings.user.exportStatus.error" | transloco }}</div>
                     }
                     <div>
                         <div class="font-medium text-[var(--p-text-color)]">{{ "settings.user.exportAllTitle" | transloco }}</div>

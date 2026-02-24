@@ -1,0 +1,9 @@
+{
+    "$schema": "./node_modules/oxfmt/configuration_schema.json",
+    "useTabs": false,
+    "tabWidth": 4,
+    "trailingComma": "none",
+    "printWidth": 250,
+    "sortPackageJson": false,
+    "ignorePatterns": ["dist", "out-tsc", "node_modules", "coverage", ".angular", "public"]
+}

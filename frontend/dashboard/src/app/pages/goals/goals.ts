@@ -1,28 +1,27 @@
-import { Component, inject, signal, effect, computed, untracked } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { compatForm } from '@angular/forms/signals/compat';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { TranslocoLocaleService } from '@jsverse/transloco-locale';
-import { ButtonModule } from 'primeng/button';
-import { CardModule } from 'primeng/card';
-import { SelectModule } from 'primeng/select';
-import { DatePickerModule } from 'primeng/datepicker';
-import { DialogModule } from 'primeng/dialog';
-import { SiteService } from '@features/sites/services/site.service';
-import { StatsService } from '@features/analytics/services/stats.service';
-import { AnalyticsService } from '@services/analytics.service';
-import { GoalList } from '@features/analytics/components/goal-list';
-import { MetricList } from '@features/analytics/components/metric-list';
-import { GoalManager } from '@features/goals/components/goal-manager';
-import { PageHeader } from '@components/page-header/page-header';
-import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
-import { SeriesChart, SeriesDefinition, SeriesChartPoint } from '@features/analytics/components/series-chart';
-import { Goal, GoalSeriesPoint, SiteStats } from '@models/analytics.types';
-import { KpiCard } from '@features/analytics/components/kpi-card';
-import { RangeToolbar } from '@components/range-toolbar/range-toolbar';
-import { finalize } from 'rxjs';
+import { ChangeDetectionStrategy, Component, inject, signal, effect, computed, untracked } from "@angular/core";
+import { injectActiveLang } from "@core/i18n/active-lang";
+import { FormControl, ReactiveFormsModule } from "@angular/forms";
+import { compatForm } from "@angular/forms/signals/compat";
+import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
+import { TranslocoLocaleService } from "@jsverse/transloco-locale";
+import { ButtonModule } from "primeng/button";
+import { CardModule } from "primeng/card";
+import { SelectModule } from "primeng/select";
+import { DatePickerModule } from "primeng/datepicker";
+import { DialogModule } from "primeng/dialog";
+import { SiteService } from "@features/sites/services/site.service";
+import { StatsService } from "@features/analytics/services/stats.service";
+import { AnalyticsService } from "@services/analytics.service";
+import { GoalList } from "@features/analytics/components/goal-list";
+import { MetricList } from "@features/analytics/components/metric-list";
+import { GoalManager } from "@features/goals/components/goal-manager";
+import { PageHeader } from "@components/page-header/page-header";
+import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
+import { SeriesChart, SeriesDefinition, SeriesChartPoint } from "@features/analytics/components/series-chart";
+import { Goal, GoalSeriesPoint, SiteStats } from "@models/analytics.types";
+import { KpiCard } from "@features/analytics/components/kpi-card";
+import { RangeToolbar } from "@components/range-toolbar/range-toolbar";
+import { finalize } from "rxjs";
 
 interface RangeSelectEvent {
     value: {
@@ -31,18 +30,19 @@ interface RangeSelectEvent {
     };
 }
 
-type MetricFilterType = 'path' | 'referrer' | 'device' | 'country';
+type MetricFilterType = "path" | "referrer" | "device" | "country";
 interface MetricFilter {
     type: MetricFilterType;
     value: string;
 }
 
 @Component({
-    selector: 'app-goals',
+    selector: "app-goals",
     standalone: true,
     imports: [ReactiveFormsModule, ButtonModule, CardModule, SelectModule, DatePickerModule, DialogModule, PageHeader, PageBreadcrumb, RangeToolbar, SeriesChart, KpiCard, MetricList, GoalList, GoalManager, TranslocoPipe],
-    templateUrl: './goals.html',
-    styleUrl: './goals.css'
+    templateUrl: "./goals.html",
+    styleUrl: "./goals.css",
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Goals {
     protected siteService = inject(SiteService);
@@ -50,16 +50,16 @@ export class Goals {
     private analyticsService = inject(AnalyticsService);
     private localeService = inject(TranslocoLocaleService);
     private transloco = inject(TranslocoService);
-    private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+    private readonly activeLanguage = injectActiveLang();
 
     protected timeRanges = signal([
-        { label: '', value: '24h' },
-        { label: '', value: '7d' },
-        { label: '', value: '30d' },
-        { label: '', value: '1y' },
-        { label: '', value: 'custom' }
+        { label: "", value: "24h" },
+        { label: "", value: "7d" },
+        { label: "", value: "30d" },
+        { label: "", value: "1y" },
+        { label: "", value: "custom" }
     ]);
-    protected selectedRange = signal({ label: '', value: '30d' });
+    protected selectedRange = signal({ label: "", value: "30d" });
     protected isCustomRangeVisible = signal(false);
     private readonly goalFilterFormModel = signal({
         goalFilter: new FormControl<{ id: string; name: string } | null>(null),
@@ -67,9 +67,9 @@ export class Goals {
     });
     protected readonly goalFilterForm = compatForm(this.goalFilterFormModel);
     protected isShortRange = computed(() => {
-        if (this.selectedRange().value === '24h') return true;
+        if (this.selectedRange().value === "24h") return true;
         const customRangeDates = this.goalFilterForm.customRangeDates().value();
-        if (this.selectedRange().value === 'custom' && customRangeDates) {
+        if (this.selectedRange().value === "custom" && customRangeDates) {
             const d = customRangeDates;
             if (d.length === 2 && d[0] && d[1]) {
                 const diff = d[1].getTime() - d[0].getTime();
@@ -91,7 +91,15 @@ export class Goals {
             conversions: point.conversions
         }))
     );
+    protected comparisonGoalSeries = signal<GoalSeriesPoint[]>([]);
+    protected comparisonGoalSeriesChart = computed<SeriesChartPoint[]>(() =>
+        this.comparisonGoalSeries().map((point) => ({
+            time: point.time,
+            conversions: point.conversions
+        }))
+    );
     protected isGoalSeriesLoading = signal(false);
+    protected isComparisonGoalSeriesLoading = signal(false);
     protected activeGoalFilters = signal<{ id: string; name: string }[]>([]);
     protected activeFilters = signal<{ type: MetricFilterType; value: string }[]>([]);
     protected hasFilters = computed(() => this.activeFilters().length > 0);
@@ -101,41 +109,59 @@ export class Goals {
             label: this.filterLabel(filter)
         }))
     );
+
+    protected comparisonLabel = computed(() => {
+        this.activeLanguage();
+        const r = this.statsService.currentComparisonRange();
+        if (!r) return "";
+        const showYear = new Date(r.from).getFullYear() !== new Date().getFullYear();
+        const opts = showYear ? ({ month: "short", day: "numeric", year: "numeric" } as const) : ({ month: "short", day: "numeric" } as const);
+        const fmt = (d: string) => this.localeService.localizeDate(new Date(d), undefined, opts);
+        return `${fmt(r.from)} – ${fmt(r.to)}`;
+    });
+
     protected readonly goalKpis = computed(() => {
         this.activeLanguage();
         const activeIds = new Set(this.activeGoalFilters().map((filter) => filter.id));
         const goals = this.goals();
         const totalGoals = activeIds.size > 0 ? goals.filter((goal) => activeIds.has(goal.id)).length : goals.length;
         const totalConversions = this.goalSeries().reduce((sum, point) => sum + point.conversions, 0);
+        const cmpTotalConversions = this.comparisonGoalSeries().reduce((sum, point) => sum + point.conversions, 0);
         const sessionsWithGoals = this.statsService.stats()?.unique_sessions ?? 0;
         const totalSessions = this.baselineStats()?.unique_sessions ?? 0;
         const conversionRate = totalSessions > 0 ? (sessionsWithGoals / totalSessions) * 100 : 0;
+        const cmpTotalSessions = this.baselineStats()?.comparison?.unique_sessions ?? 0;
+        const cmpConversionRate = cmpTotalSessions > 0 ? (cmpTotalConversions / cmpTotalSessions) * 100 : 0;
         const isLoading = this.statsService.isLoading() || this.baselineLoading();
 
         return [
             {
-                label: this.transloco.translate('goals.kpis.totalGoals'),
+                label: this.transloco.translate("goals.kpis.totalGoals"),
                 value: totalGoals,
                 loading: isLoading,
-                valueClass: 'text-2xl xl:text-3xl font-bold'
+                valueClass: "text-2xl xl:text-3xl font-bold",
+                delta: null as number | null
             },
             {
-                label: this.transloco.translate('goals.kpis.conversions'),
+                label: this.transloco.translate("goals.kpis.conversions"),
                 value: totalConversions,
                 loading: isLoading,
-                valueClass: 'text-2xl xl:text-3xl font-bold'
+                valueClass: "text-2xl xl:text-3xl font-bold",
+                delta: this.calcDelta(totalConversions, cmpTotalConversions)
             },
             {
-                label: this.transloco.translate('common.kpis.conversionRate'),
-                value: `${this.localeService.localizeNumber(conversionRate, 'decimal', undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
+                label: this.transloco.translate("common.kpis.conversionRate"),
+                value: `${this.localeService.localizeNumber(conversionRate, "decimal", undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
                 loading: isLoading,
-                valueClass: 'text-2xl xl:text-3xl font-bold'
+                valueClass: "text-2xl xl:text-3xl font-bold",
+                delta: this.calcDelta(conversionRate, cmpConversionRate)
             },
             {
-                label: this.transloco.translate('dashboard.kpis.uniqueSessions'),
+                label: this.transloco.translate("dashboard.kpis.uniqueSessions"),
                 value: totalSessions,
                 loading: isLoading,
-                valueClass: 'text-2xl xl:text-3xl font-bold'
+                valueClass: "text-2xl xl:text-3xl font-bold",
+                delta: this.calcDelta(totalSessions, cmpTotalSessions)
             }
         ];
     });
@@ -143,11 +169,11 @@ export class Goals {
         this.activeLanguage();
         return [
             {
-                key: 'conversions',
-                label: this.transloco.translate('goals.kpis.conversions'),
-                color: '#6366f1',
-                gradientFrom: 'rgba(99, 102, 241, 0.5)',
-                gradientTo: 'rgba(99, 102, 241, 0.0)'
+                key: "conversions",
+                label: this.transloco.translate("goals.kpis.conversions"),
+                color: "#6366f1",
+                gradientFrom: "rgba(99, 102, 241, 0.5)",
+                gradientTo: "rgba(99, 102, 241, 0.0)"
             }
         ];
     });
@@ -155,11 +181,11 @@ export class Goals {
         this.activeLanguage();
         const site = this.siteService.activeSite();
         if (!site) {
-            return [{ label: this.transloco.translate('nav.goals'), isCurrent: true }];
+            return [{ label: this.transloco.translate("nav.goals"), isCurrent: true }];
         }
         return [
-            { label: site.domain, favicon: site, routerLink: '/dashboard' },
-            { label: this.transloco.translate('nav.goals'), isCurrent: true }
+            { label: site.domain, favicon: site, routerLink: "/dashboard" },
+            { label: this.transloco.translate("nav.goals"), isCurrent: true }
         ];
     });
 
@@ -191,6 +217,10 @@ export class Goals {
                 this.statsService.loadStats(site.id, dates.from, dates.to, metricFilters, goalIds, []);
                 this.loadBaselineStats(site.id, dates.from, dates.to, metricFilters);
                 this.loadGoalSeries(site.id, dates.from, dates.to, goalIds);
+                const cmpRange = untracked(() => this.statsService.currentComparisonRange());
+                if (cmpRange) {
+                    this.loadComparisonGoalSeries(site.id, cmpRange.from, cmpRange.to, goalIds);
+                }
             }
         });
     }
@@ -207,6 +237,10 @@ export class Goals {
             this.statsService.loadStats(site.id, dates.from, dates.to, this.activeFilters(), goalIds, []);
             this.loadBaselineStats(site.id, dates.from, dates.to, this.activeFilters());
             this.loadGoalSeries(site.id, dates.from, dates.to, goalIds);
+            const cmpRange = this.statsService.currentComparisonRange();
+            if (cmpRange) {
+                this.loadComparisonGoalSeries(site.id, cmpRange.from, cmpRange.to, goalIds);
+            }
         }
     }
 
@@ -298,14 +332,14 @@ export class Goals {
 
     private filterLabel(filter: MetricFilter): string {
         switch (filter.type) {
-            case 'path':
-                return this.transloco.translate('common.filters.page', { value: filter.value });
-            case 'referrer':
-                return this.transloco.translate('common.filters.source', { value: filter.value });
-            case 'device':
-                return this.transloco.translate('common.filters.device', { value: filter.value });
-            case 'country':
-                return this.transloco.translate('common.filters.country', { value: filter.value });
+            case "path":
+                return this.transloco.translate("common.filters.page", { value: filter.value });
+            case "referrer":
+                return this.transloco.translate("common.filters.source", { value: filter.value });
+            case "device":
+                return this.transloco.translate("common.filters.device", { value: filter.value });
+            case "country":
+                return this.transloco.translate("common.filters.country", { value: filter.value });
             default:
                 return `${filter.type}: ${filter.value}`;
         }
@@ -313,11 +347,11 @@ export class Goals {
 
     private buildTimeRanges(): { label: string; value: string }[] {
         return [
-            { label: this.transloco.translate('common.timeRanges.last24Hours'), value: '24h' },
-            { label: this.transloco.translate('common.timeRanges.last7Days'), value: '7d' },
-            { label: this.transloco.translate('common.timeRanges.last30Days'), value: '30d' },
-            { label: this.transloco.translate('common.timeRanges.lastYear'), value: '1y' },
-            { label: this.transloco.translate('common.timeRanges.customRange'), value: 'custom' }
+            { label: this.transloco.translate("common.timeRanges.last24Hours"), value: "24h" },
+            { label: this.transloco.translate("common.timeRanges.last7Days"), value: "7d" },
+            { label: this.transloco.translate("common.timeRanges.last30Days"), value: "30d" },
+            { label: this.transloco.translate("common.timeRanges.lastYear"), value: "1y" },
+            { label: this.transloco.translate("common.timeRanges.customRange"), value: "custom" }
         ];
     }
 
@@ -332,8 +366,24 @@ export class Goals {
             });
     }
 
+    private loadComparisonGoalSeries(siteId: string, from: string, to: string, goalIds: string[]) {
+        this.isComparisonGoalSeriesLoading.set(true);
+        this.analyticsService
+            .getGoalTimeseries(siteId, from, to, goalIds)
+            .pipe(finalize(() => this.isComparisonGoalSeriesLoading.set(false)))
+            .subscribe({
+                next: (data) => this.comparisonGoalSeries.set(data ?? []),
+                error: () => this.comparisonGoalSeries.set([])
+            });
+    }
+
+    protected calcDelta(current: number, previous: number): number | null {
+        if (previous === 0) return null;
+        return ((current - previous) / previous) * 100;
+    }
+
     protected onRangeChange(event: RangeSelectEvent) {
-        if (event.value.value === 'custom') this.isCustomRangeVisible.set(true);
+        if (event.value.value === "custom") this.isCustomRangeVisible.set(true);
     }
 
     protected applyCustomRange() {
@@ -346,7 +396,7 @@ export class Goals {
         const end = new Date();
         const start = new Date();
 
-        if (range.value === 'custom') {
+        if (range.value === "custom") {
             const d = this.goalFilterForm.customRangeDates().value();
             if (d && d.length === 2 && d[0] && d[1]) {
                 return { from: d[0].toISOString(), to: d[1].toISOString() };
@@ -355,16 +405,16 @@ export class Goals {
         }
 
         switch (range.value) {
-            case '24h':
+            case "24h":
                 start.setHours(end.getHours() - 24);
                 break;
-            case '7d':
+            case "7d":
                 start.setDate(end.getDate() - 7);
                 break;
-            case '30d':
+            case "30d":
                 start.setDate(end.getDate() - 30);
                 break;
-            case '1y':
+            case "1y":
                 start.setFullYear(end.getFullYear() - 1);
                 break;
         }

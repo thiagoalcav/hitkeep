@@ -8,15 +8,9 @@
 
     <div class="api-reference-content max-w-7xl mx-auto w-full">
         @if (error(); as errorKey) {
-            <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                {{ errorKey | transloco }}
-            </div>
-        }
-
-        @if (!viewerReady() && !error()) {
-            <div class="api-reference-loading text-sm text-[var(--p-text-muted-color)]">
-                {{ "integration.apiReference.loading" | transloco }}
-            </div>
+        <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ errorKey | transloco }}</div>
+        } @if (!viewerReady() && !error()) {
+        <div class="api-reference-loading text-sm text-[var(--p-text-muted-color)]">{{ "integration.apiReference.loading" | transloco }}</div>
         }
 
         <div class="api-reference-viewer">

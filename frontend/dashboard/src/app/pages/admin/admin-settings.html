@@ -64,9 +64,9 @@
                                         </td>
                                         <td>
                                             @if (isInstanceOwner(user)) {
-                                                <span class="hk-owner-chip">{{ "admin.roles.instanceOwner" | transloco }}</span>
+                                            <span class="hk-owner-chip">{{ "admin.roles.instanceOwner" | transloco }}</span>
                                             } @else {
-                                                <span class="text-sm text-[var(--p-text-muted-color)]">-</span>
+                                            <span class="text-sm text-[var(--p-text-muted-color)]">-</span>
                                             }
                                         </td>
                                         <td><app-relative-date-time [value]="user.created_at" /></td>
@@ -121,15 +121,13 @@
                                 <ng-template pTemplate="body" let-site>
                                     <tr>
                                         <td>
-                                            <a [href]="'https://' + site.domain" target="_blank" class="text-primary hover:underline">
-                                                {{ site.domain }}
-                                            </a>
+                                            <a [href]="'https://' + site.domain" target="_blank" class="text-primary hover:underline"> {{ site.domain }} </a>
                                         </td>
                                         <td>
                                             <div class="flex flex-wrap items-center gap-2">
                                                 <span>{{ siteOwnerEmail(site) }}</span>
                                                 @if (siteOwnerInstanceRole(site) === "owner") {
-                                                    <span class="hk-owner-chip">{{ roleLabel("owner") }}</span>
+                                                <span class="hk-owner-chip">{{ roleLabel("owner") }}</span>
                                                 }
                                             </div>
                                         </td>

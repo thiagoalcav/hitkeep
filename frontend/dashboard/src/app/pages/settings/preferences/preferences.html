@@ -13,25 +13,20 @@
                     <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                         <div class="flex flex-col gap-1">
                             <h2 class="text-lg font-semibold text-[var(--p-text-color)]">{{ "preferences.language.heading" | transloco }}</h2>
-                            <p class="text-sm text-[var(--p-text-muted-color)]">
-                                {{ "preferences.language.description" | transloco }}
-                            </p>
+                            <p class="text-sm text-[var(--p-text-muted-color)]">{{ "preferences.language.description" | transloco }}</p>
                         </div>
                         <div class="flex items-center gap-3">
                             @if (saveState() === "saved") {
-                                <span class="text-sm text-emerald-600">{{ "preferences.status.saved" | transloco }}</span>
-                            }
-                            @if (saveState() === "error") {
-                                <span class="text-sm text-red-600">{{ "preferences.status.saveFailed" | transloco }}</span>
+                            <span class="text-sm text-emerald-600">{{ "preferences.status.saved" | transloco }}</span>
+                            } @if (saveState() === "error") {
+                            <span class="text-sm text-red-600">{{ "preferences.status.saveFailed" | transloco }}</span>
                             }
                             <p-button [label]="'preferences.actions.saveChanges' | transloco" icon="pi pi-save" [loading]="isSaving()" [disabled]="!canSave()" (onClick)="save()" />
                         </div>
                     </div>
 
                     @if (loadError(); as loadErrorKey) {
-                        <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                            {{ loadErrorKey | transloco }}
-                        </div>
+                    <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ loadErrorKey | transloco }}</div>
                     }
 
                     <div class="grid gap-5">
@@ -48,15 +43,13 @@
                             >
                                 <ng-template #selectedItem let-selectedOption>
                                     @if (selectedOption) {
-                                        <div class="flex items-center gap-2">
-                                            <img [src]="selectedOption.flagUrl" class="size-4 shrink-0 rounded-full" width="16" height="16" alt="" />
-                                            <span class="font-medium text-[var(--p-text-color)]">{{ selectedOption.label }}</span>
-                                            @if (selectedOption.direction === "rtl") {
-                                                <span class="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[var(--p-surface-200)] text-[var(--p-text-muted-color)]">
-                                                    {{ "preferences.language.rtlBadge" | transloco }}
-                                                </span>
-                                            }
-                                        </div>
+                                    <div class="flex items-center gap-2">
+                                        <img [src]="selectedOption.flagUrl" class="size-4 shrink-0 rounded-full" width="16" height="16" alt="" />
+                                        <span class="font-medium text-[var(--p-text-color)]">{{ selectedOption.label }}</span>
+                                        @if (selectedOption.direction === "rtl") {
+                                        <span class="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[var(--p-surface-200)] text-[var(--p-text-muted-color)]"> {{ "preferences.language.rtlBadge" | transloco }} </span>
+                                        }
+                                    </div>
                                     }
                                 </ng-template>
                                 <ng-template #item let-option>
@@ -67,9 +60,7 @@
                                             <span class="text-xs text-[var(--p-text-muted-color)]">{{ option.value }}</span>
                                         </div>
                                         @if (option.direction === "rtl") {
-                                            <span class="ml-auto text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[var(--p-surface-200)] text-[var(--p-text-muted-color)]">
-                                                {{ "preferences.language.rtlBadge" | transloco }}
-                                            </span>
+                                        <span class="ml-auto text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[var(--p-surface-200)] text-[var(--p-text-muted-color)]"> {{ "preferences.language.rtlBadge" | transloco }} </span>
                                         }
                                     </div>
                                 </ng-template>

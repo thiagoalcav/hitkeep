@@ -1,7 +1,7 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input } from "@angular/core";
 
 @Component({
-    selector: 'app-brand',
+    selector: "app-brand",
     standalone: true,
     imports: [],
     template: `
@@ -12,13 +12,13 @@ import { Component, computed, input } from '@angular/core';
     `
 })
 export class Brand {
-    size = input<'small' | 'large'>('small');
+    size = input<"small" | "large">("small");
 
     protected imgClass = computed(() => {
-        return this.size() === 'large' ? 'w-12 h-12' : 'w-8 h-8';
+        return this.size() === "large" ? "w-12 h-12" : "w-8 h-8";
     });
 
     protected textClass = computed(() => {
-        return this.size() === 'large' ? 'text-3xl' : 'text-xl';
+        return this.size() === "large" ? "text-3xl" : "text-xl";
     });
 }

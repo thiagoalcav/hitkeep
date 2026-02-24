@@ -1,9 +1,9 @@
-import { Injectable, effect, inject, signal } from '@angular/core';
-import { HttpClient, HttpContext } from '@angular/common/http';
-import { finalize, tap } from 'rxjs';
-import { TranslocoService } from '@jsverse/transloco';
-import { getBaseLanguage, getLocaleDirection, normalizeLocaleTag } from '@core/i18n/locale-utils';
-import { SKIP_AUTH_REDIRECT } from '@core/interceptors/auth.interceptor';
+import { Injectable, effect, inject, signal } from "@angular/core";
+import { HttpClient, HttpContext } from "@angular/common/http";
+import { finalize, tap } from "rxjs";
+import { TranslocoService } from "@jsverse/transloco";
+import { getBaseLanguage, getLocaleDirection, normalizeLocaleTag } from "@core/i18n/locale-utils";
+import { SKIP_AUTH_REDIRECT } from "@core/interceptors/auth.interceptor";
 
 export interface UserPreferences {
     default_locale: string;
@@ -11,7 +11,7 @@ export interface UserPreferences {
 
 type AvailableLang = string | { id: string; label: string };
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class UserPreferencesService {
     private http = inject(HttpClient);
     private transloco = inject(TranslocoService);
@@ -21,7 +21,7 @@ export class UserPreferencesService {
     readonly isSaving = signal(false);
 
     constructor() {
-        if (typeof document === 'undefined') {
+        if (typeof document === "undefined") {
             return;
         }
 
@@ -44,7 +44,7 @@ export class UserPreferencesService {
     load(options?: { skipAuthRedirect?: boolean }) {
         this.isLoading.set(true);
         const context = options?.skipAuthRedirect ? new HttpContext().set(SKIP_AUTH_REDIRECT, true) : undefined;
-        return this.http.get<UserPreferences>('/api/user/preferences', { context }).pipe(
+        return this.http.get<UserPreferences>("/api/user/preferences", { context }).pipe(
             tap((prefs) => {
                 this.preferences.set(prefs);
             }),
@@ -56,7 +56,7 @@ export class UserPreferencesService {
 
     save(preferences: UserPreferences) {
         this.isSaving.set(true);
-        return this.http.put<UserPreferences>('/api/user/preferences', preferences).pipe(
+        return this.http.put<UserPreferences>("/api/user/preferences", preferences).pipe(
             tap((prefs) => {
                 this.preferences.set(prefs);
             }),
@@ -71,7 +71,7 @@ export class UserPreferencesService {
         const base = getBaseLanguage(normalized) || normalized;
         const available = this.transloco.getAvailableLangs() as AvailableLang[];
         const availableIds = available
-            .map((entry) => (typeof entry === 'string' ? entry : entry.id))
+            .map((entry) => (typeof entry === "string" ? entry : entry.id))
             .map((entry) => normalizeLocaleTag(entry))
             .filter((entry): entry is string => Boolean(entry));
 

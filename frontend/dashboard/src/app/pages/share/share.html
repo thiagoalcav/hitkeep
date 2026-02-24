@@ -1,15 +1,15 @@
 <section class="share-shell">
     @if (loading()) {
-        <div class="share-state">
-            <i class="pi pi-spin pi-spinner text-2xl"></i>
-            <p class="text-sm text-muted-color">{{ "share.page.loading" | transloco }}</p>
-        </div>
+    <div class="share-state">
+        <i class="pi pi-spin pi-spinner text-2xl"></i>
+        <p class="text-sm text-muted-color">{{ "share.page.loading" | transloco }}</p>
+    </div>
     } @else if (error()) {
-        <div class="share-state">
-            <i class="pi pi-exclamation-triangle text-2xl text-orange-500"></i>
-            <p class="text-sm text-muted-color">{{ error()! | transloco }}</p>
-        </div>
+    <div class="share-state">
+        <i class="pi pi-exclamation-triangle text-2xl text-orange-500"></i>
+        <p class="text-sm text-muted-color">{{ error()! | transloco }}</p>
+    </div>
     } @else {
-        <app-dashboard />
+    <app-dashboard />
     }
 </section>

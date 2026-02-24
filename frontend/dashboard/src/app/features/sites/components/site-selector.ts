@@ -1,25 +1,25 @@
-import { Component, input, output, ChangeDetectionStrategy, inject, effect, signal, viewChild } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, inject, effect, signal, viewChild } from "@angular/core";
 
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { compatForm } from '@angular/forms/signals/compat';
-import { TranslocoPipe } from '@jsverse/transloco';
-import { SelectModule } from 'primeng/select';
-import { SkeletonModule } from 'primeng/skeleton';
-import { ButtonModule } from 'primeng/button';
-import { ButtonGroup } from 'primeng/buttongroup';
-import { Site } from '@models/analytics.types';
-import { SiteFavicon } from '@features/sites/components/site-favicon';
-import { ShareDashboardLink } from '@features/share/components/share-dashboard-link';
-import { ShareService } from '@services/share.service';
+import { FormControl, ReactiveFormsModule } from "@angular/forms";
+import { compatForm } from "@angular/forms/signals/compat";
+import { TranslocoPipe } from "@jsverse/transloco";
+import { SelectModule } from "primeng/select";
+import { SkeletonModule } from "primeng/skeleton";
+import { ButtonModule } from "primeng/button";
+import { ButtonGroup } from "primeng/buttongroup";
+import { Site } from "@models/analytics.types";
+import { SiteFavicon } from "@features/sites/components/site-favicon";
+import { ShareDashboardLink } from "@features/share/components/share-dashboard-link";
+import { ShareService } from "@services/share.service";
 @Component({
-    selector: 'app-site-selector',
+    selector: "app-site-selector",
     standalone: true,
     imports: [ReactiveFormsModule, SelectModule, SkeletonModule, ButtonModule, ButtonGroup, SiteFavicon, ShareDashboardLink, TranslocoPipe],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <div class="flex flex-col gap-2 w-full" role="region" [attr.aria-label]="'sites.selector.regionAria' | transloco">
             <div class="flex items-center justify-between">
-                <label for="site-dropdown" class="text-xs font-semibold text-[var(--p-text-muted-color)] uppercase"> {{ 'sites.selector.sitesLabel' | transloco }} </label>
+                <label for="site-dropdown" class="text-xs font-semibold text-[var(--p-text-muted-color)] uppercase"> {{ "sites.selector.sitesLabel" | transloco }} </label>
                 @if (!shareService.isShareMode()) {
                     <button
                         type="button"
@@ -85,7 +85,7 @@ import { ShareService } from '@services/share.service';
 })
 export class SiteSelector {
     protected shareService = inject(ShareService);
-    private readonly shareDialog = viewChild<ShareDashboardLink>('shareDialog');
+    private readonly shareDialog = viewChild<ShareDashboardLink>("shareDialog");
     private readonly siteFormModel = signal({
         selectedSite: new FormControl<Site | null>(null)
     });

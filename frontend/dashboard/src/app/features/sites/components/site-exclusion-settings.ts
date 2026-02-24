@@ -1,25 +1,25 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { finalize } from 'rxjs';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from "@angular/core";
+import { CommonModule } from "@angular/common";
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
+import { finalize } from "rxjs";
+import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 
-import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
-import { TableModule } from 'primeng/table';
+import { ButtonModule } from "primeng/button";
+import { InputTextModule } from "primeng/inputtext";
+import { TableModule } from "primeng/table";
 
-import { IPExclusion, Site } from '@models/analytics.types';
-import { ExclusionsService } from '@services/exclusions.service';
-import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
+import { IPExclusion, Site } from "@models/analytics.types";
+import { ExclusionsService } from "@services/exclusions.service";
+import { RelativeDateTime } from "@components/relative-date-time/relative-date-time";
 
 const ipOrCIDRPattern = /^(([0-9]{1,3}\.){3}[0-9]{1,3}(\/(3[0-2]|[12]?[0-9]))?|([0-9A-Fa-f:]+)(\/(12[0-8]|1[01][0-9]|[1-9]?[0-9]))?)$/;
 
 @Component({
-    selector: 'app-site-exclusion-settings',
+    selector: "app-site-exclusion-settings",
     standalone: true,
     imports: [CommonModule, ReactiveFormsModule, ButtonModule, InputTextModule, TableModule, RelativeDateTime, TranslocoPipe],
-    templateUrl: './site-exclusion-settings.html',
-    styleUrl: './site-exclusion-settings.css',
+    templateUrl: "./site-exclusion-settings.html",
+    styleUrl: "./site-exclusion-settings.css",
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SiteExclusionSettings {
@@ -33,11 +33,11 @@ export class SiteExclusionSettings {
     protected readonly isSaving = signal(false);
     protected readonly error = signal<string | null>(null);
     protected readonly isCurrentIPLoading = signal(false);
-    protected readonly currentIPCIDR = signal('');
+    protected readonly currentIPCIDR = signal("");
 
     protected readonly form = new FormGroup({
-        cidr: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(ipOrCIDRPattern)] }),
-        description: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(255)] })
+        cidr: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.pattern(ipOrCIDRPattern)] }),
+        description: new FormControl("", { nonNullable: true, validators: [Validators.maxLength(255)] })
     });
 
     constructor() {
@@ -76,10 +76,10 @@ export class SiteExclusionSettings {
             .subscribe({
                 next: (rule) => {
                     this.exclusions.update((current) => [rule, ...current]);
-                    this.form.reset({ cidr: '', description: '' });
+                    this.form.reset({ cidr: "", description: "" });
                 },
                 error: () => {
-                    this.error.set('sites.exclusions.errors.createFailed');
+                    this.error.set("sites.exclusions.errors.createFailed");
                 }
             });
     }
@@ -90,7 +90,7 @@ export class SiteExclusionSettings {
             return;
         }
 
-        const message = this.transloco.translate('sites.exclusions.confirmDelete', { cidr: rule.cidr });
+        const message = this.transloco.translate("sites.exclusions.confirmDelete", { cidr: rule.cidr });
         if (!window.confirm(message)) {
             return;
         }
@@ -101,25 +101,25 @@ export class SiteExclusionSettings {
                 this.exclusions.update((current) => current.filter((entry) => entry.id !== rule.id));
             },
             error: () => {
-                this.error.set('sites.exclusions.errors.deleteFailed');
+                this.error.set("sites.exclusions.errors.deleteFailed");
             }
         });
     }
 
     protected copyCurrentIP(): void {
         const cidr = this.currentIPCIDR();
-        if (!cidr || typeof navigator === 'undefined' || !navigator.clipboard) {
+        if (!cidr || typeof navigator === "undefined" || !navigator.clipboard) {
             return;
         }
 
         navigator.clipboard.writeText(cidr).catch(() => {
-            this.error.set('sites.exclusions.errors.copyFailed');
+            this.error.set("sites.exclusions.errors.copyFailed");
         });
     }
 
     private loadCurrentIP(): void {
         this.isCurrentIPLoading.set(true);
-        this.currentIPCIDR.set('');
+        this.currentIPCIDR.set("");
 
         this.exclusionsService
             .getCurrentIP()
@@ -129,7 +129,7 @@ export class SiteExclusionSettings {
                     this.currentIPCIDR.set(currentIP.cidr);
                 },
                 error: () => {
-                    this.currentIPCIDR.set('');
+                    this.currentIPCIDR.set("");
                 }
             });
     }
@@ -146,7 +146,7 @@ export class SiteExclusionSettings {
                     this.exclusions.set(rules);
                 },
                 error: () => {
-                    this.error.set('sites.exclusions.errors.loadFailed');
+                    this.error.set("sites.exclusions.errors.loadFailed");
                 }
             });
     }

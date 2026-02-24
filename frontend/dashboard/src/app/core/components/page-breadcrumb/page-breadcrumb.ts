@@ -1,9 +1,9 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { BreadcrumbModule } from 'primeng/breadcrumb';
-import { MenuItem } from 'primeng/api';
-import { Site } from '@models/analytics.types';
-import { SiteFavicon } from '@features/sites/components/site-favicon';
+import { ChangeDetectionStrategy, Component, input } from "@angular/core";
+import { RouterLink } from "@angular/router";
+import { BreadcrumbModule } from "primeng/breadcrumb";
+import { MenuItem } from "primeng/api";
+import { Site } from "@models/analytics.types";
+import { SiteFavicon } from "@features/sites/components/site-favicon";
 
 export type PageBreadcrumbItem = MenuItem & {
     favicon?: Site | null;
@@ -11,11 +11,11 @@ export type PageBreadcrumbItem = MenuItem & {
 };
 
 @Component({
-    selector: 'app-page-breadcrumb',
+    selector: "app-page-breadcrumb",
     standalone: true,
     imports: [BreadcrumbModule, RouterLink, SiteFavicon],
-    templateUrl: './page-breadcrumb.html',
-    styleUrl: './page-breadcrumb.css',
+    templateUrl: "./page-breadcrumb.html",
+    styleUrl: "./page-breadcrumb.css",
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PageBreadcrumb {

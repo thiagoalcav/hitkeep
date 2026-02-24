@@ -1,9 +1,9 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { UserControls } from '@components/user-controls/user-controls';
-import { ShareService } from '@services/share.service';
+import { ChangeDetectionStrategy, Component, inject } from "@angular/core";
+import { UserControls } from "@components/user-controls/user-controls";
+import { ShareService } from "@services/share.service";
 
 @Component({
-    selector: 'app-page-header',
+    selector: "app-page-header",
     standalone: true,
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [UserControls],

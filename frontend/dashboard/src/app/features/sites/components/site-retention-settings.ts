@@ -1,17 +1,17 @@
-import { Component, inject, signal, effect, input } from '@angular/core';
+import { Component, inject, signal, effect, input } from "@angular/core";
 
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { compatForm } from '@angular/forms/signals/compat';
-import { TranslocoPipe } from '@jsverse/transloco';
-import { ButtonModule } from 'primeng/button';
-import { InputNumberModule } from 'primeng/inputnumber';
-import { MessageModule } from 'primeng/message';
-import { SiteService } from '@features/sites/services/site.service';
-import { AnalyticsService } from '@services/analytics.service';
-import { Site } from '@models/analytics.types';
+import { FormControl, ReactiveFormsModule } from "@angular/forms";
+import { compatForm } from "@angular/forms/signals/compat";
+import { TranslocoPipe } from "@jsverse/transloco";
+import { ButtonModule } from "primeng/button";
+import { InputNumberModule } from "primeng/inputnumber";
+import { MessageModule } from "primeng/message";
+import { SiteService } from "@features/sites/services/site.service";
+import { AnalyticsService } from "@services/analytics.service";
+import { Site } from "@models/analytics.types";
 
 @Component({
-    selector: 'app-site-retention-settings',
+    selector: "app-site-retention-settings",
     standalone: true,
     imports: [ReactiveFormsModule, ButtonModule, InputNumberModule, MessageModule, TranslocoPipe],
     template: `
@@ -19,13 +19,13 @@ import { Site } from '@models/analytics.types';
             <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg flex gap-3">
                 <i class="pi pi-info-circle text-blue-600 dark:text-blue-400 mt-0.5"></i>
                 <div class="text-sm text-blue-800 dark:text-blue-300">
-                    <p class="font-semibold mb-1">{{ 'sites.retention.infoTitle' | transloco }}</p>
-                    <p class="opacity-90">{{ 'sites.retention.infoDescription' | transloco }}</p>
+                    <p class="font-semibold mb-1">{{ "sites.retention.infoTitle" | transloco }}</p>
+                    <p class="opacity-90">{{ "sites.retention.infoDescription" | transloco }}</p>
                 </div>
             </div>
 
             <div class="flex flex-col gap-2 mt-2">
-                <label for="retentionDays" class="font-medium">{{ 'sites.retention.periodLabel' | transloco }}</label>
+                <label for="retentionDays" class="font-medium">{{ "sites.retention.periodLabel" | transloco }}</label>
                 <div class="flex items-center gap-4">
                     <p-inputnumber
                         inputId="retentionDays"
@@ -42,9 +42,9 @@ import { Site } from '@models/analytics.types';
                         class="w-48"
                     >
                     </p-inputnumber>
-                    <span class="text-sm text-muted-color">{{ 'sites.retention.hotDataSuffix' | transloco }}</span>
+                    <span class="text-sm text-muted-color">{{ "sites.retention.hotDataSuffix" | transloco }}</span>
                 </div>
-                <small class="text-xs text-muted-color">{{ 'sites.retention.defaultHint' | transloco }}</small>
+                <small class="text-xs text-muted-color">{{ "sites.retention.defaultHint" | transloco }}</small>
             </div>
 
             <div class="flex justify-end mt-4 pt-4 border-t border-surface-200 dark:border-surface-700">

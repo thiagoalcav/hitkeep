@@ -1,6 +1,6 @@
-import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Injectable, inject } from "@angular/core";
+import { HttpClient } from "@angular/common/http";
+import { Observable } from "rxjs";
 
 export interface UserPasskey {
     id: string;
@@ -54,32 +54,32 @@ export interface PasskeyRegistrationFinishRequest {
     transports?: string[];
 }
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class UserSecurityService {
     private http = inject(HttpClient);
 
     loadStatus(): Observable<UserSecurityStatus> {
-        return this.http.get<UserSecurityStatus>('/api/user/security');
+        return this.http.get<UserSecurityStatus>("/api/user/security");
     }
 
     startTotpSetup(): Observable<UserTotpSetup> {
-        return this.http.post<UserTotpSetup>('/api/user/security/totp/setup/start', {});
+        return this.http.post<UserTotpSetup>("/api/user/security/totp/setup/start", {});
     }
 
     verifyTotpSetup(code: string): Observable<UserSecurityStatus> {
-        return this.http.post<UserSecurityStatus>('/api/user/security/totp/setup/verify', { code });
+        return this.http.post<UserSecurityStatus>("/api/user/security/totp/setup/verify", { code });
     }
 
     disableTotp(code: string): Observable<UserSecurityStatus> {
-        return this.http.post<UserSecurityStatus>('/api/user/security/totp/disable', { code });
+        return this.http.post<UserSecurityStatus>("/api/user/security/totp/disable", { code });
     }
 
     startPasskeyRegistration(name?: string): Observable<PasskeyRegistrationStartResponse> {
-        return this.http.post<PasskeyRegistrationStartResponse>('/api/user/security/passkeys/register/start', { name: name?.trim() || '' });
+        return this.http.post<PasskeyRegistrationStartResponse>("/api/user/security/passkeys/register/start", { name: name?.trim() || "" });
     }
 
     finishPasskeyRegistration(payload: PasskeyRegistrationFinishRequest): Observable<UserSecurityStatus> {
-        return this.http.post<UserSecurityStatus>('/api/user/security/passkeys/register/finish', payload);
+        return this.http.post<UserSecurityStatus>("/api/user/security/passkeys/register/finish", payload);
     }
 
     deletePasskey(passkeyID: string): Observable<void> {

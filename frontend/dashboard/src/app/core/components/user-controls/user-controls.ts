@@ -1,13 +1,13 @@
-import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
-import { AvatarModule } from 'primeng/avatar';
-import { MenuModule } from 'primeng/menu';
-import { TranslocoPipe } from '@jsverse/transloco';
-import { PreferencesService } from '@services/preferences.service';
-import { UserMenuService } from '@services/user-menu.service';
-import { UserProfileService } from '@services/user-profile.service';
+import { ChangeDetectionStrategy, Component, inject, input } from "@angular/core";
+import { AvatarModule } from "primeng/avatar";
+import { MenuModule } from "primeng/menu";
+import { TranslocoPipe } from "@jsverse/transloco";
+import { PreferencesService } from "@services/preferences.service";
+import { UserMenuService } from "@services/user-menu.service";
+import { UserProfileService } from "@services/user-profile.service";
 
 @Component({
-    selector: 'app-user-controls',
+    selector: "app-user-controls",
     standalone: true,
     imports: [AvatarModule, MenuModule, TranslocoPipe],
     changeDetection: ChangeDetectionStrategy.OnPush,

@@ -1,15 +1,15 @@
-import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
-import { TranslocoPipe } from '@jsverse/transloco';
+import { Component, input, output, ChangeDetectionStrategy } from "@angular/core";
+import { TranslocoPipe } from "@jsverse/transloco";
 
-import { CardModule } from 'primeng/card';
-import { ButtonModule } from 'primeng/button';
-import { SkeletonModule } from 'primeng/skeleton';
-import { TooltipModule } from 'primeng/tooltip';
-import { Funnel } from '@models/analytics.types';
-import { EmptyState } from '@components/molecules/empty-state';
+import { CardModule } from "primeng/card";
+import { ButtonModule } from "primeng/button";
+import { SkeletonModule } from "primeng/skeleton";
+import { TooltipModule } from "primeng/tooltip";
+import { Funnel } from "@models/analytics.types";
+import { EmptyState } from "@components/molecules/empty-state";
 
 @Component({
-    selector: 'app-funnel-list',
+    selector: "app-funnel-list",
     standalone: true,
     imports: [CardModule, ButtonModule, SkeletonModule, TooltipModule, EmptyState, TranslocoPipe],
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -18,7 +18,7 @@ import { EmptyState } from '@components/molecules/empty-state';
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-2">
                     <i class="pi pi-filter text-[var(--p-primary-color)]" aria-hidden="true"></i>
-                    <h3 class="font-semibold text-lg">{{ 'funnels.list.title' | transloco }}</h3>
+                    <h3 class="font-semibold text-lg">{{ "funnels.list.title" | transloco }}</h3>
                 </div>
                 @if (!readOnly() && !isLoading() && funnels() && funnels().length > 0) {
                     <p-button icon="pi pi-plus" (onClick)="manageClicked.emit()" [rounded]="true" [text]="true" [pTooltip]="'funnels.list.manageTooltip' | transloco" styleClass="w-8 h-8" />
@@ -51,7 +51,7 @@ import { EmptyState } from '@components/molecules/empty-state';
                                 <div class="flex flex-col gap-1 min-w-0">
                                     <span class="font-medium truncate">{{ funnel.name }}</span>
                                     <div class="flex items-center gap-1 text-xs text-muted-color">
-                                        <span>{{ 'funnels.list.stepsCount' | transloco: { count: funnel.steps.length } }}</span>
+                                        <span>{{ "funnels.list.stepsCount" | transloco: { count: funnel.steps.length } }}</span>
                                     </div>
                                 </div>
                                 <i class="pi pi-chevron-right text-muted-color" aria-hidden="true"></i>

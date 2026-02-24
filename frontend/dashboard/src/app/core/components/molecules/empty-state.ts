@@ -1,9 +1,9 @@
-import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy } from "@angular/core";
 
-import { ButtonModule } from 'primeng/button';
+import { ButtonModule } from "primeng/button";
 
 @Component({
-    selector: 'app-empty-state',
+    selector: "app-empty-state",
     standalone: true,
     imports: [ButtonModule],
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,11 +36,11 @@ export class EmptyState {
     // Configuration Inputs
     icon = input.required<string>(); // e.g., 'pi-flag'
     title = input.required<string>(); // e.g., 'No goals yet'
-    description = input<string>(''); // e.g., 'Track specific events...'
+    description = input<string>(""); // e.g., 'Track specific events...'
 
     // CTA Configuration
-    actionLabel = input<string>(''); // e.g., 'Create Goal'
-    actionIcon = input<string>('pi pi-plus');
+    actionLabel = input<string>(""); // e.g., 'Create Goal'
+    actionIcon = input<string>("pi pi-plus");
 
     // Outputs
     actionClicked = output<void>();

@@ -1,21 +1,21 @@
-import { Injectable, effect, signal } from '@angular/core';
+import { Injectable, effect, signal } from "@angular/core";
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class PreferencesService {
     readonly isDarkMode = signal<boolean>(false);
 
     constructor() {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem('hk_theme');
-            this.isDarkMode.set(saved === 'dark');
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("hk_theme");
+            this.isDarkMode.set(saved === "dark");
 
             effect(() => {
                 if (this.isDarkMode()) {
-                    document.documentElement.classList.add('p-dark');
-                    localStorage.setItem('hk_theme', 'dark');
+                    document.documentElement.classList.add("p-dark");
+                    localStorage.setItem("hk_theme", "dark");
                 } else {
-                    document.documentElement.classList.remove('p-dark');
-                    localStorage.setItem('hk_theme', 'light');
+                    document.documentElement.classList.remove("p-dark");
+                    localStorage.setItem("hk_theme", "light");
                 }
             });
         }

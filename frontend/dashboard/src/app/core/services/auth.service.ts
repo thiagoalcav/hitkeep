@@ -1,8 +1,8 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, finalize, tap } from 'rxjs';
+import { Injectable, computed, inject, signal } from "@angular/core";
+import { HttpClient } from "@angular/common/http";
+import { Observable, finalize, tap } from "rxjs";
 
-export type AuthStatus = 'unknown' | 'authenticated' | 'unauthenticated';
+export type AuthStatus = "unknown" | "authenticated" | "unauthenticated";
 
 export interface PasskeyLoginStartResponse {
     challenge_token: string;
@@ -24,69 +24,69 @@ export interface PasskeyLoginFinishRequest {
 }
 
 export interface LoginResponse {
-    status: 'ok' | 'mfa_required';
+    status: "ok" | "mfa_required";
     challenge_token?: string;
-    factors?: ('totp' | 'passkey')[];
-    passkey?: PasskeyLoginStartResponse['publicKey'];
+    factors?: ("totp" | "passkey")[];
+    passkey?: PasskeyLoginStartResponse["publicKey"];
 }
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class AuthService {
     private http = inject(HttpClient);
-    readonly status = signal<AuthStatus>('unknown');
-    readonly isAuthenticated = computed(() => this.status() === 'authenticated');
+    readonly status = signal<AuthStatus>("unknown");
+    readonly isAuthenticated = computed(() => this.status() === "authenticated");
 
     login(credentials: { email: string; password: string; remember_me?: boolean }): Observable<LoginResponse> {
-        return this.http.post<LoginResponse>('/api/login', credentials).pipe(
+        return this.http.post<LoginResponse>("/api/login", credentials).pipe(
             tap((resp) => {
-                if (resp.status === 'ok') {
-                    this.status.set('authenticated');
+                if (resp.status === "ok") {
+                    this.status.set("authenticated");
                 }
             })
         );
     }
 
     logout(): Observable<void> {
-        return this.http.post<void>('/api/logout', {}).pipe(finalize(() => this.status.set('unauthenticated')));
+        return this.http.post<void>("/api/logout", {}).pipe(finalize(() => this.status.set("unauthenticated")));
     }
 
     requestPasswordReset(email: string): Observable<void> {
-        return this.http.post<void>('/api/auth/forgot-password', { email });
+        return this.http.post<void>("/api/auth/forgot-password", { email });
     }
 
     resetPassword(token: string, password: string): Observable<void> {
-        return this.http.post<void>('/api/auth/reset-password', { token, password });
+        return this.http.post<void>("/api/auth/reset-password", { token, password });
     }
 
     changePassword(current: string, newPass: string): Observable<void> {
-        return this.http.post<void>('/api/user/password', {
+        return this.http.post<void>("/api/user/password", {
             current_password: current,
             new_password: newPass
         });
     }
 
     startPasskeyLogin(): Observable<PasskeyLoginStartResponse> {
-        return this.http.post<PasskeyLoginStartResponse>('/api/auth/passkey/login/start', {});
+        return this.http.post<PasskeyLoginStartResponse>("/api/auth/passkey/login/start", {});
     }
 
     finishPasskeyLogin(payload: PasskeyLoginFinishRequest): Observable<void> {
-        return this.http.post<void>('/api/auth/passkey/login/finish', payload).pipe(tap(() => this.status.set('authenticated')));
+        return this.http.post<void>("/api/auth/passkey/login/finish", payload).pipe(tap(() => this.status.set("authenticated")));
     }
 
     verifyMfaTotp(challengeToken: string, code: string): Observable<void> {
         return this.http
-            .post<void>('/api/auth/mfa/totp/verify', {
+            .post<void>("/api/auth/mfa/totp/verify", {
                 challenge_token: challengeToken,
                 code
             })
-            .pipe(tap(() => this.status.set('authenticated')));
+            .pipe(tap(() => this.status.set("authenticated")));
     }
 
     markAuthenticated() {
-        this.status.set('authenticated');
+        this.status.set("authenticated");
     }
 
     markUnauthenticated() {
-        this.status.set('unauthenticated');
+        this.status.set("unauthenticated");
     }
 }

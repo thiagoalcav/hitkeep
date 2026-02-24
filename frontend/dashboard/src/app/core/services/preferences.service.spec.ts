@@ -1,8 +1,8 @@
-import { TestBed } from '@angular/core/testing';
-import { vi } from 'vitest';
-import { PreferencesService } from '@services/preferences.service';
+import { TestBed } from "@angular/core/testing";
+import { vi } from "vitest";
+import { PreferencesService } from "@services/preferences.service";
 
-describe('PreferencesService', () => {
+describe("PreferencesService", () => {
     let service: PreferencesService;
 
     beforeEach(() => {
@@ -13,17 +13,17 @@ describe('PreferencesService', () => {
 
         // Mock LocalStorage
         const store: Record<string, string> = {};
-        vi.spyOn(localStorage, 'getItem').mockImplementation((key: string) => store[key] || null);
-        vi.spyOn(localStorage, 'setItem').mockImplementation((key: string, value: string) => {
+        vi.spyOn(localStorage, "getItem").mockImplementation((key: string) => store[key] || null);
+        vi.spyOn(localStorage, "setItem").mockImplementation((key: string, value: string) => {
             store[key] = value;
         });
     });
 
-    it('should be created', () => {
+    it("should be created", () => {
         expect(service).toBeTruthy();
     });
 
-    it('should toggle theme signal', () => {
+    it("should toggle theme signal", () => {
         const initial = service.isDarkMode();
         service.toggleTheme();
         expect(service.isDarkMode()).not.toBe(initial);

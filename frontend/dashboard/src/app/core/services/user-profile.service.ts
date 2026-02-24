@@ -1,7 +1,7 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { catchError, finalize, tap, throwError } from 'rxjs';
-import { AuthService } from '@services/auth.service';
+import { Injectable, inject, signal, computed } from "@angular/core";
+import { HttpClient } from "@angular/common/http";
+import { catchError, finalize, tap, throwError } from "rxjs";
+import { AuthService } from "@services/auth.service";
 
 export interface UserProfile {
     id: string;
@@ -12,7 +12,7 @@ export interface UserProfile {
     avatar_url: string;
 }
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class UserProfileService {
     private http = inject(HttpClient);
     private auth = inject(AuthService);
@@ -22,14 +22,14 @@ export class UserProfileService {
     readonly isSaving = signal(false);
     readonly displayName = computed(() => {
         const profile = this.profile();
-        if (!profile) return 'User';
-        return profile.display_name || profile.email.split('@')[0] || 'User';
+        if (!profile) return "User";
+        return profile.display_name || profile.email.split("@")[0] || "User";
     });
-    readonly avatarUrl = computed(() => this.profile()?.avatar_url || '');
+    readonly avatarUrl = computed(() => this.profile()?.avatar_url || "");
 
     loadProfile() {
         this.isLoading.set(true);
-        return this.http.get<UserProfile>('/api/user/profile').pipe(
+        return this.http.get<UserProfile>("/api/user/profile").pipe(
             tap((profile) => {
                 this.profile.set(profile);
                 this.auth.markAuthenticated();
@@ -48,7 +48,7 @@ export class UserProfileService {
 
     updateProfile(payload: { email: string; given_name: string; last_name: string }) {
         this.isSaving.set(true);
-        return this.http.put<UserProfile>('/api/user/profile', payload).pipe(
+        return this.http.put<UserProfile>("/api/user/profile", payload).pipe(
             tap((profile) => {
                 this.profile.set(profile);
             }),

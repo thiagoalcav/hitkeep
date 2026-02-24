@@ -1,6 +1,6 @@
-import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Injectable, inject } from "@angular/core";
+import { HttpClient } from "@angular/common/http";
+import { Observable } from "rxjs";
 
 export interface APIDocVersionInfo {
     version: string;
@@ -45,12 +45,12 @@ export interface OpenAPISecurityScheme {
     bearerFormat?: string;
 }
 
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class APIReferenceService {
     private http = inject(HttpClient);
 
     getVersions(): Observable<APIDocVersionsResponse> {
-        return this.http.get<APIDocVersionsResponse>('/api/docs/versions');
+        return this.http.get<APIDocVersionsResponse>("/api/docs/versions");
     }
 
     getSpec(version: string): Observable<OpenAPISpec> {

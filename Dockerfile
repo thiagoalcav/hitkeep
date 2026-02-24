@@ -2,8 +2,11 @@ ARG GOLANG_VERSION=1.26.0
 
 FROM golang:$GOLANG_VERSION AS builder
 
+RUN mkdir -p /var/lib/hitkeep/data
+
+FROM gcr.io/distroless/cc-debian13:nonroot
+
 ARG TARGETARCH
-ARG TARGETOS
 ARG HITKEEP_VERSION='snapshot'
 
 LABEL org.opencontainers.image.title="HitKeep" \
@@ -14,21 +17,11 @@ LABEL org.opencontainers.image.title="HitKeep" \
     org.opencontainers.image.authors="Pascale Beier (@PascaleBeier)" \
     org.opencontainers.image.licenses="MIT"
 
-WORKDIR /app
-
-COPY . .
-
-RUN go mod download && go mod verify
-
-RUN mkdir -p /var/lib/hitkeep/data
-
-RUN CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -ldflags="-w -s -X 'hitkeep/cmd.Version=$HITKEEP_VERSION'" -o /dist/hitkeep ./cmd/hitkeep/main.go
-
-FROM gcr.io/distroless/cc-debian13:nonroot
-
 COPY --from=builder --chown=nonroot:nonroot /var/lib/hitkeep/data /var/lib/hitkeep/data
 
-COPY --from=builder /dist/hitkeep /usr/local/bin/hitkeep
+WORKDIR /app
+
+COPY hitkeep-linux-${TARGETARCH} /usr/local/bin/hitkeep
 
 ENV HITKEEP_DB_PATH="/var/lib/hitkeep/data/hitkeep.db"
 ENV HITKEEP_ARCHIVE_PATH="/var/lib/hitkeep/data/archive"

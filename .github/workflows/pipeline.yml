@@ -72,12 +72,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build Tracker
-        working-directory: frontend/tracker
-        run: |
-          npm ci --no-audit --no-fund
-          npm run build
-
       - name: Build Dashboard
         working-directory: frontend/dashboard
         run: |
@@ -118,7 +112,7 @@ jobs:
           subject-path: |
             hitkeep-linux-amd64
             hitkeep-linux-arm64
-      
+
       - name: Upload Release Binaries
         if: ${{ inputs.upload_to_release && inputs.release_tag_name != '' }}
         env:
@@ -144,7 +138,7 @@ jobs:
           context: .
           provenance: mode=max
           sbom: true
-          file: Dockerfile.ci
+          build-args: HITKEEP_VERSION=${{ inputs.version }}
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max

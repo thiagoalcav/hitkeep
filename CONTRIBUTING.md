@@ -21,7 +21,7 @@ HitKeep is an open-source project and contributions are welcome. This guide cove
 | **Go**                | 1.26+                    | Backend compilation                    |
 | **CGo / C toolchain** | system default           | Required by DuckDB's Go bindings       |
 | **Air**               | latest                   | Go live-reload for backend development |
-| **Node.js + npm **    | 24+ (LTS)                | Angular dashboard and tracker snippet  |
+| **Node.js + npm **    | 24+ (LTS)                | Angular dashboard (includes tracker snippet build) |
 
 ### macOS
 
@@ -113,8 +113,8 @@ make build
 ```
 
 This:
-1. Runs `npm ci && npm run build` for the tracker snippet (output: `frontend/tracker/dist/`)
-2. Runs `npm ci && ng build --configuration production` for the dashboard (output: `frontend/dashboard/dist/`)
+1. Runs `npm ci && ng build --configuration production` for the dashboard (output: `frontend/dashboard/dist/`)
+2. Minifies the tracker snippet (`src/tracker/index.js` → `dist/dashboard/browser/hk.js`) via esbuild
 3. Copies the dashboard bundle to `public/`
 4. Compiles the Go binary: `go build -o hitkeep ./cmd/hitkeep/main.go`
 
@@ -153,8 +153,7 @@ hitkeep/
 │   ├── server/            # HTTP server setup, middleware, shared handlers
 │   └── worker/            # Background workers (retention, rollups, reports)
 ├── frontend/
-│   ├── dashboard/         # Angular v21 SPA (npm, @angular/cli)
-│   └── tracker/           # hk.js tracking snippet (Rolldown)
+│   └── dashboard/         # Angular v21 SPA + tracker snippet (src/tracker/index.js)
 ├── public/                # Embedded static assets (built frontend output)
 ├── scripts/               # Developer tooling scripts
 ├── Makefile               # Development and build commands

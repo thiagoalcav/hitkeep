@@ -23,6 +23,10 @@ on:
     secrets:
       token:
         required: true
+      DOCKERHUB_USERNAME:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: true
 
 jobs:
   build-and-push:

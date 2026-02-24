@@ -25,4 +25,7 @@ jobs:
         type=ref,event=pr
         type=sha,prefix=sha-,format=short
       upload_to_release: false
-    secrets: inherit
+    secrets:
+      token: ${{ secrets.GHT }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}

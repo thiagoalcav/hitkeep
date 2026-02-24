@@ -40,7 +40,9 @@ jobs:
       upload_to_release: true
       release_tag_name: ${{ needs.release-please.outputs.tag_name }}
     secrets:
-      inherit
+      token: ${{ secrets.GHT }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
   publish-helm:
     needs: release-please

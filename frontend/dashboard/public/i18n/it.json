@@ -8,6 +8,8 @@
         "dashboardAria": "Vai alla dashboard",
         "goalsAria": "Vai agli obiettivi",
         "funnelsAria": "Vai ai funnel",
+        "eventsAria": "Vai agli eventi",
+        "events": "Eventi",
         "utmAria": "Vai alla dashboard UTM",
         "utmBuilder": "Generatore UTM",
         "utmBuilderAria": "Vai al generatore UTM",
@@ -786,6 +788,33 @@
             "defaultPlaceholder": "Seleziona una lingua predefinita",
             "defaultHint": "Questa e la lingua principale dell'interfaccia della dashboard.",
             "rtlBadge": "RTL"
+        }
+    },
+    "comparison": {
+        "vsLabel": "vs.",
+        "pageviewsLabel": "Visualizzazioni (prec.)",
+        "visitorsLabel": "Visitatori (prec.)"
+    },
+    "events": {
+        "title": "Eventi",
+        "noSiteDescription": "Seleziona o crea un sito per visualizzare le analisi degli eventi.",
+        "eventNameLabel": "Evento",
+        "eventNamePlaceholder": "Seleziona un evento",
+        "propertyKeyLabel": "Suddividi per",
+        "propertyKeyPlaceholder": "Seleziona una proprietà",
+        "series": {
+            "title": "Attività degli eventi",
+            "description": "Occorrenze di eventi nel periodo selezionato.",
+            "emptyTitle": "Nessun dato di evento",
+            "emptyDescription": "Seleziona un evento per visualizzare l'attività nel tempo."
+        },
+        "breakdown": {
+            "title": "Suddivisione delle proprietà",
+            "selectEventFirst": "Seleziona un evento per visualizzare la suddivisione delle proprietà.",
+            "selectPropertyFirst": "Seleziona una proprietà per visualizzare la suddivisione."
+        },
+        "kpis": {
+            "totalEvents": "Totale eventi"
         }
     },
     "integration": {

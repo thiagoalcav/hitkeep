@@ -18,6 +18,7 @@ import (
 	"hitkeep/internal/mailer"
 	"hitkeep/internal/server/admin"
 	serverauth "hitkeep/internal/server/auth"
+	"hitkeep/internal/server/events"
 	"hitkeep/internal/server/goals"
 	"hitkeep/internal/server/ingest"
 	"hitkeep/internal/server/permissions"
@@ -159,6 +160,7 @@ func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 	admin.Register(mux, ctx)
 	sites.Register(mux, ctx)
 	goals.Register(mux, ctx)
+	events.Register(mux, ctx)
 	takeouthandlers.Register(mux, ctx)
 	sharehandlers.Register(mux, ctx)
 

@@ -1,13 +1,13 @@
-import { Component, input, computed, output, ChangeDetectionStrategy, inject } from '@angular/core';
-import { CommonModule, NgOptimizedImage } from '@angular/common';
-import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { TranslocoDecimalPipe } from '@jsverse/transloco-locale';
-import { CardModule } from 'primeng/card';
-import { SkeletonModule } from 'primeng/skeleton';
-import { MetricStat } from '@models/analytics.types';
+import { Component, input, computed, output, ChangeDetectionStrategy, inject } from "@angular/core";
+import { CommonModule, NgOptimizedImage } from "@angular/common";
+import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
+import { TranslocoDecimalPipe } from "@jsverse/transloco-locale";
+import { CardModule } from "primeng/card";
+import { SkeletonModule } from "primeng/skeleton";
+import { MetricStat } from "@models/analytics.types";
 
 @Component({
-    selector: 'app-metric-list',
+    selector: "app-metric-list",
     standalone: true,
     imports: [CommonModule, CardModule, SkeletonModule, TranslocoPipe, TranslocoDecimalPipe, NgOptimizedImage],
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -28,7 +28,7 @@ import { MetricStat } from '@models/analytics.types';
                 <ul class="flex flex-col gap-3 m-0 p-0 list-none">
                     <li class="relative flex items-center justify-between text-sm text-muted-color">
                         <div class="absolute left-0 top-0 h-full w-full bg-[var(--p-surface-100)] dark:bg-[var(--p-surface-800)] rounded-r"></div>
-                        <span class="relative z-10 truncate font-medium px-2 py-1">{{ 'common.unspecified' | transloco }}</span>
+                        <span class="relative z-10 truncate font-medium px-2 py-1">{{ "common.unspecified" | transloco }}</span>
                         <span class="relative z-10 font-semibold px-2">0</span>
                     </li>
                 </ul>
@@ -86,10 +86,10 @@ export class MetricList {
     private transloco = inject(TranslocoService);
 
     title = input.required<string>();
-    icon = input<string>('pi-list');
+    icon = input<string>("pi-list");
     data = input.required<MetricStat[]>();
     isLoading = input<boolean>(false);
-    linkMode = input<'none' | 'path' | 'url'>('none');
+    linkMode = input<"none" | "path" | "url">("none");
     siteDomain = input<string | null>(null);
     isRowClickable = input<boolean>(false);
     activeValue = input<string | null>(null);
@@ -105,14 +105,14 @@ export class MetricList {
 
     protected linkInfo(item: MetricStat): { href: string; faviconUrl: string | null } | null {
         const mode = this.linkMode();
-        if (mode === 'none') return null;
+        if (mode === "none") return null;
 
         if (!item.name) return null;
 
-        if (mode === 'path') {
+        if (mode === "path") {
             const domain = this.siteDomain();
             if (!domain) return null;
-            const path = item.name.startsWith('/') ? item.name : `/${item.name}`;
+            const path = item.name.startsWith("/") ? item.name : `/${item.name}`;
             return {
                 href: `https://${domain}${path}`,
                 faviconUrl: this.buildFaviconUrl(domain)
@@ -134,7 +134,8 @@ export class MetricList {
 
     private normalizeUrl(raw: string): URL | null {
         const trimmed = raw.trim();
-        if (!trimmed || trimmed.toLowerCase() === 'direct') return null;
+        // Sentinel values from backend macros — (Direct), (Unknown), (Unspecified) etc.
+        if (!trimmed || trimmed.startsWith("(")) return null;
         const normalized = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
         try {
             return new URL(normalized);
@@ -146,7 +147,7 @@ export class MetricList {
     protected countryFlagUrl(value: string): string | null {
         const trimmed = value.trim();
         const code = trimmed.toLowerCase();
-        if (!/^[a-z]{2}$/.test(code)) return '/flags/other/earth.svg';
+        if (!/^[a-z]{2}$/.test(code)) return "/flags/other/earth.svg";
         return `/flags/${code}.svg`;
     }
 
@@ -167,7 +168,7 @@ export class MetricList {
         if (!/^[A-Z]{2}$/.test(code)) return null;
         try {
             const language = this.transloco.getActiveLang();
-            const displayNames = new Intl.DisplayNames([language], { type: 'region' });
+            const displayNames = new Intl.DisplayNames([language], { type: "region" });
             return displayNames.of(code) ?? null;
         } catch {
             return null;
@@ -180,9 +181,9 @@ export class MetricList {
     }
 
     protected rowClass(item: MetricStat): string {
-        const base = 'relative flex items-center justify-between text-sm group border border-transparent rounded-md';
-        const clickable = this.isRowClickable() ? ' cursor-pointer' : '';
-        const active = this.isActive(item) ? ' border-[var(--p-primary-color)] ring-1 ring-[var(--p-primary-color)] bg-[var(--p-primary-50)]/40' : '';
+        const base = "relative flex items-center justify-between text-sm group border border-transparent rounded-md";
+        const clickable = this.isRowClickable() ? " cursor-pointer" : "";
+        const active = this.isActive(item) ? " border-[var(--p-primary-color)] ring-1 ring-[var(--p-primary-color)] bg-[var(--p-primary-50)]/40" : "";
         return base + clickable + active;
     }
 

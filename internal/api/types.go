@@ -139,13 +139,31 @@ type UserTOTPSetup struct {
 }
 
 type AnalyticsParams struct {
-	SiteID    uuid.UUID
-	UserID    uuid.UUID
-	Start     time.Time
-	End       time.Time
-	Filters   []Filter
-	GoalIDs   []uuid.UUID
-	FunnelIDs []uuid.UUID
+	SiteID       uuid.UUID
+	UserID       uuid.UUID
+	Start        time.Time
+	End          time.Time
+	Filters      []Filter
+	GoalIDs      []uuid.UUID
+	FunnelIDs    []uuid.UUID
+	CompareStart time.Time
+	CompareEnd   time.Time
+}
+
+type ComparisonStats struct {
+	TotalPageviews     int              `json:"total_pageviews"`
+	UniqueSessions     int              `json:"unique_sessions"`
+	BounceRate         float64          `json:"bounce_rate"`
+	AvgSessionDuration float64          `json:"avg_session_duration"`
+	PagesPerSession    float64          `json:"pages_per_session"`
+	ChartData          []ChartDataPoint `json:"chart_data"`
+	UTMCampaignHits    int              `json:"utm_campaign_hits"`
+	UTMContentHits     int              `json:"utm_content_hits"`
+	UTMMediumHits      int              `json:"utm_medium_hits"`
+	UTMSourceHits      int              `json:"utm_source_hits"`
+	UTMTermHits        int              `json:"utm_term_hits"`
+	Goals              []GoalStats      `json:"goals"`
+	TotalConversions   int              `json:"total_conversions"`
 }
 
 type ChartDataPoint struct {
@@ -194,6 +212,55 @@ type SiteStats struct {
 	UTMSourceHits      int              `json:"utm_source_hits"`
 	UTMTermHits        int              `json:"utm_term_hits"`
 	Goals              []GoalStats      `json:"goals"`
+	Comparison         *ComparisonStats `json:"comparison,omitempty"`
+}
+
+type EventNamesParams struct {
+	SiteID uuid.UUID
+	Start  time.Time
+	End    time.Time
+}
+
+type EventBreakdownParams struct {
+	SiteID      uuid.UUID
+	Start       time.Time
+	End         time.Time
+	EventName   string
+	PropertyKey string
+}
+
+type EventTimeseriesParams struct {
+	SiteID         uuid.UUID
+	Start          time.Time
+	End            time.Time
+	EventName      string
+	PropertyKey    string // optional — filter to events with this property key
+	PropertyValue  string // optional — requires PropertyKey; filter to events where key == value
+	DimensionKey   string // optional: "path" | "referrer" | "device" | "country"
+	DimensionValue string // optional — restrict to sessions where hits match this pre-processed dimension value
+}
+
+type EventAudienceParams struct {
+	SiteID         uuid.UUID
+	Start          time.Time
+	End            time.Time
+	EventName      string
+	PropertyKey    string // optional — filter sessions by property
+	PropertyValue  string // optional — requires PropertyKey
+	DimensionKey   string // optional: "path" | "referrer" | "device" | "country"
+	DimensionValue string // optional — filter hits to this pre-processed dimension value
+}
+
+type EventAudience struct {
+	TopPages     []MetricStat `json:"top_pages"`
+	TopReferrers []MetricStat `json:"top_referrers"`
+	TopDevices   []MetricStat `json:"top_devices"`
+	TopCountries []MetricStat `json:"top_countries"`
+}
+
+type EventSeriesPoint struct {
+	Time  time.Time `json:"time"`
+	Count int       `json:"count"`
 }
 
 type GoalStats struct {

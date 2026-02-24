@@ -634,6 +634,17 @@ func (h *handler) handleGetSiteStats() http.HandlerFunc {
 			FunnelIDs: funnelIDs,
 		}
 
+		if compareFromStr := q.Get("compare_from"); compareFromStr != "" {
+			if parsed, err := time.Parse(time.RFC3339, compareFromStr); err == nil {
+				params.CompareStart = parsed
+			}
+		}
+		if compareToStr := q.Get("compare_to"); compareToStr != "" {
+			if parsed, err := time.Parse(time.RFC3339, compareToStr); err == nil {
+				params.CompareEnd = parsed
+			}
+		}
+
 		stats, err := h.ctx.Store.GetSiteStats(r.Context(), params)
 		if err != nil {
 			slog.Error("Failed to get site stats", "error", err, "site_id", siteID)

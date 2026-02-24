@@ -1,7 +1,7 @@
-import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { GoalSeriesPoint, FunnelSeriesPoint } from '@models/analytics.types';
+import { Injectable, inject } from "@angular/core";
+import { HttpClient, HttpParams } from "@angular/common/http";
+import { Observable } from "rxjs";
+import { GoalSeriesPoint, FunnelSeriesPoint, EventSeriesPoint, EventAudience } from "@models/analytics.types";
 
 export interface Site {
     id: string;
@@ -70,7 +70,7 @@ export interface Goal {
     id: string;
     site_id: string;
     name: string;
-    type: 'event' | 'path';
+    type: "event" | "path";
     value: string;
     created_at: string;
 }
@@ -83,7 +83,7 @@ export interface GoalStats {
 }
 
 export interface FunnelStep {
-    type: 'event' | 'path';
+    type: "event" | "path";
     value: string;
 }
 
@@ -118,27 +118,27 @@ export interface SystemStatus {
 }
 
 @Injectable({
-    providedIn: 'root'
+    providedIn: "root"
 })
 export class AnalyticsService {
     private http = inject(HttpClient);
 
     getSystemStatus(): Observable<SystemStatus> {
-        return this.http.get<SystemStatus>('/api/status');
+        return this.http.get<SystemStatus>("/api/status");
     }
 
     /**
      * Fetches the list of websites tracked by the user.
      */
     getSites(): Observable<Site[]> {
-        return this.http.get<Site[]>('/api/sites');
+        return this.http.get<Site[]>("/api/sites");
     }
 
     /**
      * Creates a new website for the user.
      */
     createSite(domain: string): Observable<Site> {
-        return this.http.post<Site>('/api/sites', { domain });
+        return this.http.post<Site>("/api/sites", { domain });
     }
 
     updateSiteRetention(siteId: string, days: number): Observable<void> {
@@ -148,12 +148,48 @@ export class AnalyticsService {
     /**
      * Fetches aggregated statistics and chart data.
      */
-    getSiteStats(siteId: string, from?: string, to?: string): Observable<SiteStats> {
+    getSiteStats(siteId: string, from?: string, to?: string, compareFrom?: string, compareTo?: string): Observable<SiteStats> {
         let params = new HttpParams();
-        if (from) params = params.set('from', from);
-        if (to) params = params.set('to', to);
+        if (from) params = params.set("from", from);
+        if (to) params = params.set("to", to);
+        if (compareFrom) params = params.set("compare_from", compareFrom);
+        if (compareTo) params = params.set("compare_to", compareTo);
 
         return this.http.get<SiteStats>(`/api/sites/${siteId}/stats`, { params });
+    }
+
+    // Events
+    getEventNames(siteId: string, from: string, to: string): Observable<string[]> {
+        const params = new HttpParams().set("from", from).set("to", to);
+        return this.http.get<string[]>(`/api/sites/${siteId}/events/names`, { params });
+    }
+
+    getEventPropertyKeys(siteId: string, from: string, to: string, eventName: string): Observable<string[]> {
+        const params = new HttpParams().set("from", from).set("to", to).set("event_name", eventName);
+        return this.http.get<string[]>(`/api/sites/${siteId}/events/properties`, { params });
+    }
+
+    getEventPropertyBreakdown(siteId: string, from: string, to: string, eventName: string, propertyKey: string): Observable<MetricStat[]> {
+        const params = new HttpParams().set("from", from).set("to", to).set("event_name", eventName).set("property_key", propertyKey);
+        return this.http.get<MetricStat[]>(`/api/sites/${siteId}/events/breakdown`, { params });
+    }
+
+    getEventTimeseries(siteId: string, from: string, to: string, eventName: string, propertyKey?: string, propertyValue?: string, dimensionKey?: string, dimensionValue?: string): Observable<EventSeriesPoint[]> {
+        let params = new HttpParams().set("from", from).set("to", to).set("event_name", eventName);
+        if (propertyKey) params = params.set("property_key", propertyKey);
+        if (propertyValue) params = params.set("property_value", propertyValue);
+        if (dimensionKey) params = params.set("dimension_key", dimensionKey);
+        if (dimensionValue) params = params.set("dimension_value", dimensionValue);
+        return this.http.get<EventSeriesPoint[]>(`/api/sites/${siteId}/events/timeseries`, { params });
+    }
+
+    getEventAudience(siteId: string, from: string, to: string, eventName: string, propertyKey?: string, propertyValue?: string, dimensionKey?: string, dimensionValue?: string): Observable<EventAudience> {
+        let params = new HttpParams().set("from", from).set("to", to).set("event_name", eventName);
+        if (propertyKey) params = params.set("property_key", propertyKey);
+        if (propertyValue) params = params.set("property_value", propertyValue);
+        if (dimensionKey) params = params.set("dimension_key", dimensionKey);
+        if (dimensionValue) params = params.set("dimension_value", dimensionValue);
+        return this.http.get<EventAudience>(`/api/sites/${siteId}/events/audience`, { params });
     }
 
     /**
@@ -162,14 +198,14 @@ export class AnalyticsService {
      */
     getHits(siteId: string, from: string, to: string, page = 1, pageSize = 10, sortField?: string, sortOrder?: string, query?: string): Observable<PaginatedHits> {
         let params = new HttpParams()
-            .set('from', from)
-            .set('to', to)
-            .set('limit', pageSize)
-            .set('offset', (page - 1) * pageSize);
+            .set("from", from)
+            .set("to", to)
+            .set("limit", pageSize)
+            .set("offset", (page - 1) * pageSize);
 
-        if (sortField) params = params.set('sort', sortField);
-        if (sortOrder) params = params.set('order', sortOrder);
-        if (query) params = params.set('q', query);
+        if (sortField) params = params.set("sort", sortField);
+        if (sortOrder) params = params.set("order", sortOrder);
+        if (query) params = params.set("q", query);
 
         return this.http.get<PaginatedHits>(`/api/sites/${siteId}/hits`, { params });
     }
@@ -181,10 +217,10 @@ export class AnalyticsService {
 
     getGoalTimeseries(siteId: string, from?: string, to?: string, goalIds: string[] = []): Observable<GoalSeriesPoint[]> {
         let params = new HttpParams();
-        if (from) params = params.set('from', from);
-        if (to) params = params.set('to', to);
+        if (from) params = params.set("from", from);
+        if (to) params = params.set("to", to);
         for (const id of goalIds) {
-            params = params.append('goal_id', id);
+            params = params.append("goal_id", id);
         }
         return this.http.get<GoalSeriesPoint[]>(`/api/sites/${siteId}/goals/timeseries`, { params });
     }
@@ -204,10 +240,10 @@ export class AnalyticsService {
 
     getFunnelTimeseries(siteId: string, from?: string, to?: string, funnelIds: string[] = []): Observable<FunnelSeriesPoint[]> {
         let params = new HttpParams();
-        if (from) params = params.set('from', from);
-        if (to) params = params.set('to', to);
+        if (from) params = params.set("from", from);
+        if (to) params = params.set("to", to);
         for (const id of funnelIds) {
-            params = params.append('funnel_id', id);
+            params = params.append("funnel_id", id);
         }
         return this.http.get<FunnelSeriesPoint[]>(`/api/sites/${siteId}/funnels/timeseries`, { params });
     }
@@ -222,8 +258,8 @@ export class AnalyticsService {
 
     getFunnelStats(siteId: string, funnelId: string, from?: string, to?: string): Observable<FunnelStats> {
         let params = new HttpParams();
-        if (from) params = params.set('from', from);
-        if (to) params = params.set('to', to);
+        if (from) params = params.set("from", from);
+        if (to) params = params.set("to", to);
         return this.http.get<FunnelStats>(`/api/sites/${siteId}/funnels/${funnelId}/stats`, { params });
     }
 }

@@ -1,74 +1,78 @@
-import { Routes } from '@angular/router';
-import { setupGuard } from '@guards/setup-guard';
-import { adminGuard } from '@guards/admin-guard';
+import { Routes } from "@angular/router";
+import { setupGuard } from "@guards/setup-guard";
+import { adminGuard } from "@guards/admin-guard";
 
 export const routes: Routes = [
     {
-        path: 'setup',
-        loadComponent: () => import('@pages/setup/setup').then((m) => m.Setup),
+        path: "setup",
+        loadComponent: () => import("@pages/setup/setup").then((m) => m.Setup),
         canActivate: [setupGuard]
     },
     {
-        path: 'login',
-        loadComponent: () => import('@pages/login/login').then((m) => m.Login),
+        path: "login",
+        loadComponent: () => import("@pages/login/login").then((m) => m.Login),
         canActivate: [setupGuard]
     },
     {
-        path: 'forgot-password',
-        loadComponent: () => import('@pages/password/forgot-password').then((m) => m.ForgotPassword)
+        path: "forgot-password",
+        loadComponent: () => import("@pages/password/forgot-password").then((m) => m.ForgotPassword)
     },
     {
-        path: 'reset-password',
-        loadComponent: () => import('@pages/password/reset-password').then((m) => m.ResetPassword)
+        path: "reset-password",
+        loadComponent: () => import("@pages/password/reset-password").then((m) => m.ResetPassword)
     },
     {
-        path: '',
-        loadComponent: () => import('@layout/main-layout').then((m) => m.MainLayout),
+        path: "",
+        loadComponent: () => import("@layout/main-layout").then((m) => m.MainLayout),
         canActivate: [setupGuard],
         children: [
             {
-                path: 'share/:token',
-                loadComponent: () => import('@pages/share/share').then((m) => m.ShareDashboard)
+                path: "share/:token",
+                loadComponent: () => import("@pages/share/share").then((m) => m.ShareDashboard)
             },
             {
-                path: 'dashboard',
-                loadComponent: () => import('@pages/dashboard/dashboard').then((m) => m.Dashboard)
+                path: "dashboard",
+                loadComponent: () => import("@pages/dashboard/dashboard").then((m) => m.Dashboard)
             },
             {
-                path: 'goals',
-                loadComponent: () => import('@pages/goals/goals').then((m) => m.Goals)
+                path: "goals",
+                loadComponent: () => import("@pages/goals/goals").then((m) => m.Goals)
             },
             {
-                path: 'funnels',
-                loadComponent: () => import('@pages/funnels/funnels').then((m) => m.Funnels)
+                path: "funnels",
+                loadComponent: () => import("@pages/funnels/funnels").then((m) => m.Funnels)
             },
             {
-                path: 'utm',
-                loadComponent: () => import('@pages/utm/utm').then((m) => m.UtmDashboard)
+                path: "events",
+                loadComponent: () => import("@pages/events/events").then((m) => m.Events)
             },
             {
-                path: 'utm/builder',
-                loadComponent: () => import('@pages/utm/builder/utm-builder').then((m) => m.UtmBuilder)
+                path: "utm",
+                loadComponent: () => import("@pages/utm/utm").then((m) => m.UtmDashboard)
             },
             {
-                path: 'settings',
-                loadChildren: () => import('@pages/settings/settings.routes').then((m) => m.SETTINGS_ROUTES)
+                path: "utm/builder",
+                loadComponent: () => import("@pages/utm/builder/utm-builder").then((m) => m.UtmBuilder)
             },
             {
-                path: 'integration/api-clients',
-                loadComponent: () => import('@pages/integration/api-clients/api-clients').then((m) => m.APIClientsPage)
+                path: "settings",
+                loadChildren: () => import("@pages/settings/settings.routes").then((m) => m.SETTINGS_ROUTES)
             },
             {
-                path: 'integration/api-reference',
-                loadComponent: () => import('@pages/integration/api-reference/api-reference').then((m) => m.APIReferencePage)
+                path: "integration/api-clients",
+                loadComponent: () => import("@pages/integration/api-clients/api-clients").then((m) => m.APIClientsPage)
             },
             {
-                path: 'admin',
-                loadComponent: () => import('@pages/admin/admin-settings').then((m) => m.AdminSettings),
+                path: "integration/api-reference",
+                loadComponent: () => import("@pages/integration/api-reference/api-reference").then((m) => m.APIReferencePage)
+            },
+            {
+                path: "admin",
+                loadComponent: () => import("@pages/admin/admin-settings").then((m) => m.AdminSettings),
                 canActivate: [adminGuard]
             },
-            { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
+            { path: "", redirectTo: "dashboard", pathMatch: "full" }
         ]
     },
-    { path: '**', redirectTo: '/dashboard' }
+    { path: "**", redirectTo: "/dashboard" }
 ];

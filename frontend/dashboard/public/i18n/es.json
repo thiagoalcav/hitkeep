@@ -8,6 +8,8 @@
         "dashboardAria": "Ir al panel",
         "goalsAria": "Ir a objetivos",
         "funnelsAria": "Ir a embudos",
+        "eventsAria": "Ir a los eventos",
+        "events": "Eventos",
         "utmAria": "Ir al panel UTM",
         "utmBuilder": "Generador UTM",
         "utmBuilderAria": "Ir al generador UTM",
@@ -786,6 +788,33 @@
             "defaultPlaceholder": "Selecciona un idioma predeterminado",
             "defaultHint": "Este es el idioma principal de la interfaz del panel.",
             "rtlBadge": "RTL"
+        }
+    },
+    "comparison": {
+        "vsLabel": "vs.",
+        "pageviewsLabel": "Páginas vistas (ant.)",
+        "visitorsLabel": "Visitantes (ant.)"
+    },
+    "events": {
+        "title": "Eventos",
+        "noSiteDescription": "Selecciona o crea un sitio para ver el análisis de eventos.",
+        "eventNameLabel": "Evento",
+        "eventNamePlaceholder": "Seleccionar un evento",
+        "propertyKeyLabel": "Desglosar por",
+        "propertyKeyPlaceholder": "Seleccionar propiedad",
+        "series": {
+            "title": "Actividad de eventos",
+            "description": "Ocurrencias de eventos en el período seleccionado.",
+            "emptyTitle": "Sin datos de eventos",
+            "emptyDescription": "Selecciona un evento para ver la actividad a lo largo del tiempo."
+        },
+        "breakdown": {
+            "title": "Desglose de propiedades",
+            "selectEventFirst": "Selecciona un evento para ver el desglose de propiedades.",
+            "selectPropertyFirst": "Selecciona una propiedad para ver el desglose."
+        },
+        "kpis": {
+            "totalEvents": "Total de eventos"
         }
     },
     "integration": {

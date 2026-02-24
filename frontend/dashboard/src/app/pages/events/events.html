@@ -1,0 +1,180 @@
+<div class="flex flex-col h-full w-full bg-[var(--p-surface-ground)] transition-colors duration-200">
+    <app-page-header>
+        <div header-left>
+            <app-page-breadcrumb [items]="breadcrumbItems()" />
+        </div>
+    </app-page-header>
+
+    <app-range-toolbar [timeRanges]="timeRanges()" [selectedRange]="selectedRange()" [loading]="isLoading()" (selectedRangeChange)="selectedRange.set($event)" (rangeChange)="onRangeChange($event)"> </app-range-toolbar>
+
+    @if (noSite()) {
+    <div class="flex flex-col items-center justify-center h-[50vh] gap-4">
+        <i class="pi pi-globe text-6xl text-primary opacity-20"></i>
+        <h2 class="text-2xl font-semibold text-muted-color">{{ "common.noSiteSelected" | transloco }}</h2>
+        <p class="text-muted-color">{{ "events.noSiteDescription" | transloco }}</p>
+    </div>
+    } @else {
+    <!-- Selectors — placed first so the user picks context before the chart renders -->
+    <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card mb-6">
+        <div class="flex flex-col sm:flex-row gap-4">
+            <div class="flex flex-col gap-1 flex-1">
+                <label for="event-name-select" class="text-sm font-medium">{{ 'events.eventNameLabel' | transloco }}</label>
+                <p-select
+                    inputId="event-name-select"
+                    [options]="eventOptions()"
+                    [ngModel]="selectedEvent()"
+                    (ngModelChange)="selectedEvent.set($event)"
+                    optionLabel="label"
+                    optionValue="value"
+                    [placeholder]="'events.eventNamePlaceholder' | transloco"
+                    [loading]="isLoadingNames()"
+                    [disabled]="isLoadingNames()"
+                    class="w-full"
+                />
+            </div>
+            <div class="flex flex-col gap-1 flex-1">
+                <label for="property-key-select" class="text-sm font-medium">{{ 'events.propertyKeyLabel' | transloco }}</label>
+                <p-select
+                    inputId="property-key-select"
+                    [options]="propertyOptions()"
+                    [ngModel]="selectedPropertyKey()"
+                    (ngModelChange)="selectedPropertyKey.set($event)"
+                    optionLabel="label"
+                    optionValue="value"
+                    [placeholder]="'events.propertyKeyPlaceholder' | transloco"
+                    [loading]="isLoadingKeys()"
+                    [disabled]="isLoadingKeys() || !selectedEvent()"
+                    class="w-full"
+                />
+            </div>
+        </div>
+    </p-card>
+
+    <!-- Event timeseries chart — inline KPI stat replaces the separate card row -->
+    <div class="mb-6">
+        <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card">
+            <div class="flex items-start justify-between gap-4 mb-4">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-lg font-semibold">{{ "events.series.title" | transloco }}</h3>
+                        @if (hasActiveFilters()) {
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full border border-[var(--p-primary-color)] text-xs font-medium">{{ "dashboard.filteredBadge" | transloco }}</span>
+                        }
+                    </div>
+                    <p class="text-sm text-[var(--p-text-muted-color)] mt-1">{{ "events.series.description" | transloco }}</p>
+                </div>
+                @if (selectedEvent()) {
+                <div class="text-right shrink-0">
+                    @if (isLoadingEventSeries()) {
+                    <p-skeleton width="80px" height="2rem" />
+                    } @else {
+                    <div class="text-2xl xl:text-3xl font-bold tabular-nums leading-none">{{ totalEventCountDisplay() }}</div>
+                    @if (totalEventDelta() !== null) {
+                    <span [class]="totalEventDeltaClass()">{{ totalEventDeltaLabel() }}</span>
+                    }
+                    <div class="text-xs text-[var(--p-text-muted-color)] mt-1">{{ 'events.kpis.totalEvents' | transloco }}</div>
+                    }
+                </div>
+                }
+            </div>
+            <app-series-chart
+                [data]="eventSeriesChart()"
+                [series]="eventSeriesConfig()"
+                [comparisonData]="comparisonEventSeriesChart()"
+                [isLoading]="isLoadingEventSeries()"
+                [isShortRange]="isShortRange()"
+                [emptyTitle]="'events.series.emptyTitle' | transloco"
+                [emptyDescription]="'events.series.emptyDescription' | transloco"
+                [comparisonLabel]="comparisonLabel()"
+            />
+        </p-card>
+    </div>
+
+    <!-- Active filter chips — matches dashboard / goals / funnels / UTM pattern -->
+    <div class="flex flex-wrap items-center gap-2 mb-6">
+        @if (hasActiveFilters()) { @for (chip of filterChips(); track chip.key) {
+        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--p-primary-color)] text-sm">
+            <span class="font-medium text-[var(--p-text-color)]">{{ chip.label }}</span>
+            <button type="button" class="text-muted-color hover:text-[var(--p-text-color)]" (click)="removeFilter(chip.remove)" [attr.aria-label]="'common.removeFilterAria' | transloco">
+                <i class="pi pi-times" aria-hidden="true"></i>
+            </button>
+        </span>
+        }
+        <button type="button" class="text-xs text-muted-color hover:text-[var(--p-text-color)] underline" (click)="clearAllFilters()">{{ "common.actions.clearAll" | transloco }}</button>
+        } @else {
+        <span class="text-sm text-[var(--p-text-muted-color)]">{{ "common.noActiveFilter" | transloco }}</span>
+        }
+    </div>
+
+    <!-- Breakdown table — clicking a row filters the chart -->
+    @if (selectedEvent() && selectedPropertyKey()) {
+    <app-metric-list
+        [title]="'events.breakdown.title' | transloco"
+        icon="pi-list"
+        [data]="breakdown()"
+        [isLoading]="isLoadingBreakdown()"
+        [isRowClickable]="true"
+        [activeValue]="selectedPropertyValue()"
+        (rowClicked)="togglePropertyValueFilter($event.name)"
+    />
+    } @else {
+    <div class="flex flex-col items-center justify-center h-32 gap-2">
+        <p class="text-sm text-[var(--p-text-muted-color)]">@if (!selectedEvent()) { {{ 'events.breakdown.selectEventFirst' | transloco }} } @else { {{ 'events.breakdown.selectPropertyFirst' | transloco }} }</p>
+    </div>
+    }
+
+    <!-- Audience panels — only shown when an event is selected -->
+    @if (selectedEvent()) {
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mt-6">
+        <app-metric-list
+            [title]="'common.metrics.topPages' | transloco"
+            icon="pi-file"
+            [data]="audience()?.top_pages ?? []"
+            [isLoading]="isLoadingAudience()"
+            [linkMode]="'path'"
+            [siteDomain]="activeSite()?.domain ?? null"
+            [isRowClickable]="true"
+            [activeValue]="audienceDimFilter()?.dim === 'path' ? audienceDimFilter()!.value : null"
+            (rowClicked)="toggleAudienceDimFilter('path', $event)"
+        />
+        <app-metric-list
+            [title]="'common.metrics.topSources' | transloco"
+            icon="pi-link"
+            [data]="audience()?.top_referrers ?? []"
+            [isLoading]="isLoadingAudience()"
+            [linkMode]="'url'"
+            [isRowClickable]="true"
+            [activeValue]="audienceDimFilter()?.dim === 'referrer' ? audienceDimFilter()!.value : null"
+            (rowClicked)="toggleAudienceDimFilter('referrer', $event)"
+        />
+        <app-metric-list
+            [title]="'common.metrics.devices' | transloco"
+            icon="pi-mobile"
+            [data]="audience()?.top_devices ?? []"
+            [isLoading]="isLoadingAudience()"
+            [isRowClickable]="true"
+            [activeValue]="audienceDimFilter()?.dim === 'device' ? audienceDimFilter()!.value : null"
+            (rowClicked)="toggleAudienceDimFilter('device', $event)"
+        />
+        <app-metric-list
+            [title]="'common.metrics.countries' | transloco"
+            icon="pi-globe"
+            [data]="audience()?.top_countries ?? []"
+            [isLoading]="isLoadingAudience()"
+            [showCountryFlags]="true"
+            [showCountryNames]="true"
+            [isRowClickable]="true"
+            [activeValue]="audienceDimFilter()?.dim === 'country' ? audienceDimFilter()!.value : null"
+            (rowClicked)="toggleAudienceDimFilter('country', $event)"
+        />
+    </div>
+    } }
+</div>
+
+<p-dialog [header]="'common.selectDateRange' | transloco" [(visible)]="isCustomRangeVisible" [modal]="true">
+    <p-datepicker [formControl]="rangeForm.customRangeDates().control()" selectionMode="range" [inline]="true" [showWeek]="false" />
+    <ng-template pTemplate="footer">
+        <p-button [label]="'common.actions.cancel' | transloco" (onClick)="isCustomRangeVisible.set(false)" styleClass="p-button-text" />
+        <p-button [label]="'common.actions.apply' | transloco" (onClick)="applyCustomRange()" />
+    </ng-template>
+</p-dialog>

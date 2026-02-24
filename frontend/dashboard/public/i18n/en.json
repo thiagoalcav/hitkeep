@@ -8,6 +8,8 @@
         "dashboardAria": "Go to dashboard",
         "goalsAria": "Go to goals",
         "funnelsAria": "Go to funnels",
+        "eventsAria": "Go to events",
+        "events": "Events",
         "utmAria": "Go to UTM dashboard",
         "utmBuilder": "UTM Builder",
         "utmBuilderAria": "Go to UTM Builder",
@@ -786,6 +788,33 @@
             "defaultPlaceholder": "Select a default language",
             "defaultHint": "This is the primary language for the dashboard UI.",
             "rtlBadge": "RTL"
+        }
+    },
+    "comparison": {
+        "vsLabel": "vs.",
+        "pageviewsLabel": "Pageviews (prev.)",
+        "visitorsLabel": "Visitors (prev.)"
+    },
+    "events": {
+        "title": "Events",
+        "noSiteDescription": "Select or create a site to view event analytics.",
+        "eventNameLabel": "Event",
+        "eventNamePlaceholder": "Select an event",
+        "propertyKeyLabel": "Break down by",
+        "propertyKeyPlaceholder": "Select a property",
+        "series": {
+            "title": "Event activity",
+            "description": "Event occurrences over the selected period.",
+            "emptyTitle": "No event data",
+            "emptyDescription": "Select an event to view activity over time."
+        },
+        "breakdown": {
+            "title": "Property breakdown",
+            "selectEventFirst": "Select an event to view a property breakdown.",
+            "selectPropertyFirst": "Select a property to view the breakdown."
+        },
+        "kpis": {
+            "totalEvents": "Total events"
         }
     },
     "integration": {

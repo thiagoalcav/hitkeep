@@ -8,6 +8,8 @@
         "dashboardAria": "Zum Dashboard",
         "goalsAria": "Zu den Zielen",
         "funnelsAria": "Zu den Funnels",
+        "eventsAria": "Zu den Events",
+        "events": "Events",
         "utmAria": "Zum UTM-Dashboard",
         "utmBuilder": "UTM-Generator",
         "utmBuilderAria": "Zum UTM-Generator",
@@ -786,6 +788,33 @@
             "defaultPlaceholder": "Standardsprache auswählen",
             "defaultHint": "Dies ist die primäre Sprache für die Dashboard-Oberfläche.",
             "rtlBadge": "RTL"
+        }
+    },
+    "comparison": {
+        "vsLabel": "vs.",
+        "pageviewsLabel": "Seitenaufrufe (vor.)",
+        "visitorsLabel": "Besucher (vor.)"
+    },
+    "events": {
+        "title": "Events",
+        "noSiteDescription": "Wählen Sie eine Website aus, um Event-Analytics anzuzeigen.",
+        "eventNameLabel": "Event",
+        "eventNamePlaceholder": "Event auswählen",
+        "propertyKeyLabel": "Aufschlüsseln nach",
+        "propertyKeyPlaceholder": "Eigenschaft auswählen",
+        "series": {
+            "title": "Event-Aktivität",
+            "description": "Event-Vorkommen im ausgewählten Zeitraum.",
+            "emptyTitle": "Keine Event-Daten",
+            "emptyDescription": "Wählen Sie ein Event, um die Aktivität im Zeitverlauf anzuzeigen."
+        },
+        "breakdown": {
+            "title": "Eigenschaftsaufschlüsselung",
+            "selectEventFirst": "Wählen Sie ein Event aus, um eine Eigenschaftsaufschlüsselung anzuzeigen.",
+            "selectPropertyFirst": "Wählen Sie eine Eigenschaft aus, um die Aufschlüsselung anzuzeigen."
+        },
+        "kpis": {
+            "totalEvents": "Gesamte Events"
         }
     },
     "integration": {

@@ -8,6 +8,8 @@
         "dashboardAria": "Aller au tableau de bord",
         "goalsAria": "Aller aux objectifs",
         "funnelsAria": "Aller aux entonnoirs",
+        "eventsAria": "Aller aux événements",
+        "events": "Événements",
         "utmAria": "Aller au tableau UTM",
         "utmBuilder": "Générateur UTM",
         "utmBuilderAria": "Aller au générateur UTM",
@@ -786,6 +788,33 @@
             "defaultPlaceholder": "Selectionnez une langue par defaut",
             "defaultHint": "C'est la langue principale de l'interface du tableau de bord.",
             "rtlBadge": "RTL"
+        }
+    },
+    "comparison": {
+        "vsLabel": "c/a",
+        "pageviewsLabel": "Pages vues (préc.)",
+        "visitorsLabel": "Visiteurs (préc.)"
+    },
+    "events": {
+        "title": "Événements",
+        "noSiteDescription": "Sélectionnez ou créez un site pour voir l'analyse des événements.",
+        "eventNameLabel": "Événement",
+        "eventNamePlaceholder": "Sélectionner un événement",
+        "propertyKeyLabel": "Ventiler par",
+        "propertyKeyPlaceholder": "Sélectionner une propriété",
+        "series": {
+            "title": "Activité des événements",
+            "description": "Occurrences d'événements sur la période sélectionnée.",
+            "emptyTitle": "Aucune donnée d'événement",
+            "emptyDescription": "Sélectionnez un événement pour voir l'activité dans le temps."
+        },
+        "breakdown": {
+            "title": "Ventilation des propriétés",
+            "selectEventFirst": "Sélectionnez un événement pour afficher la ventilation des propriétés.",
+            "selectPropertyFirst": "Sélectionnez une propriété pour afficher la ventilation."
+        },
+        "kpis": {
+            "totalEvents": "Total des événements"
         }
     },
     "integration": {

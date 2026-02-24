@@ -62,9 +62,37 @@ export interface FunnelSeriesPoint {
     completions: number;
 }
 
+export interface EventSeriesPoint {
+    time: string;
+    count: number;
+}
+
+export interface EventAudience {
+    top_pages: MetricStat[];
+    top_referrers: MetricStat[];
+    top_devices: MetricStat[];
+    top_countries: MetricStat[];
+}
+
 export interface MetricStat {
     name: string;
     value: number;
+}
+
+export interface ComparisonStats {
+    total_pageviews: number;
+    unique_sessions: number;
+    bounce_rate: number;
+    avg_session_duration: number;
+    pages_per_session: number;
+    chart_data: ChartDataPoint[];
+    utm_campaign_hits: number;
+    utm_content_hits: number;
+    utm_medium_hits: number;
+    utm_source_hits: number;
+    utm_term_hits: number;
+    goals: GoalStats[];
+    total_conversions: number;
 }
 
 export interface SiteStats {
@@ -91,6 +119,7 @@ export interface SiteStats {
     utm_term_hits: number;
     goals: GoalStats[];
     funnels: Funnel[];
+    comparison?: ComparisonStats;
 }
 
 export interface GoalStats {
@@ -104,13 +133,13 @@ export interface Goal {
     id: string;
     site_id: string;
     name: string;
-    type: 'event' | 'path';
+    type: "event" | "path";
     value: string;
     created_at: string;
 }
 
 export interface FunnelStep {
-    type: 'event' | 'path';
+    type: "event" | "path";
     value: string;
 }
 
@@ -144,7 +173,7 @@ export interface SystemStatus {
     version: string;
 }
 
-export type ReportFrequency = 'daily' | 'weekly' | 'monthly';
+export type ReportFrequency = "daily" | "weekly" | "monthly";
 
 export interface FrequencyPrefs {
     daily: boolean;

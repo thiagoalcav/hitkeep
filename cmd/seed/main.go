@@ -556,9 +556,19 @@ func fireConversionEvents(ctx context.Context, store *database.Store, siteID, se
 	}
 
 	conversions := []conversionEvent{
-		{0.030, "newsletter_signup", map[string]any{"source": "footer-form"}},
-		{0.020, "trial_started", map[string]any{"plan": "free-trial", "billing": "monthly"}},
-		{0.015, "demo_requested", map[string]any{"company_size": randomCompanySize(rng)}},
+		{0.030, "newsletter_signup", map[string]any{
+			"source": randomSignupSource(rng),
+			"format": randomNewsletterFormat(rng),
+		}},
+		{0.020, "trial_started", map[string]any{
+			"plan":    randomTrialPlan(rng),
+			"billing": randomBilling(rng),
+		}},
+		{0.015, "demo_requested", map[string]any{
+			"company_size": randomCompanySize(rng),
+			"industry":     randomIndustry(rng),
+			"source":       randomDemoSource(rng),
+		}},
 		{0.008, "purchase_completed", map[string]any{
 			"plan":     randomPlan(rng),
 			"billing":  randomBilling(rng),
@@ -691,5 +701,51 @@ func randomAmount(rng *mrand.Rand) int {
 		{amounts[1], weights[1]},
 		{amounts[2], weights[2]},
 		{amounts[3], weights[3]},
+	})
+}
+
+func randomSignupSource(rng *mrand.Rand) string {
+	return pickWeighted(rng, []weightedEntry[string]{
+		{"footer-form", 40},
+		{"blog-post", 25},
+		{"exit-intent", 15},
+		{"sidebar", 12},
+		{"header-cta", 8},
+	})
+}
+
+func randomNewsletterFormat(rng *mrand.Rand) string {
+	return pickWeighted(rng, []weightedEntry[string]{
+		{"weekly-digest", 50},
+		{"product-updates", 30},
+		{"tips-and-tricks", 20},
+	})
+}
+
+func randomTrialPlan(rng *mrand.Rand) string {
+	return pickWeighted(rng, []weightedEntry[string]{
+		{"starter", 50},
+		{"pro", 35},
+		{"business", 15},
+	})
+}
+
+func randomIndustry(rng *mrand.Rand) string {
+	return pickWeighted(rng, []weightedEntry[string]{
+		{"saas", 35},
+		{"ecommerce", 20},
+		{"media", 15},
+		{"fintech", 12},
+		{"healthcare", 8},
+		{"education", 10},
+	})
+}
+
+func randomDemoSource(rng *mrand.Rand) string {
+	return pickWeighted(rng, []weightedEntry[string]{
+		{"pricing-page", 40},
+		{"demo-button", 30},
+		{"contact-form", 20},
+		{"live-chat", 10},
 	})
 }

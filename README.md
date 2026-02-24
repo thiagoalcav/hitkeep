@@ -4,8 +4,10 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/Go-1.26.0-00ADD8?logo=go)](https://go.dev/)
-[![Docker Image](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://github.com/pascalebeier/hitkeep/pkgs/container/hitkeep)
+[![Docker Image (GHCR)](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://github.com/pascalebeier/hitkeep/pkgs/container/hitkeep)
+[![Docker Image (Hub)](https://img.shields.io/badge/Docker-Docker_Hub-2496ED?logo=docker)](https://hub.docker.com/r/pascalebeier/hitkeep)
 [![Documentation](https://img.shields.io/badge/📖_Documentation-hitkeep.com-33d399)](https://hitkeep.com)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/11990/badge)](https://www.bestpractices.dev/projects/11990)
 
 HitKeep is a self-hostable, privacy-first web analytics platform designed for **radical simplicity** without sacrificing performance.
 
@@ -21,6 +23,12 @@ Unlike other solutions that require you to manage a complex stack (PostgreSQL, R
 
 ### Share Dashboard
 ![HitKeep shareable read-only dashboard link](./.github/assets/feature-share-dashboard.png)
+
+### Events
+![HitKeep custom event analytics with timeseries chart and property breakdown](./.github/assets/analytics-events.png)
+
+### Event Audience Breakdown
+![HitKeep event audience breakdown — top pages, referrers, devices, and countries for a selected event](./.github/assets/analytics-events-audience.png)
 
 ### Goals & Conversion Tracking
 ![HitKeep goals and conversion tracking](./.github/assets/analytics-goals.png)
@@ -120,12 +128,20 @@ $ ./hitkeep-linux-arm64 -public-url="http://1.2.3.4:8080"
 
 Also see [examples](./examples/).
 
+Images are published to both registries on every release:
+
+| Registry | Image |
+| :--- | :--- |
+| GitHub Container Registry | `ghcr.io/pascalebeier/hitkeep` |
+| Docker Hub | `pascalebeier/hitkeep` |
+
 1.  Create a `compose.yml` file:
 
 ```yaml
 services:
   hitkeep:
-    image: ghcr.io/pascalebeier/hitkeep:latest
+    # or: ghcr.io/pascalebeier/hitkeep:latest
+    image: pascalebeier/hitkeep:latest
     container_name: hitkeep
     restart: unless-stopped
     ports:

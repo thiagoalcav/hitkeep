@@ -506,6 +506,13 @@ export class Dashboard {
         return url ? url.href : null;
     }
 
+    // TODO: Refactor global url vanity handling at some point
+    protected displayReferrerUrl(url: string | null | undefined): string {
+        if (!url) return "";
+
+        return url.replace(/^https?:\/\//, "").replace(/^www\./, "");
+    }
+
     protected referrerDomain(referrer: string | null | undefined): string | null {
         const url = this.normalizeUrl(referrer);
         return url ? url.hostname : null;

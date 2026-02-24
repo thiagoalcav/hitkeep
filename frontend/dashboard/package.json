@@ -28,7 +28,7 @@
         "@fontsource-variable/lexend": "^5.2.11",
         "@jsverse/transloco-locale": "^8.2.1",
         "@primeuix/themes": "^2.0.3",
-        "@scalar/api-reference": "^1.44.24",
+        "@scalar/api-reference": "^1.44.26",
         "@tailwindcss/postcss": "^4.1.18",
         "chart.js": "^4.5.1",
         "circle-flags": "^2.8.2",
@@ -51,12 +51,12 @@
         "angular-eslint": "21.1.0",
         "baseline-browser-mapping": "^2.10.0",
         "eslint": "^9.39.2",
-        "jasmine-core": "~6.0.1",
+        "jasmine-core": "~6.1.0",
         "jsdom": "^28.1.0",
         "oxfmt": "^0.35.0",
         "postcss": "^8.5.6",
         "typescript": "~5.9.3",
-        "typescript-eslint": "8.56.0",
+        "typescript-eslint": "8.56.1",
         "vitest": "^4.0.18"
     },
     "engines": {

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from "@angular/common/http";
-import { CommonModule } from "@angular/common";
+
 import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, DestroyRef } from "@angular/core";
 import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
@@ -65,7 +65,7 @@ const LANGUAGE_FLAG_FALLBACK: Record<string, string> = {
 
 @Component({
     selector: "app-user-settings",
-    imports: [CommonModule, ReactiveFormsModule, ButtonModule, InputTextModule, SelectModule, SplitButtonModule, SettingsCard, SettingsSecurity, PageHeader, PageBreadcrumb, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, InputTextModule, SelectModule, SplitButtonModule, SettingsCard, SettingsSecurity, PageHeader, PageBreadcrumb, TranslocoPipe],
     templateUrl: "./user-settings.html",
     styleUrl: "./user-settings.css",
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -167,20 +167,6 @@ export class UserSettings {
     });
 
     constructor() {
-        if (!this.profileService.profile()) {
-            this.profileService.loadProfile().subscribe({
-                error: () => {
-                    this.profileLoadError.set("settings.user.profile.errors.loadFailed");
-                }
-            });
-        }
-
-        this.preferencesService.load().subscribe({
-            error: () => {
-                this.loadError.set("preferences.errors.loadFailed");
-            }
-        });
-
         effect(() => {
             const shouldDisable = this.isProfileLoading() || this.isProfileSaving();
             const controls = [this.profileForm.email().control(), this.profileForm.givenName().control(), this.profileForm.lastName().control()];
@@ -280,11 +266,10 @@ export class UserSettings {
         });
     }
 
-    protected onLocaleChange(option: LanguageOption | null | undefined): void {
+    protected onLocaleChange(): void {
         if (this.saveState() !== "idle") {
             this.saveState.set("idle");
         }
-        this.applyLocalePreview(option ?? null);
     }
 
     protected optionLabel(locale: string): string {
@@ -386,50 +371,6 @@ export class UserSettings {
             return `/flags/${fallback}.svg`;
         }
         return "/flags/other/earth.svg";
-    }
-
-    private applyLocalePreview(locale: LanguageOption | string | null | undefined): void {
-        const resolvedLocale = typeof locale === "string" ? locale : locale?.value;
-        if (!resolvedLocale) {
-            return;
-        }
-
-        const normalized = normalizeLocaleTag(resolvedLocale);
-        const base = getBaseLanguage(normalized) || normalized;
-        if (!base) {
-            return;
-        }
-
-        const translationLang = this.resolveTranslationLang(base);
-        if (translationLang && this.transloco.getActiveLang() !== translationLang) {
-            this.transloco.setActiveLang(translationLang);
-        }
-
-        if (typeof document !== "undefined") {
-            document.documentElement.lang = base;
-            document.documentElement.dir = getLocaleDirection(base);
-        }
-    }
-
-    private resolveTranslationLang(locale: string): string {
-        const normalized = normalizeLocaleTag(locale);
-        const base = getBaseLanguage(normalized) || normalized;
-        const available = this.transloco.getAvailableLangs() as AvailableLang[];
-        const availableIds = available
-            .map((entry) => (typeof entry === "string" ? entry : entry.id))
-            .map((entry) => normalizeLocaleTag(entry))
-            .filter((entry): entry is string => Boolean(entry));
-
-        if (base && availableIds.includes(base)) {
-            return base;
-        }
-        if (base) {
-            const scoped = availableIds.find((entry) => entry.startsWith(`${base}-`));
-            if (scoped) {
-                return scoped;
-            }
-        }
-        return this.transloco.getDefaultLang();
     }
 
     private displayNames(type: "language" | "region" | "script", locale: string): Intl.DisplayNames | null {

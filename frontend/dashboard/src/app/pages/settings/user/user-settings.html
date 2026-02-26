@@ -107,7 +107,7 @@
                                 inputId="default-locale"
                                 [options]="languageOptions()"
                                 [formControl]="preferencesForm.defaultLocale().control()"
-                                (onChange)="onLocaleChange($event.value)"
+                                (onChange)="onLocaleChange()"
                                 optionLabel="label"
                                 [placeholder]="'preferences.language.defaultPlaceholder' | transloco"
                                 class="w-full"

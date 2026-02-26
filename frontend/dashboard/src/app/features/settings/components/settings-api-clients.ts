@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
-import { CommonModule } from "@angular/common";
+
 import { toSignal } from "@angular/core/rxjs-interop";
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from "@angular/forms";
 import { finalize, forkJoin } from "rxjs";
@@ -48,7 +48,7 @@ const expiresAtNotPastValidator = (): ValidatorFn => {
 
 @Component({
     selector: "app-settings-api-clients",
-    imports: [CommonModule, ReactiveFormsModule, ButtonModule, InputTextModule, SelectModule, TableModule, SettingsCard, RelativeDateTime, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, InputTextModule, SelectModule, TableModule, SettingsCard, RelativeDateTime, TranslocoPipe],
     templateUrl: "./settings-api-clients.html",
     styleUrl: "./settings-api-clients.css",
     changeDetection: ChangeDetectionStrategy.OnPush

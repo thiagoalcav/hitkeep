@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject, signal, OnChanges, computed } from "@angular/core";
+import { Component, Output, EventEmitter, inject, signal, OnChanges, computed, input, model } from "@angular/core";
 
 import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
 import { compatForm } from "@angular/forms/signals/compat";
@@ -116,9 +116,8 @@ interface FunnelStepControl {
     `
 })
 export class FunnelManager implements OnChanges {
-    @Input() visible = false;
-    @Output() visibleChange = new EventEmitter<boolean>();
-    @Input() siteId: string | null = null;
+    visible = model(false);
+    readonly siteId = input<string | null>(null);
     @Output() funnelsChanged = new EventEmitter<void>();
     @Output() viewFunnel = new EventEmitter<Funnel>();
 
@@ -145,15 +144,16 @@ export class FunnelManager implements OnChanges {
     protected readonly stepControls = signal<FunnelStepControl[]>([this.createStepControl(), this.createStepControl()]);
 
     ngOnChanges() {
-        if (this.visible && this.siteId) {
+        if (this.visible() && this.siteId()) {
             this.loadFunnels();
         }
     }
 
     loadFunnels() {
-        if (!this.siteId) return;
+        const siteId = this.siteId();
+        if (!siteId) return;
         this.loading.set(true);
-        this.analyticsService.getFunnels(this.siteId).subscribe({
+        this.analyticsService.getFunnels(siteId).subscribe({
             next: (funnels) => {
                 this.funnels.set(funnels || []);
                 this.loading.set(false);
@@ -171,7 +171,8 @@ export class FunnelManager implements OnChanges {
     }
 
     createFunnel() {
-        if (!this.siteId || !this.isValid()) return;
+        const siteId = this.siteId();
+        if (!siteId || !this.isValid()) return;
         const payload: { name: string; steps: FunnelStep[] } = {
             name: this.newFunnelForm.name().value().trim(),
             steps: this.stepControls().map((step) => ({
@@ -181,7 +182,7 @@ export class FunnelManager implements OnChanges {
         };
 
         this.creating.set(true);
-        this.analyticsService.createFunnel(this.siteId, payload).subscribe({
+        this.analyticsService.createFunnel(siteId, payload).subscribe({
             next: () => {
                 this.creating.set(false);
                 this.newFunnelForm.name().control().reset("");
@@ -194,8 +195,9 @@ export class FunnelManager implements OnChanges {
     }
 
     deleteFunnel(id: string) {
-        if (!this.siteId) return;
-        this.analyticsService.deleteFunnel(this.siteId, id).subscribe({
+        const siteId = this.siteId();
+        if (!siteId) return;
+        this.analyticsService.deleteFunnel(siteId, id).subscribe({
             next: () => {
                 this.loadFunnels();
                 this.funnelsChanged.emit();
@@ -208,8 +210,7 @@ export class FunnelManager implements OnChanges {
     }
 
     onHide() {
-        this.visible = false;
-        this.visibleChange.emit(false);
+        this.visible.set(false);
     }
 
     private createStepControl(type: FunnelStep["type"] = "path", value = ""): FunnelStepControl {

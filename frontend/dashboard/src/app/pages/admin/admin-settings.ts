@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, OnInit, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
-import { CommonModule } from "@angular/common";
+
 import { FormControl, ReactiveFormsModule } from "@angular/forms";
 import { TableModule } from "primeng/table";
 import { ButtonModule } from "primeng/button";
@@ -36,7 +36,7 @@ interface Site {
 @Component({
     selector: "app-admin-settings",
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, TableModule, ButtonModule, SelectModule, CardModule, TabsModule, InputTextModule, PageHeader, PageBreadcrumb, AdminGlobalExclusionSettings, RelativeDateTime, TranslocoPipe],
+    imports: [ReactiveFormsModule, TableModule, ButtonModule, SelectModule, CardModule, TabsModule, InputTextModule, PageHeader, PageBreadcrumb, AdminGlobalExclusionSettings, RelativeDateTime, TranslocoPipe],
     templateUrl: "./admin-settings.html",
     styleUrl: "./admin-settings.css"
 })

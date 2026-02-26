@@ -1,5 +1,5 @@
-import { Component, Input, Output, EventEmitter, inject, signal, OnChanges, computed } from "@angular/core";
-import { CommonModule } from "@angular/common";
+import { Component, Output, EventEmitter, inject, signal, OnChanges, computed, input, model } from "@angular/core";
+
 import { toSignal } from "@angular/core/rxjs-interop";
 import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
 import { compatForm } from "@angular/forms/signals/compat";
@@ -15,7 +15,7 @@ import { Goal } from "@models/analytics.types";
 @Component({
     selector: "app-goal-manager",
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, DialogModule, ButtonModule, InputTextModule, SelectModule, TableModule, TranslocoPipe],
+    imports: [ReactiveFormsModule, DialogModule, ButtonModule, InputTextModule, SelectModule, TableModule, TranslocoPipe],
     template: `
         <p-dialog [header]="'goals.manager.dialogTitle' | transloco" [(visible)]="visible" [modal]="true" [style]="{ width: '600px', maxWidth: '90vw' }" [draggable]="false" [resizable]="false" (onHide)="onHide()">
             <p class="text-sm text-muted-color mb-4">{{ "goals.manager.dialogDescription" | transloco }}</p>
@@ -118,9 +118,8 @@ import { Goal } from "@models/analytics.types";
     `
 })
 export class GoalManager implements OnChanges {
-    @Input() visible = false;
-    @Output() visibleChange = new EventEmitter<boolean>();
-    @Input() siteId: string | null = null;
+    visible = model(false);
+    readonly siteId = input<string | null>(null);
     @Output() goalsChanged = new EventEmitter<void>();
 
     private analyticsService = inject(AnalyticsService);
@@ -159,15 +158,16 @@ export class GoalManager implements OnChanges {
     }
 
     ngOnChanges() {
-        if (this.visible && this.siteId) {
+        if (this.visible() && this.siteId()) {
             this.loadGoals();
         }
     }
 
     loadGoals() {
-        if (!this.siteId) return;
+        const siteId = this.siteId();
+        if (!siteId) return;
         this.loading.set(true);
-        this.analyticsService.getGoals(this.siteId).subscribe({
+        this.analyticsService.getGoals(siteId).subscribe({
             next: (goals) => {
                 this.goals.set(goals || []);
                 this.loading.set(false);
@@ -177,7 +177,8 @@ export class GoalManager implements OnChanges {
     }
 
     createGoal() {
-        if (!this.siteId || !this.isValid()) return;
+        const siteId = this.siteId();
+        if (!siteId || !this.isValid()) return;
         const payload = {
             name: this.newGoalForm.name().value().trim(),
             type: this.newGoalForm.type().value(),
@@ -185,7 +186,7 @@ export class GoalManager implements OnChanges {
         };
 
         this.creating.set(true);
-        this.analyticsService.createGoal(this.siteId, payload).subscribe({
+        this.analyticsService.createGoal(siteId, payload).subscribe({
             next: () => {
                 this.creating.set(false);
                 this.newGoalForm.name().control().reset("");
@@ -199,9 +200,10 @@ export class GoalManager implements OnChanges {
     }
 
     deleteGoal(id: string) {
-        if (!this.siteId) return;
+        const siteId = this.siteId();
+        if (!siteId) return;
         // Optimistic update could be done here, but let's just reload for safety
-        this.analyticsService.deleteGoal(this.siteId, id).subscribe({
+        this.analyticsService.deleteGoal(siteId, id).subscribe({
             next: () => {
                 this.loadGoals();
                 this.goalsChanged.emit();
@@ -214,7 +216,6 @@ export class GoalManager implements OnChanges {
     }
 
     onHide() {
-        this.visible = false;
-        this.visibleChange.emit(false);
+        this.visible.set(false);
     }
 }

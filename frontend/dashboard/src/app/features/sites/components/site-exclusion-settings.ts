@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from "@angular/core";
-import { CommonModule } from "@angular/common";
+
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
 import { finalize } from "rxjs";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
@@ -17,7 +17,7 @@ const ipOrCIDRPattern = /^(([0-9]{1,3}\.){3}[0-9]{1,3}(\/(3[0-2]|[12]?[0-9]))?|(
 @Component({
     selector: "app-site-exclusion-settings",
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, ButtonModule, InputTextModule, TableModule, RelativeDateTime, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, InputTextModule, TableModule, RelativeDateTime, TranslocoPipe],
     templateUrl: "./site-exclusion-settings.html",
     styleUrl: "./site-exclusion-settings.css",
     changeDetection: ChangeDetectionStrategy.OnPush

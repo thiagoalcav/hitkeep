@@ -1,5 +1,5 @@
 import { Component, input, computed, output, ChangeDetectionStrategy, inject } from "@angular/core";
-import { CommonModule, NgOptimizedImage } from "@angular/common";
+import { NgOptimizedImage } from "@angular/common";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 import { TranslocoDecimalPipe } from "@jsverse/transloco-locale";
 import { CardModule } from "primeng/card";
@@ -9,7 +9,7 @@ import { MetricStat } from "@models/analytics.types";
 @Component({
     selector: "app-metric-list",
     standalone: true,
-    imports: [CommonModule, CardModule, SkeletonModule, TranslocoPipe, TranslocoDecimalPipe, NgOptimizedImage],
+    imports: [CardModule, SkeletonModule, TranslocoPipe, TranslocoDecimalPipe, NgOptimizedImage],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <p-card class="shadow-sm h-full border border-surface-200 dark:border-surface-700 surface-card">

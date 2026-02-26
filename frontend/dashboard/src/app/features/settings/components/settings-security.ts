@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
-import { CommonModule } from "@angular/common";
+
 import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
 import { compatForm } from "@angular/forms/signals/compat";
 import { firstValueFrom, finalize } from "rxjs";
@@ -19,7 +19,7 @@ import { PasskeyRegistrationFinishRequest, PasskeyRegistrationStartResponse, Use
 
 @Component({
     selector: "app-settings-security",
-    imports: [CommonModule, ReactiveFormsModule, ButtonModule, PasswordModule, MessageModule, InputOtpModule, SettingsCard, RelativeDateTime, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, PasswordModule, MessageModule, InputOtpModule, SettingsCard, RelativeDateTime, TranslocoPipe],
     templateUrl: "./settings-security.html",
     styleUrl: "./settings-security.css",
     changeDetection: ChangeDetectionStrategy.OnPush

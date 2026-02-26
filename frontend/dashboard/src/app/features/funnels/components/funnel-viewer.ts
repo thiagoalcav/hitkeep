@@ -1,5 +1,5 @@
-import { Component, Input, Output, EventEmitter, inject, signal, OnChanges } from "@angular/core";
-import { CommonModule } from "@angular/common";
+import { Component, inject, signal, OnChanges, input, model } from "@angular/core";
+
 import { TranslocoPipe } from "@jsverse/transloco";
 import { TranslocoDecimalPipe } from "@jsverse/transloco-locale";
 import { DialogModule } from "primeng/dialog";
@@ -10,7 +10,7 @@ import { FunnelStats } from "@models/analytics.types";
 @Component({
     selector: "app-funnel-viewer",
     standalone: true,
-    imports: [CommonModule, DialogModule, SkeletonModule, TranslocoPipe, TranslocoDecimalPipe],
+    imports: [DialogModule, SkeletonModule, TranslocoPipe, TranslocoDecimalPipe],
     template: `
         <p-dialog [header]="stats()?.name || ('funnels.viewer.dialogTitle' | transloco)" [(visible)]="visible" [modal]="true" [style]="{ width: '900px', maxWidth: '95vw' }" [draggable]="false" [resizable]="false" (onHide)="onHide()">
             @if (loading()) {
@@ -82,11 +82,13 @@ import { FunnelStats } from "@models/analytics.types";
     `
 })
 export class FunnelViewer implements OnChanges {
-    @Input() visible = false;
-    @Output() visibleChange = new EventEmitter<boolean>();
-    @Input() siteId: string | null = null;
-    @Input() funnelId: string | null = null;
-    @Input() dateRange: { from: string; to: string } | null = null;
+    visible = model(false);
+    readonly siteId = input<string | null>(null);
+    readonly funnelId = input<string | null>(null);
+    readonly dateRange = input<{
+        from: string;
+        to: string;
+    } | null>(null);
 
     private analyticsService = inject(AnalyticsService);
 
@@ -94,16 +96,19 @@ export class FunnelViewer implements OnChanges {
     loading = signal(false);
 
     ngOnChanges() {
-        if (this.visible && this.siteId && this.funnelId && this.dateRange) {
+        if (this.visible() && this.siteId() && this.funnelId() && this.dateRange()) {
             this.loadStats();
         }
     }
 
     loadStats() {
-        if (!this.siteId || !this.funnelId || !this.dateRange) return;
+        const siteId = this.siteId();
+        const funnelId = this.funnelId();
+        const dateRange = this.dateRange();
+        if (!siteId || !funnelId || !dateRange) return;
 
         this.loading.set(true);
-        this.analyticsService.getFunnelStats(this.siteId, this.funnelId, this.dateRange.from, this.dateRange.to).subscribe({
+        this.analyticsService.getFunnelStats(siteId, funnelId, dateRange.from, dateRange.to).subscribe({
             next: (data) => {
                 this.stats.set(data);
                 this.loading.set(false);
@@ -120,8 +125,7 @@ export class FunnelViewer implements OnChanges {
     }
 
     onHide() {
-        this.visible = false;
-        this.visibleChange.emit(false);
+        this.visible.set(false);
         this.stats.set(null);
     }
 }

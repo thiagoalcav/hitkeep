@@ -1,5 +1,5 @@
 import { Component, inject, model, signal } from "@angular/core";
-import { CommonModule } from "@angular/common";
+
 import { ReactiveFormsModule, FormControl, Validators, AbstractControl, ValidationErrors } from "@angular/forms";
 import { compatForm } from "@angular/forms/signals/compat";
 import { TranslocoPipe } from "@jsverse/transloco";
@@ -11,7 +11,7 @@ import { SiteService } from "@features/sites/services/site.service";
 @Component({
     selector: "app-add-site-dialog",
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, DialogModule, ButtonModule, InputTextModule, MessageModule, TranslocoPipe],
+    imports: [ReactiveFormsModule, DialogModule, ButtonModule, InputTextModule, MessageModule, TranslocoPipe],
     template: `
         <p-dialog [header]="'sites.addDialog.title' | transloco" [(visible)]="visible" [modal]="true" [style]="{ width: '450px', maxWidth: '90vw' }" (onHide)="resetForm()">
             <form (submit)="onSubmit($event)" class="flex flex-col gap-6 pt-2" novalidate>

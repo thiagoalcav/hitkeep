@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from "@angular/core";
-import { CommonModule } from "@angular/common";
+
 import { FormControl, ReactiveFormsModule } from "@angular/forms";
 import { compatForm } from "@angular/forms/signals/compat";
 import { toSignal } from "@angular/core/rxjs-interop";
@@ -50,7 +50,7 @@ const LANGUAGE_FLAG_FALLBACK: Record<string, string> = {
 
 @Component({
     selector: "app-preferences",
-    imports: [CommonModule, ReactiveFormsModule, ButtonModule, CardModule, SelectModule, PageHeader, PageBreadcrumb, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, CardModule, SelectModule, PageHeader, PageBreadcrumb, TranslocoPipe],
     templateUrl: "./preferences.html",
     styleUrl: "./preferences.css",
     changeDetection: ChangeDetectionStrategy.OnPush

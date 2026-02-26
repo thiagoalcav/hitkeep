@@ -1,7 +1,7 @@
 import { Component, effect, inject, signal, computed, ChangeDetectionStrategy, untracked, DestroyRef } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { injectActiveLang } from "@core/i18n/active-lang";
-import { CommonModule, NgOptimizedImage } from "@angular/common";
+import { NgOptimizedImage } from "@angular/common";
 import { FormControl, ReactiveFormsModule } from "@angular/forms";
 import { compatForm } from "@angular/forms/signals/compat";
 import { debounceTime, distinctUntilChanged, finalize, Subject } from "rxjs";
@@ -67,7 +67,6 @@ interface KpiCardData {
     selector: "app-dashboard",
     standalone: true,
     imports: [
-        CommonModule,
         ReactiveFormsModule,
         TranslocoPipe,
         CardModule,

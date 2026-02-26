@@ -1,5 +1,5 @@
 import { Component, input, output, signal, ChangeDetectionStrategy } from "@angular/core";
-import { CommonModule } from "@angular/common";
+
 import { TranslocoPipe } from "@jsverse/transloco";
 import { TranslocoDecimalPipe } from "@jsverse/transloco-locale";
 import { CardModule } from "primeng/card";
@@ -15,7 +15,7 @@ import { GoalManager } from "@features/goals/components/goal-manager";
 @Component({
     selector: "app-goal-list",
     standalone: true,
-    imports: [CommonModule, CardModule, SkeletonModule, TranslocoPipe, TranslocoDecimalPipe, ButtonModule, TooltipModule, EmptyState, GoalManager],
+    imports: [CardModule, SkeletonModule, TranslocoPipe, TranslocoDecimalPipe, ButtonModule, TooltipModule, EmptyState, GoalManager],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <p-card class="shadow-sm h-full border border-surface-200 dark:border-surface-700 surface-card">

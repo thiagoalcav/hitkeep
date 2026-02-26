@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from "@angular/core";
-import { CommonModule } from "@angular/common";
+
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 import { ButtonModule } from "primeng/button";
 import { DialogModule } from "primeng/dialog";
@@ -18,7 +18,7 @@ interface ShareNotice {
 
 @Component({
     selector: "app-share-dashboard-link",
-    imports: [CommonModule, ButtonModule, DialogModule, InputTextModule, TableModule, ConfirmDialogModule, RelativeDateTime, TranslocoPipe],
+    imports: [ButtonModule, DialogModule, InputTextModule, TableModule, ConfirmDialogModule, RelativeDateTime, TranslocoPipe],
     providers: [ConfirmationService],
     templateUrl: "./share-dashboard-link.html",
     styleUrl: "./share-dashboard-link.css",

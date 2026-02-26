@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
-import { CommonModule } from "@angular/common";
+
 import { Router, RouterLink } from "@angular/router";
 import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
 import { compatForm } from "@angular/forms/signals/compat";
@@ -20,7 +20,7 @@ import { UserPreferencesService } from "@services/user-preferences.service";
 @Component({
     selector: "app-login",
     standalone: true,
-    imports: [Brand, CommonModule, ReactiveFormsModule, PasswordModule, ButtonModule, InputTextModule, CheckboxModule, InputOtpModule, RouterLink, TranslocoPipe],
+    imports: [Brand, ReactiveFormsModule, PasswordModule, ButtonModule, InputTextModule, CheckboxModule, InputOtpModule, RouterLink, TranslocoPipe],
     templateUrl: "./login.html",
     styleUrl: "./login.css",
     changeDetection: ChangeDetectionStrategy.OnPush

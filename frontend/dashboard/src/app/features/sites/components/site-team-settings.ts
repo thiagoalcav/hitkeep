@@ -1,5 +1,5 @@
 import { Component, inject, input, signal, effect, computed } from "@angular/core";
-import { CommonModule } from "@angular/common";
+
 import { toSignal } from "@angular/core/rxjs-interop";
 import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
 import { compatForm } from "@angular/forms/signals/compat";
@@ -23,7 +23,7 @@ interface SiteMember {
 @Component({
     selector: "app-site-team-settings",
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, TableModule, ButtonModule, SelectModule, InputTextModule, RelativeDateTime, TranslocoPipe],
+    imports: [ReactiveFormsModule, TableModule, ButtonModule, SelectModule, InputTextModule, RelativeDateTime, TranslocoPipe],
     template: `
         <div class="flex flex-col gap-4">
             <div class="flex items-end gap-2">

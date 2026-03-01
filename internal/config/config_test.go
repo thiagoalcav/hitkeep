@@ -137,6 +137,113 @@ func TestParseTrustedProxiesWildcard(t *testing.T) {
 	}
 }
 
+func TestLoadS3ConfigDefaults(t *testing.T) {
+	conf := load([]string{}, func(key, fallback string) string {
+		return fallback
+	})
+
+	if conf.S3AccessKeyID != "" {
+		t.Fatalf("expected empty S3AccessKeyID by default, got %q", conf.S3AccessKeyID)
+	}
+	if conf.S3SecretAccessKey != "" {
+		t.Fatalf("expected empty S3SecretAccessKey by default, got %q", conf.S3SecretAccessKey)
+	}
+	if conf.S3Region != "us-east-1" {
+		t.Fatalf("expected S3Region default us-east-1, got %q", conf.S3Region)
+	}
+	if conf.S3Endpoint != "" {
+		t.Fatalf("expected empty S3Endpoint by default, got %q", conf.S3Endpoint)
+	}
+	if conf.S3URLStyle != "" {
+		t.Fatalf("expected empty S3URLStyle by default, got %q", conf.S3URLStyle)
+	}
+	if !conf.S3UseSSL {
+		t.Fatalf("expected S3UseSSL default true, got false")
+	}
+}
+
+func TestLoadS3ConfigFromEnv(t *testing.T) {
+	env := map[string]string{
+		"HITKEEP_S3_ACCESS_KEY_ID":     "AKIAEXAMPLE",
+		"HITKEEP_S3_SECRET_ACCESS_KEY": "secretkey123",
+		"HITKEEP_S3_SESSION_TOKEN":     "tokenXYZ",
+		"HITKEEP_S3_REGION":            "eu-central-1",
+		"HITKEEP_S3_ENDPOINT":          "minio.local:9000",
+		"HITKEEP_S3_URL_STYLE":         "path",
+		"HITKEEP_S3_USE_SSL":           "false",
+	}
+
+	conf := load([]string{}, func(key, fallback string) string {
+		if val, ok := env[key]; ok {
+			return val
+		}
+		return fallback
+	})
+
+	if conf.S3AccessKeyID != "AKIAEXAMPLE" {
+		t.Fatalf("expected S3AccessKeyID=AKIAEXAMPLE, got %q", conf.S3AccessKeyID)
+	}
+	if conf.S3SecretAccessKey != "secretkey123" {
+		t.Fatalf("expected S3SecretAccessKey=secretkey123, got %q", conf.S3SecretAccessKey)
+	}
+	if conf.S3SessionToken != "tokenXYZ" {
+		t.Fatalf("expected S3SessionToken=tokenXYZ, got %q", conf.S3SessionToken)
+	}
+	if conf.S3Region != "eu-central-1" {
+		t.Fatalf("expected S3Region=eu-central-1, got %q", conf.S3Region)
+	}
+	if conf.S3Endpoint != "minio.local:9000" {
+		t.Fatalf("expected S3Endpoint=minio.local:9000, got %q", conf.S3Endpoint)
+	}
+	if conf.S3URLStyle != "path" {
+		t.Fatalf("expected S3URLStyle=path, got %q", conf.S3URLStyle)
+	}
+	if conf.S3UseSSL {
+		t.Fatalf("expected S3UseSSL=false, got true")
+	}
+}
+
+func TestLoadBackupConfigDefaults(t *testing.T) {
+	conf := load([]string{}, func(key, fallback string) string {
+		return fallback
+	})
+
+	if conf.BackupPath != "" {
+		t.Fatalf("expected empty BackupPath by default, got %q", conf.BackupPath)
+	}
+	if conf.BackupIntervalMinutes != 60 {
+		t.Fatalf("expected BackupIntervalMinutes default 60, got %d", conf.BackupIntervalMinutes)
+	}
+	if conf.BackupRetentionCount != 24 {
+		t.Fatalf("expected BackupRetentionCount default 24, got %d", conf.BackupRetentionCount)
+	}
+}
+
+func TestLoadBackupConfigFromEnv(t *testing.T) {
+	env := map[string]string{
+		"HITKEEP_BACKUP_PATH":      "/tmp/backups",
+		"HITKEEP_BACKUP_INTERVAL":  "30",
+		"HITKEEP_BACKUP_RETENTION": "48",
+	}
+
+	conf := load([]string{}, func(key, fallback string) string {
+		if val, ok := env[key]; ok {
+			return val
+		}
+		return fallback
+	})
+
+	if conf.BackupPath != "/tmp/backups" {
+		t.Fatalf("expected BackupPath=/tmp/backups, got %q", conf.BackupPath)
+	}
+	if conf.BackupIntervalMinutes != 30 {
+		t.Fatalf("expected BackupIntervalMinutes=30, got %d", conf.BackupIntervalMinutes)
+	}
+	if conf.BackupRetentionCount != 48 {
+		t.Fatalf("expected BackupRetentionCount=48, got %d", conf.BackupRetentionCount)
+	}
+}
+
 func isIPInNetworksForTest(ip net.IP, networks []*net.IPNet) bool {
 	for _, network := range networks {
 		if network.Contains(ip) {

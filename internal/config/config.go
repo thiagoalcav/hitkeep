@@ -20,6 +20,7 @@ type Config struct {
 	AuthRateLimit   float64
 	ArchivePath     string
 	BindAddr        string
+	DataPath        string
 	DBPath          string
 	Healthcheck     bool
 	HTTPAddr        string
@@ -44,6 +45,16 @@ type Config struct {
 	PublicURL              string
 	Version                string
 	DataRetentionDays      int
+	BackupPath             string
+	BackupIntervalMinutes  int
+	BackupRetentionCount   int
+	S3AccessKeyID          string
+	S3SecretAccessKey      string
+	S3SessionToken         string
+	S3Region               string
+	S3Endpoint             string
+	S3URLStyle             string
+	S3UseSSL               bool
 	TrustedProxies         string
 	trustedProxyNets       []*net.IPNet
 }
@@ -117,6 +128,7 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	}
 
 	defDB := getEnv("HITKEEP_DB_PATH", "hitkeep.db")
+	defDataPath := getEnv("HITKEEP_DATA_PATH", "data")
 	defArchive := getEnv("HITKEEP_ARCHIVE_PATH", "archive")
 	defHTTP := getEnv("HITKEEP_HTTP_ADDR", ":8080")
 	defBind := getEnv("HITKEEP_BIND_ADDR", "0.0.0.0:7946")
@@ -146,6 +158,19 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	defMailName := getEnv("HITKEEP_MAIL_FROM_NAME", "HitKeep")
 
 	defRetention := getInt("HITKEEP_DATA_RETENTION_DAYS", 365)
+
+	defBackupPath := getEnv("HITKEEP_BACKUP_PATH", "")
+	defBackupInterval := getInt("HITKEEP_BACKUP_INTERVAL", 60)
+	defBackupRetention := getInt("HITKEEP_BACKUP_RETENTION", 24)
+
+	defS3AccessKeyID := getEnv("HITKEEP_S3_ACCESS_KEY_ID", "")
+	defS3SecretAccessKey := getEnv("HITKEEP_S3_SECRET_ACCESS_KEY", "")
+	defS3SessionToken := getEnv("HITKEEP_S3_SESSION_TOKEN", "")
+	defS3Region := getEnv("HITKEEP_S3_REGION", "us-east-1")
+	defS3Endpoint := getEnv("HITKEEP_S3_ENDPOINT", "")
+	defS3URLStyle := getEnv("HITKEEP_S3_URL_STYLE", "")
+	defS3UseSSL := getBool("HITKEEP_S3_USE_SSL", true)
+
 	defTrustedProxies := getEnv("HITKEEP_TRUSTED_PROXIES", "*")
 
 	hostname, _ := os.Hostname()
@@ -157,6 +182,7 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	fs.StringVar(&conf.PublicURL, "public-url", defPublicURL, "Public URL")
 
 	fs.StringVar(&conf.DBPath, "db", defDB, "Database file path")
+	fs.StringVar(&conf.DataPath, "data-path", defDataPath, "Base directory for per-tenant data files")
 	fs.StringVar(&conf.ArchivePath, "archive-path", defArchive, "Data archive path")
 	fs.StringVar(&conf.LogLevel, "log-level", defLogLevel, "Log level")
 	fs.StringVar(&conf.JWTSecret, "jwt-secret", defJWT, "Secret key for JWT")
@@ -184,6 +210,18 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	fs.StringVar(&conf.MailFromName, "mail-from-name", defMailName, "From Name")
 
 	fs.IntVar(&conf.DataRetentionDays, "retention-days", defRetention, "Default data retention in days")
+
+	fs.StringVar(&conf.BackupPath, "backup-path", defBackupPath, "Backup destination path (local dir or s3://)")
+	fs.IntVar(&conf.BackupIntervalMinutes, "backup-interval", defBackupInterval, "Minutes between backups")
+	fs.IntVar(&conf.BackupRetentionCount, "backup-retention", defBackupRetention, "Number of backup snapshots to keep")
+
+	fs.StringVar(&conf.S3AccessKeyID, "s3-access-key-id", defS3AccessKeyID, "S3 access key ID (static credentials)")
+	fs.StringVar(&conf.S3SecretAccessKey, "s3-secret-access-key", defS3SecretAccessKey, "S3 secret access key (static credentials)")
+	fs.StringVar(&conf.S3SessionToken, "s3-session-token", defS3SessionToken, "S3 session token (STS temporary credentials)")
+	fs.StringVar(&conf.S3Region, "s3-region", defS3Region, "S3 region")
+	fs.StringVar(&conf.S3Endpoint, "s3-endpoint", defS3Endpoint, "S3 custom endpoint (MinIO, R2, Spaces)")
+	fs.StringVar(&conf.S3URLStyle, "s3-url-style", defS3URLStyle, "S3 URL style: path or vhost")
+	fs.BoolVar(&conf.S3UseSSL, "s3-use-ssl", defS3UseSSL, "S3 use SSL (set false for local MinIO over HTTP)")
 
 	fs.StringVar(&conf.TrustedProxies, "trusted-proxies", defTrustedProxies, "Trusted proxy CIDRs (comma-separated) or '*' to trust all")
 

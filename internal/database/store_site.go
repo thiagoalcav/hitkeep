@@ -25,9 +25,42 @@ func (s *Store) FindSiteByDomain(ctx context.Context, domain string) (*api.Site,
 	return &site, nil
 }
 
-func (s *Store) GetSite(ctx context.Context, siteID uuid.UUID, userID uuid.UUID) (*api.Site, error) {
+func (s *Store) GetSiteByID(ctx context.Context, siteID uuid.UUID) (*api.Site, error) {
 	var site api.Site
-	err := s.db.QueryRowContext(ctx, "SELECT id, user_id, domain, created_at FROM sites WHERE id = ? AND user_id = ?", siteID, userID).Scan(&site.ID, &site.UserID, &site.Domain, &site.CreatedAt)
+	err := s.db.QueryRowContext(ctx, `
+		SELECT id, user_id, domain, data_retention_days, created_at
+		FROM sites
+		WHERE id = ?`,
+		siteID,
+	).Scan(&site.ID, &site.UserID, &site.Domain, &site.DataRetentionDays, &site.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("could not query site by id: %w", err)
+	}
+	return &site, nil
+}
+
+func (s *Store) GetSite(ctx context.Context, siteID uuid.UUID, userID uuid.UUID) (*api.Site, error) {
+	activeTenantID, err := s.GetActiveTenantID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("could not resolve active tenant: %w", err)
+	}
+	defaultTenantID, err := s.GetDefaultTenantID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not resolve default tenant: %w", err)
+	}
+
+	var site api.Site
+	err = s.db.QueryRowContext(ctx, `
+		SELECT id, user_id, domain, created_at
+		FROM sites s
+		LEFT JOIN site_tenants st ON st.site_id = s.id
+		WHERE s.id = ?
+			AND s.user_id = ?
+			AND COALESCE(st.tenant_id, ?) = ?
+	`, siteID, userID, defaultTenantID, activeTenantID).Scan(&site.ID, &site.UserID, &site.Domain, &site.CreatedAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	} else if err != nil {
@@ -46,12 +79,33 @@ func (s *Store) CreateSite(ctx context.Context, userID uuid.UUID, domain string)
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	if err := ensureDefaultTenantTx(ctx, tx); err != nil {
+		return nil, err
+	}
+
+	tenantID, err := getActiveTenantID(ctx, tx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("could not resolve site tenant: %w", err)
+	}
+
+	if err := ensureTenantMemberTx(ctx, tx, tenantID, userID, TenantRoleOwner, userID); err != nil {
+		return nil, err
+	}
+
 	_, err = tx.ExecContext(ctx,
 		"INSERT INTO sites (id, user_id, domain, created_at) VALUES (?, ?, ?, ?)",
 		id, userID, domain, now,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not create site: %w", err)
+	}
+
+	_, err = tx.ExecContext(ctx,
+		"INSERT INTO site_tenants (site_id, tenant_id, created_at) VALUES (?, ?, ?)",
+		id, tenantID, now,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("could not create site tenant mapping: %w", err)
 	}
 
 	// Add creator as site owner
@@ -80,21 +134,35 @@ func (s *Store) GetSites(ctx context.Context, userID uuid.UUID) ([]api.Site, err
 	if err != nil {
 		return nil, fmt.Errorf("could not get instance role: %w", err)
 	}
+	activeTenantID, err := s.GetActiveTenantID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("could not resolve active tenant: %w", err)
+	}
+	defaultTenantID, err := s.GetDefaultTenantID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not resolve default tenant: %w", err)
+	}
 
 	var rows *sql.Rows
 	if instanceRole.HasPermission(auth.PermInstanceViewAllSites) {
-		rows, err = s.db.QueryContext(ctx,
-			"SELECT id, user_id, domain, data_retention_days, created_at FROM sites ORDER BY created_at DESC",
-		)
+		rows, err = s.db.QueryContext(ctx, `
+			SELECT s.id, s.user_id, s.domain, s.data_retention_days, s.created_at
+			FROM sites s
+			LEFT JOIN site_tenants st ON st.site_id = s.id
+			WHERE COALESCE(st.tenant_id, ?) = ?
+			ORDER BY s.created_at DESC
+		`, defaultTenantID, activeTenantID)
 	} else {
 		rows, err = s.db.QueryContext(ctx, `
 			SELECT DISTINCT s.id, s.user_id, s.domain, s.data_retention_days, s.created_at
 			FROM sites s
+			LEFT JOIN site_tenants st ON st.site_id = s.id
 			LEFT JOIN site_members sm ON sm.site_id = s.id AND sm.user_id = ?
-			WHERE s.user_id = ? OR sm.user_id IS NOT NULL
+			WHERE COALESCE(st.tenant_id, ?) = ?
+				AND (s.user_id = ? OR sm.user_id IS NOT NULL)
 			ORDER BY s.created_at DESC
 		`,
-			userID, userID,
+			userID, defaultTenantID, activeTenantID, userID,
 		)
 	}
 	if err != nil {
@@ -120,6 +188,25 @@ func (s *Store) UpdateSiteRetention(ctx context.Context, siteID uuid.UUID, userI
 	)
 	if err != nil {
 		return fmt.Errorf("could not update site retention: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) UpsertSiteMirror(ctx context.Context, site *api.Site) error {
+	if site == nil {
+		return fmt.Errorf("site is required")
+	}
+
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO sites (id, domain, data_retention_days)
+		VALUES (?, ?, ?)
+		ON CONFLICT (id) DO UPDATE SET
+			domain = excluded.domain,
+			data_retention_days = excluded.data_retention_days`,
+		site.ID, site.Domain, site.DataRetentionDays,
+	)
+	if err != nil {
+		return fmt.Errorf("could not upsert site mirror: %w", err)
 	}
 	return nil
 }

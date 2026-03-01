@@ -59,18 +59,39 @@ func (s *Store) UpdateInstanceRole(ctx context.Context, targetUserID uuid.UUID, 
 
 // GetSiteRole returns the user's role for a specific site
 func (s *Store) GetSiteRole(ctx context.Context, userID uuid.UUID, siteID uuid.UUID) (auth.SiteRole, error) {
+	activeTenantID, err := s.GetActiveTenantID(ctx, userID)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve active tenant: %w", err)
+	}
+	defaultTenantID, err := s.GetDefaultTenantID(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve default tenant: %w", err)
+	}
+
 	var role string
-	err := s.db.QueryRowContext(ctx,
-		"SELECT role FROM site_members WHERE user_id = ? AND site_id = ?",
-		userID, siteID,
+	err = s.db.QueryRowContext(ctx, `
+		SELECT sm.role
+		FROM site_members sm
+		JOIN sites s ON s.id = sm.site_id
+		LEFT JOIN site_tenants st ON st.site_id = s.id
+		WHERE sm.user_id = ?
+			AND sm.site_id = ?
+			AND COALESCE(st.tenant_id, ?) = ?
+	`,
+		userID, siteID, defaultTenantID, activeTenantID,
 	).Scan(&role)
 
 	if err == sql.ErrNoRows {
 		// Check if user is site owner (backward compatibility)
 		var ownerID uuid.UUID
-		err2 := s.db.QueryRowContext(ctx,
-			"SELECT user_id FROM sites WHERE id = ?",
-			siteID,
+		err2 := s.db.QueryRowContext(ctx, `
+			SELECT user_id
+			FROM sites s
+			LEFT JOIN site_tenants st ON st.site_id = s.id
+			WHERE s.id = ?
+				AND COALESCE(st.tenant_id, ?) = ?
+		`,
+			siteID, defaultTenantID, activeTenantID,
 		).Scan(&ownerID)
 
 		if err2 == nil && ownerID == userID {
@@ -88,7 +109,20 @@ func (s *Store) GetSiteRole(ctx context.Context, userID uuid.UUID, siteID uuid.U
 
 // AddSiteMember grants a user access to a site
 func (s *Store) AddSiteMember(ctx context.Context, siteID uuid.UUID, userID uuid.UUID, role auth.SiteRole, addedBy uuid.UUID) error {
-	_, err := s.db.ExecContext(ctx,
+	siteTenantID, err := s.GetSiteTenantID(ctx, siteID)
+	if err != nil {
+		return fmt.Errorf("failed to resolve site tenant: %w", err)
+	}
+
+	isMember, err := s.IsTenantMember(ctx, siteTenantID, userID)
+	if err != nil {
+		return fmt.Errorf("failed to check tenant membership: %w", err)
+	}
+	if !isMember {
+		return fmt.Errorf("failed to add site member: user is not part of tenant")
+	}
+
+	_, err = s.db.ExecContext(ctx,
 		`INSERT INTO site_members (site_id, user_id, role, added_by)
 		 VALUES (?, ?, ?, ?)
 		 ON CONFLICT (site_id, user_id) DO UPDATE SET role = excluded.role`,

@@ -125,6 +125,12 @@ func (s *Store) CreateUserWithNames(ctx context.Context, email string, hashedPas
 		return uuid.Nil, fmt.Errorf("could not count users: %w", err)
 	}
 
+	if err := ensureDefaultTenantTx(ctx, tx); err != nil {
+		return uuid.Nil, err
+	}
+
+	tenantRole := TenantRoleMember
+
 	// If first user, make them instance owner
 	if count == 1 {
 		_, err = tx.ExecContext(ctx,
@@ -134,6 +140,17 @@ func (s *Store) CreateUserWithNames(ctx context.Context, email string, hashedPas
 		if err != nil {
 			return uuid.Nil, fmt.Errorf("could not assign owner role: %w", err)
 		}
+
+		tenantRole = TenantRoleOwner
+	}
+
+	defaultTenantID, err := getDefaultTenantID(ctx, tx)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	if err := ensureTenantMemberTx(ctx, tx, defaultTenantID, id, tenantRole, id); err != nil {
+		return uuid.Nil, err
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -167,6 +184,8 @@ var userFKReferences = []userFKReference{
 	{table: "site_members", column: "added_by", query: "UPDATE site_members SET added_by = ? WHERE added_by = ?"},
 	{table: "site_members", column: "user_id", query: "UPDATE site_members SET user_id = ? WHERE user_id = ?"},
 	{table: "sites", column: "user_id", query: "UPDATE sites SET user_id = ? WHERE user_id = ?"},
+	{table: "tenant_members", column: "added_by", query: "UPDATE tenant_members SET added_by = ? WHERE added_by = ?"},
+	{table: "tenant_members", column: "user_id", query: "UPDATE tenant_members SET user_id = ? WHERE user_id = ?"},
 	{table: "user_passkey_challenges", column: "user_id", query: "UPDATE user_passkey_challenges SET user_id = ? WHERE user_id = ?"},
 	{table: "user_passkeys", column: "user_id", query: "UPDATE user_passkeys SET user_id = ? WHERE user_id = ?"},
 	{table: "user_preferences", column: "user_id", query: "UPDATE user_preferences SET user_id = ? WHERE user_id = ?"},
@@ -356,11 +375,17 @@ func deleteUserRows(ctx context.Context, tx *sql.Tx, userID uuid.UUID) error {
 	if _, err := tx.ExecContext(ctx, "UPDATE site_members SET added_by = NULL WHERE added_by = ?", userID); err != nil {
 		return fmt.Errorf("could not null site member added_by: %w", err)
 	}
+	if _, err := tx.ExecContext(ctx, "UPDATE tenant_members SET added_by = NULL WHERE added_by = ?", userID); err != nil {
+		return fmt.Errorf("could not null tenant member added_by: %w", err)
+	}
 	if _, err := tx.ExecContext(ctx, "UPDATE instance_roles SET granted_by = NULL WHERE granted_by = ?", userID); err != nil {
 		return fmt.Errorf("could not null instance role granted_by: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, "DELETE FROM site_members WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete user site memberships: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM tenant_members WHERE user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not delete user tenant memberships: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, "DELETE FROM api_client_site_roles WHERE api_client_id IN (SELECT id FROM api_clients WHERE user_id = ?)", userID); err != nil {
 		return fmt.Errorf("could not delete user api client site roles: %w", err)

@@ -318,6 +318,34 @@ type SiteMember struct {
 	AddedAt time.Time `json:"added_at"`
 }
 
+type Team struct {
+	ID        uuid.UUID `json:"id"`
+	Name      string    `json:"name"`
+	LogoURL   string    `json:"logo_url"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type TeamMember struct {
+	ID      uuid.UUID `json:"id"`
+	UserID  uuid.UUID `json:"user_id"`
+	Email   string    `json:"email"`
+	Role    string    `json:"role"`
+	AddedAt time.Time `json:"added_at"`
+}
+
+type TeamAuditEntry struct {
+	ID           uuid.UUID  `json:"id"`
+	TeamID       uuid.UUID  `json:"team_id"`
+	Action       string     `json:"action"`
+	Details      string     `json:"details"`
+	ActorUserID  *uuid.UUID `json:"actor_user_id,omitempty"`
+	ActorEmail   string     `json:"actor_email,omitempty"`
+	TargetUserID *uuid.UUID `json:"target_user_id,omitempty"`
+	TargetEmail  string     `json:"target_email,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+}
+
 type IPExclusion struct {
 	ID          uuid.UUID  `json:"id"`
 	SiteID      *uuid.UUID `json:"site_id,omitempty"`

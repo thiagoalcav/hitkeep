@@ -19,6 +19,7 @@ import (
 	"hitkeep/internal/cluster"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
+	"hitkeep/internal/entitlements"
 	"hitkeep/internal/hklog"
 	"hitkeep/internal/ingest"
 	"hitkeep/internal/mailer"
@@ -89,28 +90,67 @@ func Run() {
 	}
 
 	var store *database.Store
+	var tenantMgr *database.TenantStoreManager
 	var producer *nsq.Producer
+	ent := entitlements.Provider(entitlements.NewDefaultProvider())
 
 	if clusterManager.IsLeader() {
 		var leaderShutdown func()
 
-		store, producer, leaderShutdown, err = startLeaderServices(gCtx, conf, logger, logLevel)
+		store, tenantMgr, producer, leaderShutdown, err = startLeaderServices(gCtx, conf, logger, logLevel)
 		check(err)
 
 		// Start Retention Worker
-		retentionWorker := worker.NewRetentionWorker(store, conf.ArchivePath, conf.DataRetentionDays)
+		var s3Conf *worker.S3Config
+		if worker.IsS3ArchivePath(conf.ArchivePath) {
+			s3Conf = &worker.S3Config{
+				AccessKeyID:     conf.S3AccessKeyID,
+				SecretAccessKey: conf.S3SecretAccessKey,
+				SessionToken:    conf.S3SessionToken,
+				Region:          conf.S3Region,
+				Endpoint:        conf.S3Endpoint,
+				URLStyle:        conf.S3URLStyle,
+				UseSSL:          conf.S3UseSSL,
+			}
+			if s3Conf.AccessKeyID != "" {
+				slog.Info("S3 archive enabled", "mode", "static credentials", "region", s3Conf.Region)
+			} else {
+				slog.Info("S3 archive enabled", "mode", "credential chain", "region", s3Conf.Region)
+			}
+		}
+		retentionWorker := worker.NewRetentionWorker(tenantMgr, conf.ArchivePath, conf.DataRetentionDays, s3Conf)
 		go retentionWorker.Start(gCtx)
 
 		// Start Rollup Backfill Worker
-		rollupWorker := worker.NewRollupBackfillWorker(store)
+		rollupWorker := worker.NewRollupBackfillWorker(tenantMgr)
 		go rollupWorker.Start(gCtx)
 
 		// Start Report Worker
-		reportWorker := worker.NewReportWorker(store, mailSvc, conf.PublicURL)
+		reportWorker := worker.NewReportWorker(tenantMgr, mailSvc, conf.PublicURL)
 		go reportWorker.Start(gCtx)
+
+		// Start Backup Worker
+		if conf.BackupPath != "" {
+			var backupS3 *worker.S3Config
+			if worker.IsS3ArchivePath(conf.BackupPath) {
+				backupS3 = &worker.S3Config{
+					AccessKeyID:     conf.S3AccessKeyID,
+					SecretAccessKey: conf.S3SecretAccessKey,
+					SessionToken:    conf.S3SessionToken,
+					Region:          conf.S3Region,
+					Endpoint:        conf.S3Endpoint,
+					URLStyle:        conf.S3URLStyle,
+					UseSSL:          conf.S3UseSSL,
+				}
+			}
+			backupWorker := worker.NewBackupWorker(tenantMgr, conf.DataPath, conf.BackupPath,
+				conf.BackupIntervalMinutes, conf.BackupRetentionCount, backupS3)
+			go backupWorker.Start(gCtx)
+		}
 
 		g.Go(func() error {
 			<-gCtx.Done()
+			tenantMgr.Close()
 			leaderShutdown()
 			return nil
 		})
@@ -118,7 +158,7 @@ func Run() {
 		slog.Debug("Node is a follower, skipping stateful service initialization.")
 	}
 
-	httpServer := server.New(conf, publicFS, store, clusterManager, producer, mailSvc)
+	httpServer := server.New(conf, publicFS, store, tenantMgr, ent, clusterManager, producer, mailSvc)
 
 	g.Go(func() error {
 		slog.Info("HTTP server starting", "addr", conf.HTTPAddr)
@@ -141,18 +181,24 @@ func Run() {
 	check(g.Wait())
 }
 
-func startLeaderServices(ctx context.Context, conf *config.Config, logger *slog.Logger, logLevel slog.Level) (*database.Store, *nsq.Producer, func(), error) {
+func startLeaderServices(ctx context.Context, conf *config.Config, logger *slog.Logger, logLevel slog.Level) (*database.Store, *database.TenantStoreManager, *nsq.Producer, func(), error) {
 	slog.Debug("(Leader) Starting stateful services...")
 
 	store := database.NewStore(conf.DBPath)
 	if err := store.Connect(); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	if err := store.Migrate(ctx); err != nil {
 		store.Close()
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	store.StartMaintenance(ctx)
+
+	tenantMgr := database.NewTenantStoreManager(store, conf.DataPath)
+	if err := tenantMgr.SyncAllTenants(ctx); err != nil {
+		store.Close()
+		return nil, nil, nil, nil, err
+	}
 
 	nsqdOpts := nsqd.NewOptions()
 	tmpDir, _ := os.MkdirTemp("", "nsqd")
@@ -168,7 +214,7 @@ func startLeaderServices(ctx context.Context, conf *config.Config, logger *slog.
 	nsqdServer, err := nsqd.New(nsqdOpts)
 	if err != nil {
 		store.Close()
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	go func() {
@@ -187,16 +233,16 @@ func startLeaderServices(ctx context.Context, conf *config.Config, logger *slog.
 	producer, err := nsq.NewProducer(conf.NSQTCPAddress, nsq.NewConfig())
 	if err != nil {
 		store.Close()
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	// Wire up Producer logger to slog
 	producer.SetLogger(hklog.GoNSQLogger{Logger: logger}, hklog.NSQGoLevel(logLevel))
 
-	consumer := ingest.NewConsumer(store, logger, logLevel)
+	consumer := ingest.NewConsumer(tenantMgr, logger, logLevel)
 	if err := consumer.Connect(conf.NSQTCPAddress); err != nil {
 		producer.Stop()
 		store.Close()
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	shutdownFunc := func() {
@@ -207,7 +253,7 @@ func startLeaderServices(ctx context.Context, conf *config.Config, logger *slog.
 		os.RemoveAll(tmpDir)
 	}
 
-	return store, producer, shutdownFunc, nil
+	return store, tenantMgr, producer, shutdownFunc, nil
 }
 
 func runHealthcheck(conf *config.Config) error {

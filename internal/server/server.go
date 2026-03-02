@@ -15,6 +15,7 @@ import (
 	"hitkeep/internal/cluster"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
+	"hitkeep/internal/entitlements"
 	"hitkeep/internal/mailer"
 	"hitkeep/internal/server/admin"
 	serverauth "hitkeep/internal/server/auth"
@@ -55,7 +56,7 @@ type Server struct {
 	scalarIndex []byte
 }
 
-func New(conf *config.Config, publicFS fs.FS, store *database.Store, cluster *cluster.Manager, producer *nsq.Producer, mailService *mailer.Mailer) *Server {
+func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStores *database.TenantStoreManager, ent entitlements.Provider, cluster *cluster.Manager, producer *nsq.Producer, mailService *mailer.Mailer) *Server {
 	ingestLim := shared.NewIPRateLimiter(rate.Limit(conf.IngestRateLimit), conf.IngestBurst)
 	apiLim := shared.NewIPRateLimiter(rate.Limit(conf.ApiRateLimit), conf.ApiBurst)
 	authLim := shared.NewIPRateLimiter(rate.Limit(conf.AuthRateLimit), conf.AuthBurst)
@@ -87,11 +88,13 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, cluster *cl
 
 	s.ctx = &shared.Context{
 		Store:         store,
+		TenantStores:  tenantStores,
 		Cluster:       cluster,
 		Producer:      producer,
 		Mailer:        mailService,
 		Config:        conf,
 		Takeout:       takeoutService,
+		Entitlements:  ent,
 		IngestLimiter: ingestLim,
 		ApiLimiter:    apiLim,
 		AuthLimiter:   authLim,

@@ -1,0 +1,220 @@
+package worker
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"time"
+
+	"hitkeep/internal/database"
+)
+
+// BackupWorker periodically exports all DuckDB databases to Parquet snapshots.
+type BackupWorker struct {
+	tenantMgr      *database.TenantStoreManager
+	dataPath       string
+	backupPath     string
+	intervalMin    int
+	retentionCount int
+	s3Config       *S3Config
+}
+
+// NewBackupWorker creates a BackupWorker. If backupPath is empty, Start is a no-op.
+func NewBackupWorker(
+	tenantMgr *database.TenantStoreManager,
+	dataPath string,
+	backupPath string,
+	intervalMin int,
+	retentionCount int,
+	s3Config *S3Config,
+) *BackupWorker {
+	return &BackupWorker{
+		tenantMgr:      tenantMgr,
+		dataPath:       dataPath,
+		backupPath:     strings.TrimSpace(backupPath),
+		intervalMin:    intervalMin,
+		retentionCount: retentionCount,
+		s3Config:       s3Config,
+	}
+}
+
+// Start runs the backup worker on a ticker loop. It returns immediately if
+// backupPath is empty (backups disabled).
+func (w *BackupWorker) Start(ctx context.Context) {
+	if w.backupPath == "" {
+		return
+	}
+
+	if IsS3ArchivePath(w.backupPath) {
+		slog.Info("S3 backup enabled", "path", w.backupPath, "interval_min", w.intervalMin, "retention", w.retentionCount)
+	} else {
+		slog.Info("Local backup enabled", "path", w.backupPath, "interval_min", w.intervalMin, "retention", w.retentionCount)
+	}
+
+	// Initial run after a short delay to let DB settle.
+	go func() {
+		time.Sleep(30 * time.Second)
+		if err := w.Run(ctx); err != nil {
+			slog.Error("Initial backup run failed", "error", err)
+		}
+	}()
+
+	interval := time.Duration(w.intervalMin) * time.Minute
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := w.Run(ctx); err != nil {
+				slog.Error("Backup worker failed", "error", err)
+			}
+		}
+	}
+}
+
+// Run executes a single backup cycle: export shared DB + all tenant DBs,
+// then prune old snapshots beyond the retention count.
+func (w *BackupWorker) Run(ctx context.Context) error {
+	timestamp := time.Now().UTC().Format("2006-01-02T150405Z")
+	slog.Info("Starting database backup", "timestamp", timestamp)
+
+	isS3 := IsS3ArchivePath(w.backupPath)
+
+	// Configure S3 on shared DB if needed.
+	if isS3 {
+		if err := LoadHTTPFS(ctx, w.tenantMgr.Shared().DB()); err != nil {
+			return fmt.Errorf("backup: load httpfs on shared db: %w", err)
+		}
+		if err := ConfigureS3Secret(ctx, w.tenantMgr.Shared().DB(), w.s3Config); err != nil {
+			return fmt.Errorf("backup: configure s3 on shared db: %w", err)
+		}
+	}
+
+	// Backup shared DB.
+	sharedDest := joinArchivePath(w.backupPath, "shared", timestamp)
+	if err := w.exportDatabase(ctx, w.tenantMgr.Shared().DB(), sharedDest, isS3); err != nil {
+		return fmt.Errorf("backup shared database: %w", err)
+	}
+	slog.Info("Shared database backed up", "dest", sharedDest)
+
+	// Discover non-default tenants (gracefully skip if tenants table or
+	// is_default column doesn't exist yet — pre-migration state).
+	tenantIDs, err := w.tenantMgr.Shared().ListNonDefaultTenantIDs(ctx)
+	if err != nil {
+		if isMissingRelationError(err, "tenants") || isBinderError(err) {
+			slog.Debug("Tenants schema not ready, skipping tenant backups", "error", err)
+			tenantIDs = nil
+		} else {
+			slog.Error("Failed to list tenant IDs for backup", "error", err)
+			tenantIDs = nil
+		}
+	}
+
+	// Backup each non-default tenant DB.
+	for _, tenantID := range tenantIDs {
+		tenantStore, err := w.tenantMgr.ForTenant(ctx, tenantID)
+		if err != nil {
+			slog.Error("Failed to open tenant store for backup", "tenant_id", tenantID, "error", err)
+			continue
+		}
+
+		if isS3 {
+			if err := LoadHTTPFS(ctx, tenantStore.DB()); err != nil {
+				slog.Error("Failed to load httpfs on tenant DB", "tenant_id", tenantID, "error", err)
+				continue
+			}
+			if err := ConfigureS3Secret(ctx, tenantStore.DB(), w.s3Config); err != nil {
+				slog.Error("Failed to configure S3 on tenant DB", "tenant_id", tenantID, "error", err)
+				continue
+			}
+		}
+
+		tenantDest := joinArchivePath(w.backupPath, "tenants", tenantID.String(), timestamp)
+		if err := w.exportDatabase(ctx, tenantStore.DB(), tenantDest, isS3); err != nil {
+			slog.Error("Failed to backup tenant database", "tenant_id", tenantID, "error", err)
+			continue
+		}
+		slog.Info("Tenant database backed up", "tenant_id", tenantID, "dest", tenantDest)
+	}
+
+	// Prune old snapshots.
+	if !isS3 {
+		w.pruneLocalSnapshots(filepath.Join(w.backupPath, "shared"))
+		for _, tenantID := range tenantIDs {
+			w.pruneLocalSnapshots(filepath.Join(w.backupPath, "tenants", tenantID.String()))
+		}
+	} else {
+		slog.Debug("S3 backup pruning: configure S3 lifecycle policies to manage snapshot retention")
+	}
+
+	slog.Info("Database backup completed", "timestamp", timestamp)
+	return nil
+}
+
+// exportDatabase checkpoints and exports a DuckDB database to the given destination.
+func (w *BackupWorker) exportDatabase(ctx context.Context, db *sql.DB, dest string, isS3 bool) error {
+	// Flush WAL to disk.
+	if _, err := db.ExecContext(ctx, "CHECKPOINT;"); err != nil {
+		slog.Warn("Checkpoint before export failed (continuing)", "error", err)
+	}
+
+	// Ensure local directory exists.
+	if !isS3 {
+		if err := os.MkdirAll(dest, 0755); err != nil {
+			return fmt.Errorf("create backup directory %s: %w", dest, err)
+		}
+	}
+
+	safeDest := strings.ReplaceAll(dest, "'", "''")
+	query := fmt.Sprintf("EXPORT DATABASE '%s' (FORMAT PARQUET);", safeDest)
+	if _, err := db.ExecContext(ctx, query); err != nil {
+		return fmt.Errorf("export database to %s: %w", dest, err)
+	}
+
+	return nil
+}
+
+// pruneLocalSnapshots removes the oldest snapshot directories in dir,
+// keeping at most retentionCount. Snapshot dirs are ISO timestamp names
+// that sort lexicographically.
+func (w *BackupWorker) pruneLocalSnapshots(dir string) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			slog.Warn("Could not read backup directory for pruning", "dir", dir, "error", err)
+		}
+		return
+	}
+
+	// Collect only directories (snapshot timestamps).
+	dirs := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if e.IsDir() {
+			dirs = append(dirs, e.Name())
+		}
+	}
+
+	if len(dirs) <= w.retentionCount {
+		return
+	}
+
+	sort.Strings(dirs)
+
+	toRemove := dirs[:len(dirs)-w.retentionCount]
+	for _, name := range toRemove {
+		path := filepath.Join(dir, name)
+		if err := os.RemoveAll(path); err != nil {
+			slog.Error("Failed to prune old backup snapshot", "path", path, "error", err)
+		} else {
+			slog.Info("Pruned old backup snapshot", "path", path)
+		}
+	}
+}

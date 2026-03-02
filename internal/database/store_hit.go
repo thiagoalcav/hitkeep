@@ -41,16 +41,15 @@ func (s *Store) CreateHit(ctx context.Context, hit *api.Hit) error {
 
 // GetHits returns paginated, sorted, and filtered hits.
 func (s *Store) GetHits(ctx context.Context, params api.HitQueryParams) (*api.PaginatedHits, error) {
+	// Authorization is handled by the handler middleware (SitePerm/RequirePermission).
+	// This query runs against the tenant-specific analytics DB which has no sites table.
 	baseQuery := `
 		FROM hits h
-		JOIN sites s ON h.site_id = s.id
-		LEFT JOIN site_members sm ON sm.site_id = s.id AND sm.user_id = ?
-		WHERE h.site_id = ? 
-		  AND (s.user_id = ? OR sm.user_id IS NOT NULL)
-		  AND h.timestamp >= ? 
+		WHERE h.site_id = ?
+		  AND h.timestamp >= ?
 		  AND h.timestamp <= ?
 	`
-	args := []any{params.UserID, params.SiteID, params.UserID, params.Start, params.End}
+	args := []any{params.SiteID, params.Start, params.End}
 
 	filterSQL, filterArgs := buildHitFilters(params.Filters, "h")
 	baseQuery += filterSQL
@@ -309,16 +308,15 @@ func nullBool(value sql.NullBool) string {
 }
 
 func buildHitExportQuery(params api.HitQueryParams) (string, []any) {
+	// Authorization is handled by the handler middleware (SitePerm/RequirePermission).
+	// This query runs against the tenant-specific analytics DB which has no sites table.
 	baseQuery := `
 		FROM hits h
-		JOIN sites s ON h.site_id = s.id
-		LEFT JOIN site_members sm ON sm.site_id = s.id AND sm.user_id = ?
-		WHERE h.site_id = ? 
-		  AND (s.user_id = ? OR sm.user_id IS NOT NULL)
-		  AND h.timestamp >= ? 
+		WHERE h.site_id = ?
+		  AND h.timestamp >= ?
 		  AND h.timestamp <= ?
 	`
-	args := []any{params.UserID, params.SiteID, params.UserID, params.Start, params.End}
+	args := []any{params.SiteID, params.Start, params.End}
 
 	filterSQL, filterArgs := buildHitFilters(params.Filters, "h")
 	baseQuery += filterSQL

@@ -15,17 +15,45 @@ import (
 // Goals
 
 func (s *Store) CreateGoal(ctx context.Context, goal *api.Goal) error {
+	if goal.ID == uuid.Nil {
+		goal.ID = uuid.New()
+	}
 	if goal.CreatedAt.IsZero() {
 		goal.CreatedAt = time.Now()
 	}
 
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO goals (site_id, name, type, value, created_at)
-		VALUES (?, ?, ?, ?, ?)`,
-		goal.SiteID, goal.Name, goal.Type, goal.Value, goal.CreatedAt,
+		INSERT INTO goals (id, site_id, name, type, value, created_at)
+		VALUES (?, ?, ?, ?, ?, ?)`,
+		goal.ID, goal.SiteID, goal.Name, goal.Type, goal.Value, goal.CreatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create goal: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) UpsertGoal(ctx context.Context, goal *api.Goal) error {
+	if goal.ID == uuid.Nil {
+		goal.ID = uuid.New()
+	}
+	if goal.CreatedAt.IsZero() {
+		goal.CreatedAt = time.Now()
+	}
+
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO goals (id, site_id, name, type, value, created_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT (id) DO UPDATE SET
+			site_id = excluded.site_id,
+			name = excluded.name,
+			type = excluded.type,
+			value = excluded.value,
+			created_at = excluded.created_at`,
+		goal.ID, goal.SiteID, goal.Name, goal.Type, goal.Value, goal.CreatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to upsert goal: %w", err)
 	}
 	return nil
 }
@@ -83,6 +111,9 @@ func (s *Store) DeleteGoal(ctx context.Context, id uuid.UUID, siteID uuid.UUID) 
 // Funnels
 
 func (s *Store) CreateFunnel(ctx context.Context, funnel *api.Funnel) error {
+	if funnel.ID == uuid.Nil {
+		funnel.ID = uuid.New()
+	}
 	if funnel.CreatedAt.IsZero() {
 		funnel.CreatedAt = time.Now()
 	}
@@ -93,12 +124,41 @@ func (s *Store) CreateFunnel(ctx context.Context, funnel *api.Funnel) error {
 	}
 
 	_, err = s.db.ExecContext(ctx, `
-		INSERT INTO funnels (site_id, name, steps, created_at)
-		VALUES (?, ?, ?, ?)`,
-		funnel.SiteID, funnel.Name, stepsJSON, funnel.CreatedAt,
+		INSERT INTO funnels (id, site_id, name, steps, created_at)
+		VALUES (?, ?, ?, ?, ?)`,
+		funnel.ID, funnel.SiteID, funnel.Name, stepsJSON, funnel.CreatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create funnel: %w", err)
+	}
+	return nil
+}
+
+func (s *Store) UpsertFunnel(ctx context.Context, funnel *api.Funnel) error {
+	if funnel.ID == uuid.Nil {
+		funnel.ID = uuid.New()
+	}
+	if funnel.CreatedAt.IsZero() {
+		funnel.CreatedAt = time.Now()
+	}
+
+	stepsJSON, err := json.Marshal(funnel.Steps)
+	if err != nil {
+		return fmt.Errorf("failed to marshal funnel steps: %w", err)
+	}
+
+	_, err = s.db.ExecContext(ctx, `
+		INSERT INTO funnels (id, site_id, name, steps, created_at)
+		VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT (id) DO UPDATE SET
+			site_id = excluded.site_id,
+			name = excluded.name,
+			steps = excluded.steps,
+			created_at = excluded.created_at`,
+		funnel.ID, funnel.SiteID, funnel.Name, stepsJSON, funnel.CreatedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to upsert funnel: %w", err)
 	}
 	return nil
 }

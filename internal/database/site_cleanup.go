@@ -19,6 +19,7 @@ var siteDeleteSteps = []siteDeleteStep{
 	{table: "site_exclusions", query: "DELETE FROM site_exclusions WHERE site_id = ?"},
 	{table: "api_client_site_roles", query: "DELETE FROM api_client_site_roles WHERE site_id = ?"},
 	{table: "site_members", query: "DELETE FROM site_members WHERE site_id = ?"},
+	{table: "site_tenants", query: "DELETE FROM site_tenants WHERE site_id = ?"},
 	{table: "goal_rollups_hourly", query: "DELETE FROM goal_rollups_hourly WHERE site_id = ?"},
 	{table: "goal_rollups_daily", query: "DELETE FROM goal_rollups_daily WHERE site_id = ?"},
 	{table: "goal_rollups_monthly", query: "DELETE FROM goal_rollups_monthly WHERE site_id = ?"},
@@ -52,7 +53,15 @@ type queryer interface {
 }
 
 func deleteSiteChildren(ctx context.Context, tx *sql.Tx, siteID uuid.UUID) error {
+	existingTables, err := listTables(ctx, tx)
+	if err != nil {
+		return err
+	}
+
 	for _, step := range siteDeleteSteps {
+		if _, ok := existingTables[step.table]; !ok {
+			continue
+		}
 		if !isSafeIdentifier(step.table) {
 			return fmt.Errorf("unsafe table name %q", step.table)
 		}
@@ -85,6 +94,31 @@ func deleteSiteChildren(ctx context.Context, tx *sql.Tx, siteID uuid.UUID) error
 	}
 
 	return nil
+}
+
+func listTables(ctx context.Context, q queryer) (map[string]struct{}, error) {
+	rows, err := q.QueryContext(ctx, `
+		SELECT table_name
+		FROM information_schema.tables
+		WHERE table_schema NOT IN ('information_schema', 'pg_catalog')
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("could not list tables: %w", err)
+	}
+	defer rows.Close()
+
+	tables := make(map[string]struct{})
+	for rows.Next() {
+		var table string
+		if err := rows.Scan(&table); err != nil {
+			return nil, fmt.Errorf("could not scan table: %w", err)
+		}
+		tables[table] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to list tables: %w", err)
+	}
+	return tables, nil
 }
 
 func listSiteIDTables(ctx context.Context, q queryer) ([]string, error) {

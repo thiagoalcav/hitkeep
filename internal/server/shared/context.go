@@ -2,6 +2,7 @@ package shared
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"hitkeep/internal/cluster"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
+	"hitkeep/internal/entitlements"
 	"hitkeep/internal/mailer"
 	"hitkeep/internal/takeout"
 )
@@ -40,15 +42,32 @@ type HandlerConfig struct {
 
 type Context struct {
 	Store         *database.Store
+	TenantStores  *database.TenantStoreManager
 	Cluster       *cluster.Manager
 	Producer      *nsq.Producer
 	Mailer        *mailer.Mailer
 	Config        *config.Config
 	Takeout       *takeout.TakeoutService
+	Entitlements  entitlements.Provider
 	IngestLimiter *IPRateLimiter
 	ApiLimiter    *IPRateLimiter
 	AuthLimiter   *IPRateLimiter
 	IPFilter      *blocking.IPFilter
+}
+
+// AnalyticsStore resolves the tenant-specific store that holds analytics data for the given site.
+// It falls back to the shared store if TenantStores is nil (single-tenant / follower node).
+func (c *Context) AnalyticsStore(ctx context.Context, siteID uuid.UUID) (*database.Store, error) {
+	if c.TenantStores == nil {
+		return c.Store, nil
+	}
+
+	store, _, err := c.TenantStores.ResolveSiteStore(ctx, siteID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve analytics store for site %s: %w", siteID, err)
+	}
+
+	return store, nil
 }
 
 // GetUserIDFromContext extracts the user ID from context (set by auth middleware).

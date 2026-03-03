@@ -172,6 +172,14 @@ func (h *handler) handleCreateSite() http.HandlerFunc {
 			}
 		}
 
+		if h.ctx.TenantStores != nil {
+			if err := h.ctx.TenantStores.SyncSite(r.Context(), site.ID); err != nil {
+				slog.Error("Failed to sync tenant site mirror after create", "error", err, "site_id", site.ID)
+				http.Error(w, "Failed to create site", http.StatusInternalServerError)
+				return
+			}
+		}
+
 		slog.Info("Site created", "id", site.ID, "domain", domain, "user_id", userID)
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(site); err != nil {
@@ -194,7 +202,13 @@ func (h *handler) handleDeleteSite() http.HandlerFunc {
 			return
 		}
 
-		if err := h.ctx.Store.DeleteSite(r.Context(), siteID); err != nil {
+		if h.ctx.TenantStores != nil {
+			if err := h.ctx.TenantStores.DeleteSite(r.Context(), siteID); err != nil {
+				slog.Error("Failed to delete site", "error", err, "site_id", siteID)
+				http.Error(w, "Failed to delete site", http.StatusInternalServerError)
+				return
+			}
+		} else if err := h.ctx.Store.DeleteSite(r.Context(), siteID); err != nil {
 			slog.Error("Failed to delete site", "error", err, "site_id", siteID)
 			http.Error(w, "Failed to delete site", http.StatusInternalServerError)
 			return
@@ -248,6 +262,14 @@ func (h *handler) handleUpdateSiteRetention() http.HandlerFunc {
 			slog.Error("Failed to update site retention", "error", err, "site_id", siteID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
+		}
+
+		if h.ctx.TenantStores != nil {
+			if err := h.ctx.TenantStores.SyncSite(r.Context(), siteID); err != nil {
+				slog.Error("Failed to sync tenant site mirror after retention update", "error", err, "site_id", siteID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -462,7 +484,14 @@ func (h *handler) handleGetSiteHits() http.HandlerFunc {
 			Filters:   filters,
 		}
 
-		result, err := h.ctx.Store.GetHits(r.Context(), params)
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), siteID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", siteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		result, err := analyticsStore.GetHits(r.Context(), params)
 		if err != nil {
 			slog.Error("Failed to get hits", "error", err, "site_id", siteID, "user_id", userID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -531,18 +560,25 @@ func (h *handler) handleExportSiteHits() http.HandlerFunc {
 			Filters: filters,
 		}
 
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), siteID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", siteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
 		if format == exportfmt.FormatCSV {
 			filename := fmt.Sprintf("hits_%s_%d.csv", siteID, time.Now().Unix())
 			w.Header().Set("Content-Type", exportfmt.ContentType(exportfmt.FormatCSV))
 			w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 
-			if err := h.ctx.Store.ExportHitsCSV(r.Context(), params, w); err != nil {
+			if err := analyticsStore.ExportHitsCSV(r.Context(), params, w); err != nil {
 				slog.Error("Failed to export hits", "error", err, "site_id", siteID, "user_id", userID)
 			}
 			return
 		}
 
-		filename, err := h.ctx.Store.ExportHitsFile(r.Context(), params, format)
+		filename, err := analyticsStore.ExportHitsFile(r.Context(), params, format)
 		if err != nil {
 			slog.Error("Failed to export hits", "error", err, "site_id", siteID, "user_id", userID)
 			http.Error(w, "Failed to export hits", http.StatusInternalServerError)
@@ -645,7 +681,14 @@ func (h *handler) handleGetSiteStats() http.HandlerFunc {
 			}
 		}
 
-		stats, err := h.ctx.Store.GetSiteStats(r.Context(), params)
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), siteID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", siteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		stats, err := analyticsStore.GetSiteStats(r.Context(), params)
 		if err != nil {
 			slog.Error("Failed to get site stats", "error", err, "site_id", siteID)
 			if strings.Contains(err.Error(), "not found") {

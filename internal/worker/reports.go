@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
+
 	"hitkeep/internal/api"
 	"hitkeep/internal/database"
 	"hitkeep/internal/mailables"
@@ -14,17 +16,17 @@ import (
 
 // ReportWorker sends scheduled analytics emails (daily / weekly / monthly).
 type ReportWorker struct {
-	store  *database.Store
-	mailer *mailer.Mailer
-	pubURL string
+	tenantMgr *database.TenantStoreManager
+	mailer    *mailer.Mailer
+	pubURL    string
 }
 
 // NewReportWorker creates a ReportWorker. pubURL is used to build dashboard deep-links.
-func NewReportWorker(store *database.Store, m *mailer.Mailer, pubURL string) *ReportWorker {
+func NewReportWorker(tenantMgr *database.TenantStoreManager, m *mailer.Mailer, pubURL string) *ReportWorker {
 	return &ReportWorker{
-		store:  store,
-		mailer: m,
-		pubURL: pubURL,
+		tenantMgr: tenantMgr,
+		mailer:    m,
+		pubURL:    pubURL,
 	}
 }
 
@@ -89,8 +91,13 @@ func (w *ReportWorker) Run(ctx context.Context) {
 	}
 }
 
+func (w *ReportWorker) resolveAnalyticsStore(ctx context.Context, siteID uuid.UUID) (*database.Store, error) {
+	store, _, err := w.tenantMgr.ResolveSiteStore(ctx, siteID)
+	return store, err
+}
+
 func (w *ReportWorker) processSiteReports(ctx context.Context, freq api.ReportFrequency, now time.Time) {
-	pending, err := w.store.GetPendingSiteReports(ctx, freq)
+	pending, err := w.tenantMgr.Shared().GetPendingSiteReports(ctx, freq)
 	if err != nil {
 		slog.Error("ReportWorker: failed to load pending site reports", "freq", freq, "error", err)
 		return
@@ -119,13 +126,19 @@ func (w *ReportWorker) processSiteReports(ctx context.Context, freq api.ReportFr
 			End:    prevEnd,
 		}
 
-		curStats, err := w.store.GetSiteStats(ctx, curParams)
+		analyticsStore, err := w.resolveAnalyticsStore(ctx, p.SiteID)
+		if err != nil {
+			slog.Error("ReportWorker: failed to resolve analytics store", "site_id", p.SiteID, "error", err)
+			continue
+		}
+
+		curStats, err := analyticsStore.GetSiteStats(ctx, curParams)
 		if err != nil {
 			slog.Error("ReportWorker: failed to get current site stats", "site_id", p.SiteID, "error", err)
 			continue
 		}
 
-		prevStats, err := w.store.GetSiteStats(ctx, prevParams)
+		prevStats, err := analyticsStore.GetSiteStats(ctx, prevParams)
 		if err != nil {
 			slog.Error("ReportWorker: failed to get previous site stats", "site_id", p.SiteID, "error", err)
 			continue
@@ -154,7 +167,7 @@ func (w *ReportWorker) processSiteReports(ctx context.Context, freq api.ReportFr
 			Visitors:  prevStats.UniqueSessions,
 		}
 
-		dailyPVs, err := w.store.GetDailyPageviewsForPeriod(ctx, p.SiteID, start, end)
+		dailyPVs, err := analyticsStore.GetDailyPageviewsForPeriod(ctx, p.SiteID, start, end)
 		if err != nil {
 			slog.Warn("ReportWorker: could not fetch daily pageviews for chart", "site_id", p.SiteID, "error", err)
 			dailyPVs = nil
@@ -173,7 +186,7 @@ func (w *ReportWorker) processSiteReports(ctx context.Context, freq api.ReportFr
 }
 
 func (w *ReportWorker) processDigests(ctx context.Context, freq api.ReportFrequency, now time.Time) {
-	pending, err := w.store.GetPendingDigests(ctx, freq)
+	pending, err := w.tenantMgr.Shared().GetPendingDigests(ctx, freq)
 	if err != nil {
 		slog.Error("ReportWorker: failed to load pending digests", "freq", freq, "error", err)
 		return
@@ -205,13 +218,19 @@ func (w *ReportWorker) processDigests(ctx context.Context, freq api.ReportFreque
 				End:    prevEnd,
 			}
 
-			curStats, err := w.store.GetSiteStats(ctx, curParams)
+			analyticsStore, err := w.resolveAnalyticsStore(ctx, site.SiteID)
+			if err != nil {
+				slog.Error("ReportWorker: failed to resolve analytics store for digest", "site_id", site.SiteID, "error", err)
+				continue
+			}
+
+			curStats, err := analyticsStore.GetSiteStats(ctx, curParams)
 			if err != nil {
 				slog.Error("ReportWorker: failed to get digest site stats", "site_id", site.SiteID, "error", err)
 				continue
 			}
 
-			prevStats, err := w.store.GetSiteStats(ctx, prevParams)
+			prevStats, err := analyticsStore.GetSiteStats(ctx, prevParams)
 			if err != nil {
 				slog.Error("ReportWorker: failed to get digest prev site stats", "site_id", site.SiteID, "error", err)
 				continue

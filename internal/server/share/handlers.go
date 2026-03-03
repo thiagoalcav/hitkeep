@@ -16,6 +16,7 @@ import (
 
 	"hitkeep/internal/api"
 	authcore "hitkeep/internal/auth"
+	"hitkeep/internal/database"
 	"hitkeep/internal/exportfmt"
 	"hitkeep/internal/server/shared"
 )
@@ -244,7 +245,14 @@ func (h *handler) handleGetShareSiteStats() http.HandlerFunc {
 			FunnelIDs: funnelIDs,
 		}
 
-		stats, err := h.ctx.Store.GetSiteStats(r.Context(), params)
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), site.ID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", site.ID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		stats, err := analyticsStore.GetSiteStats(r.Context(), params)
 		if err != nil {
 			//nolint:gosec // site_id comes from a validated share-site association and is logged for diagnostics.
 			slog.Error("Failed to get share stats", "error", err, "site_id", site.ID)
@@ -328,7 +336,14 @@ func (h *handler) handleGetShareHits() http.HandlerFunc {
 			Filters:   filters,
 		}
 
-		result, err := h.ctx.Store.GetHits(r.Context(), params)
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), site.ID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", site.ID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		result, err := analyticsStore.GetHits(r.Context(), params)
 		if err != nil {
 			//nolint:gosec // site_id comes from a validated share-site association and is logged for diagnostics.
 			slog.Error("Failed to get share hits", "error", err, "site_id", site.ID)
@@ -387,19 +402,26 @@ func (h *handler) handleExportShareHits() http.HandlerFunc {
 			Filters: filters,
 		}
 
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), site.ID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", site.ID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
 		if format == exportfmt.FormatCSV {
 			filename := fmt.Sprintf("hits_%s_%d.csv", site.ID, time.Now().Unix())
 			w.Header().Set("Content-Type", exportfmt.ContentType(exportfmt.FormatCSV))
 			w.Header().Set("Content-Disposition", "attachment; filename="+filename)
 
-			if err := h.ctx.Store.ExportHitsCSV(r.Context(), params, w); err != nil {
+			if err := analyticsStore.ExportHitsCSV(r.Context(), params, w); err != nil {
 				//nolint:gosec // site_id comes from a validated share-site association and is logged for diagnostics.
 				slog.Error("Failed to export share hits", "error", err, "site_id", site.ID)
 			}
 			return
 		}
 
-		filename, err := h.ctx.Store.ExportHitsFile(r.Context(), params, format)
+		filename, err := analyticsStore.ExportHitsFile(r.Context(), params, format)
 		if err != nil {
 			//nolint:gosec // site_id comes from a validated share-site association and is logged for diagnostics.
 			slog.Error("Failed to export share hits", "error", err, "site_id", site.ID)
@@ -427,7 +449,14 @@ func (h *handler) handleGetShareGoals() http.HandlerFunc {
 			return
 		}
 
-		goals, err := h.ctx.Store.GetGoals(r.Context(), site.ID)
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), site.ID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", site.ID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		goals, err := analyticsStore.GetGoals(r.Context(), site.ID)
 		if err != nil {
 			slog.Error("Failed to get share goals", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -443,8 +472,8 @@ func (h *handler) handleGetShareGoals() http.HandlerFunc {
 
 func (h *handler) handleGetShareGoalTimeseries() http.HandlerFunc {
 	return h.handleTimeseries("goal_id", "Invalid goal_id", "Failed to get share goal timeseries",
-		func(ctx context.Context, params api.AnalyticsParams, ids []uuid.UUID) (any, error) {
-			return h.ctx.Store.GetGoalTimeseries(ctx, params, ids)
+		func(ctx context.Context, store *database.Store, params api.AnalyticsParams, ids []uuid.UUID) (any, error) {
+			return store.GetGoalTimeseries(ctx, params, ids)
 		})
 }
 
@@ -458,7 +487,14 @@ func (h *handler) handleGetShareFunnels() http.HandlerFunc {
 			return
 		}
 
-		funnels, err := h.ctx.Store.GetFunnels(r.Context(), site.ID)
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), site.ID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", site.ID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		funnels, err := analyticsStore.GetFunnels(r.Context(), site.ID)
 		if err != nil {
 			slog.Error("Failed to get share funnels", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -474,8 +510,8 @@ func (h *handler) handleGetShareFunnels() http.HandlerFunc {
 
 func (h *handler) handleGetShareFunnelTimeseries() http.HandlerFunc {
 	return h.handleTimeseries("funnel_id", "Invalid funnel_id", "Failed to get share funnel timeseries",
-		func(ctx context.Context, params api.AnalyticsParams, ids []uuid.UUID) (any, error) {
-			return h.ctx.Store.GetFunnelTimeseries(ctx, params, ids)
+		func(ctx context.Context, store *database.Store, params api.AnalyticsParams, ids []uuid.UUID) (any, error) {
+			return store.GetFunnelTimeseries(ctx, params, ids)
 		})
 }
 
@@ -505,7 +541,14 @@ func (h *handler) handleGetShareFunnelStats() http.HandlerFunc {
 			End:    end,
 		}
 
-		stats, err := h.ctx.Store.GetFunnelStats(r.Context(), funnelID, params)
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), site.ID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", site.ID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		stats, err := analyticsStore.GetFunnelStats(r.Context(), funnelID, params)
 		if err != nil {
 			slog.Error("Failed to get share funnel stats", "error", err)
 			if strings.Contains(err.Error(), "not found") {
@@ -572,7 +615,7 @@ func (h *handler) handleTimeseries(
 	idParam string,
 	invalidIDMessage string,
 	logMessage string,
-	fetch func(context.Context, api.AnalyticsParams, []uuid.UUID) (any, error),
+	fetch func(context.Context, *database.Store, api.AnalyticsParams, []uuid.UUID) (any, error),
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		site, ok := h.loadShareSite(w, r)
@@ -580,6 +623,13 @@ func (h *handler) handleTimeseries(
 			return
 		}
 		if !h.ensureSiteMatch(w, r, site) {
+			return
+		}
+
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), site.ID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", site.ID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
@@ -598,7 +648,7 @@ func (h *handler) handleTimeseries(
 			End:    end,
 		}
 
-		series, err := fetch(r.Context(), params, ids)
+		series, err := fetch(r.Context(), analyticsStore, params, ids)
 		if err != nil {
 			slog.Error(logMessage, "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

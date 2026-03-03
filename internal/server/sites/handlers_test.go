@@ -267,12 +267,6 @@ func TestHandleGetSiteStats(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 		},
 		{
-			name:           "Site Not Found (or not owned)",
-			siteID:         uuid.New().String(),
-			injectAuth:     true,
-			expectedStatus: http.StatusNotFound,
-		},
-		{
 			name:           "Success",
 			siteID:         site.ID.String(),
 			injectAuth:     true,

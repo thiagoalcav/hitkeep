@@ -1,6 +1,7 @@
 package events
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 
 	"hitkeep/internal/api"
 	authcore "hitkeep/internal/auth"
+	"hitkeep/internal/database"
 	"hitkeep/internal/server/shared"
 )
 
@@ -85,7 +87,14 @@ func (h *handler) handleGetEventNames() http.HandlerFunc {
 			End:    end,
 		}
 
-		names, err := h.ctx.Store.GetEventNames(r.Context(), params)
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), siteID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", siteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		names, err := analyticsStore.GetEventNames(r.Context(), params)
 		if err != nil {
 			slog.Error("Failed to get event names", "error", err, "site_id", siteID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -123,7 +132,14 @@ func (h *handler) handleGetEventPropertyKeys() http.HandlerFunc {
 			End:    end,
 		}
 
-		keys, err := h.ctx.Store.GetEventPropertyKeys(r.Context(), params, eventName)
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), siteID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", siteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		keys, err := analyticsStore.GetEventPropertyKeys(r.Context(), params, eventName)
 		if err != nil {
 			slog.Error("Failed to get event property keys", "error", err, "site_id", siteID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -165,7 +181,14 @@ func (h *handler) handleGetEventPropertyBreakdown() http.HandlerFunc {
 			PropertyKey: propertyKey,
 		}
 
-		breakdown, err := h.ctx.Store.GetEventPropertyBreakdown(r.Context(), params)
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), siteID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", siteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		breakdown, err := analyticsStore.GetEventPropertyBreakdown(r.Context(), params)
 		if err != nil {
 			slog.Error("Failed to get event property breakdown", "error", err, "site_id", siteID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -221,42 +244,40 @@ func (h *handler) parseEventQueryParams(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *handler) handleGetEventAudience() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		p, ok := h.parseEventQueryParams(w, r)
-		if !ok {
-			return
-		}
-
-		audience, err := h.ctx.Store.GetEventAudience(r.Context(), api.EventAudienceParams(p))
-		if err != nil {
-			slog.Error("Failed to get event audience", "error", err, "site_id", p.SiteID)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(audience); err != nil {
-			slog.Error("Failed to encode response", "error", err)
-		}
-	}
+	return h.eventQueryHandler("event audience", func(ctx context.Context, store *database.Store, p eventQueryParams) (any, error) {
+		return store.GetEventAudience(ctx, api.EventAudienceParams(p))
+	})
 }
 
 func (h *handler) handleGetEventTimeseries() http.HandlerFunc {
+	return h.eventQueryHandler("event timeseries", func(ctx context.Context, store *database.Store, p eventQueryParams) (any, error) {
+		return store.GetEventTimeseries(ctx, api.EventTimeseriesParams(p))
+	})
+}
+
+func (h *handler) eventQueryHandler(label string, query func(context.Context, *database.Store, eventQueryParams) (any, error)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		p, ok := h.parseEventQueryParams(w, r)
 		if !ok {
 			return
 		}
 
-		series, err := h.ctx.Store.GetEventTimeseries(r.Context(), api.EventTimeseriesParams(p))
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), p.SiteID)
 		if err != nil {
-			slog.Error("Failed to get event timeseries", "error", err, "site_id", p.SiteID)
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", p.SiteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		result, err := query(r.Context(), analyticsStore, p)
+		if err != nil {
+			slog.Error("Failed to get "+label, "error", err, "site_id", p.SiteID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(series); err != nil {
+		if err := json.NewEncoder(w).Encode(result); err != nil {
 			slog.Error("Failed to encode response", "error", err)
 		}
 	}

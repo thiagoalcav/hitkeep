@@ -13,6 +13,7 @@ import (
 
 	"hitkeep/internal/api"
 	authcore "hitkeep/internal/auth"
+	"hitkeep/internal/database"
 	"hitkeep/internal/server/shared"
 )
 
@@ -61,26 +62,12 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 	}, h.handleGetFunnelStats()))
 }
 
-// Helper to validate user access to a site.
-// Returns the siteID and true if authorized, otherwise handles the error response and returns false.
-func (h *handler) validateSiteOwnership(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
-	userID := shared.GetUserIDFromContext(r)
-	if userID == uuid.Nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return uuid.Nil, false
-	}
-
-	siteIDStr := r.PathValue("id")
-	siteID, err := uuid.Parse(siteIDStr)
+// parseSiteID extracts and validates the site UUID from the URL path.
+// Authorization is already handled by the RequirePermission middleware.
+func parseSiteID(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
+	siteID, err := uuid.Parse(r.PathValue("id"))
 	if err != nil {
 		http.Error(w, "Invalid site_id", http.StatusBadRequest)
-		return uuid.Nil, false
-	}
-
-	// Verify ownership
-	site, err := h.ctx.Store.GetSite(r.Context(), siteID, userID)
-	if err != nil || site == nil {
-		http.Error(w, "Site not found", http.StatusNotFound)
 		return uuid.Nil, false
 	}
 	return siteID, true
@@ -90,12 +77,19 @@ func (h *handler) validateSiteOwnership(w http.ResponseWriter, r *http.Request) 
 
 func (h *handler) handleGetGoals() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		siteID, ok := h.validateSiteOwnership(w, r)
+		siteID, ok := parseSiteID(w, r)
 		if !ok {
 			return
 		}
 
-		goals, err := h.ctx.Store.GetGoals(r.Context(), siteID)
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), siteID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", siteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		goals, err := analyticsStore.GetGoals(r.Context(), siteID)
 		if err != nil {
 			slog.Error("Failed to get goals", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -111,14 +105,14 @@ func (h *handler) handleGetGoals() http.HandlerFunc {
 
 func (h *handler) handleGetGoalTimeseries() http.HandlerFunc {
 	return h.handleTimeseries("goal_id", "Invalid goal_id", "Failed to get goal timeseries",
-		func(ctx context.Context, params api.AnalyticsParams, ids []uuid.UUID) (any, error) {
-			return h.ctx.Store.GetGoalTimeseries(ctx, params, ids)
+		func(ctx context.Context, store *database.Store, params api.AnalyticsParams, ids []uuid.UUID) (any, error) {
+			return store.GetGoalTimeseries(ctx, params, ids)
 		})
 }
 
 func (h *handler) handleCreateGoal() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		siteID, ok := h.validateSiteOwnership(w, r)
+		siteID, ok := parseSiteID(w, r)
 		if !ok {
 			return
 		}
@@ -137,10 +131,24 @@ func (h *handler) handleCreateGoal() http.HandlerFunc {
 		req.SiteID = siteID
 		req.CreatedAt = time.Now()
 
-		if err := h.ctx.Store.CreateGoal(r.Context(), &req); err != nil {
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), siteID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", siteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		if err := analyticsStore.CreateGoal(r.Context(), &req); err != nil {
 			slog.Error("Failed to create goal", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
+		}
+		if analyticsStore != h.ctx.Store {
+			if err := h.ctx.Store.UpsertGoal(r.Context(), &req); err != nil {
+				slog.Error("Failed to write legacy shared goal", "error", err, "site_id", siteID, "goal_id", req.ID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
 		}
 
 		w.WriteHeader(http.StatusCreated)
@@ -149,7 +157,7 @@ func (h *handler) handleCreateGoal() http.HandlerFunc {
 
 func (h *handler) handleDeleteGoal() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		siteID, ok := h.validateSiteOwnership(w, r)
+		siteID, ok := parseSiteID(w, r)
 		if !ok {
 			return
 		}
@@ -161,10 +169,24 @@ func (h *handler) handleDeleteGoal() http.HandlerFunc {
 			return
 		}
 
-		if err := h.ctx.Store.DeleteGoal(r.Context(), goalID, siteID); err != nil {
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), siteID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", siteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		if err := analyticsStore.DeleteGoal(r.Context(), goalID, siteID); err != nil {
 			slog.Error("Failed to delete goal", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
+		}
+		if analyticsStore != h.ctx.Store {
+			if err := h.ctx.Store.DeleteGoal(r.Context(), goalID, siteID); err != nil && !database.IsNotFoundError(err) {
+				slog.Error("Failed to delete legacy shared goal", "error", err, "site_id", siteID, "goal_id", goalID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -175,12 +197,19 @@ func (h *handler) handleDeleteGoal() http.HandlerFunc {
 
 func (h *handler) handleGetFunnels() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		siteID, ok := h.validateSiteOwnership(w, r)
+		siteID, ok := parseSiteID(w, r)
 		if !ok {
 			return
 		}
 
-		funnels, err := h.ctx.Store.GetFunnels(r.Context(), siteID)
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), siteID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", siteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		funnels, err := analyticsStore.GetFunnels(r.Context(), siteID)
 		if err != nil {
 			slog.Error("Failed to get funnels", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -196,8 +225,8 @@ func (h *handler) handleGetFunnels() http.HandlerFunc {
 
 func (h *handler) handleGetFunnelTimeseries() http.HandlerFunc {
 	return h.handleTimeseries("funnel_id", "Invalid funnel_id", "Failed to get funnel timeseries",
-		func(ctx context.Context, params api.AnalyticsParams, ids []uuid.UUID) (any, error) {
-			return h.ctx.Store.GetFunnelTimeseries(ctx, params, ids)
+		func(ctx context.Context, store *database.Store, params api.AnalyticsParams, ids []uuid.UUID) (any, error) {
+			return store.GetFunnelTimeseries(ctx, params, ids)
 		})
 }
 
@@ -205,11 +234,18 @@ func (h *handler) handleTimeseries(
 	idParam string,
 	invalidIDMessage string,
 	logMessage string,
-	fetch func(context.Context, api.AnalyticsParams, []uuid.UUID) (any, error),
+	fetch func(context.Context, *database.Store, api.AnalyticsParams, []uuid.UUID) (any, error),
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		siteID, ok := h.validateSiteOwnership(w, r)
+		siteID, ok := parseSiteID(w, r)
 		if !ok {
+			return
+		}
+
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), siteID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", siteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
@@ -227,7 +263,7 @@ func (h *handler) handleTimeseries(
 			End:    end,
 		}
 
-		series, err := fetch(r.Context(), params, ids)
+		series, err := fetch(r.Context(), analyticsStore, params, ids)
 		if err != nil {
 			slog.Error(logMessage, "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -279,7 +315,7 @@ func parseUUIDQueryParam(q url.Values, key string) ([]uuid.UUID, error) {
 
 func (h *handler) handleCreateFunnel() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		siteID, ok := h.validateSiteOwnership(w, r)
+		siteID, ok := parseSiteID(w, r)
 		if !ok {
 			return
 		}
@@ -298,10 +334,24 @@ func (h *handler) handleCreateFunnel() http.HandlerFunc {
 		req.SiteID = siteID
 		req.CreatedAt = time.Now()
 
-		if err := h.ctx.Store.CreateFunnel(r.Context(), &req); err != nil {
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), siteID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", siteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		if err := analyticsStore.CreateFunnel(r.Context(), &req); err != nil {
 			slog.Error("Failed to create funnel", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
+		}
+		if analyticsStore != h.ctx.Store {
+			if err := h.ctx.Store.UpsertFunnel(r.Context(), &req); err != nil {
+				slog.Error("Failed to write legacy shared funnel", "error", err, "site_id", siteID, "funnel_id", req.ID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
 		}
 
 		w.WriteHeader(http.StatusCreated)
@@ -310,7 +360,7 @@ func (h *handler) handleCreateFunnel() http.HandlerFunc {
 
 func (h *handler) handleDeleteFunnel() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		siteID, ok := h.validateSiteOwnership(w, r)
+		siteID, ok := parseSiteID(w, r)
 		if !ok {
 			return
 		}
@@ -322,10 +372,24 @@ func (h *handler) handleDeleteFunnel() http.HandlerFunc {
 			return
 		}
 
-		if err := h.ctx.Store.DeleteFunnel(r.Context(), funnelID, siteID); err != nil {
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), siteID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", siteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		if err := analyticsStore.DeleteFunnel(r.Context(), funnelID, siteID); err != nil {
 			slog.Error("Failed to delete funnel", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
+		}
+		if analyticsStore != h.ctx.Store {
+			if err := h.ctx.Store.DeleteFunnel(r.Context(), funnelID, siteID); err != nil && !database.IsNotFoundError(err) {
+				slog.Error("Failed to delete legacy shared funnel", "error", err, "site_id", siteID, "funnel_id", funnelID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -334,30 +398,17 @@ func (h *handler) handleDeleteFunnel() http.HandlerFunc {
 
 func (h *handler) handleGetFunnelStats() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		userID := shared.GetUserIDFromContext(r)
-		if userID == uuid.Nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		siteID, ok := parseSiteID(w, r)
+		if !ok {
 			return
 		}
 
-		siteIDStr := r.PathValue("id")
-		siteID, err := uuid.Parse(siteIDStr)
-		if err != nil {
-			http.Error(w, "Invalid site_id", http.StatusBadRequest)
-			return
-		}
+		userID := shared.GetUserIDFromContext(r)
 
 		funnelIDStr := r.PathValue("funnelID")
 		funnelID, err := uuid.Parse(funnelIDStr)
 		if err != nil {
 			http.Error(w, "Invalid funnel_id", http.StatusBadRequest)
-			return
-		}
-
-		// Verify ownership
-		site, err := h.ctx.Store.GetSite(r.Context(), siteID, userID)
-		if err != nil || site == nil {
-			http.Error(w, "Site not found", http.StatusNotFound)
 			return
 		}
 
@@ -385,7 +436,14 @@ func (h *handler) handleGetFunnelStats() http.HandlerFunc {
 			End:    end,
 		}
 
-		stats, err := h.ctx.Store.GetFunnelStats(r.Context(), funnelID, params)
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), siteID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", siteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		stats, err := analyticsStore.GetFunnelStats(r.Context(), funnelID, params)
 		if err != nil {
 			slog.Error("Failed to get funnel stats", "error", err)
 			if strings.Contains(err.Error(), "not found") {

@@ -11,12 +11,12 @@ import (
 )
 
 type RollupBackfillWorker struct {
-	store *database.Store
+	tenantMgr *database.TenantStoreManager
 }
 
-func NewRollupBackfillWorker(store *database.Store) *RollupBackfillWorker {
+func NewRollupBackfillWorker(tenantMgr *database.TenantStoreManager) *RollupBackfillWorker {
 	return &RollupBackfillWorker{
-		store: store,
+		tenantMgr: tenantMgr,
 	}
 }
 
@@ -44,7 +44,9 @@ func (w *RollupBackfillWorker) Start(ctx context.Context) {
 }
 
 func (w *RollupBackfillWorker) Run(ctx context.Context) error {
-	rows, err := w.store.DB().QueryContext(ctx, "SELECT id FROM sites")
+	shared := w.tenantMgr.Shared()
+
+	rows, err := shared.DB().QueryContext(ctx, "SELECT id FROM sites")
 	if err != nil {
 		return err
 	}
@@ -56,7 +58,14 @@ func (w *RollupBackfillWorker) Run(ctx context.Context) error {
 			slog.Warn("Failed to scan site for rollup backfill", "error", err)
 			continue
 		}
-		if err := w.store.BackfillRollups(ctx, siteID); err != nil {
+
+		tenantStore, _, err := w.tenantMgr.ResolveSiteStore(ctx, siteID)
+		if err != nil {
+			slog.Warn("Failed to resolve tenant store for rollup backfill", "error", err, "site_id", siteID)
+			continue
+		}
+
+		if err := tenantStore.BackfillRollups(ctx, siteID); err != nil {
 			slog.Warn("Rollup backfill failed for site", "error", err, "site_id", siteID)
 		}
 	}

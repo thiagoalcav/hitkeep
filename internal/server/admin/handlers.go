@@ -293,7 +293,11 @@ func (h *handler) handleAdminDeleteSite() http.HandlerFunc {
 			return
 		}
 
-		err = h.ctx.Store.DeleteSite(r.Context(), siteID)
+		if h.ctx.TenantStores != nil {
+			err = h.ctx.TenantStores.DeleteSite(r.Context(), siteID)
+		} else {
+			err = h.ctx.Store.DeleteSite(r.Context(), siteID)
+		}
 		if err != nil {
 			slog.Error("Failed to delete site", "error", err)
 			http.Error(w, "Failed to delete site", http.StatusInternalServerError)

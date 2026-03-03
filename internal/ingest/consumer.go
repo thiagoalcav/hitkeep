@@ -3,9 +3,11 @@ package ingest
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/nsqio/go-nsq"
 
 	"hitkeep/internal/api"
@@ -14,18 +16,18 @@ import (
 )
 
 type Consumer struct {
-	store         *database.Store
+	tenantMgr     *database.TenantStoreManager
 	hitsConsumer  *nsq.Consumer
 	eventConsumer *nsq.Consumer
 	logger        *slog.Logger
 	logLevel      slog.Level
 }
 
-func NewConsumer(store *database.Store, logger *slog.Logger, level slog.Level) *Consumer {
+func NewConsumer(tenantMgr *database.TenantStoreManager, logger *slog.Logger, level slog.Level) *Consumer {
 	return &Consumer{
-		store:    store,
-		logger:   logger,
-		logLevel: level,
+		tenantMgr: tenantMgr,
+		logger:    logger,
+		logLevel:  level,
 	}
 }
 
@@ -67,39 +69,62 @@ func (c *Consumer) Stop() {
 }
 
 func (c *Consumer) handleHit(m *nsq.Message) error {
-	var hit api.Hit
-	if err := json.Unmarshal(m.Body, &hit); err != nil {
-		slog.Error("Failed to unmarshal hit from NSQ", "error", err, "body", string(m.Body))
-		return nil // Don't requeue malformed
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := c.store.CreateHit(ctx, &hit); err != nil {
-		slog.Error("Failed to create hit in database", "error", err, "site_id", hit.SiteID)
-		return err
-	}
-
-	slog.Debug("Successfully processed hit", "site_id", hit.SiteID, "path", hit.Path)
-	return nil
+	return processMessage(m, c, func(store *database.Store, ctx context.Context, hit *api.Hit) error {
+		return store.CreateHit(ctx, hit)
+	}, func(v *api.Hit) (uuid.UUID, []any) {
+		return v.SiteID, []any{"path", v.Path}
+	}, "hit")
 }
 
 func (c *Consumer) handleEvent(m *nsq.Message) error {
-	var event api.Event
-	if err := json.Unmarshal(m.Body, &event); err != nil {
-		slog.Error("Failed to unmarshal event from NSQ", "error", err, "body", string(m.Body))
+	return processMessage(m, c, func(store *database.Store, ctx context.Context, event *api.Event) error {
+		return store.CreateEvent(ctx, event)
+	}, func(v *api.Event) (uuid.UUID, []any) {
+		return v.SiteID, []any{"name", v.Name}
+	}, "event")
+}
+
+type siteIdentifiable interface {
+	api.Hit | api.Event
+}
+
+func processMessage[T siteIdentifiable](
+	m *nsq.Message,
+	c *Consumer,
+	persist func(*database.Store, context.Context, *T) error,
+	identify func(*T) (uuid.UUID, []any),
+	kind string,
+) error {
+	var v T
+	if err := json.Unmarshal(m.Body, &v); err != nil {
+		slog.Error("Failed to unmarshal "+kind+" from NSQ", "error", err, "body", string(m.Body))
 		return nil // Don't requeue malformed
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := c.store.CreateEvent(ctx, &event); err != nil {
-		slog.Error("Failed to create event in database", "error", err, "site_id", event.SiteID)
+	siteID, logAttrs := identify(&v)
+
+	store, err := c.resolveStore(ctx, siteID)
+	if err != nil {
+		slog.Error("Failed to resolve tenant store for "+kind, "error", err, "site_id", siteID)
 		return err
 	}
 
-	slog.Debug("Successfully processed event", "site_id", event.SiteID, "name", event.Name)
+	if err := persist(store, ctx, &v); err != nil {
+		slog.Error("Failed to create "+kind+" in database", "error", err, "site_id", siteID)
+		return err
+	}
+
+	slog.Debug("Successfully processed "+kind, append([]any{"site_id", siteID}, logAttrs...)...)
 	return nil
+}
+
+func (c *Consumer) resolveStore(ctx context.Context, siteID uuid.UUID) (*database.Store, error) {
+	store, _, err := c.tenantMgr.ResolveSiteStore(ctx, siteID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve analytics store for site %s: %w", siteID, err)
+	}
+	return store, nil
 }

@@ -2,10 +2,12 @@ package worker
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,24 +15,60 @@ import (
 	"hitkeep/internal/database"
 )
 
-type RetentionWorker struct {
-	store       *database.Store
-	path        string
-	defaultDays int
+//nolint:gosec // Runtime configuration struct — no hardcoded secrets.
+type S3Config struct {
+	AccessKeyID     string
+	SecretAccessKey string
+	SessionToken    string
+	Region          string
+	Endpoint        string
+	URLStyle        string // "path" or "vhost"
+	UseSSL          bool
 }
 
-func NewRetentionWorker(store *database.Store, archivePath string, defaultDays int) *RetentionWorker {
+type RetentionWorker struct {
+	tenantMgr   *database.TenantStoreManager
+	path        string
+	defaultDays int
+	s3Config    *S3Config
+}
+
+type retentionSitePolicy struct {
+	ID       uuid.UUID
+	TenantID uuid.UUID
+	Days     int
+}
+
+func NewRetentionWorker(tenantMgr *database.TenantStoreManager, archivePath string, defaultDays int, s3Config *S3Config) *RetentionWorker {
+	path := strings.TrimSpace(archivePath)
+	if path == "" {
+		path = "archive"
+	}
 	return &RetentionWorker{
-		store:       store,
-		path:        archivePath,
+		tenantMgr:   tenantMgr,
+		path:        path,
 		defaultDays: defaultDays,
+		s3Config:    s3Config,
 	}
 }
 
 // archiveFilename returns the full destination path for a site's Parquet archive.
-func (w *RetentionWorker) archiveFilename(siteID uuid.UUID) string {
+//
+// For local paths, the default tenant keeps the legacy flat layout to preserve
+// existing deployments. Non-default tenants are isolated under tenants/<id>/...
+// For s3:// paths, all tenants are always isolated under tenants/<id>/...
+func (w *RetentionWorker) archiveFilename(siteID, tenantID, defaultTenantID uuid.UUID) string {
 	name := fmt.Sprintf("site_%s_%d.parquet", siteID, time.Now().Unix())
-	return filepath.Join(w.path, name)
+
+	if IsS3ArchivePath(w.path) {
+		return joinArchivePath(w.path, "tenants", tenantID.String(), "sites", siteID.String(), name)
+	}
+
+	if tenantID == uuid.Nil || (defaultTenantID != uuid.Nil && tenantID == defaultTenantID) {
+		return joinArchivePath(w.path, name)
+	}
+
+	return joinArchivePath(w.path, "tenants", tenantID.String(), "sites", siteID.String(), name)
 }
 
 func (w *RetentionWorker) Start(ctx context.Context) {
@@ -61,44 +99,49 @@ func (w *RetentionWorker) Start(ctx context.Context) {
 func (w *RetentionWorker) Run(ctx context.Context) error {
 	slog.Debug("Checking for data retention cleanup...")
 
-	// Ensure the archive directory exists.
-	if err := os.MkdirAll(w.path, 0755); err != nil {
-		return fmt.Errorf("failed to create archive directory: %w", err)
-	}
-
-	// Get all sites with a retention policy.
-	rows, err := w.store.DB().QueryContext(ctx, "SELECT id, data_retention_days FROM sites WHERE data_retention_days IS NOT NULL AND data_retention_days > 0")
-	if err != nil {
-		return fmt.Errorf("failed to query sites: %w", err)
-	}
-	defer rows.Close()
-
-	type sitePolicy struct {
-		ID   uuid.UUID
-		Days int
-	}
-	var policies []sitePolicy
-
-	for rows.Next() {
-		var p sitePolicy
-		if err := rows.Scan(&p.ID, &p.Days); err != nil {
-			slog.Error("Failed to scan site policy", "error", err)
-			continue
+	if IsS3ArchivePath(w.path) {
+		if err := w.ensureS3Support(ctx); err != nil {
+			return fmt.Errorf("failed to enable duckdb s3 support: %w", err)
 		}
-		policies = append(policies, p)
+	} else {
+		// Ensure the local archive directory exists.
+		if err := os.MkdirAll(w.path, 0755); err != nil {
+			return fmt.Errorf("failed to create archive directory: %w", err)
+		}
 	}
-	rows.Close()
+
+	defaultTenantID, err := w.tenantMgr.Shared().GetDefaultTenantID(ctx)
+	if err != nil {
+		if isBinderError(err) {
+			slog.Debug("Tenant schema not ready, using nil default tenant ID", "error", err)
+		} else {
+			slog.Warn("Failed to resolve default tenant for retention archive layout", "error", err)
+		}
+		defaultTenantID = uuid.Nil
+	}
+
+	policies, err := w.loadRetentionPolicies(ctx, defaultTenantID)
+	if err != nil {
+		return err
+	}
 
 	for _, p := range policies {
 		cutoff := time.Now().AddDate(0, 0, -p.Days)
 
+		tenantStore, err := w.tenantMgr.ForTenant(ctx, p.TenantID)
+		if err != nil {
+			slog.Error("Failed to resolve tenant store for retention", "error", err, "site_id", p.ID, "tenant_id", p.TenantID)
+			continue
+		}
+		db := tenantStore.DB()
+
 		var hitCount, eventCount int64
-		err := w.store.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM hits WHERE site_id = ? AND timestamp < ?", p.ID, cutoff).Scan(&hitCount)
+		err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM hits WHERE site_id = ? AND timestamp < ?", p.ID, cutoff).Scan(&hitCount)
 		if err != nil {
 			slog.Error("Failed to count hits for retention", "error", err, "site_id", p.ID)
 			continue
 		}
-		err = w.store.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM events WHERE site_id = ? AND timestamp < ?", p.ID, cutoff).Scan(&eventCount)
+		err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM events WHERE site_id = ? AND timestamp < ?", p.ID, cutoff).Scan(&eventCount)
 		if err != nil {
 			slog.Error("Failed to count events for retention", "error", err, "site_id", p.ID)
 			continue
@@ -110,22 +153,42 @@ func (w *RetentionWorker) Run(ctx context.Context) error {
 
 		slog.Info("Archiving old data", "site_id", p.ID, "hits", hitCount, "events", eventCount, "cutoff", cutoff.Format(time.DateOnly))
 
-		filename := w.archiveFilename(p.ID)
+		filename := w.archiveFilename(p.ID, p.TenantID, defaultTenantID)
+		if !IsS3ArchivePath(filename) {
+			if err := os.MkdirAll(filepath.Dir(filename), 0755); err != nil {
+				slog.Error("Failed to create archive destination", "error", err, "site_id", p.ID, "tenant_id", p.TenantID, "path", filename)
+				continue
+			}
+		}
 
+		if IsS3ArchivePath(w.path) {
+			if err := LoadHTTPFS(ctx, db); err != nil {
+				slog.Error("Failed to load httpfs on tenant DB for retention", "error", err, "tenant_id", p.TenantID)
+				continue
+			}
+			if err := ConfigureS3Secret(ctx, db, w.s3Config); err != nil {
+				slog.Error("Failed to configure S3 on tenant DB for retention", "error", err, "tenant_id", p.TenantID)
+				continue
+			}
+		}
+
+		safeFilename := strings.ReplaceAll(filename, "'", "''")
+
+		//nolint:gosec // DuckDB COPY doesn't support parameterized queries; values are internally generated (UUID, time, escaped filepath)
 		exportQuery := fmt.Sprintf(`
-			COPY (
-				SELECT * FROM hits WHERE site_id = '%s' AND timestamp < '%s'
-				UNION BY NAME
-				SELECT * FROM events WHERE site_id = '%s' AND timestamp < '%s'
-			) TO '%s' (FORMAT PARQUET, COMPRESSION 'SNAPPY');
-		`, p.ID, cutoff.Format(time.RFC3339), p.ID, cutoff.Format(time.RFC3339), filename)
+				COPY (
+					SELECT * FROM hits WHERE site_id = '%s' AND timestamp < '%s'
+					UNION BY NAME
+					SELECT * FROM events WHERE site_id = '%s' AND timestamp < '%s'
+				) TO '%s' (FORMAT PARQUET, COMPRESSION 'SNAPPY');
+			`, p.ID, cutoff.Format(time.RFC3339), p.ID, cutoff.Format(time.RFC3339), safeFilename)
 
-		if _, err := w.store.DB().ExecContext(ctx, exportQuery); err != nil {
+		if _, err := db.ExecContext(ctx, exportQuery); err != nil {
 			slog.Error("Failed to export data to parquet", "error", err, "site_id", p.ID)
 			continue
 		}
 
-		tx, err := w.store.DB().BeginTx(ctx, nil)
+		tx, err := db.BeginTx(ctx, nil)
 		if err != nil {
 			slog.Error("Failed to start transaction for deletion", "error", err)
 			continue
@@ -222,9 +285,208 @@ func (w *RetentionWorker) Run(ctx context.Context) error {
 		if err := tx.Commit(); err != nil {
 			slog.Error("Failed to commit deletion", "error", err, "site_id", p.ID)
 		} else {
-			slog.Info("Retention process completed", "site_id", p.ID, "archive", filename)
+			slog.Info("Retention process completed", "site_id", p.ID, "tenant_id", p.TenantID, "archive", filename)
 		}
 	}
 
 	return nil
+}
+
+func (w *RetentionWorker) ensureS3Support(ctx context.Context) error {
+	if err := LoadHTTPFS(ctx, w.tenantMgr.Shared().DB()); err != nil {
+		return err
+	}
+	return ConfigureS3Secret(ctx, w.tenantMgr.Shared().DB(), w.s3Config)
+}
+
+// LoadHTTPFS loads the DuckDB httpfs extension, installing it first if necessary.
+func LoadHTTPFS(ctx context.Context, db *sql.DB) error {
+	if _, err := db.ExecContext(ctx, "LOAD httpfs;"); err == nil {
+		return nil
+	} else {
+		loadErr := err
+		if _, err := db.ExecContext(ctx, "INSTALL httpfs;"); err != nil {
+			return fmt.Errorf("load httpfs extension: %w; install httpfs extension: %v", loadErr, err)
+		}
+		if _, err := db.ExecContext(ctx, "LOAD httpfs;"); err != nil {
+			return fmt.Errorf("load httpfs extension after install: %w", err)
+		}
+	}
+	return nil
+}
+
+// ConfigureS3Secret creates a DuckDB S3 secret from the given config.
+func ConfigureS3Secret(ctx context.Context, db *sql.DB, cfg *S3Config) error {
+	query := BuildS3SecretQuery(cfg)
+	if query == "" {
+		return nil
+	}
+	if _, err := db.ExecContext(ctx, query); err != nil {
+		return fmt.Errorf("configure S3 secret: %w", err)
+	}
+	return nil
+}
+
+// BuildS3SecretQuery generates a DuckDB CREATE SECRET statement for S3 authentication.
+// Returns an empty string if cfg is nil.
+func BuildS3SecretQuery(cfg *S3Config) string {
+	if cfg == nil {
+		return ""
+	}
+
+	var parts []string
+	parts = append(parts, "TYPE s3")
+
+	if cfg.AccessKeyID != "" && cfg.SecretAccessKey != "" {
+		parts = append(parts, "PROVIDER config")
+		parts = append(parts, fmt.Sprintf("KEY_ID '%s'", escapeSQLString(cfg.AccessKeyID)))
+		parts = append(parts, fmt.Sprintf("SECRET '%s'", escapeSQLString(cfg.SecretAccessKey)))
+		if cfg.SessionToken != "" {
+			parts = append(parts, fmt.Sprintf("SESSION_TOKEN '%s'", escapeSQLString(cfg.SessionToken)))
+		}
+	} else {
+		parts = append(parts, "PROVIDER credential_chain")
+	}
+
+	parts = append(parts, fmt.Sprintf("REGION '%s'", escapeSQLString(cfg.Region)))
+
+	if cfg.Endpoint != "" {
+		parts = append(parts, fmt.Sprintf("ENDPOINT '%s'", escapeSQLString(cfg.Endpoint)))
+	}
+	if cfg.URLStyle != "" {
+		parts = append(parts, fmt.Sprintf("URL_STYLE '%s'", escapeSQLString(cfg.URLStyle)))
+	}
+	if !cfg.UseSSL {
+		parts = append(parts, "USE_SSL false")
+	}
+
+	return fmt.Sprintf("CREATE OR REPLACE SECRET hitkeep_s3 (%s);", strings.Join(parts, ", "))
+}
+
+func escapeSQLString(s string) string {
+	return strings.ReplaceAll(s, "'", "''")
+}
+
+func (w *RetentionWorker) loadRetentionPolicies(ctx context.Context, defaultTenantID uuid.UUID) ([]retentionSitePolicy, error) {
+	const tenantAwareQuery = `
+		SELECT s.id, s.data_retention_days, CAST(st.tenant_id AS VARCHAR)
+		FROM sites s
+		LEFT JOIN site_tenants st ON st.site_id = s.id
+		WHERE s.data_retention_days IS NOT NULL AND s.data_retention_days > 0
+	`
+
+	rows, err := w.tenantMgr.Shared().DB().QueryContext(ctx, tenantAwareQuery)
+	if err != nil {
+		if !isMissingRelationError(err, "site_tenants") {
+			return nil, fmt.Errorf("failed to query retention policies: %w", err)
+		}
+
+		slog.Warn("Tenant mapping table not available; falling back to legacy retention layout", "error", err)
+		return w.loadLegacyRetentionPolicies(ctx, defaultTenantID)
+	}
+	defer rows.Close()
+
+	policies := make([]retentionSitePolicy, 0)
+	for rows.Next() {
+		var (
+			policy      retentionSitePolicy
+			tenantIDRaw sql.NullString
+		)
+		if err := rows.Scan(&policy.ID, &policy.Days, &tenantIDRaw); err != nil {
+			slog.Error("Failed to scan tenant-aware site policy", "error", err)
+			continue
+		}
+
+		policy.TenantID = defaultTenantID
+		if tenantIDRaw.Valid && strings.TrimSpace(tenantIDRaw.String) != "" {
+			tenantID, parseErr := uuid.Parse(strings.TrimSpace(tenantIDRaw.String))
+			if parseErr != nil {
+				slog.Error("Invalid tenant ID in site_tenants mapping", "error", parseErr, "site_id", policy.ID, "raw_tenant_id", tenantIDRaw.String)
+				continue
+			}
+			policy.TenantID = tenantID
+		}
+
+		policies = append(policies, policy)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read retention policies: %w", err)
+	}
+
+	return policies, nil
+}
+
+func (w *RetentionWorker) loadLegacyRetentionPolicies(ctx context.Context, defaultTenantID uuid.UUID) ([]retentionSitePolicy, error) {
+	rows, err := w.tenantMgr.Shared().DB().QueryContext(ctx, "SELECT id, data_retention_days FROM sites WHERE data_retention_days IS NOT NULL AND data_retention_days > 0")
+	if err != nil {
+		return nil, fmt.Errorf("failed to query legacy retention policies: %w", err)
+	}
+	defer rows.Close()
+
+	policies := make([]retentionSitePolicy, 0)
+	for rows.Next() {
+		var policy retentionSitePolicy
+		if err := rows.Scan(&policy.ID, &policy.Days); err != nil {
+			slog.Error("Failed to scan legacy site policy", "error", err)
+			continue
+		}
+		policy.TenantID = defaultTenantID
+		policies = append(policies, policy)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read legacy retention policies: %w", err)
+	}
+	return policies, nil
+}
+
+func IsS3ArchivePath(path string) bool {
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(path)), "s3://")
+}
+
+func joinArchivePath(base string, elems ...string) string {
+	if IsS3ArchivePath(base) {
+		normalized := strings.TrimRight(base, "/")
+		parts := make([]string, 0, len(elems))
+		for _, elem := range elems {
+			clean := strings.Trim(elem, "/")
+			if clean == "" {
+				continue
+			}
+			parts = append(parts, clean)
+		}
+		if len(parts) == 0 {
+			return normalized
+		}
+		return normalized + "/" + strings.Join(parts, "/")
+	}
+
+	all := make([]string, 0, len(elems)+1)
+	all = append(all, base)
+	for _, elem := range elems {
+		clean := strings.Trim(elem, "/")
+		if clean == "" {
+			continue
+		}
+		all = append(all, clean)
+	}
+	return filepath.Join(all...)
+}
+
+func isMissingRelationError(err error, relation string) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	rel := strings.ToLower(strings.TrimSpace(relation))
+	return strings.Contains(msg, "does not exist") && strings.Contains(msg, rel)
+}
+
+// isBinderError returns true when DuckDB reports a Binder Error, typically
+// because a referenced column or table doesn't exist in the current schema.
+// This happens when migrations haven't been applied yet.
+func isBinderError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "binder error")
 }

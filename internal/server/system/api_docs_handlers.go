@@ -73,6 +73,7 @@ func openAPISpecV1(publicURL string) map[string]any {
 			{"name": "Share", "description": "Share-link management and public shared analytics endpoints."},
 			{"name": "Takeout", "description": "Data export endpoints for user and site data."},
 			{"name": "Reports", "description": "Report subscription endpoints for digest and per-site scheduled analytics emails."},
+			{"name": "Teams", "description": "Tenant team membership and active-team context endpoints."},
 		},
 		"components": map[string]any{
 			"securitySchemes": map[string]any{
@@ -102,6 +103,7 @@ func openAPISpecV1(publicURL string) map[string]any {
 				"shareID":       map[string]any{"name": "shareID", "in": "path", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}},
 				"ruleID":        map[string]any{"name": "ruleID", "in": "path", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}},
 				"userID":        map[string]any{"name": "userId", "in": "path", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}},
+				"teamID":        map[string]any{"name": "id", "in": "path", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}},
 				"adminUserID":   map[string]any{"name": "id", "in": "path", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}},
 				"apiClientID":   map[string]any{"name": "id", "in": "path", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}},
 				"passkeyID":     map[string]any{"name": "id", "in": "path", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}},
@@ -316,6 +318,78 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"email":    map[string]any{"type": "string", "format": "email"},
 						"role":     map[string]any{"type": "string"},
 						"added_at": map[string]any{"type": "string", "format": "date-time"},
+					},
+				},
+				"Team": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"id":         map[string]any{"type": "string", "format": "uuid"},
+						"name":       map[string]any{"type": "string"},
+						"logo_url":   map[string]any{"type": "string"},
+						"role":       map[string]any{"type": "string"},
+						"created_at": map[string]any{"type": "string", "format": "date-time"},
+					},
+				},
+				"TeamMember": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"id":       map[string]any{"type": "string", "format": "uuid"},
+						"user_id":  map[string]any{"type": "string", "format": "uuid"},
+						"email":    map[string]any{"type": "string", "format": "email"},
+						"role":     map[string]any{"type": "string"},
+						"added_at": map[string]any{"type": "string", "format": "date-time"},
+					},
+				},
+				"TeamAuditEntry": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"id":             map[string]any{"type": "string", "format": "uuid"},
+						"team_id":        map[string]any{"type": "string", "format": "uuid"},
+						"action":         map[string]any{"type": "string"},
+						"details":        map[string]any{"type": "string"},
+						"actor_user_id":  map[string]any{"type": "string", "format": "uuid"},
+						"actor_email":    map[string]any{"type": "string", "format": "email"},
+						"target_user_id": map[string]any{"type": "string", "format": "uuid"},
+						"target_email":   map[string]any{"type": "string", "format": "email"},
+						"created_at":     map[string]any{"type": "string", "format": "date-time"},
+					},
+				},
+				"TeamListResponse": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"active_team_id": map[string]any{"type": "string", "format": "uuid"},
+						"recent_team_ids": map[string]any{
+							"type":  "array",
+							"items": map[string]any{"type": "string", "format": "uuid"},
+						},
+						"teams": map[string]any{
+							"type":  "array",
+							"items": map[string]any{"$ref": "#/components/schemas/Team"},
+						},
+					},
+				},
+				"TeamActiveResponse": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"status":         map[string]any{"type": "string"},
+						"active_team_id": map[string]any{"type": "string", "format": "uuid"},
+						"recent_team_ids": map[string]any{
+							"type":  "array",
+							"items": map[string]any{"type": "string", "format": "uuid"},
+						},
+					},
+				},
+				"TeamCreateResponse": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"team": map[string]any{"$ref": "#/components/schemas/Team"},
+					},
+				},
+				"TeamLeaveResponse": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"status":         map[string]any{"type": "string"},
+						"active_team_id": map[string]any{"type": "string", "format": "uuid"},
 					},
 				},
 				"IPExclusion": map[string]any{
@@ -607,6 +681,109 @@ func openAPISpecV1(publicURL string) map[string]any {
 				"put": op([]string{"User"}, "Update user preferences", "Updates authenticated user preferences.", secCookie(), nil,
 					jsonBody(map[string]any{"$ref": "#/components/schemas/UserPreferences"}),
 					map[string]any{"200": jsonRefResp("Preferences", "#/components/schemas/UserPreferences")}),
+			},
+			"/api/user/teams": map[string]any{
+				"post": op([]string{"Teams"}, "Create team", "Creates a new team and returns the created team payload.", secCookie(), nil,
+					jsonBody(map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"name":     map[string]any{"type": "string"},
+							"logo_url": map[string]any{"type": "string"},
+						},
+						"required": []string{"name"},
+					}),
+					map[string]any{
+						"201": jsonRefResp("Created team", "#/components/schemas/TeamCreateResponse"),
+						"400": errResp("Invalid request"),
+						"403": errResp("Team limit reached"),
+					}),
+				"get": op([]string{"Teams"}, "List teams", "Returns all teams for the authenticated user and the current active team.", secCookie(), nil, nil,
+					map[string]any{"200": jsonRefResp("Team list", "#/components/schemas/TeamListResponse")}),
+			},
+			"/api/user/teams/active": map[string]any{
+				"put": op([]string{"Teams"}, "Set active team", "Sets the current active team context for the authenticated user.", secCookie(), nil,
+					jsonBody(map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"team_id": map[string]any{"type": "string", "format": "uuid"},
+						},
+						"required": []string{"team_id"},
+					}),
+					map[string]any{
+						"200": jsonRefResp("Active team response", "#/components/schemas/TeamActiveResponse"),
+						"403": errResp("Access denied"),
+					}),
+			},
+			"/api/user/teams/{id}": map[string]any{
+				"patch": op([]string{"Teams"}, "Update team", "Updates team settings. This is the canonical update route.", secCookie(), []any{paramRef("#/components/parameters/teamID")},
+					jsonBody(map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"name":     map[string]any{"type": "string"},
+							"logo_url": map[string]any{"type": "string"},
+						},
+						"required": []string{"name"},
+					}),
+					map[string]any{
+						"200": jsonRefResp("Status", "#/components/schemas/Status"),
+						"400": errResp("Invalid request"),
+						"403": errResp("Access denied"),
+					}),
+				"put": op([]string{"Teams"}, "Update team (deprecated)", "Deprecated compatibility alias for team updates. Use PATCH /api/user/teams/{id}.", secCookie(), []any{paramRef("#/components/parameters/teamID")},
+					jsonBody(map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"name":     map[string]any{"type": "string"},
+							"logo_url": map[string]any{"type": "string"},
+						},
+						"required": []string{"name"},
+					}),
+					map[string]any{
+						"200": jsonRefResp("Status", "#/components/schemas/Status"),
+						"400": errResp("Invalid request"),
+						"403": errResp("Access denied"),
+					}),
+			},
+			"/api/user/teams/{id}/members": map[string]any{
+				"get": op([]string{"Teams"}, "List team members", "Lists members for the specified team.", secCookie(), []any{paramRef("#/components/parameters/teamID")}, nil,
+					map[string]any{"200": jsonSchemaResp("Team members", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/TeamMember"}})}),
+				"post": op([]string{"Teams"}, "Add team member", "Adds or updates a team member role; creates invite user when needed.", secCookie(), []any{paramRef("#/components/parameters/teamID")},
+					jsonBody(map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"email": map[string]any{"type": "string", "format": "email"},
+							"role":  map[string]any{"type": "string", "enum": []string{"owner", "admin", "member"}},
+						},
+						"required": []string{"email", "role"},
+					}),
+					map[string]any{
+						"200": jsonRefResp("Status", "#/components/schemas/Status"),
+						"403": errResp("Access denied"),
+					}),
+			},
+			"/api/user/teams/{id}/audit": map[string]any{
+				"get": op([]string{"Teams"}, "List team audit log", "Lists recent audit events for team management actions.", secCookie(), []any{paramRef("#/components/parameters/teamID")}, nil,
+					map[string]any{
+						"200": jsonSchemaResp("Team audit entries", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/TeamAuditEntry"}}),
+						"403": errResp("Access denied"),
+					}),
+			},
+			"/api/user/teams/{id}/members/{userId}": map[string]any{
+				"delete": op([]string{"Teams"}, "Remove team member", "Removes a member from the specified team.", secCookie(), []any{paramRef("#/components/parameters/teamID"), paramRef("#/components/parameters/userID")}, nil,
+					map[string]any{
+						"200": jsonRefResp("Status", "#/components/schemas/Status"),
+						"400": errResp("Cannot remove last owner"),
+						"403": errResp("Access denied"),
+						"404": errResp("Team member not found"),
+					}),
+			},
+			"/api/user/teams/{id}/leave": map[string]any{
+				"delete": op([]string{"Teams"}, "Leave team", "Removes the authenticated user from the specified team and returns the new active team.", secCookie(), []any{paramRef("#/components/parameters/teamID")}, nil,
+					map[string]any{
+						"200": jsonRefResp("Leave team response", "#/components/schemas/TeamLeaveResponse"),
+						"400": errResp("Cannot leave your only team or last owner"),
+						"403": errResp("Access denied"),
+					}),
 			},
 			"/api/user/security": map[string]any{
 				"get": op([]string{"User"}, "Get user security status", "Returns TOTP/passkey status.", secCookie(), nil, nil, map[string]any{"200": jsonRefResp("Security status", "#/components/schemas/UserSecurityStatus")}),

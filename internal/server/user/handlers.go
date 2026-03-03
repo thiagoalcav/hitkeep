@@ -108,6 +108,46 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleUpdateDigestSubscription()))
+	mux.HandleFunc("POST /api/user/teams", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleCreateTeam()))
+	mux.HandleFunc("GET /api/user/teams", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetTeams()))
+	mux.HandleFunc("PUT /api/user/teams/active", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleSetActiveTeam()))
+	mux.HandleFunc("PATCH /api/user/teams/{id}", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleUpdateTeam()))
+	mux.HandleFunc("PUT /api/user/teams/{id}", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleUpdateTeam()))
+	mux.HandleFunc("GET /api/user/teams/{id}/members", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetTeamMembers()))
+	mux.HandleFunc("GET /api/user/teams/{id}/audit", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetTeamAudit()))
+	mux.HandleFunc("POST /api/user/teams/{id}/members", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleAddTeamMember()))
+	mux.HandleFunc("DELETE /api/user/teams/{id}/members/{userId}", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleRemoveTeamMember()))
+	mux.HandleFunc("DELETE /api/user/teams/{id}/leave", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleLeaveTeam()))
 }
 
 const gravatarBaseURL = "https://www.gravatar.com/avatar/"

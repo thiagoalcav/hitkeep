@@ -1,0 +1,631 @@
+package user
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/mail"
+	"net/url"
+	"strings"
+
+	"github.com/google/uuid"
+
+	"hitkeep/internal/api"
+	"hitkeep/internal/database"
+	"hitkeep/internal/mailables"
+	serverauth "hitkeep/internal/server/auth"
+	"hitkeep/internal/server/shared"
+)
+
+func canManageTeam(role string) bool {
+	switch strings.TrimSpace(strings.ToLower(role)) {
+	case database.TenantRoleOwner, database.TenantRoleAdmin:
+		return true
+	default:
+		return false
+	}
+}
+
+func (h *handler) appendTeamAudit(r *http.Request, teamID, actorID uuid.UUID, action, details string, targetUserID *uuid.UUID) {
+	if err := h.ctx.Store.AppendTeamAuditEntry(r.Context(), teamID, actorID, action, details, targetUserID); err != nil {
+		slog.Warn("Failed to append team audit entry", "error", err, "team_id", teamID, "actor_id", actorID, "action", action)
+	}
+}
+
+func (h *handler) handleCreateTeam() http.HandlerFunc {
+	type request struct {
+		Name    string `json:"name"`
+		LogoURL string `json:"logo_url"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		actorID := shared.GetUserIDFromContext(r)
+		if actorID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		var req request
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&req); err != nil {
+			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			return
+		}
+		if err := decoder.Decode(&struct{}{}); err != io.EOF {
+			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			return
+		}
+
+		name := strings.TrimSpace(req.Name)
+		if name == "" {
+			http.Error(w, "Team name is required", http.StatusBadRequest)
+			return
+		}
+		if len(name) > 120 {
+			http.Error(w, "Team name must be 120 characters or fewer", http.StatusBadRequest)
+			return
+		}
+
+		logoURL := strings.TrimSpace(req.LogoURL)
+		if logoURL != "" {
+			if len(logoURL) > 2048 {
+				http.Error(w, "Logo URL must be 2048 characters or fewer", http.StatusBadRequest)
+				return
+			}
+			if _, err := url.ParseRequestURI(logoURL); err != nil {
+				http.Error(w, "Invalid logo URL", http.StatusBadRequest)
+				return
+			}
+		}
+
+		if h.ctx.Entitlements != nil {
+			activeTenantID, entErr := h.ctx.Store.GetActiveTenantID(r.Context(), actorID)
+			if entErr == nil {
+				ent, entErr := h.ctx.Entitlements.ForTenant(r.Context(), activeTenantID)
+				if entErr == nil && ent.MaxTeams > 0 {
+					teams, _, _ := h.ctx.Store.ListUserTeams(r.Context(), actorID)
+					if len(teams) >= ent.MaxTeams {
+						http.Error(w, "Team limit reached", http.StatusForbidden)
+						return
+					}
+				}
+			}
+		}
+
+		team, err := h.ctx.Store.CreateTenant(r.Context(), actorID, name, logoURL)
+		if err != nil {
+			slog.Error("Failed to create team", "error", err, "actor_id", actorID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		if err := h.ctx.Store.SetActiveTenantID(r.Context(), actorID, team.ID); err != nil {
+			slog.Warn("Failed to auto-activate new team", "error", err, "team_id", team.ID, "actor_id", actorID)
+		}
+		h.appendTeamAudit(r, team.ID, actorID, "team.created", fmt.Sprintf("Team %q created", team.Name), nil)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if err := json.NewEncoder(w).Encode(map[string]any{"team": team}); err != nil {
+			slog.Error("Failed to encode create team response", "error", err, "actor_id", actorID)
+		}
+	}
+}
+
+func (h *handler) handleGetTeams() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := shared.GetUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		teams, activeTeamID, err := h.ctx.Store.ListUserTeams(r.Context(), userID)
+		if err != nil {
+			slog.Error("Failed to list teams", "error", err, "user_id", userID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		resp := struct {
+			ActiveTeamID  uuid.UUID   `json:"active_team_id"`
+			RecentTeamIDs []uuid.UUID `json:"recent_team_ids"`
+			Teams         []api.Team  `json:"teams"`
+		}{
+			ActiveTeamID:  activeTeamID,
+			RecentTeamIDs: orderedRecentTeamIDs(teams, activeTeamID),
+			Teams:         teams,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			slog.Error("Failed to encode teams response", "error", err, "user_id", userID)
+		}
+	}
+}
+
+func (h *handler) handleSetActiveTeam() http.HandlerFunc {
+	type request struct {
+		TeamID string `json:"team_id"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := shared.GetUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		var req request
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&req); err != nil {
+			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			return
+		}
+		if err := decoder.Decode(&struct{}{}); err != io.EOF {
+			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			return
+		}
+
+		teamID, err := uuid.Parse(strings.TrimSpace(req.TeamID))
+		if err != nil {
+			http.Error(w, "Invalid team ID", http.StatusBadRequest)
+			return
+		}
+
+		if err := h.ctx.Store.SetActiveTenantID(r.Context(), userID, teamID); err != nil {
+			if errors.Is(err, database.ErrTenantMembershipRequired) {
+				http.Error(w, "Access denied", http.StatusForbidden)
+				return
+			}
+			slog.Error("Failed to set active team", "error", err, "user_id", userID, "team_id", teamID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		teams, activeTeamID, teamsErr := h.ctx.Store.ListUserTeams(r.Context(), userID)
+		if teamsErr != nil {
+			slog.Warn("Failed to load active team after active team update", "error", teamsErr, "user_id", userID, "team_id", teamID)
+			teams = nil
+			activeTeamID = teamID
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]any{
+			"status":          "ok",
+			"active_team_id":  activeTeamID,
+			"recent_team_ids": orderedRecentTeamIDs(teams, activeTeamID),
+		}); err != nil {
+			slog.Error("Failed to encode active team response", "error", err, "user_id", userID)
+		}
+	}
+}
+
+func (h *handler) handleGetTeamMembers() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := shared.GetUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		teamID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+		if err != nil {
+			http.Error(w, "Invalid team ID", http.StatusBadRequest)
+			return
+		}
+
+		if _, err := h.ctx.Store.GetTenantRole(r.Context(), teamID, userID); err != nil {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
+
+		members, err := h.ctx.Store.ListTeamMembers(r.Context(), teamID)
+		if err != nil {
+			slog.Error("Failed to list team members", "error", err, "user_id", userID, "team_id", teamID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(members); err != nil {
+			slog.Error("Failed to encode team members response", "error", err, "user_id", userID, "team_id", teamID)
+		}
+	}
+}
+
+func (h *handler) handleGetTeamAudit() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := shared.GetUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		teamID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+		if err != nil {
+			http.Error(w, "Invalid team ID", http.StatusBadRequest)
+			return
+		}
+
+		role, err := h.ctx.Store.GetTenantRole(r.Context(), teamID, userID)
+		if err != nil || !canManageTeam(role) {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
+
+		entries, err := h.ctx.Store.ListTeamAuditEntries(r.Context(), teamID, 100)
+		if err != nil {
+			slog.Error("Failed to list team audit entries", "error", err, "user_id", userID, "team_id", teamID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(entries); err != nil {
+			slog.Error("Failed to encode team audit response", "error", err, "user_id", userID, "team_id", teamID)
+		}
+	}
+}
+
+func (h *handler) handleAddTeamMember() http.HandlerFunc {
+	type request struct {
+		Email string `json:"email"`
+		Role  string `json:"role"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		actorID := shared.GetUserIDFromContext(r)
+		if actorID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		teamID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+		if err != nil {
+			http.Error(w, "Invalid team ID", http.StatusBadRequest)
+			return
+		}
+
+		actorRole, err := h.ctx.Store.GetTenantRole(r.Context(), teamID, actorID)
+		if err != nil || !canManageTeam(actorRole) {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
+
+		var req request
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&req); err != nil {
+			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			return
+		}
+		if err := decoder.Decode(&struct{}{}); err != io.EOF {
+			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			return
+		}
+
+		email := strings.ToLower(strings.TrimSpace(req.Email))
+		parsedEmail, err := mail.ParseAddress(email)
+		if err != nil || parsedEmail.Address != email {
+			http.Error(w, "Invalid email", http.StatusBadRequest)
+			return
+		}
+
+		role := strings.TrimSpace(strings.ToLower(req.Role))
+		if role == "" {
+			role = database.TenantRoleMember
+		}
+		if !database.IsValidTenantRole(role) {
+			http.Error(w, "Invalid role", http.StatusBadRequest)
+			return
+		}
+		if !database.CanAssignTenantRole(actorRole, role) {
+			http.Error(w, "Forbidden role assignment", http.StatusForbidden)
+			return
+		}
+
+		user, err := h.ctx.Store.GetUserByEmail(r.Context(), email)
+		if err != nil {
+			slog.Error("Failed to lookup invitee user", "error", err, "email", email, "team_id", teamID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		isNewUser := false
+		var targetUserID uuid.UUID
+		wasMember := false
+		previousRole := ""
+		if user != nil {
+			targetUserID = user.ID
+
+			isMember, err := h.ctx.Store.IsTenantMember(r.Context(), teamID, targetUserID)
+			if err != nil {
+				slog.Error("Failed to check team membership", "error", err, "email", email, "team_id", teamID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
+			// Prevent actors from re-inviting themselves (which would overwrite their own role).
+			if isMember && targetUserID == actorID {
+				http.Error(w, "Cannot change your own role", http.StatusConflict)
+				return
+			}
+			if isMember {
+				wasMember = true
+				existingRole, roleErr := h.ctx.Store.GetTenantRole(r.Context(), teamID, targetUserID)
+				if roleErr == nil {
+					previousRole = existingRole
+				}
+			}
+		} else {
+			tempPassword := uuid.New().String()
+			hashedPassword, err := serverauth.HashPassword(tempPassword)
+			if err != nil {
+				slog.Error("Failed to hash invitee password", "error", err, "email", email, "team_id", teamID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
+			targetUserID, err = h.ctx.Store.CreateUser(r.Context(), email, hashedPassword)
+			if err != nil {
+				slog.Error("Failed to create invitee user", "error", err, "email", email, "team_id", teamID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			isNewUser = true
+		}
+
+		if err := h.ctx.Store.AddTeamMember(r.Context(), teamID, targetUserID, role, actorID); err != nil {
+			slog.Error("Failed to add team member", "error", err, "team_id", teamID, "target_user_id", targetUserID, "actor_id", actorID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		action := "member.added"
+		switch {
+		case isNewUser:
+			action = "member.invited"
+		case wasMember:
+			action = "member.role_updated"
+		}
+		details := fmt.Sprintf("Member %s set to role %s", email, role)
+		if wasMember && previousRole != "" {
+			details = fmt.Sprintf("Member %s role changed from %s to %s", email, previousRole, role)
+		}
+		targetID := targetUserID
+		h.appendTeamAudit(r, teamID, actorID, action, details, &targetID)
+
+		if isNewUser && h.ctx.Mailer != nil {
+			inviteToken, err := h.ctx.Store.CreatePasswordResetToken(r.Context(), email)
+			if err != nil {
+				slog.Warn("Failed to create invite token for team invite", "error", err, "email", email, "team_id", teamID)
+			} else {
+				teamName := "HitKeep Team"
+				if team, err := h.ctx.Store.GetTenant(r.Context(), teamID); err == nil && team != nil {
+					teamName = team.Name
+				}
+				inviterName := "Someone"
+				if inviter, err := h.ctx.Store.GetUserByID(r.Context(), actorID); err == nil && inviter != nil {
+					inviterName = inviter.Email
+				}
+
+				inviteLink := strings.TrimRight(h.ctx.Config.PublicURL, "/") + "/accept-invite?token=" + inviteToken
+				if err := h.ctx.Mailer.Send(email, mailables.NewTeamInvite(inviteLink, teamName, inviterName, role, true)); err != nil {
+					slog.Warn("Failed to send team invite email", "error", err, "email", email, "team_id", teamID)
+				}
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]any{
+			"status":    "ok",
+			"is_invite": isNewUser,
+		}); err != nil {
+			slog.Error("Failed to encode add team member response", "error", err, "team_id", teamID, "actor_id", actorID)
+		}
+	}
+}
+
+func (h *handler) handleUpdateTeam() http.HandlerFunc {
+	type request struct {
+		Name    string `json:"name"`
+		LogoURL string `json:"logo_url"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		actorID := shared.GetUserIDFromContext(r)
+		if actorID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		teamID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+		if err != nil {
+			http.Error(w, "Invalid team ID", http.StatusBadRequest)
+			return
+		}
+
+		actorRole, err := h.ctx.Store.GetTenantRole(r.Context(), teamID, actorID)
+		if err != nil || !canManageTeam(actorRole) {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
+
+		var req request
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&req); err != nil {
+			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			return
+		}
+		if err := decoder.Decode(&struct{}{}); err != io.EOF {
+			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			return
+		}
+
+		name := strings.TrimSpace(req.Name)
+		if name == "" {
+			http.Error(w, "Team name is required", http.StatusBadRequest)
+			return
+		}
+		if len(name) > 120 {
+			http.Error(w, "Team name must be 120 characters or fewer", http.StatusBadRequest)
+			return
+		}
+
+		logoURL := strings.TrimSpace(req.LogoURL)
+		if logoURL != "" {
+			if len(logoURL) > 2048 {
+				http.Error(w, "Logo URL must be 2048 characters or fewer", http.StatusBadRequest)
+				return
+			}
+			if _, err := url.ParseRequestURI(logoURL); err != nil {
+				http.Error(w, "Invalid logo URL", http.StatusBadRequest)
+				return
+			}
+		}
+
+		if err := h.ctx.Store.UpdateTenant(r.Context(), teamID, name, logoURL); err != nil {
+			slog.Error("Failed to update team", "error", err, "team_id", teamID, "actor_id", actorID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		h.appendTeamAudit(r, teamID, actorID, "team.updated", fmt.Sprintf("Team settings updated (name=%q)", name), nil)
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+			slog.Error("Failed to encode update team response", "error", err, "team_id", teamID, "actor_id", actorID)
+		}
+	}
+}
+
+func (h *handler) handleRemoveTeamMember() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		actorID := shared.GetUserIDFromContext(r)
+		if actorID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		teamID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+		if err != nil {
+			http.Error(w, "Invalid team ID", http.StatusBadRequest)
+			return
+		}
+		targetUserID, err := uuid.Parse(strings.TrimSpace(r.PathValue("userId")))
+		if err != nil {
+			http.Error(w, "Invalid user ID", http.StatusBadRequest)
+			return
+		}
+
+		actorRole, err := h.ctx.Store.GetTenantRole(r.Context(), teamID, actorID)
+		if err != nil || !canManageTeam(actorRole) {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
+
+		targetRole, err := h.ctx.Store.GetTenantRole(r.Context(), teamID, targetUserID)
+		if err != nil {
+			http.Error(w, "Team member not found", http.StatusNotFound)
+			return
+		}
+		if !database.CanAssignTenantRole(actorRole, targetRole) {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
+
+		ownerCount, err := h.ctx.Store.CountTeamOwners(r.Context(), teamID)
+		if err != nil {
+			slog.Error("Failed to count team owners", "error", err, "team_id", teamID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if targetRole == database.TenantRoleOwner && ownerCount <= 1 {
+			http.Error(w, "Cannot remove last owner", http.StatusBadRequest)
+			return
+		}
+
+		if err := h.ctx.Store.RemoveTeamMember(r.Context(), teamID, targetUserID); err != nil {
+			if strings.Contains(strings.ToLower(err.Error()), "not found") {
+				http.Error(w, "Team member not found", http.StatusNotFound)
+				return
+			}
+			slog.Error("Failed to remove team member", "error", err, "team_id", teamID, "target_user_id", targetUserID, "actor_id", actorID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		removedUserID := targetUserID
+		h.appendTeamAudit(r, teamID, actorID, "member.removed", fmt.Sprintf("Member %s removed", targetUserID), &removedUserID)
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+			slog.Error("Failed to encode remove team member response", "error", err, "team_id", teamID, "actor_id", actorID)
+		}
+	}
+}
+
+func (h *handler) handleLeaveTeam() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := shared.GetUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		teamID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+		if err != nil {
+			http.Error(w, "Invalid team ID", http.StatusBadRequest)
+			return
+		}
+
+		nextActiveTeamID, err := h.ctx.Store.LeaveTeam(r.Context(), teamID, userID)
+		if err != nil {
+			switch {
+			case errors.Is(err, database.ErrTenantMembershipRequired):
+				http.Error(w, "Access denied", http.StatusForbidden)
+				return
+			case errors.Is(err, database.ErrTeamLastOwner):
+				http.Error(w, "Cannot leave as the last owner", http.StatusBadRequest)
+				return
+			case errors.Is(err, database.ErrUserOnlyTeam):
+				http.Error(w, "Cannot leave your only team", http.StatusBadRequest)
+				return
+			default:
+				slog.Error("Failed to leave team", "error", err, "user_id", userID, "team_id", teamID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		leftUserID := userID
+		h.appendTeamAudit(r, teamID, userID, "member.left", fmt.Sprintf("Member %s left the team", userID), &leftUserID)
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]any{
+			"status":         "ok",
+			"active_team_id": nextActiveTeamID,
+		}); err != nil {
+			slog.Error("Failed to encode leave team response", "error", err, "user_id", userID, "team_id", teamID)
+		}
+	}
+}
+
+func orderedRecentTeamIDs(teams []api.Team, activeTeamID uuid.UUID) []uuid.UUID {
+	recent := make([]uuid.UUID, 0, len(teams))
+	if activeTeamID != uuid.Nil {
+		recent = append(recent, activeTeamID)
+	}
+	for _, team := range teams {
+		if team.ID == uuid.Nil || team.ID == activeTeamID {
+			continue
+		}
+		recent = append(recent, team.ID)
+	}
+	return recent
+}

@@ -1,6 +1,7 @@
 import { Routes } from "@angular/router";
 import { setupGuard } from "@guards/setup-guard";
 import { adminGuard } from "@guards/admin-guard";
+import { teamAdminGuard } from "@guards/team-admin-guard";
 
 export const routes: Routes = [
     {
@@ -68,8 +69,22 @@ export const routes: Routes = [
             },
             {
                 path: "admin",
-                loadComponent: () => import("@pages/admin/admin-settings").then((m) => m.AdminSettings),
-                canActivate: [adminGuard]
+                canActivate: [teamAdminGuard],
+                children: [
+                    {
+                        path: "system",
+                        loadComponent: () => import("@pages/admin/admin-settings").then((m) => m.AdminSettings),
+                        canActivate: [adminGuard]
+                    },
+                    {
+                        path: "team",
+                        loadComponent: () => import("@pages/admin/team/team-admin").then((m) => m.TeamAdminPage)
+                    },
+                    { path: "team/overview", redirectTo: "team", pathMatch: "full" },
+                    { path: "team/members", redirectTo: "team", pathMatch: "full" },
+                    { path: "team/settings", redirectTo: "team", pathMatch: "full" },
+                    { path: "", redirectTo: "team", pathMatch: "full" }
+                ]
             },
             { path: "", redirectTo: "dashboard", pathMatch: "full" }
         ]

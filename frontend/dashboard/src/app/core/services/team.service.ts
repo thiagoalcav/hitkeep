@@ -1,0 +1,115 @@
+import { Injectable, computed, inject, signal } from "@angular/core";
+import { HttpClient } from "@angular/common/http";
+import { finalize, of, tap } from "rxjs";
+import { Team, TeamAuditEntry, TeamMember, TeamRole, UserTeamsResponse } from "@models/analytics.types";
+
+interface SetActiveTeamResponse {
+    status: string;
+    active_team_id: string;
+    recent_team_ids?: string[];
+}
+
+interface UpsertTeamMemberRequest {
+    email: string;
+    role: TeamRole;
+}
+
+interface UpsertTeamMemberResponse {
+    status: string;
+    is_invite: boolean;
+}
+
+interface RemoveTeamMemberResponse {
+    status: string;
+}
+
+interface LeaveTeamResponse {
+    status: string;
+    active_team_id: string;
+}
+
+@Injectable({ providedIn: "root" })
+export class TeamService {
+    private http = inject(HttpClient);
+
+    readonly teams = signal<Team[]>([]);
+    readonly activeTeamId = signal<string>("");
+    readonly isLoading = signal(false);
+    readonly isSwitching = signal(false);
+
+    readonly activeTeam = computed(() => this.teams().find((team) => team.id === this.activeTeamId()) ?? null);
+    readonly hasMultipleTeams = computed(() => this.teams().length > 1);
+
+    loadTeams() {
+        this.isLoading.set(true);
+        return this.http.get<UserTeamsResponse>("/api/user/teams").pipe(
+            tap((response) => {
+                const teams = response.teams ?? [];
+                this.teams.set(teams);
+                this.activeTeamId.set(response.active_team_id || teams[0]?.id || "");
+            }),
+            finalize(() => this.isLoading.set(false))
+        );
+    }
+
+    setActiveTeam(teamID: string) {
+        if (!teamID || teamID === this.activeTeamId()) {
+            return of({
+                status: "ok",
+                active_team_id: this.activeTeamId()
+            });
+        }
+
+        this.isSwitching.set(true);
+        return this.http.put<SetActiveTeamResponse>("/api/user/teams/active", { team_id: teamID }).pipe(
+            tap((response) => {
+                this.activeTeamId.set(response.active_team_id || teamID);
+            }),
+            finalize(() => this.isSwitching.set(false))
+        );
+    }
+
+    listTeamMembers(teamID: string) {
+        return this.http.get<TeamMember[]>(`/api/user/teams/${encodeURIComponent(teamID)}/members`);
+    }
+
+    upsertTeamMember(teamID: string, payload: UpsertTeamMemberRequest) {
+        return this.http.post<UpsertTeamMemberResponse>(`/api/user/teams/${encodeURIComponent(teamID)}/members`, payload);
+    }
+
+    removeTeamMember(teamID: string, userID: string) {
+        return this.http.delete<RemoveTeamMemberResponse>(`/api/user/teams/${encodeURIComponent(teamID)}/members/${encodeURIComponent(userID)}`);
+    }
+
+    listTeamAudit(teamID: string) {
+        return this.http.get<TeamAuditEntry[]>(`/api/user/teams/${encodeURIComponent(teamID)}/audit`);
+    }
+
+    leaveTeam(teamID: string) {
+        this.isSwitching.set(true);
+        return this.http.delete<LeaveTeamResponse>(`/api/user/teams/${encodeURIComponent(teamID)}/leave`).pipe(
+            tap((response) => {
+                this.teams.update((teams) => teams.filter((team) => team.id !== teamID));
+                this.activeTeamId.set(response.active_team_id || this.teams()[0]?.id || "");
+            }),
+            finalize(() => this.isSwitching.set(false))
+        );
+    }
+
+    createTeam(payload: { name: string; logo_url: string }) {
+        return this.http.post<{ team: Team }>("/api/user/teams", payload).pipe(
+            tap((response) => {
+                this.teams.update((teams) => [...teams, response.team]);
+                this.activeTeamId.set(response.team.id);
+            })
+        );
+    }
+
+    updateTeam(teamID: string, payload: { name: string; logo_url: string }) {
+        return this.http.patch<{ status: string }>(`/api/user/teams/${encodeURIComponent(teamID)}`, payload).pipe(
+            tap(() => {
+                this.teams.update((teams) => teams.map((t) => (t.id === teamID ? { ...t, name: payload.name, logo_url: payload.logo_url } : t)));
+            })
+        );
+    }
+}

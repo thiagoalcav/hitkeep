@@ -6,6 +6,42 @@ export interface Site {
     data_retention_days?: number;
 }
 
+export type TeamRole = "owner" | "admin" | "member";
+
+export interface Team {
+    id: string;
+    name: string;
+    logo_url: string;
+    role: TeamRole;
+    created_at: string;
+}
+
+export interface UserTeamsResponse {
+    active_team_id: string;
+    recent_team_ids?: string[];
+    teams: Team[];
+}
+
+export interface TeamMember {
+    id: string;
+    user_id: string;
+    email: string;
+    role: TeamRole;
+    added_at: string;
+}
+
+export interface TeamAuditEntry {
+    id: string;
+    team_id: string;
+    action: string;
+    details: string;
+    actor_user_id?: string;
+    actor_email?: string;
+    target_user_id?: string;
+    target_email?: string;
+    created_at: string;
+}
+
 export interface IPExclusion {
     id: string;
     site_id?: string;

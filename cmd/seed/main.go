@@ -19,12 +19,15 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"flag"
 	"fmt"
 	"log/slog"
 	mrand "math/rand"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -238,6 +241,7 @@ var utmCampaigns = []weightedEntry[*utmParams]{
 
 func main() {
 	dbPath := flag.String("db", "hitkeep.db", "Path to hitkeep.db")
+	dataPath := flag.String("data-path", "", "Base directory for per-tenant data files (default: directory containing -db)")
 	email := flag.String("email", "demo@example.com", "Demo user email")
 	password := flag.String("password", "demo1234", "Demo user password")
 	days := flag.Int("days", 90, "Days of demo traffic to generate")
@@ -260,6 +264,13 @@ func main() {
 		slog.Error("Failed to run migrations", "error", err)
 		os.Exit(1)
 	}
+	tenantBasePath := strings.TrimSpace(*dataPath)
+	if tenantBasePath == "" {
+		tenantBasePath = filepath.Dir(*dbPath)
+	}
+
+	tenantMgr := database.NewTenantStoreManager(store, tenantBasePath)
+	defer tenantMgr.Close()
 
 	rng := mrand.New(mrand.NewSource(*seed)) // #nosec G404 — demo data seeding; reproducibility trumps entropy
 
@@ -272,23 +283,43 @@ func main() {
 	slog.Info("Creating demo user", "email", *email)
 	userID := ensureUser(ctx, store, *email, *password)
 
+	// Ensure the demo team exists and is active BEFORE creating the site,
+	// so the site is assigned to the intended tenant.
+	seedTeam(ctx, store, userID)
+
 	slog.Info("Creating demo site", "domain", *domain)
-	site, err := store.CreateSite(ctx, userID, *domain)
+	site, err := ensureSiteInActiveTeam(ctx, store, userID, *domain)
 	if err != nil {
-		slog.Error("Failed to create site", "error", err)
+		slog.Error("Failed to ensure demo site", "error", err)
 		os.Exit(1)
 	}
 	siteID := site.ID
 	slog.Info("Site created", "site_id", siteID)
 
-	goalIDs := createGoals(ctx, store, siteID)
-	createFunnels(ctx, store, siteID)
+	siteTenantID, err := store.GetSiteTenantID(ctx, siteID)
+	if err != nil {
+		slog.Error("Failed to resolve site tenant", "site_id", siteID, "error", err)
+		os.Exit(1)
+	}
+	if err := tenantMgr.SyncSite(ctx, siteID); err != nil {
+		slog.Error("Failed to sync tenant site metadata", "site_id", siteID, "tenant_id", siteTenantID, "error", err)
+		os.Exit(1)
+	}
+	analyticsStore, err := tenantMgr.ForTenant(ctx, siteTenantID)
+	if err != nil {
+		slog.Error("Failed to resolve tenant analytics store", "tenant_id", siteTenantID, "error", err)
+		os.Exit(1)
+	}
+	slog.Info("Resolved tenant analytics store", "tenant_id", siteTenantID)
+
+	goalIDs := createGoals(ctx, analyticsStore, siteID)
+	createFunnels(ctx, analyticsStore, siteID)
 
 	slog.Info("Seeding traffic", "days", *days)
-	stats := seedTraffic(ctx, store, siteID, goalIDs, *days, rng)
+	stats := seedTraffic(ctx, analyticsStore, siteID, goalIDs, *days, rng)
 
 	slog.Info("Running rollup backfill...")
-	rollupWorker := worker.NewRollupBackfillWorker(store)
+	rollupWorker := worker.NewRollupBackfillWorker(tenantMgr)
 	if err := rollupWorker.Run(ctx); err != nil {
 		slog.Error("Rollup backfill failed — charts may be incomplete", "error", err)
 	}
@@ -300,6 +331,7 @@ func main() {
 	fmt.Printf("  Email:         %s\n", *email)
 	fmt.Printf("  Password:      %s\n", *password)
 	fmt.Printf("  Site:          %s (%s)\n", *domain, siteID)
+	fmt.Printf("  Tenant Data:   %s\n", tenantBasePath)
 	fmt.Printf("  Pageviews:     %d\n", stats.hits)
 	fmt.Printf("  Sessions:      %d\n", stats.sessions)
 	fmt.Printf("  Events:        %d\n", stats.events)
@@ -474,7 +506,7 @@ func seedTraffic(ctx context.Context, store *database.Store, siteID uuid.UUID, g
 
 			sessionStart := randomTimeInDay(rng, day)
 
-			for i := 0; i < sessionLen; i++ {
+			for i := range sessionLen {
 				var page string
 				if i == 0 {
 					page = entryPage
@@ -595,9 +627,7 @@ func fireConversionEvents(ctx context.Context, store *database.Store, siteID, se
 // panel looks populated in screenshots. No traffic is generated for them.
 func seedAdditionalUsers(ctx context.Context, store *database.Store) {
 	extra := []struct{ email, domain string }{
-		{"alice@techblog.io", "techblog.io"},
 		{"bob@devtools.co", "devtools.co"},
-		{"charlie@startup.app", "startup.app"},
 		{"diana@saaslaunch.com", "saaslaunch.com"},
 	}
 
@@ -615,6 +645,149 @@ func seedAdditionalUsers(ctx context.Context, store *database.Store) {
 		created++
 	}
 	slog.Info("Additional users seeded for admin panel", "count", created)
+}
+
+// seedTeam creates a realistic team ("Acme Analytics") so the team settings
+// and team invite email previews look great out of the box. It also sets the
+// team as the demo user's active tenant so that subsequent CreateSite calls
+// assign sites to this team.
+func seedTeam(ctx context.Context, store *database.Store, ownerID uuid.UUID) {
+	teamName := "Acme Analytics"
+	teamLogo := ""
+	var team *api.Team
+
+	teams, _, err := store.ListUserTeams(ctx, ownerID)
+	if err == nil {
+		for _, candidate := range teams {
+			if strings.EqualFold(strings.TrimSpace(candidate.Name), teamName) {
+				c := candidate
+				team = &c
+				break
+			}
+		}
+	}
+
+	if team == nil {
+		created, createErr := store.CreateTenant(ctx, ownerID, teamName, teamLogo)
+		if createErr != nil {
+			slog.Warn("Failed to create demo team; retrying lookup", "error", createErr)
+			teams, _, err = store.ListUserTeams(ctx, ownerID)
+			if err == nil {
+				for _, candidate := range teams {
+					if strings.EqualFold(strings.TrimSpace(candidate.Name), teamName) {
+						c := candidate
+						team = &c
+						break
+					}
+				}
+			}
+			if team == nil {
+				slog.Warn("Failed to resolve demo team", "error", createErr)
+				return
+			}
+		} else {
+			team = created
+		}
+	}
+
+	// Set the team as the demo user's active tenant so newly created sites
+	// are automatically associated with this team.
+	if err := store.SetActiveTenantID(ctx, ownerID, team.ID); err != nil {
+		slog.Warn("Failed to set active tenant", "error", err)
+	}
+
+	// Add extra users (created by seedAdditionalUsers) as team members.
+	memberRoles := []struct {
+		email string
+		role  string
+	}{
+		{"bob@devtools.co", "admin"},
+		{"diana@saaslaunch.com", "member"},
+	}
+	for _, m := range memberRoles {
+		user, err := store.GetUserByEmail(ctx, m.email)
+		if err != nil || user == nil {
+			slog.Warn("Team member user not found, skipping", "email", m.email)
+			continue
+		}
+		if err := store.AddTeamMember(ctx, team.ID, user.ID, m.role, ownerID); err != nil {
+			slog.Warn("Failed to add team member", "email", m.email, "error", err)
+		}
+	}
+
+	secondaryTeamName := "Northwind Studio"
+	secondaryTeam, err := store.CreateTenant(ctx, ownerID, secondaryTeamName, "")
+	if err != nil {
+		teams, _, listErr := store.ListUserTeams(ctx, ownerID)
+		if listErr == nil {
+			for _, candidate := range teams {
+				if strings.EqualFold(strings.TrimSpace(candidate.Name), secondaryTeamName) {
+					c := candidate
+					secondaryTeam = &c
+					break
+				}
+			}
+		}
+	}
+	if secondaryTeam != nil {
+		slog.Info("Secondary demo team available", "name", secondaryTeamName, "id", secondaryTeam.ID)
+	}
+
+	if err := store.SetActiveTenantID(ctx, ownerID, team.ID); err != nil {
+		slog.Warn("Failed to restore active tenant after seeding extra teams", "error", err, "team_id", team.ID)
+	}
+
+	slog.Info("Demo team seeded", "name", teamName, "id", team.ID, "members", len(memberRoles)+1)
+}
+
+func ensureSiteInActiveTeam(ctx context.Context, store *database.Store, userID uuid.UUID, domain string) (*api.Site, error) {
+	normalized := strings.TrimSpace(strings.ToLower(domain))
+	activeTenantID, err := store.GetActiveTenantID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve active tenant: %w", err)
+	}
+
+	var existing api.Site
+	err = store.DB().QueryRowContext(ctx,
+		`SELECT id, user_id, domain, data_retention_days, created_at
+		 FROM sites
+		 WHERE lower(domain) = ?
+		 LIMIT 1`,
+		normalized,
+	).Scan(&existing.ID, &existing.UserID, &existing.Domain, &existing.DataRetentionDays, &existing.CreatedAt)
+	if err == nil {
+		if existing.UserID != userID {
+			return nil, fmt.Errorf("domain %q already exists under a different user", domain)
+		}
+
+		if _, err := store.DB().ExecContext(ctx, `
+			INSERT INTO site_tenants (site_id, tenant_id, created_at)
+			VALUES (?, ?, NOW())
+			ON CONFLICT (site_id) DO UPDATE SET
+				tenant_id = excluded.tenant_id
+		`, existing.ID, activeTenantID); err != nil {
+			return nil, fmt.Errorf("rebind existing site to active tenant: %w", err)
+		}
+
+		slog.Info("Reusing existing demo site", "site_id", existing.ID, "domain", existing.Domain, "tenant_id", activeTenantID)
+		return &existing, nil
+	}
+	if err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("lookup existing site: %w", err)
+	}
+
+	sites, err := store.GetSites(ctx, userID)
+	if err == nil {
+		for _, site := range sites {
+			if strings.EqualFold(strings.TrimSpace(site.Domain), normalized) {
+				slog.Info("Reusing existing demo site", "site_id", site.ID, "domain", site.Domain)
+				siteCopy := site
+				return &siteCopy, nil
+			}
+		}
+	}
+
+	return store.CreateSite(ctx, userID, domain)
 }
 
 // ─────────────────────────────────────────────

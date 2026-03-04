@@ -1,0 +1,14 @@
+{{ define "content" -}}
+You're invited to join a team
+=============================
+
+Hello,
+
+{{ .Inviter }} has invited you to join {{ .TeamName }} on HitKeep as a {{ .Role }}.
+{{ if .RequiresAccountSetup }}
+You'll need to create a password to activate your account before you can access the team.
+{{ end }}
+{{ .HelpText }}
+
+{{ .ActionLabel }}: {{ .Link }}
+{{- end }}

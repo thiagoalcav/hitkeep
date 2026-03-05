@@ -1,0 +1,26 @@
+.team-audit__toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.75rem;
+}
+
+.team-audit__readonly {
+    border: 1px solid var(--p-content-border-color);
+    border-radius: 0.75rem;
+    padding: 0.9rem 1rem;
+    color: var(--p-text-muted-color);
+    background: var(--p-content-hover-background);
+}
+
+.team-audit__alert {
+    border-radius: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+}
+
+.team-audit__alert--error {
+    background: color-mix(in oklab, var(--p-red-500) 12%, transparent);
+    border: 1px solid color-mix(in oklab, var(--p-red-500) 32%, transparent);
+    color: var(--p-red-600);
+}

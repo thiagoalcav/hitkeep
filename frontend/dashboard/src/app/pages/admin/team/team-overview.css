@@ -1,0 +1,51 @@
+.team-overview__title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+}
+
+.team-overview__cards {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+    margin-bottom: 2rem;
+}
+
+.team-overview__card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.team-overview__card-label {
+    color: var(--p-text-muted-color);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.team-overview__card-value {
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.team-overview__card-meta {
+    color: var(--p-text-muted-color);
+    font-size: 0.82rem;
+}
+
+.team-overview__actions h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.team-overview__action-links {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.team-overview__action-links a {
+    text-decoration: none;
+}

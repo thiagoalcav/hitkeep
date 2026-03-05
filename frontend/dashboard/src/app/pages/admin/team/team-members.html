@@ -1,0 +1,123 @@
+<p-confirmpopup [key]="confirmKey" />
+
+@if (errorKey(); as error) {
+<div class="team-members__alert team-members__alert--error">{{ error | transloco }}</div>
+} @if (successKey(); as success) {
+<div class="team-members__alert team-members__alert--success">{{ success | transloco }}</div>
+} @if (team(); as t) {
+
+<div class="team-members__meta">
+    <div class="team-members__meta-text">
+        <div class="team-members__meta-title">{{ "teams.management.title" | transloco }}</div>
+        <div class="team-members__meta-subtitle">{{ "teams.management.subtitle" | transloco: { team: t.name } }}</div>
+    </div>
+    <p-tag [value]="roleLabel(t.role)" [severity]="roleSeverity(t.role)" [rounded]="true" />
+</div>
+
+@if (canManageMembers()) {
+<div class="team-members__invite">
+    <div class="team-members__invite-grid">
+        <div class="team-members__field">
+            <label for="team-member-email">{{ "teams.management.invite.emailLabel" | transloco }}</label>
+            <input
+                pInputText
+                id="team-member-email"
+                [formControl]="inviteForm.email().control()"
+                [placeholder]="'teams.management.invite.emailPlaceholder' | transloco"
+                [class.ng-invalid]="inviteForm.email().touched() && inviteForm.email().invalid()"
+                [class.ng-dirty]="inviteForm.email().dirty()"
+                inputmode="email"
+                autocapitalize="none"
+                spellcheck="false"
+                (keydown.enter)="inviteMember()"
+            />
+            @if (inviteForm.email().touched() && inviteForm.email().invalid()) {
+            <small>{{ "teams.management.invite.emailInvalid" | transloco }}</small>
+            }
+        </div>
+        <div class="team-members__field team-members__field--role">
+            <label for="team-member-role">{{ "teams.management.invite.roleLabel" | transloco }}</label>
+            <p-select inputId="team-member-role" [options]="inviteRoleOptions()" [formControl]="inviteForm.role().control()" optionLabel="label" optionValue="value" appendTo="body" />
+        </div>
+    </div>
+    <div class="team-members__invite-actions">
+        <p-button [label]="'teams.management.invite.submitAction' | transloco" icon="pi pi-user-plus" [loading]="isInviting()" [disabled]="isInviting()" (onClick)="inviteMember()" />
+        <p-button [label]="'settings.apiClients.actions.refresh' | transloco" icon="pi pi-refresh" [text]="true" [disabled]="isLoading()" (onClick)="refreshMembers()" />
+    </div>
+</div>
+} @else {
+<div class="team-members__readonly">{{ "teams.management.readOnly" | transloco }}</div>
+}
+
+<div class="flex justify-end mb-3">
+    <span class="p-input-icon-left hk-crud-search">
+        <i class="pi pi-search"></i>
+        <input pInputText id="team-members-search" #membersSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="membersTable.filterGlobal($any($event.target).value, 'contains')" class="w-full" />
+    </span>
+</div>
+
+<div class="hk-crud-table-wrap">
+    <p-table #membersTable [value]="members()" [loading]="isLoading()" [globalFilterFields]="['email', 'role', 'added_at']" [sortField]="'added_at'" [sortOrder]="-1" styleClass="hk-crud-table p-datatable-sm">
+        <ng-template pTemplate="header">
+            <tr>
+                <th pSortableColumn="email">
+                    {{ "common.columns.email" | transloco }}
+                    <p-sortIcon field="email" />
+                </th>
+                <th pSortableColumn="role">
+                    {{ "common.columns.role" | transloco }}
+                    <p-sortIcon field="role" />
+                </th>
+                <th pSortableColumn="added_at">
+                    {{ "common.columns.added" | transloco }}
+                    <p-sortIcon field="added_at" />
+                </th>
+                <th>{{ "common.columns.actions" | transloco }}</th>
+            </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-member>
+            <tr>
+                <td>{{ member.email }}</td>
+                <td class="team-members__role-cell">
+                    @if (canEditMember(member)) {
+                    <p-select
+                        class="team-members__role-select"
+                        [options]="roleOptionsForMember(member)"
+                        [formControl]="roleControlFor(member)"
+                        optionLabel="label"
+                        optionValue="value"
+                        appendTo="body"
+                        [disabled]="isRoleUpdating(member) || removingUserID() === member.user_id"
+                        (onChange)="onRoleChange(member, $event.value)"
+                    />
+                    } @else {
+                    <p-tag [value]="roleLabel(member.role)" [severity]="roleSeverity(member.role)" [rounded]="true" />
+                    }
+                </td>
+                <td><app-relative-date-time [value]="member.added_at" /></td>
+                <td>
+                    @if (canRemoveMember(member)) {
+                    <p-button
+                        icon="pi pi-trash"
+                        severity="danger"
+                        [text]="true"
+                        [type]="'button'"
+                        [loading]="removingUserID() === member.user_id"
+                        [disabled]="isRoleUpdating(member)"
+                        [ariaLabel]="'teams.management.removeAria' | transloco: { email: member.email }"
+                        (onClick)="confirmRemoveMember($event, member)"
+                    />
+                    } @else {
+                    <span class="text-xs text-muted-color">{{ "teams.management.notAllowed" | transloco }}</span>
+                    }
+                </td>
+            </tr>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+            <tr>
+                <td colspan="4" class="text-center text-muted-color py-4">{{ "teams.management.empty" | transloco }}</td>
+            </tr>
+        </ng-template>
+    </p-table>
+</div>
+}

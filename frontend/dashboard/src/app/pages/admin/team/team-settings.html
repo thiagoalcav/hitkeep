@@ -1,0 +1,65 @@
+@if (team(); as t) {
+<div class="team-settings__sections">
+    @if (successKey(); as key) {
+    <p-message severity="success" [text]="key | transloco" />
+    } @if (errorKey(); as key) {
+    <p-message severity="error" [text]="key | transloco" />
+    }
+
+    <p-card>
+        <div class="team-settings__section">
+            <h3>{{ "admin.team.settings.nameSectionTitle" | transloco }}</h3>
+            <p class="team-settings__description">{{ "admin.team.settings.nameSectionDescription" | transloco }}</p>
+            @if (canEdit()) {
+            <input type="text" pInputText [formControl]="form.controls.name" />
+            @if (form.controls.name.invalid && form.controls.name.touched) {
+            <small class="team-settings__error">{{ "admin.team.settings.nameRequired" | transloco }}</small>
+            } } @else {
+            <div class="team-settings__value">{{ t.name }}</div>
+            }
+        </div>
+    </p-card>
+
+    <p-card>
+        <div class="team-settings__section">
+            <h3>{{ "admin.team.settings.logoSectionTitle" | transloco }}</h3>
+            <p class="team-settings__description">{{ "admin.team.settings.logoSectionDescription" | transloco }}</p>
+            @if (canEdit()) {
+            <input type="url" pInputText [formControl]="form.controls.logo_url" [placeholder]="'admin.team.settings.logoPlaceholder' | transloco" />
+            @if (form.controls.logo_url.value) {
+            <div class="team-settings__logo-preview">
+                <img [src]="form.controls.logo_url.value" [alt]="'admin.team.settings.logoPreviewAlt' | transloco" />
+            </div>
+            } } @else { @if (t.logo_url) {
+            <div class="team-settings__logo-preview">
+                <img [src]="t.logo_url" [alt]="'admin.team.settings.logoPreviewAlt' | transloco" />
+            </div>
+            } @else {
+            <div class="team-settings__value">—</div>
+            } }
+        </div>
+    </p-card>
+
+    @if (canEdit()) {
+    <div class="team-settings__actions">
+        <p-button [label]="'admin.team.settings.saveAction' | transloco" [loading]="isSaving()" [disabled]="form.invalid || isSaving()" (onClick)="saveSettings()" />
+    </div>
+    }
+
+    <p-card>
+        <div class="team-settings__section team-settings__section--danger">
+            <h3>{{ "admin.team.settings.leaveSectionTitle" | transloco }}</h3>
+            <p class="team-settings__description">{{ "admin.team.settings.leaveSectionDescription" | transloco }}</p>
+            @if (leaveSuccessKey(); as key) {
+                <p-message severity="success" [text]="key | transloco" />
+            }
+            @if (leaveErrorKey(); as key) {
+                <p-message severity="error" [text]="key | transloco" />
+            }
+            <div class="team-settings__danger-actions">
+                <p-button severity="danger" [label]="'admin.team.settings.leaveAction' | transloco" [loading]="isLeaving()" [disabled]="isLeaving()" (onClick)="leaveTeam()" />
+            </div>
+        </div>
+    </p-card>
+</div>
+}

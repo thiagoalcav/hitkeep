@@ -1,0 +1,41 @@
+@if (errorKey(); as error) {
+    <div class="team-audit__alert team-audit__alert--error">{{ error | transloco }}</div>
+}
+
+@if (!canViewAudit()) {
+    <div class="team-audit__readonly">{{ "admin.team.audit.readOnly" | transloco }}</div>
+} @else {
+    <div class="team-audit__toolbar">
+        <p-button [label]="'settings.apiClients.actions.refresh' | transloco" icon="pi pi-refresh" [text]="true" [disabled]="isLoading()" (onClick)="refresh()" />
+    </div>
+
+    <div class="hk-crud-table-wrap">
+        <p-table [value]="rows()" [loading]="isLoading()" [sortField]="'created_at'" [sortOrder]="-1" styleClass="hk-crud-table p-datatable-sm">
+            <ng-template pTemplate="header">
+                <tr>
+                    <th>{{ "common.columns.time" | transloco }}</th>
+                    <th>{{ "admin.team.audit.columns.actor" | transloco }}</th>
+                    <th>{{ "admin.team.audit.columns.action" | transloco }}</th>
+                    <th>{{ "admin.team.audit.columns.target" | transloco }}</th>
+                    <th>{{ "admin.team.audit.columns.details" | transloco }}</th>
+                </tr>
+            </ng-template>
+
+            <ng-template pTemplate="body" let-row>
+                <tr>
+                    <td><app-relative-date-time [value]="row.created_at" /></td>
+                    <td>{{ row.actor_email || "—" }}</td>
+                    <td><p-tag [value]="actionLabel(row.action) | transloco" [severity]="actionSeverity(row.action)" [rounded]="true" /></td>
+                    <td>{{ row.target_email || "—" }}</td>
+                    <td>{{ row.details }}</td>
+                </tr>
+            </ng-template>
+
+            <ng-template pTemplate="emptymessage">
+                <tr>
+                    <td colspan="5" class="text-center text-muted-color py-4">{{ "admin.team.audit.empty" | transloco }}</td>
+                </tr>
+            </ng-template>
+        </p-table>
+    </div>
+}

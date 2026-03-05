@@ -1,0 +1,29 @@
+@if (team(); as t) {
+<div class="team-overview">
+    <h2 class="team-overview__title">{{ t.name }}</h2>
+
+    <div class="team-overview__cards">
+        <p-card>
+            <div class="team-overview__card-body">
+                <span class="team-overview__card-label">{{ "admin.team.overview.title" | transloco }}</span>
+                <span class="team-overview__card-value">{{ t.name }}</span>
+                <span class="team-overview__card-meta">{{ t.id }}</span>
+            </div>
+        </p-card>
+
+        <p-card>
+            <div class="team-overview__card-body">
+                <span class="team-overview__card-label">{{ "common.columns.role" | transloco }}</span>
+                <p-tag [value]="roleLabel(t.role)" [severity]="roleSeverity(t.role)" [rounded]="true" />
+            </div>
+        </p-card>
+
+        <p-card>
+            <div class="team-overview__card-body">
+                <span class="team-overview__card-label">{{ "admin.team.overview.memberCount" | transloco }}</span>
+                <span class="team-overview__card-value">{{ teamService.teams().length }}</span>
+            </div>
+        </p-card>
+    </div>
+</div>
+}

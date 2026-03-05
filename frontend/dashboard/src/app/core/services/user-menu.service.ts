@@ -23,7 +23,7 @@ export class UserMenuService {
                 label: this.transloco.translate("userMenu.administration"),
                 icon: "pi pi-shield",
                 visible: this.perms.isInstanceAdmin(),
-                command: () => this.router.navigate(["/admin"])
+                command: () => this.router.navigate(["/admin/system"])
             },
             {
                 label: this.transloco.translate("userMenu.userSettings"),

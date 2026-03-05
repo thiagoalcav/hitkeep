@@ -1,23 +1,15 @@
-import { ChangeDetectionStrategy, Component, inject } from "@angular/core";
-import { UserControls } from "@components/user-controls/user-controls";
-import { ShareService } from "@services/share.service";
+import { ChangeDetectionStrategy, Component } from "@angular/core";
 
 @Component({
     selector: "app-page-header",
     standalone: true,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [UserControls],
     template: `
         <div class="flex flex-col gap-2 mb-8 pb-4 pt-1 border-b border-surface-200 dark:border-surface-700 -mx-4 md:-mx-8 px-4 md:px-8">
-            <div class="flex justify-between items-center">
+            <div class="flex items-center">
                 <ng-content select="[header-left]"></ng-content>
-                <div class="hidden md:flex shrink-0">
-                    <app-user-controls [showMenu]="!shareService.isShareMode()" />
-                </div>
             </div>
         </div>
     `
 })
-export class PageHeader {
-    protected shareService = inject(ShareService);
-}
+export class PageHeader {}

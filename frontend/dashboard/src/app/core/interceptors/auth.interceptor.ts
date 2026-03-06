@@ -7,6 +7,28 @@ import { ShareService } from "@services/share.service";
 
 export const SKIP_AUTH_REDIRECT = new HttpContextToken<boolean>(() => false);
 
+type ReturnUrlRouterContext = {
+    url: string;
+    routerState: {
+        snapshot: {
+            url: string;
+        };
+    };
+};
+
+export function resolveCurrentReturnUrl(router: ReturnUrlRouterContext): string {
+    const browserPath =
+        typeof window !== "undefined" && typeof window.location !== "undefined"
+            ? `${window.location.pathname || ""}${window.location.search || ""}${window.location.hash || ""}`
+            : "";
+
+    const candidate = browserPath && browserPath !== "/" ? browserPath : router.url || router.routerState.snapshot.url || "/dashboard";
+    if (!candidate.startsWith("/") || candidate.startsWith("//")) {
+        return "/dashboard";
+    }
+    return candidate;
+}
+
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
     const router = inject(Router);
     const auth = inject(AuthService);
@@ -32,9 +54,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
                 if (shouldNavigate) {
                     // Avoid redirect loops if already on login or setup.
-                    const currentUrl = router.routerState.snapshot.url;
+                    const currentUrl = resolveCurrentReturnUrl(router);
                     if (!currentUrl.startsWith("/login") && !currentUrl.startsWith("/setup")) {
-                        void router.navigate(["/login"]);
+                        void router.navigate(["/login"], {
+                            queryParams: { returnUrl: currentUrl }
+                        });
                     }
                 }
 

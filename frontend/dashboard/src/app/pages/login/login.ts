@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
 
-import { Router, RouterLink } from "@angular/router";
+import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
 import { compatForm } from "@angular/forms/signals/compat";
 import { firstValueFrom } from "rxjs";
@@ -28,6 +28,7 @@ import { UserPreferencesService } from "@services/user-preferences.service";
 export class Login {
     private static readonly PASSKEY_DEVICE_HISTORY_KEY = "hitkeep.passkey.used_on_device";
     private router = inject(Router);
+    private route = inject(ActivatedRoute);
     private auth = inject(AuthService);
     private preferences = inject(UserPreferencesService);
     private conditionalPasskeyAbortController: AbortController | null = null;
@@ -170,14 +171,23 @@ export class Login {
     }
 
     private redirectAfterLogin() {
+        const targetUrl = this.resolveReturnUrl();
         this.preferences.load().subscribe({
             next: () => {
-                this.router.navigate(["/dashboard"]);
+                void this.router.navigateByUrl(targetUrl);
             },
             error: () => {
-                this.router.navigate(["/dashboard"]);
+                void this.router.navigateByUrl(targetUrl);
             }
         });
+    }
+
+    private resolveReturnUrl(): string {
+        const returnUrl = this.route.snapshot.queryParamMap.get("returnUrl")?.trim();
+        if (!returnUrl) return "/dashboard";
+        if (!returnUrl.startsWith("/") || returnUrl.startsWith("//")) return "/dashboard";
+        if (returnUrl.startsWith("/login") || returnUrl.startsWith("/setup")) return "/dashboard";
+        return returnUrl;
     }
 
     private enterMfaState(resp: LoginResponse): void {

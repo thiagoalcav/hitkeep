@@ -5,6 +5,8 @@ import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
 import { compatForm } from "@angular/forms/signals/compat";
 import { HttpClient } from "@angular/common/http";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
+import { ConfirmationService } from "primeng/api";
+import { ConfirmPopupModule } from "primeng/confirmpopup";
 import { TableModule } from "primeng/table";
 import { ButtonModule } from "primeng/button";
 import { SelectModule } from "primeng/select";
@@ -23,8 +25,10 @@ interface SiteMember {
 @Component({
     selector: "app-site-team-settings",
     standalone: true,
-    imports: [ReactiveFormsModule, TableModule, ButtonModule, SelectModule, InputTextModule, RelativeDateTime, TranslocoPipe],
+    imports: [ReactiveFormsModule, ConfirmPopupModule, TableModule, ButtonModule, SelectModule, InputTextModule, RelativeDateTime, TranslocoPipe],
+    providers: [ConfirmationService],
     template: `
+        <p-confirmpopup key="site-member-remove" />
         <div class="flex flex-col gap-4">
             <div class="flex items-end gap-2">
                 <div class="flex-1">
@@ -77,7 +81,7 @@ interface SiteMember {
                             </td>
                             <td><app-relative-date-time [value]="member.added_at" /></td>
                             <td>
-                                <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="removeMember(member)" />
+                                <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="confirmRemoveMember($event, member)" />
                             </td>
                         </tr>
                     </ng-template>
@@ -87,8 +91,8 @@ interface SiteMember {
     `
 })
 export class SiteTeamSettings {
-    // Removed implements OnInit
     private http = inject(HttpClient);
+    private confirmationService = inject(ConfirmationService);
     private transloco = inject(TranslocoService);
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
@@ -166,19 +170,33 @@ export class SiteTeamSettings {
             });
     }
 
-    removeMember(member: SiteMember) {
+    confirmRemoveMember(event: Event, member: SiteMember) {
         const siteId = this.site()?.id;
         if (!siteId) return;
 
-        if (confirm(this.transloco.translate("sites.team.confirmRemove", { email: member.email }))) {
-            this.http.delete(`/api/sites/${siteId}/members/${member.user_id}`).subscribe({
-                next: () => this.loadMembers(siteId),
-                error: (err) => {
-                    console.error("Failed to remove member", err);
-                    alert(this.transloco.translate("sites.team.errors.removeFailed", { error: err.error || this.transloco.translate("common.unknownError") }));
-                }
-            });
-        }
+        this.confirmationService.confirm({
+            key: "site-member-remove",
+            target: event.currentTarget as EventTarget,
+            message: this.transloco.translate("sites.team.confirmRemove", { email: member.email }),
+            icon: "pi pi-exclamation-triangle",
+            rejectButtonProps: {
+                label: this.transloco.translate("common.actions.cancel"),
+                severity: "secondary",
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: this.transloco.translate("teams.management.removeAction"),
+                severity: "danger"
+            },
+            accept: () => {
+                this.http.delete(`/api/sites/${siteId}/members/${member.user_id}`).subscribe({
+                    next: () => this.loadMembers(siteId),
+                    error: (err) => {
+                        console.error("Failed to remove member", err);
+                    }
+                });
+            }
+        });
     }
 
     getRoleLabel(role: string): string {

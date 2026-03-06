@@ -1,3 +1,4 @@
+<p-confirmpopup key="site-exclusion-delete" />
 <div class="site-exclusions">
     <div class="site-exclusions__intro">
         <p>{{ "sites.exclusions.description" | transloco }}</p>
@@ -82,7 +83,7 @@
                     <td>{{ rule.description || "-" }}</td>
                     <td><app-relative-date-time [value]="rule.created_at" /></td>
                     <td>
-                        <p-button icon="pi pi-trash" severity="danger" [text]="true" [type]="'button'" (onClick)="deleteRule(rule)" />
+                        <p-button icon="pi pi-trash" severity="danger" [text]="true" [type]="'button'" (onClick)="confirmDeleteRule($event, rule)" />
                     </td>
                 </tr>
             </ng-template>

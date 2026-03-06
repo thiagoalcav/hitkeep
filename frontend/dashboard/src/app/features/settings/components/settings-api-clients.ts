@@ -5,7 +5,9 @@ import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, Validatio
 import { finalize, forkJoin } from "rxjs";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 
+import { ConfirmationService } from "primeng/api";
 import { ButtonModule } from "primeng/button";
+import { ConfirmPopupModule } from "primeng/confirmpopup";
 import { InputTextModule } from "primeng/inputtext";
 import { SelectModule } from "primeng/select";
 import { TableModule } from "primeng/table";
@@ -48,13 +50,15 @@ const expiresAtNotPastValidator = (): ValidatorFn => {
 
 @Component({
     selector: "app-settings-api-clients",
-    imports: [ReactiveFormsModule, ButtonModule, InputTextModule, SelectModule, TableModule, SettingsCard, RelativeDateTime, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, ConfirmPopupModule, InputTextModule, SelectModule, TableModule, SettingsCard, RelativeDateTime, TranslocoPipe],
     templateUrl: "./settings-api-clients.html",
     styleUrl: "./settings-api-clients.css",
-    changeDetection: ChangeDetectionStrategy.OnPush
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    providers: [ConfirmationService]
 })
 export class SettingsAPIClients {
     private readonly apiClientsService = inject(APIClientsService);
+    private readonly confirmationService = inject(ConfirmationService);
     private readonly perms = inject(PermissionService);
     private readonly transloco = inject(TranslocoService);
     private readonly activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
@@ -234,12 +238,26 @@ export class SettingsAPIClients {
         this.success.set(null);
     }
 
-    protected deleteClient(client: APIClient): void {
-        const message = this.transloco.translate("settings.apiClients.confirmDelete", { name: client.name });
-        if (!window.confirm(message)) {
-            return;
-        }
+    protected confirmDeleteClient(event: Event, client: APIClient): void {
+        this.confirmationService.confirm({
+            key: "api-client-delete",
+            target: event.currentTarget as EventTarget,
+            message: this.transloco.translate("settings.apiClients.confirmDelete", { name: client.name }),
+            icon: "pi pi-exclamation-triangle",
+            rejectButtonProps: {
+                label: this.transloco.translate("common.actions.cancel"),
+                severity: "secondary",
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: this.transloco.translate("settings.apiClients.actions.delete"),
+                severity: "danger"
+            },
+            accept: () => this.deleteClient(client)
+        });
+    }
 
+    private deleteClient(client: APIClient): void {
         this.error.set(null);
         this.success.set(null);
         this.isSaving.set(true);

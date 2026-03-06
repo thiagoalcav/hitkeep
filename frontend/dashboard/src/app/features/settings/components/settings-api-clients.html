@@ -1,3 +1,4 @@
+<p-confirmpopup key="api-client-delete" />
 <app-settings-card [title]="'settings.apiClients.title' | transloco" [subtitle]="'settings.apiClients.description' | transloco" icon="pi pi-key">
     <div settings-card-body class="flex flex-col gap-4">
         @if (error(); as errorKey) {
@@ -234,7 +235,7 @@
                                         [type]="'button'"
                                         (onClick)="toggleRevoked(client)"
                                     />
-                                    <p-button [label]="'settings.apiClients.actions.delete' | transloco" icon="pi pi-trash" [text]="true" severity="danger" [type]="'button'" (onClick)="deleteClient(client)" />
+                                    <p-button [label]="'settings.apiClients.actions.delete' | transloco" icon="pi pi-trash" [text]="true" severity="danger" [type]="'button'" (onClick)="confirmDeleteClient($event, client)" />
                                 </div>
                             </td>
                         </tr>

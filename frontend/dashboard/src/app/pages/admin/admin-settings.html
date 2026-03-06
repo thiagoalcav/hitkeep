@@ -1,3 +1,4 @@
+<p-confirmpopup key="admin-delete" />
 <div class="flex flex-col w-full">
     <app-page-header>
         <div header-left>
@@ -71,7 +72,7 @@
                                         </td>
                                         <td><app-relative-date-time [value]="user.created_at" /></td>
                                         <td>
-                                            <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="deleteUser(user)" [disabled]="user.id === currentUserId()" />
+                                            <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="confirmDeleteUser($event, user)" [disabled]="user.id === currentUserId()" />
                                         </td>
                                     </tr>
                                 </ng-template>
@@ -133,7 +134,7 @@
                                         </td>
                                         <td><app-relative-date-time [value]="site.created_at" /></td>
                                         <td>
-                                            <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="deleteSite(site)" />
+                                            <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="confirmDeleteSite($event, site)" />
                                         </td>
                                     </tr>
                                 </ng-template>

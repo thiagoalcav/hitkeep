@@ -4,7 +4,9 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from "@angula
 import { finalize } from "rxjs";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 
+import { ConfirmationService } from "primeng/api";
 import { ButtonModule } from "primeng/button";
+import { ConfirmPopupModule } from "primeng/confirmpopup";
 import { InputTextModule } from "primeng/inputtext";
 import { TableModule } from "primeng/table";
 
@@ -17,15 +19,17 @@ const ipOrCIDRPattern = /^(([0-9]{1,3}\.){3}[0-9]{1,3}(\/(3[0-2]|[12]?[0-9]))?|(
 @Component({
     selector: "app-site-exclusion-settings",
     standalone: true,
-    imports: [ReactiveFormsModule, ButtonModule, InputTextModule, TableModule, RelativeDateTime, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, ConfirmPopupModule, InputTextModule, TableModule, RelativeDateTime, TranslocoPipe],
     templateUrl: "./site-exclusion-settings.html",
     styleUrl: "./site-exclusion-settings.css",
-    changeDetection: ChangeDetectionStrategy.OnPush
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    providers: [ConfirmationService]
 })
 export class SiteExclusionSettings {
     site = input.required<Site | null>();
 
     private exclusionsService = inject(ExclusionsService);
+    private confirmationService = inject(ConfirmationService);
     private transloco = inject(TranslocoService);
 
     protected readonly exclusions = signal<IPExclusion[]>([]);
@@ -84,19 +88,33 @@ export class SiteExclusionSettings {
             });
     }
 
-    protected deleteRule(rule: IPExclusion): void {
+    protected confirmDeleteRule(event: Event, rule: IPExclusion): void {
         const site = this.site();
         if (!site) {
             return;
         }
 
-        const message = this.transloco.translate("sites.exclusions.confirmDelete", { cidr: rule.cidr });
-        if (!window.confirm(message)) {
-            return;
-        }
+        this.confirmationService.confirm({
+            key: "site-exclusion-delete",
+            target: event.currentTarget as EventTarget,
+            message: this.transloco.translate("sites.exclusions.confirmDelete", { cidr: rule.cidr }),
+            icon: "pi pi-exclamation-triangle",
+            rejectButtonProps: {
+                label: this.transloco.translate("common.actions.cancel"),
+                severity: "secondary",
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: this.transloco.translate("share.dialog.deleteAction"),
+                severity: "danger"
+            },
+            accept: () => this.deleteRule(site.id, rule)
+        });
+    }
 
+    private deleteRule(siteID: string, rule: IPExclusion): void {
         this.error.set(null);
-        this.exclusionsService.deleteSiteExclusion(site.id, rule.id).subscribe({
+        this.exclusionsService.deleteSiteExclusion(siteID, rule.id).subscribe({
             next: () => {
                 this.exclusions.update((current) => current.filter((entry) => entry.id !== rule.id));
             },

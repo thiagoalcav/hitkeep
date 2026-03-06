@@ -2,6 +2,8 @@ import { Component, computed, effect, inject, OnInit, signal } from "@angular/co
 import { toSignal } from "@angular/core/rxjs-interop";
 
 import { FormControl, ReactiveFormsModule } from "@angular/forms";
+import { ConfirmationService } from "primeng/api";
+import { ConfirmPopupModule } from "primeng/confirmpopup";
 import { TableModule } from "primeng/table";
 import { ButtonModule } from "primeng/button";
 import { SelectModule } from "primeng/select";
@@ -36,12 +38,14 @@ interface Site {
 @Component({
     selector: "app-admin-settings",
     standalone: true,
-    imports: [ReactiveFormsModule, TableModule, ButtonModule, SelectModule, CardModule, TabsModule, InputTextModule, PageHeader, PageBreadcrumb, AdminGlobalExclusionSettings, RelativeDateTime, TranslocoPipe],
+    imports: [ReactiveFormsModule, ConfirmPopupModule, TableModule, ButtonModule, SelectModule, CardModule, TabsModule, InputTextModule, PageHeader, PageBreadcrumb, AdminGlobalExclusionSettings, RelativeDateTime, TranslocoPipe],
     templateUrl: "./admin-settings.html",
-    styleUrl: "./admin-settings.css"
+    styleUrl: "./admin-settings.css",
+    providers: [ConfirmationService]
 })
 export class AdminSettings implements OnInit {
     private http = inject(HttpClient);
+    private confirmationService = inject(ConfirmationService);
     private transloco = inject(TranslocoService);
     private profile = inject(UserProfileService);
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
@@ -55,7 +59,7 @@ export class AdminSettings implements OnInit {
     protected readonly usersByID = computed(() => new Map(this.users().map((user) => [user.id, user] as const)));
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         this.activeLanguage();
-        return [{ label: this.transloco.translate("admin.breadcrumb"), isCurrent: true }];
+        return [{ label: this.transloco.translate("nav.administration") }, { label: this.transloco.translate("nav.systemSettings"), isCurrent: true }];
     });
 
     protected roleOptions = computed(() => {
@@ -208,24 +212,51 @@ export class AdminSettings implements OnInit {
         return "user";
     }
 
-    deleteUser(user: User) {
-        const message = this.transloco.translate("admin.confirmDeleteUser", { email: user.email });
-        if (!confirm(message)) {
-            return;
-        }
-        this.http.delete(`/api/admin/users/${user.id}`).subscribe({
-            next: () => this.loadUsers(),
-            error: (err) => console.error("Failed to delete user", err)
+    confirmDeleteUser(event: Event, user: User) {
+        this.confirmationService.confirm({
+            key: "admin-delete",
+            target: event.currentTarget as EventTarget,
+            message: this.transloco.translate("admin.confirmDeleteUser", { email: user.email }),
+            icon: "pi pi-exclamation-triangle",
+            rejectButtonProps: {
+                label: this.transloco.translate("common.actions.cancel"),
+                severity: "secondary",
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: this.transloco.translate("share.dialog.deleteAction"),
+                severity: "danger"
+            },
+            accept: () => {
+                this.http.delete(`/api/admin/users/${user.id}`).subscribe({
+                    next: () => this.loadUsers(),
+                    error: (err) => console.error("Failed to delete user", err)
+                });
+            }
         });
     }
 
-    deleteSite(site: Site) {
-        const message = this.transloco.translate("admin.confirmDeleteSite", { domain: site.domain });
-        if (confirm(message)) {
-            this.http.delete(`/api/admin/sites/${site.id}`).subscribe({
-                next: () => this.loadSites(),
-                error: (err) => console.error("Failed to delete site", err)
-            });
-        }
+    confirmDeleteSite(event: Event, site: Site) {
+        this.confirmationService.confirm({
+            key: "admin-delete",
+            target: event.currentTarget as EventTarget,
+            message: this.transloco.translate("admin.confirmDeleteSite", { domain: site.domain }),
+            icon: "pi pi-exclamation-triangle",
+            rejectButtonProps: {
+                label: this.transloco.translate("common.actions.cancel"),
+                severity: "secondary",
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: this.transloco.translate("share.dialog.deleteAction"),
+                severity: "danger"
+            },
+            accept: () => {
+                this.http.delete(`/api/admin/sites/${site.id}`).subscribe({
+                    next: () => this.loadSites(),
+                    error: (err) => console.error("Failed to delete site", err)
+                });
+            }
+        });
     }
 }

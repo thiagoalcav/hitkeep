@@ -25,7 +25,81 @@
         "settings": "Benutzereinstellungen",
         "settingsAria": "Zu den Benutzereinstellungen",
         "emailReports": "E-Mail-Berichte",
-        "emailReportsAria": "Zu den E-Mail-Berichten"
+        "emailReportsAria": "Zu den E-Mail-Berichten",
+        "administration": "Verwaltung",
+        "systemSettings": "Systemeinstellungen",
+        "systemSettingsAria": "Zu den Systemeinstellungen",
+        "teamOverview": "Team-Übersicht",
+        "teamOverviewAria": "Zur Team-Übersicht",
+        "teamMembers": "Teammitglieder",
+        "teamMembersAria": "Zu den Teammitgliedern",
+        "team": "Team",
+        "teamAria": "Zur Teamverwaltung",
+        "teamSectionToggleAria": "Team-Navigation umschalten",
+        "teamSettings": "Team-Einstellungen",
+        "teamSettingsAria": "Zu den Team-Einstellungen"
+    },
+    "teams": {
+        "switcher": {
+            "label": "Teams",
+            "regionAria": "Team-Auswahl",
+            "selectAria": "Aktives Team auswählen",
+            "placeholder": "Team auswählen",
+            "currentTeamAria": "Aktuelles Team: {{name}}",
+            "addTeamAria": "Neues Team erstellen"
+        },
+        "roles": {
+            "owner": "Inhaber",
+            "admin": "Admin",
+            "member": "Mitglied"
+        },
+        "management": {
+            "title": "Teammitglieder",
+            "subtitle": "Verwalte Zugriff und Rollen für {{team}}.",
+            "openAction": "Team verwalten",
+            "openAria": "Teamverwaltung öffnen",
+            "dialogTitle": "{{team}} verwalten",
+            "noTeam": "Kein aktives Team ausgewählt.",
+            "readOnly": "Du kannst Mitglieder sehen, aber mit deiner Rolle keine Teammitgliedschaften verwalten.",
+            "notAllowed": "Nicht erlaubt",
+            "empty": "Keine Teammitglieder gefunden.",
+            "removeAction": "Entfernen",
+            "removeAria": "{{email}} aus dem Team entfernen",
+            "confirmRemove": "{{email}} aus diesem Team entfernen?",
+            "invite": {
+                "emailLabel": "E-Mail-Adresse",
+                "emailPlaceholder": "user@example.com",
+                "emailInvalid": "Bitte eine gültige E-Mail-Adresse eingeben.",
+                "roleLabel": "Rolle",
+                "submitAction": "Mitglied einladen"
+            },
+            "status": {
+                "inviteSent": "Einladung erfolgreich gesendet.",
+                "memberUpdated": "Mitglied erfolgreich aktualisiert.",
+                "roleUpdated": "Rolle erfolgreich aktualisiert.",
+                "memberRemoved": "Mitglied erfolgreich entfernt."
+            },
+            "errors": {
+                "loadFailed": "Teammitglieder konnten nicht geladen werden.",
+                "inviteFailed": "Mitglied konnte nicht eingeladen werden.",
+                "roleUpdateFailed": "Mitgliederrolle konnte nicht aktualisiert werden.",
+                "removeFailed": "Mitglied konnte nicht entfernt werden.",
+                "forbidden": "Keine Berechtigung, dieses Team zu verwalten.",
+                "alreadyMember": "Dieser Benutzer ist bereits ein Mitglied des Teams.",
+                "lastOwner": "Mindestens ein Inhaber muss im Team verbleiben."
+            }
+        },
+        "createDialog": {
+            "title": "Team erstellen",
+            "nameLabel": "Teamname",
+            "namePlaceholder": "z.\u00a0B. Marketing",
+            "nameRequired": "Teamname ist erforderlich.",
+            "createAction": "Team erstellen",
+            "errors": {
+                "createFailed": "Team konnte nicht erstellt werden. Bitte versuche es erneut.",
+                "limitReached": "Team-Limit erreicht. Aktualisiere deinen Plan, um mehr Teams zu erstellen."
+            }
+        }
     },
     "common": {
         "actions": {
@@ -728,11 +802,77 @@
             "user": "Benutzer"
         },
         "confirmDeleteUser": "Benutzer {{email}} löschen?",
-        "confirmDeleteSite": "Seite {{domain}} löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+        "confirmDeleteSite": "Seite {{domain}} löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+        "team": {
+            "tabs": {
+                "overview": "Übersicht",
+                "members": "Mitglieder",
+                "settings": "Einstellungen",
+                "activity": "Aktivität"
+            },
+            "overview": {
+                "breadcrumb": "Team-Übersicht",
+                "title": "Team",
+                "memberCount": "Teams",
+                "quickActions": "Schnellaktionen",
+                "manageMembers": "Mitglieder verwalten",
+                "teamSettings": "Team-Einstellungen"
+            },
+            "members": {
+                "breadcrumb": "Teammitglieder",
+                "title": "Teammitglieder"
+            },
+            "settings": {
+                "breadcrumb": "Team-Einstellungen",
+                "title": "Team-Einstellungen",
+                "nameSectionTitle": "Teamname",
+                "nameSectionDescription": "Der Anzeigename für dieses Team. Eigentümer und Admins können ihn ändern.",
+                "nameRequired": "Teamname ist erforderlich.",
+                "logoSectionTitle": "Team-Logo",
+                "logoSectionDescription": "Eine URL zum Logo-Bild dieses Teams.",
+                "logoPlaceholder": "https://beispiel.de/logo.png",
+                "logoPreviewAlt": "Team-Logo-Vorschau",
+                "saveAction": "Einstellungen speichern",
+                "saveSuccess": "Team-Einstellungen gespeichert.",
+                "saveError": "Fehler beim Speichern der Team-Einstellungen. Bitte erneut versuchen.",
+                "leaveSectionTitle": "Team verlassen",
+                "leaveSectionDescription": "Entferne dich aus diesem Team und wechsle zu einem anderen Team, in dem du Mitglied bist.",
+                "leaveAction": "Team verlassen",
+                "leaveSuccess": "Du hast das Team verlassen.",
+                "leaveErrors": {
+                    "lastOwner": "Du kannst das Team nicht als letzter Eigentümer verlassen.",
+                    "onlyTeam": "Du kannst dein einziges Team nicht verlassen.",
+                    "generic": "Team konnte nicht verlassen werden. Bitte erneut versuchen."
+                }
+            },
+            "audit": {
+                "readOnly": "Du hast keine Berechtigung, Team-Aktivitäten zu sehen.",
+                "empty": "Noch keine Team-Aktivität vorhanden.",
+                "loadError": "Team-Aktivität konnte nicht geladen werden.",
+                "forbidden": "Du hast keine Berechtigung, Team-Aktivitäten zu sehen.",
+                "columns": {
+                    "actor": "Akteur",
+                    "action": "Aktion",
+                    "target": "Ziel",
+                    "details": "Details"
+                },
+                "actions": {
+                    "teamCreated": "Team erstellt",
+                    "teamUpdated": "Team aktualisiert",
+                    "memberInvited": "Mitglied eingeladen",
+                    "memberAdded": "Mitglied hinzugefügt",
+                    "memberRoleUpdated": "Mitgliederrolle geändert",
+                    "memberRemoved": "Mitglied entfernt",
+                    "memberLeft": "Mitglied hat das Team verlassen",
+                    "unknown": "Unbekannte Aktion"
+                }
+            }
+        }
     },
     "roles": {
         "owner": "Eigentümer",
         "admin": "Admin",
+        "member": "Mitglied",
         "editor": "Editor",
         "viewer": "Betrachter"
     },

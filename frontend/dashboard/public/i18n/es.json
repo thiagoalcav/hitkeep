@@ -25,7 +25,81 @@
         "settings": "Configuración de usuario",
         "settingsAria": "Ir a configuración de usuario",
         "emailReports": "Informes por email",
-        "emailReportsAria": "Ir a informes por email"
+        "emailReportsAria": "Ir a informes por email",
+        "administration": "Administración",
+        "systemSettings": "Configuración del sistema",
+        "systemSettingsAria": "Ir a configuración del sistema",
+        "teamOverview": "Resumen del equipo",
+        "teamOverviewAria": "Ir al resumen del equipo",
+        "teamMembers": "Miembros del equipo",
+        "teamMembersAria": "Ir a miembros del equipo",
+        "team": "Equipo",
+        "teamAria": "Ir a gestión del equipo",
+        "teamSectionToggleAria": "Alternar navegación del equipo",
+        "teamSettings": "Configuración del equipo",
+        "teamSettingsAria": "Ir a configuración del equipo"
+    },
+    "teams": {
+        "switcher": {
+            "label": "Equipos",
+            "regionAria": "Selector de equipo",
+            "selectAria": "Seleccionar equipo activo",
+            "placeholder": "Seleccionar un equipo",
+            "currentTeamAria": "Equipo actual: {{name}}",
+            "addTeamAria": "Crear un nuevo equipo"
+        },
+        "roles": {
+            "owner": "Propietario",
+            "admin": "Administrador",
+            "member": "Miembro"
+        },
+        "management": {
+            "title": "Miembros del equipo",
+            "subtitle": "Gestiona acceso y roles para {{team}}.",
+            "openAction": "Gestionar equipo",
+            "openAria": "Abrir gestión del equipo",
+            "dialogTitle": "Gestionar {{team}}",
+            "noTeam": "No hay un equipo activo seleccionado.",
+            "readOnly": "Puedes ver miembros, pero no gestionar la membresía del equipo con tu rol actual.",
+            "notAllowed": "No permitido",
+            "empty": "No se encontraron miembros del equipo.",
+            "removeAction": "Eliminar",
+            "removeAria": "Eliminar {{email}} del equipo",
+            "confirmRemove": "¿Eliminar a {{email}} de este equipo?",
+            "invite": {
+                "emailLabel": "Correo electrónico",
+                "emailPlaceholder": "user@example.com",
+                "emailInvalid": "Introduce un correo electrónico válido.",
+                "roleLabel": "Rol",
+                "submitAction": "Invitar miembro"
+            },
+            "status": {
+                "inviteSent": "Invitación enviada correctamente.",
+                "memberUpdated": "Miembro actualizado correctamente.",
+                "roleUpdated": "Rol actualizado correctamente.",
+                "memberRemoved": "Miembro eliminado correctamente."
+            },
+            "errors": {
+                "loadFailed": "No se pudieron cargar los miembros del equipo.",
+                "inviteFailed": "No se pudo invitar al miembro.",
+                "roleUpdateFailed": "No se pudo actualizar el rol del miembro.",
+                "removeFailed": "No se pudo eliminar al miembro.",
+                "forbidden": "No tienes permiso para gestionar este equipo.",
+                "alreadyMember": "Este usuario ya es miembro del equipo.",
+                "lastOwner": "Debe permanecer al menos un propietario en el equipo."
+            }
+        },
+        "createDialog": {
+            "title": "Crear equipo",
+            "nameLabel": "Nombre del equipo",
+            "namePlaceholder": "p. ej. Marketing",
+            "nameRequired": "El nombre del equipo es obligatorio.",
+            "createAction": "Crear equipo",
+            "errors": {
+                "createFailed": "No se pudo crear el equipo. Inténtalo de nuevo.",
+                "limitReached": "Límite de equipos alcanzado. Actualiza tu plan para crear más equipos."
+            }
+        }
     },
     "common": {
         "actions": {
@@ -728,11 +802,77 @@
             "user": "Usuario"
         },
         "confirmDeleteUser": "Eliminar usuario {{email}}?",
-        "confirmDeleteSite": "Eliminar sitio {{domain}}? Esta accion no se puede deshacer."
+        "confirmDeleteSite": "Eliminar sitio {{domain}}? Esta accion no se puede deshacer.",
+        "team": {
+            "tabs": {
+                "overview": "Resumen",
+                "members": "Miembros",
+                "settings": "Configuración",
+                "activity": "Actividad"
+            },
+            "overview": {
+                "breadcrumb": "Resumen del equipo",
+                "title": "Equipo",
+                "memberCount": "Equipos",
+                "quickActions": "Acciones rápidas",
+                "manageMembers": "Gestionar miembros",
+                "teamSettings": "Configuración del equipo"
+            },
+            "members": {
+                "breadcrumb": "Miembros del equipo",
+                "title": "Miembros del equipo"
+            },
+            "settings": {
+                "breadcrumb": "Configuración del equipo",
+                "title": "Configuración del equipo",
+                "nameSectionTitle": "Nombre del equipo",
+                "nameSectionDescription": "El nombre visible de este equipo. Los propietarios y administradores pueden editarlo.",
+                "nameRequired": "El nombre del equipo es obligatorio.",
+                "logoSectionTitle": "Logo del equipo",
+                "logoSectionDescription": "Una URL que apunte a la imagen del logo de este equipo.",
+                "logoPlaceholder": "https://ejemplo.com/logo.png",
+                "logoPreviewAlt": "Vista previa del logo del equipo",
+                "saveAction": "Guardar configuración",
+                "saveSuccess": "Configuración del equipo guardada.",
+                "saveError": "Error al guardar la configuración del equipo. Inténtalo de nuevo.",
+                "leaveSectionTitle": "Salir del equipo",
+                "leaveSectionDescription": "Elimínate de este equipo y cambia a otro equipo del que formes parte.",
+                "leaveAction": "Salir del equipo",
+                "leaveSuccess": "Has salido del equipo.",
+                "leaveErrors": {
+                    "lastOwner": "No puedes salir siendo el último propietario.",
+                    "onlyTeam": "No puedes salir de tu único equipo.",
+                    "generic": "No se pudo salir del equipo. Inténtalo de nuevo."
+                }
+            },
+            "audit": {
+                "readOnly": "No tienes permiso para ver la actividad del equipo.",
+                "empty": "Aún no hay actividad del equipo.",
+                "loadError": "No se pudo cargar la actividad del equipo.",
+                "forbidden": "No tienes permiso para ver la actividad del equipo.",
+                "columns": {
+                    "actor": "Actor",
+                    "action": "Acción",
+                    "target": "Objetivo",
+                    "details": "Detalles"
+                },
+                "actions": {
+                    "teamCreated": "Equipo creado",
+                    "teamUpdated": "Equipo actualizado",
+                    "memberInvited": "Miembro invitado",
+                    "memberAdded": "Miembro agregado",
+                    "memberRoleUpdated": "Rol de miembro actualizado",
+                    "memberRemoved": "Miembro eliminado",
+                    "memberLeft": "Miembro salió del equipo",
+                    "unknown": "Acción desconocida"
+                }
+            }
+        }
     },
     "roles": {
         "owner": "Propietario",
         "admin": "Administrador",
+        "member": "Miembro",
         "editor": "Editor",
         "viewer": "Visualizador"
     },

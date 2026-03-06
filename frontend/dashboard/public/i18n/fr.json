@@ -25,7 +25,81 @@
         "settings": "Paramètres utilisateur",
         "settingsAria": "Aller aux paramètres utilisateur",
         "emailReports": "Rapports par email",
-        "emailReportsAria": "Aller aux rapports par email"
+        "emailReportsAria": "Aller aux rapports par email",
+        "administration": "Administration",
+        "systemSettings": "Paramètres système",
+        "systemSettingsAria": "Aller aux paramètres système",
+        "teamOverview": "Aperçu de l'équipe",
+        "teamOverviewAria": "Aller à l'aperçu de l'équipe",
+        "teamMembers": "Membres de l'équipe",
+        "teamMembersAria": "Aller aux membres de l'équipe",
+        "team": "Équipe",
+        "teamAria": "Aller à la gestion d'équipe",
+        "teamSectionToggleAria": "Basculer la navigation d'équipe",
+        "teamSettings": "Paramètres de l'équipe",
+        "teamSettingsAria": "Aller aux paramètres de l'équipe"
+    },
+    "teams": {
+        "switcher": {
+            "label": "Équipes",
+            "regionAria": "Sélecteur d'équipe",
+            "selectAria": "Sélectionner l'équipe active",
+            "placeholder": "Sélectionner une équipe",
+            "currentTeamAria": "Équipe actuelle : {{name}}",
+            "addTeamAria": "Créer une nouvelle équipe"
+        },
+        "roles": {
+            "owner": "Propriétaire",
+            "admin": "Administrateur",
+            "member": "Membre"
+        },
+        "management": {
+            "title": "Membres de l'équipe",
+            "subtitle": "Gérez les accès et les rôles pour {{team}}.",
+            "openAction": "Gérer l'équipe",
+            "openAria": "Ouvrir la gestion de l'équipe",
+            "dialogTitle": "Gérer {{team}}",
+            "noTeam": "Aucune équipe active sélectionnée.",
+            "readOnly": "Vous pouvez voir les membres, mais vous ne pouvez pas gérer l'équipe avec votre rôle actuel.",
+            "notAllowed": "Non autorisé",
+            "empty": "Aucun membre d'équipe trouvé.",
+            "removeAction": "Supprimer",
+            "removeAria": "Supprimer {{email}} de l'équipe",
+            "confirmRemove": "Supprimer {{email}} de cette équipe ?",
+            "invite": {
+                "emailLabel": "Adresse e-mail",
+                "emailPlaceholder": "user@example.com",
+                "emailInvalid": "Saisissez une adresse e-mail valide.",
+                "roleLabel": "Rôle",
+                "submitAction": "Inviter un membre"
+            },
+            "status": {
+                "inviteSent": "Invitation envoyée avec succès.",
+                "memberUpdated": "Membre mis à jour avec succès.",
+                "roleUpdated": "Rôle mis à jour avec succès.",
+                "memberRemoved": "Membre supprimé avec succès."
+            },
+            "errors": {
+                "loadFailed": "Impossible de charger les membres de l'équipe.",
+                "inviteFailed": "Impossible d'inviter le membre.",
+                "roleUpdateFailed": "Impossible de mettre à jour le rôle du membre.",
+                "removeFailed": "Impossible de supprimer le membre.",
+                "forbidden": "Vous n'avez pas l'autorisation de gérer cette équipe.",
+                "alreadyMember": "Cet utilisateur est déjà membre de l'équipe.",
+                "lastOwner": "Au moins un propriétaire doit rester dans l'équipe."
+            }
+        },
+        "createDialog": {
+            "title": "Créer une équipe",
+            "nameLabel": "Nom de l'équipe",
+            "namePlaceholder": "ex. Marketing",
+            "nameRequired": "Le nom de l'équipe est obligatoire.",
+            "createAction": "Créer l'équipe",
+            "errors": {
+                "createFailed": "Impossible de créer l'équipe. Veuillez réessayer.",
+                "limitReached": "Limite d'équipes atteinte. Mettez à jour votre plan pour créer plus d'équipes."
+            }
+        }
     },
     "common": {
         "actions": {
@@ -728,11 +802,77 @@
             "user": "Utilisateur"
         },
         "confirmDeleteUser": "Supprimer l'utilisateur {{email}}?",
-        "confirmDeleteSite": "Supprimer le site {{domain}}? Cette action est irreversible."
+        "confirmDeleteSite": "Supprimer le site {{domain}}? Cette action est irreversible.",
+        "team": {
+            "tabs": {
+                "overview": "Aperçu",
+                "members": "Membres",
+                "settings": "Paramètres",
+                "activity": "Activité"
+            },
+            "overview": {
+                "breadcrumb": "Aperçu de l'équipe",
+                "title": "Équipe",
+                "memberCount": "Équipes",
+                "quickActions": "Actions rapides",
+                "manageMembers": "Gérer les membres",
+                "teamSettings": "Paramètres de l'équipe"
+            },
+            "members": {
+                "breadcrumb": "Membres de l'équipe",
+                "title": "Membres de l'équipe"
+            },
+            "settings": {
+                "breadcrumb": "Paramètres de l'équipe",
+                "title": "Paramètres de l'équipe",
+                "nameSectionTitle": "Nom de l'équipe",
+                "nameSectionDescription": "Le nom d'affichage de cette équipe. Les propriétaires et admins peuvent le modifier.",
+                "nameRequired": "Le nom de l'équipe est requis.",
+                "logoSectionTitle": "Logo de l'équipe",
+                "logoSectionDescription": "Une URL pointant vers l'image du logo de cette équipe.",
+                "logoPlaceholder": "https://exemple.fr/logo.png",
+                "logoPreviewAlt": "Aperçu du logo de l'équipe",
+                "saveAction": "Enregistrer les paramètres",
+                "saveSuccess": "Paramètres de l'équipe enregistrés.",
+                "saveError": "Échec de l'enregistrement des paramètres de l'équipe. Veuillez réessayer.",
+                "leaveSectionTitle": "Quitter l'équipe",
+                "leaveSectionDescription": "Retirez-vous de cette équipe et basculez vers une autre équipe dont vous faites partie.",
+                "leaveAction": "Quitter l'équipe",
+                "leaveSuccess": "Vous avez quitté l'équipe.",
+                "leaveErrors": {
+                    "lastOwner": "Vous ne pouvez pas quitter l'équipe en tant que dernier propriétaire.",
+                    "onlyTeam": "Vous ne pouvez pas quitter votre seule équipe.",
+                    "generic": "Impossible de quitter l'équipe. Veuillez réessayer."
+                }
+            },
+            "audit": {
+                "readOnly": "Vous n'avez pas la permission de voir l'activité de l'équipe.",
+                "empty": "Aucune activité d'équipe pour le moment.",
+                "loadError": "Impossible de charger l'activité de l'équipe.",
+                "forbidden": "Vous n'avez pas la permission de voir l'activité de l'équipe.",
+                "columns": {
+                    "actor": "Acteur",
+                    "action": "Action",
+                    "target": "Cible",
+                    "details": "Détails"
+                },
+                "actions": {
+                    "teamCreated": "Équipe créée",
+                    "teamUpdated": "Équipe mise à jour",
+                    "memberInvited": "Membre invité",
+                    "memberAdded": "Membre ajouté",
+                    "memberRoleUpdated": "Rôle de membre mis à jour",
+                    "memberRemoved": "Membre retiré",
+                    "memberLeft": "Le membre a quitté l'équipe",
+                    "unknown": "Action inconnue"
+                }
+            }
+        }
     },
     "roles": {
         "owner": "Proprietaire",
         "admin": "Administrateur",
+        "member": "Membre",
         "editor": "Editeur",
         "viewer": "Lecteur"
     },

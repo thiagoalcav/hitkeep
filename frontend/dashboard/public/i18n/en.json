@@ -25,7 +25,81 @@
         "settings": "User Settings",
         "settingsAria": "Go to user settings",
         "emailReports": "Email Reports",
-        "emailReportsAria": "Go to email reports"
+        "emailReportsAria": "Go to email reports",
+        "administration": "Administration",
+        "systemSettings": "System Settings",
+        "systemSettingsAria": "Go to system settings",
+        "teamOverview": "Team Overview",
+        "teamOverviewAria": "Go to team overview",
+        "teamMembers": "Team Members",
+        "teamMembersAria": "Go to team members",
+        "team": "Team",
+        "teamAria": "Go to team management",
+        "teamSectionToggleAria": "Toggle team navigation",
+        "teamSettings": "Team Settings",
+        "teamSettingsAria": "Go to team settings"
+    },
+    "teams": {
+        "switcher": {
+            "label": "Teams",
+            "regionAria": "Team selector",
+            "selectAria": "Select active team",
+            "placeholder": "Select a team",
+            "currentTeamAria": "Current team: {{name}}",
+            "addTeamAria": "Create a new team"
+        },
+        "roles": {
+            "owner": "Owner",
+            "admin": "Admin",
+            "member": "Member"
+        },
+        "management": {
+            "title": "Team members",
+            "subtitle": "Manage access and roles for {{team}}.",
+            "openAction": "Manage team",
+            "openAria": "Open team management",
+            "dialogTitle": "Manage {{team}}",
+            "noTeam": "No active team selected.",
+            "readOnly": "You can view members but cannot manage team membership with your current role.",
+            "notAllowed": "Not allowed",
+            "empty": "No team members found.",
+            "removeAction": "Remove",
+            "removeAria": "Remove {{email}} from team",
+            "confirmRemove": "Remove {{email}} from this team?",
+            "invite": {
+                "emailLabel": "Email address",
+                "emailPlaceholder": "user@example.com",
+                "emailInvalid": "Enter a valid email address.",
+                "roleLabel": "Role",
+                "submitAction": "Invite member"
+            },
+            "status": {
+                "inviteSent": "Invite sent successfully.",
+                "memberUpdated": "Member updated successfully.",
+                "roleUpdated": "Role updated successfully.",
+                "memberRemoved": "Member removed successfully."
+            },
+            "errors": {
+                "loadFailed": "Failed to load team members.",
+                "inviteFailed": "Failed to invite member.",
+                "roleUpdateFailed": "Failed to update member role.",
+                "removeFailed": "Failed to remove member.",
+                "forbidden": "You do not have permission to manage this team.",
+                "alreadyMember": "This user is already a member of the team.",
+                "lastOwner": "At least one owner must remain in the team."
+            }
+        },
+        "createDialog": {
+            "title": "Create team",
+            "nameLabel": "Team name",
+            "namePlaceholder": "e.g. Marketing",
+            "nameRequired": "Team name is required.",
+            "createAction": "Create team",
+            "errors": {
+                "createFailed": "Failed to create team. Please try again.",
+                "limitReached": "Team limit reached. Upgrade your plan to create more teams."
+            }
+        }
     },
     "common": {
         "actions": {
@@ -728,11 +802,77 @@
             "user": "User"
         },
         "confirmDeleteUser": "Delete user {{email}}?",
-        "confirmDeleteSite": "Delete site {{domain}}? This action cannot be undone."
+        "confirmDeleteSite": "Delete site {{domain}}? This action cannot be undone.",
+        "team": {
+            "tabs": {
+                "overview": "Overview",
+                "members": "Members",
+                "settings": "Settings",
+                "activity": "Activity"
+            },
+            "overview": {
+                "breadcrumb": "Team Overview",
+                "title": "Team",
+                "memberCount": "Teams",
+                "quickActions": "Quick actions",
+                "manageMembers": "Manage members",
+                "teamSettings": "Team settings"
+            },
+            "members": {
+                "breadcrumb": "Team Members",
+                "title": "Team Members"
+            },
+            "settings": {
+                "breadcrumb": "Team Settings",
+                "title": "Team Settings",
+                "nameSectionTitle": "Team name",
+                "nameSectionDescription": "The display name for this team. Owners and admins can update it.",
+                "nameRequired": "Team name is required.",
+                "logoSectionTitle": "Team logo",
+                "logoSectionDescription": "A URL pointing to this team's logo image.",
+                "logoPlaceholder": "https://example.com/logo.png",
+                "logoPreviewAlt": "Team logo preview",
+                "saveAction": "Save settings",
+                "saveSuccess": "Team settings saved.",
+                "saveError": "Failed to save team settings. Please try again.",
+                "leaveSectionTitle": "Leave team",
+                "leaveSectionDescription": "Remove yourself from this team and switch to another team you belong to.",
+                "leaveAction": "Leave team",
+                "leaveSuccess": "You left the team.",
+                "leaveErrors": {
+                    "lastOwner": "You cannot leave as the last owner.",
+                    "onlyTeam": "You cannot leave your only team.",
+                    "generic": "Failed to leave team. Please try again."
+                }
+            },
+            "audit": {
+                "readOnly": "You do not have permission to view team activity.",
+                "empty": "No team activity yet.",
+                "loadError": "Failed to load team activity.",
+                "forbidden": "You do not have permission to view team activity.",
+                "columns": {
+                    "actor": "Actor",
+                    "action": "Action",
+                    "target": "Target",
+                    "details": "Details"
+                },
+                "actions": {
+                    "teamCreated": "Team created",
+                    "teamUpdated": "Team updated",
+                    "memberInvited": "Member invited",
+                    "memberAdded": "Member added",
+                    "memberRoleUpdated": "Member role updated",
+                    "memberRemoved": "Member removed",
+                    "memberLeft": "Member left",
+                    "unknown": "Unknown action"
+                }
+            }
+        }
     },
     "roles": {
         "owner": "Owner",
         "admin": "Admin",
+        "member": "Member",
         "editor": "Editor",
         "viewer": "Viewer"
     },

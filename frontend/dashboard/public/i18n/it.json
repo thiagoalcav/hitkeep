@@ -25,7 +25,81 @@
         "settings": "Impostazioni utente",
         "settingsAria": "Vai alle impostazioni utente",
         "emailReports": "Report email",
-        "emailReportsAria": "Vai ai report email"
+        "emailReportsAria": "Vai ai report email",
+        "administration": "Amministrazione",
+        "systemSettings": "Impostazioni di sistema",
+        "systemSettingsAria": "Vai alle impostazioni di sistema",
+        "teamOverview": "Panoramica del team",
+        "teamOverviewAria": "Vai alla panoramica del team",
+        "teamMembers": "Membri del team",
+        "teamMembersAria": "Vai ai membri del team",
+        "team": "Team",
+        "teamAria": "Vai alla gestione del team",
+        "teamSectionToggleAria": "Attiva/disattiva navigazione del team",
+        "teamSettings": "Impostazioni del team",
+        "teamSettingsAria": "Vai alle impostazioni del team"
+    },
+    "teams": {
+        "switcher": {
+            "label": "Team",
+            "regionAria": "Selettore del team",
+            "selectAria": "Seleziona il team attivo",
+            "placeholder": "Seleziona un team",
+            "currentTeamAria": "Team attuale: {{name}}",
+            "addTeamAria": "Crea un nuovo team"
+        },
+        "roles": {
+            "owner": "Proprietario",
+            "admin": "Amministratore",
+            "member": "Membro"
+        },
+        "management": {
+            "title": "Membri del team",
+            "subtitle": "Gestisci accessi e ruoli per {{team}}.",
+            "openAction": "Gestisci team",
+            "openAria": "Apri gestione team",
+            "dialogTitle": "Gestisci {{team}}",
+            "noTeam": "Nessun team attivo selezionato.",
+            "readOnly": "Puoi vedere i membri, ma non puoi gestire il team con il tuo ruolo corrente.",
+            "notAllowed": "Non consentito",
+            "empty": "Nessun membro del team trovato.",
+            "removeAction": "Rimuovi",
+            "removeAria": "Rimuovi {{email}} dal team",
+            "confirmRemove": "Rimuovere {{email}} da questo team?",
+            "invite": {
+                "emailLabel": "Indirizzo email",
+                "emailPlaceholder": "user@example.com",
+                "emailInvalid": "Inserisci un indirizzo email valido.",
+                "roleLabel": "Ruolo",
+                "submitAction": "Invita membro"
+            },
+            "status": {
+                "inviteSent": "Invito inviato con successo.",
+                "memberUpdated": "Membro aggiornato con successo.",
+                "roleUpdated": "Ruolo aggiornato con successo.",
+                "memberRemoved": "Membro rimosso con successo."
+            },
+            "errors": {
+                "loadFailed": "Impossibile caricare i membri del team.",
+                "inviteFailed": "Impossibile invitare il membro.",
+                "roleUpdateFailed": "Impossibile aggiornare il ruolo del membro.",
+                "removeFailed": "Impossibile rimuovere il membro.",
+                "forbidden": "Non hai i permessi per gestire questo team.",
+                "alreadyMember": "Questo utente è già membro del team.",
+                "lastOwner": "Almeno un proprietario deve rimanere nel team."
+            }
+        },
+        "createDialog": {
+            "title": "Crea team",
+            "nameLabel": "Nome del team",
+            "namePlaceholder": "es. Marketing",
+            "nameRequired": "Il nome del team è obbligatorio.",
+            "createAction": "Crea team",
+            "errors": {
+                "createFailed": "Impossibile creare il team. Riprova.",
+                "limitReached": "Limite di team raggiunto. Aggiorna il tuo piano per creare più team."
+            }
+        }
     },
     "common": {
         "actions": {
@@ -728,11 +802,77 @@
             "user": "Utente"
         },
         "confirmDeleteUser": "Eliminare l'utente {{email}}?",
-        "confirmDeleteSite": "Eliminare il sito {{domain}}? Questa azione non puo essere annullata."
+        "confirmDeleteSite": "Eliminare il sito {{domain}}? Questa azione non puo essere annullata.",
+        "team": {
+            "tabs": {
+                "overview": "Panoramica",
+                "members": "Membri",
+                "settings": "Impostazioni",
+                "activity": "Attività"
+            },
+            "overview": {
+                "breadcrumb": "Panoramica del team",
+                "title": "Team",
+                "memberCount": "Team",
+                "quickActions": "Azioni rapide",
+                "manageMembers": "Gestisci membri",
+                "teamSettings": "Impostazioni del team"
+            },
+            "members": {
+                "breadcrumb": "Membri del team",
+                "title": "Membri del team"
+            },
+            "settings": {
+                "breadcrumb": "Impostazioni del team",
+                "title": "Impostazioni del team",
+                "nameSectionTitle": "Nome del team",
+                "nameSectionDescription": "Il nome visualizzato per questo team. I proprietari e gli admin possono modificarlo.",
+                "nameRequired": "Il nome del team è obbligatorio.",
+                "logoSectionTitle": "Logo del team",
+                "logoSectionDescription": "Un URL che punta all'immagine del logo di questo team.",
+                "logoPlaceholder": "https://esempio.it/logo.png",
+                "logoPreviewAlt": "Anteprima del logo del team",
+                "saveAction": "Salva impostazioni",
+                "saveSuccess": "Impostazioni del team salvate.",
+                "saveError": "Impossibile salvare le impostazioni del team. Riprova.",
+                "leaveSectionTitle": "Lascia il team",
+                "leaveSectionDescription": "Rimuoviti da questo team e passa a un altro team di cui fai parte.",
+                "leaveAction": "Lascia il team",
+                "leaveSuccess": "Hai lasciato il team.",
+                "leaveErrors": {
+                    "lastOwner": "Non puoi lasciare il team come ultimo proprietario.",
+                    "onlyTeam": "Non puoi lasciare il tuo unico team.",
+                    "generic": "Impossibile lasciare il team. Riprova."
+                }
+            },
+            "audit": {
+                "readOnly": "Non hai il permesso di vedere l'attività del team.",
+                "empty": "Nessuna attività del team per ora.",
+                "loadError": "Impossibile caricare l'attività del team.",
+                "forbidden": "Non hai il permesso di vedere l'attività del team.",
+                "columns": {
+                    "actor": "Attore",
+                    "action": "Azione",
+                    "target": "Destinatario",
+                    "details": "Dettagli"
+                },
+                "actions": {
+                    "teamCreated": "Team creato",
+                    "teamUpdated": "Team aggiornato",
+                    "memberInvited": "Membro invitato",
+                    "memberAdded": "Membro aggiunto",
+                    "memberRoleUpdated": "Ruolo membro aggiornato",
+                    "memberRemoved": "Membro rimosso",
+                    "memberLeft": "Membro uscito dal team",
+                    "unknown": "Azione sconosciuta"
+                }
+            }
+        }
     },
     "roles": {
         "owner": "Owner",
         "admin": "Admin",
+        "member": "Membro",
         "editor": "Editor",
         "viewer": "Viewer"
     },

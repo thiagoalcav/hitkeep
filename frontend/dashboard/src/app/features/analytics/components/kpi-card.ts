@@ -33,13 +33,15 @@ export class KpiCard {
     loading = input<boolean>(false);
     valueClass = input<string>("");
     delta = input<number | null>(null);
+    invertDelta = input<boolean>(false);
 
     protected displayClass = computed(() => this.valueClass() || "text-2xl xl:text-3xl font-bold");
 
     protected deltaClass = computed(() => {
         const d = this.delta();
         if (d === null) return "";
-        const positive = d >= 0;
+        const normalized = this.invertDelta() ? -d : d;
+        const positive = normalized >= 0;
         return positive
             ? "text-xs font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
             : "text-xs font-medium px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
@@ -48,7 +50,8 @@ export class KpiCard {
     protected deltaLabel = computed(() => {
         const d = this.delta();
         if (d === null) return "";
-        const sign = d >= 0 ? "+" : "";
-        return `${sign}${d.toFixed(1)}%`;
+        const normalized = this.invertDelta() ? -d : d;
+        const sign = normalized >= 0 ? "+" : "";
+        return `${sign}${normalized.toFixed(1)}%`;
     });
 }

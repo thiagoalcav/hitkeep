@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal, effect, computed, untracked } from "@angular/core";
+import { ChangeDetectionStrategy, Component, inject, signal, effect, computed, linkedSignal, untracked } from "@angular/core";
 import { injectActiveLang } from "@core/i18n/active-lang";
 import { FormControl, ReactiveFormsModule } from "@angular/forms";
 import { compatForm } from "@angular/forms/signals/compat";
@@ -52,14 +52,17 @@ export class Goals {
     private transloco = inject(TranslocoService);
     private readonly activeLanguage = injectActiveLang();
 
-    protected timeRanges = signal([
-        { label: "", value: "24h" },
-        { label: "", value: "7d" },
-        { label: "", value: "30d" },
-        { label: "", value: "1y" },
-        { label: "", value: "custom" }
-    ]);
-    protected selectedRange = signal({ label: "", value: "30d" });
+    protected timeRanges = computed(() => {
+        this.activeLanguage();
+        return this.buildTimeRanges();
+    });
+    protected selectedRange = linkedSignal<{ label: string; value: string }[], { label: string; value: string }>({
+        source: this.timeRanges,
+        computation: (ranges, previous) => {
+            const value = previous?.value.value ?? "30d";
+            return ranges.find((r) => r.value === value) ?? ranges[2]!;
+        }
+    });
     protected isCustomRangeVisible = signal(false);
     private readonly goalFilterFormModel = signal({
         goalFilter: new FormControl<{ id: string; name: string } | null>(null),
@@ -190,15 +193,6 @@ export class Goals {
     });
 
     constructor() {
-        effect(() => {
-            this.activeLanguage();
-            const ranges = this.buildTimeRanges();
-            const selectedValue = untracked(() => this.selectedRange().value);
-            const nextSelected = ranges.find((range) => range.value === selectedValue) ?? ranges[2]!;
-            this.timeRanges.set(ranges);
-            this.selectedRange.set(nextSelected);
-        });
-
         effect(() => {
             const site = this.siteService.activeSite();
             if (site) {

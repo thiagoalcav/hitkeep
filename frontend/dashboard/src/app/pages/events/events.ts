@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal, untracked } from "@angular/core";
 import { FormsModule, FormControl, ReactiveFormsModule } from "@angular/forms";
 import { compatForm } from "@angular/forms/signals/compat";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
@@ -44,14 +44,17 @@ export class Events {
     private transloco = inject(TranslocoService);
     private readonly activeLanguage = injectActiveLang();
 
-    protected timeRanges = signal<RangeOption[]>([
-        { label: "", value: "24h" },
-        { label: "", value: "7d" },
-        { label: "", value: "30d" },
-        { label: "", value: "1y" },
-        { label: "", value: "custom" }
-    ]);
-    protected selectedRange = signal<RangeOption>({ label: "", value: "30d" });
+    protected timeRanges = computed<RangeOption[]>(() => {
+        this.activeLanguage();
+        return this.buildTimeRanges();
+    });
+    protected selectedRange = linkedSignal<RangeOption[], RangeOption>({
+        source: this.timeRanges,
+        computation: (ranges, previous) => {
+            const value = previous?.value.value ?? "30d";
+            return ranges.find((r) => r.value === value) ?? ranges[2]!;
+        }
+    });
     protected isCustomRangeVisible = signal(false);
     private readonly rangeFormModel = signal({
         customRangeDates: new FormControl<Date[] | null>(null)
@@ -166,16 +169,6 @@ export class Events {
     });
 
     constructor() {
-        // Rebuild time range labels once translations are loaded, and on language changes
-        effect(() => {
-            this.activeLanguage();
-            const current = untracked(() => this.selectedRange().value);
-            const ranges = this.buildTimeRanges();
-            this.timeRanges.set(ranges);
-            const next = ranges.find((r) => r.value === current) ?? ranges[2]!;
-            this.selectedRange.set(next);
-        });
-
         // Load event names when site/range changes; reset selection
         effect(() => {
             const site = this.activeSite();

@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal, computed, ChangeDetectionStrategy, untracked, DestroyRef } from "@angular/core";
+import { Component, effect, inject, signal, computed, linkedSignal, ChangeDetectionStrategy, DestroyRef } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { injectActiveLang } from "@core/i18n/active-lang";
 import { NgOptimizedImage } from "@angular/common";
@@ -62,6 +62,7 @@ interface KpiCardData {
     loading: boolean;
     valueClass: string;
     delta?: number | null;
+    invertDelta?: boolean;
 }
 @Component({
     selector: "app-dashboard",
@@ -109,14 +110,17 @@ export class Dashboard {
     private transloco = inject(TranslocoService);
     private destroyRef = inject(DestroyRef);
     private readonly activeLanguage = injectActiveLang();
-    protected timeRanges = signal([
-        { label: "", value: "24h" },
-        { label: "", value: "7d" },
-        { label: "", value: "30d" },
-        { label: "", value: "1y" },
-        { label: "", value: "custom" }
-    ]);
-    protected selectedRange = signal({ label: "", value: "30d" });
+    protected timeRanges = computed(() => {
+        this.activeLanguage();
+        return this.buildTimeRanges();
+    });
+    protected selectedRange = linkedSignal<{ label: string; value: string }[], { label: string; value: string }>({
+        source: this.timeRanges,
+        computation: (ranges, previous) => {
+            const value = previous?.value.value ?? "30d";
+            return ranges.find((r) => r.value === value) ?? ranges[2]!;
+        }
+    });
     private readonly autoRefreshIntervalMs = 30000;
     protected isShareMode = computed(() => this.shareService.isShareMode());
     protected isCustomRangeVisible = signal(false);
@@ -209,7 +213,8 @@ export class Dashboard {
                 value: `${bounceValue}%`,
                 loading,
                 valueClass: baseClass,
-                delta: cmp ? this.calcDelta(stats?.bounce_rate ?? 0, cmp.bounce_rate) : null
+                delta: cmp ? this.calcDelta(stats?.bounce_rate ?? 0, cmp.bounce_rate) : null,
+                invertDelta: true
             },
             {
                 label: this.transloco.translate("dashboard.kpis.avgDuration"),
@@ -276,15 +281,6 @@ export class Dashboard {
         return this.transloco.translate("dashboard.chartTitleOverview");
     });
     constructor() {
-        effect(() => {
-            this.activeLanguage();
-            const ranges = this.buildTimeRanges();
-            const selectedValue = untracked(() => this.selectedRange().value);
-            const nextSelected = ranges.find((range) => range.value === selectedValue) ?? ranges[2]!;
-            this.timeRanges.set(ranges);
-            this.selectedRange.set(nextSelected);
-        });
-
         this.searchSubject.pipe(debounceTime(400), distinctUntilChanged()).subscribe((q) => {
             this.searchQuery.set(q);
             this.refreshHits();

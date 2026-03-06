@@ -3,7 +3,7 @@
 > **Web Analytics in a single binary.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Version](https://img.shields.io/badge/Go-1.26.0-00ADD8?logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.26.1-00ADD8?logo=go)](https://go.dev/)
 [![Docker Image (GHCR)](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://github.com/pascalebeier/hitkeep/pkgs/container/hitkeep)
 [![Docker Image (Hub)](https://img.shields.io/badge/Docker-Docker_Hub-2496ED?logo=docker)](https://hub.docker.com/r/pascalebeier/hitkeep)
 [![Documentation](https://img.shields.io/badge/📖_Documentation-hitkeep.com-33d399)](https://hitkeep.com)
@@ -69,6 +69,24 @@ Unlike other solutions that require you to manage a complex stack (PostgreSQL, R
 ### Admin — Site Management
 ![HitKeep admin panel — site management](./.github/assets/admin-sites-list.png)
 
+### Teams — Switcher
+![HitKeep team switcher with multiple teams](./.github/assets/feature-team-switcher.png)
+
+### Teams — Create Team
+![HitKeep create team dialog](./.github/assets/feature-create-team.png)
+
+### Teams — Overview
+![HitKeep team administration overview](./.github/assets/admin-team-overview.png)
+
+### Teams — Members
+![HitKeep team member management](./.github/assets/admin-team-members.png)
+
+### Teams — Settings
+![HitKeep team settings](./.github/assets/admin-team-settings.png)
+
+### Teams — Activity
+![HitKeep team audit activity log](./.github/assets/admin-team-audit.png)
+
 </details>
 
 > **HitKeep Cloud is coming!**
@@ -93,6 +111,7 @@ Visit **[hitkeep.com](https://hitkeep.com)** for the complete documentation, inc
 - **Embedded DuckDB + NSQ:** Columnar analytics storage with in-process burst buffering.
 - **Privacy-First Tracking:** Cookie-less by default, bot filtering, DNT support, optional `sendBeacon` disable.
 - **Analytics Coverage:** Traffic overview, raw hits, events, goals, funnels, and UTM attribution fields.
+- **Teams & Multitenancy:** Shared control plane plus isolated per-team analytics databases for non-default teams.
 - **Security & Auth:** JWT sessions, remember-me tokens, password reset, TOTP MFA, and WebAuthn passkeys.
 - **RBAC & Team Management:** Instance roles and per-site roles with delegated permissions.
 - **API Clients:** Create scoped API tokens for automation and integrations.
@@ -222,6 +241,7 @@ HitKeep is configured via command-line flags or environment variables. Flags tak
 | `-public-url`      | `HITKEEP_PUBLIC_URL`      | Used for JWT issuer/audience and CORS behavior. |
 | `-jwt-secret`      | `HITKEEP_JWT_SECRET`      | Signs auth tokens; must be stable and secret across restarts. |
 | `-db`              | `HITKEEP_DB_PATH`         | Controls where `hitkeep.db` is stored/persisted. |
+| `-data-path`       | `HITKEEP_DATA_PATH`       | Base directory for tenant databases and other local state. Back up this directory, not only `hitkeep.db`. |
 | `-archive-path`    | `HITKEEP_ARCHIVE_PATH`    | Stores takeout and retention archives. |
 | `-trusted-proxies` | `HITKEEP_TRUSTED_PROXIES` | Controls whether forwarded headers are trusted for real IP and GeoIP. |
 | `-retention-days`  | `HITKEEP_DATA_RETENTION_DAYS` | Default retention policy for new sites. |
@@ -230,6 +250,7 @@ HitKeep is configured via command-line flags or environment variables. Flags tak
 
 - `-trusted-proxies` now defaults to `*` (trust-all CIDRs). Set this explicitly in production to your reverse proxy/load balancer CIDRs.
 - `-jwt-secret` is auto-generated if omitted. That is fine for local dev but will invalidate sessions on restart unless you persist a fixed secret.
+- In multiteam installs, the backup boundary is the whole `-data-path` tree. The shared control plane stays at `{data-path}/hitkeep.db`; non-default team analytics live under `{data-path}/tenants/{team_id}/hitkeep.db`.
 
 ### General Settings
 

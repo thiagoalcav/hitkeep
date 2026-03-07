@@ -35,6 +35,18 @@ func (h *handler) appendTeamAudit(r *http.Request, teamID, actorID uuid.UUID, ac
 	}
 }
 
+func writeTeamActionError(w http.ResponseWriter, statusCode int, code string, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+	if err := json.NewEncoder(w).Encode(map[string]string{
+		"status":  "error",
+		"code":    code,
+		"message": message,
+	}); err != nil {
+		slog.Error("Failed to encode team action error", "error", err, "code", code)
+	}
+}
+
 func (h *handler) sendTeamInviteEmail(r *http.Request, teamID, actorID uuid.UUID, invite *api.TeamInvite) {
 	if h.ctx.Mailer == nil || invite == nil {
 		return
@@ -389,6 +401,10 @@ func (h *handler) handleAddTeamMember() http.HandlerFunc {
 			http.Error(w, "Forbidden role assignment", http.StatusForbidden)
 			return
 		}
+		if role == database.TenantRoleOwner {
+			writeTeamActionError(w, http.StatusConflict, "ownership_transfer_required", "Use the ownership transfer action to assign the owner role")
+			return
+		}
 
 		user, err := h.ctx.Store.GetUserByEmail(r.Context(), email)
 		if err != nil {
@@ -671,6 +687,72 @@ func (h *handler) handleUpdateTeam() http.HandlerFunc {
 	}
 }
 
+func (h *handler) handleTransferTeamOwnership() http.HandlerFunc {
+	type request struct {
+		TargetUserID string `json:"target_user_id"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		actorID := shared.GetUserIDFromContext(r)
+		if actorID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		teamID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+		if err != nil {
+			http.Error(w, "Invalid team ID", http.StatusBadRequest)
+			return
+		}
+
+		var req request
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&req); err != nil {
+			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			return
+		}
+		if err := decoder.Decode(&struct{}{}); err != io.EOF {
+			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			return
+		}
+
+		targetUserID, err := uuid.Parse(strings.TrimSpace(req.TargetUserID))
+		if err != nil {
+			http.Error(w, "Invalid target user ID", http.StatusBadRequest)
+			return
+		}
+
+		if err := h.ctx.Store.TransferTeamOwnership(r.Context(), teamID, actorID, targetUserID); err != nil {
+			switch {
+			case errors.Is(err, database.ErrTenantMembershipRequired), errors.Is(err, database.ErrTeamTransferRequiresOwner):
+				writeTeamActionError(w, http.StatusForbidden, "ownership_transfer_forbidden", "Only team owners can transfer ownership")
+				return
+			case errors.Is(err, database.ErrTeamTransferTargetNotMember):
+				writeTeamActionError(w, http.StatusBadRequest, "ownership_transfer_target_invalid", "The selected user must already be a team member")
+				return
+			case errors.Is(err, database.ErrTeamTransferSelf):
+				writeTeamActionError(w, http.StatusConflict, "ownership_transfer_self", "Ownership transfer requires a different team member")
+				return
+			case errors.Is(err, database.ErrTeamTransferTargetAlreadyOwner):
+				writeTeamActionError(w, http.StatusConflict, "ownership_transfer_already_owner", "The selected member is already an owner")
+				return
+			default:
+				slog.Error("Failed to transfer team ownership", "error", err, "team_id", teamID, "actor_id", actorID, "target_user_id", targetUserID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		h.appendTeamAudit(r, teamID, actorID, "ownership.transferred", fmt.Sprintf("Ownership transferred to %s", targetUserID), &targetUserID)
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+			slog.Error("Failed to encode ownership transfer response", "error", err, "team_id", teamID, "actor_id", actorID)
+		}
+	}
+}
+
 func (h *handler) handleRemoveTeamMember() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		actorID := shared.GetUserIDFromContext(r)
@@ -754,13 +836,13 @@ func (h *handler) handleLeaveTeam() http.HandlerFunc {
 		if err != nil {
 			switch {
 			case errors.Is(err, database.ErrTenantMembershipRequired):
-				http.Error(w, "Access denied", http.StatusForbidden)
+				writeTeamActionError(w, http.StatusForbidden, "team_membership_required", "Access denied")
 				return
 			case errors.Is(err, database.ErrTeamLastOwner):
-				http.Error(w, "Cannot leave as the last owner", http.StatusBadRequest)
+				writeTeamActionError(w, http.StatusBadRequest, "team_last_owner", "Cannot leave as the last owner")
 				return
 			case errors.Is(err, database.ErrUserOnlyTeam):
-				http.Error(w, "Cannot leave your only team", http.StatusBadRequest)
+				writeTeamActionError(w, http.StatusBadRequest, "user_only_team", "Cannot leave your only team")
 				return
 			default:
 				slog.Error("Failed to leave team", "error", err, "user_id", userID, "team_id", teamID)
@@ -772,10 +854,18 @@ func (h *handler) handleLeaveTeam() http.HandlerFunc {
 		leftUserID := userID
 		h.appendTeamAudit(r, teamID, userID, "member.left", fmt.Sprintf("Member %s left the team", userID), &leftUserID)
 
+		teams, activeTeamID, teamsErr := h.ctx.Store.ListUserTeams(r.Context(), userID)
+		if teamsErr != nil {
+			slog.Warn("Failed to load team list after leaving team", "error", teamsErr, "user_id", userID, "team_id", teamID)
+			teams = nil
+			activeTeamID = nextActiveTeamID
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(map[string]any{
-			"status":         "ok",
-			"active_team_id": nextActiveTeamID,
+			"status":          "ok",
+			"active_team_id":  activeTeamID,
+			"recent_team_ids": orderedRecentTeamIDs(teams, activeTeamID),
 		}); err != nil {
 			slog.Error("Failed to encode leave team response", "error", err, "user_id", userID, "team_id", teamID)
 		}

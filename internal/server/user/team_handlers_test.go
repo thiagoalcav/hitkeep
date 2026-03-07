@@ -548,6 +548,92 @@ func TestHandleLeaveTeamSuccess(t *testing.T) {
 	if isMember {
 		t.Fatalf("expected user to be removed from team")
 	}
+
+	var resp struct {
+		Status        string      `json:"status"`
+		ActiveTeamID  uuid.UUID   `json:"active_team_id"`
+		RecentTeamIDs []uuid.UUID `json:"recent_team_ids"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode leave response: %v", err)
+	}
+	if resp.Status != "ok" {
+		t.Fatalf("expected leave status ok, got %q", resp.Status)
+	}
+	if len(resp.RecentTeamIDs) == 0 || resp.RecentTeamIDs[0] != resp.ActiveTeamID {
+		t.Fatalf("expected recent_team_ids to start with active team, got %+v", resp.RecentTeamIDs)
+	}
+}
+
+func TestHandleLeaveTeamReturnsStructuredError(t *testing.T) {
+	h, store, ownerID := setupUserSecurityTestEnv(t)
+	defer store.Close()
+
+	defaultTenantID, err := store.GetDefaultTenantID(context.Background())
+	if err != nil {
+		t.Fatalf("get default tenant: %v", err)
+	}
+
+	req := withTestUser(httptest.NewRequest(http.MethodDelete, "/api/user/teams/"+defaultTenantID.String()+"/leave", nil), ownerID)
+	req.SetPathValue("id", defaultTenantID.String())
+	w := httptest.NewRecorder()
+
+	h.handleLeaveTeam().ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+
+	var resp map[string]string
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode leave error response: %v", err)
+	}
+	if resp["code"] != "user_only_team" {
+		t.Fatalf("expected code %q, got %q", "user_only_team", resp["code"])
+	}
+}
+
+func TestHandleTransferTeamOwnership(t *testing.T) {
+	h, store, ownerID := setupUserSecurityTestEnv(t)
+	defer store.Close()
+
+	defaultTenantID, err := store.GetDefaultTenantID(context.Background())
+	if err != nil {
+		t.Fatalf("get default tenant: %v", err)
+	}
+
+	targetID, err := store.CreateUser(context.Background(), "transfer-target@team.test", "hash")
+	if err != nil {
+		t.Fatalf("create target user: %v", err)
+	}
+	if err := store.AddTeamMember(context.Background(), defaultTenantID, targetID, database.TenantRoleAdmin, ownerID); err != nil {
+		t.Fatalf("add target user to team: %v", err)
+	}
+
+	body, _ := json.Marshal(map[string]string{"target_user_id": targetID.String()})
+	req := withTestUser(httptest.NewRequest(http.MethodPost, "/api/user/teams/"+defaultTenantID.String()+"/transfer-ownership", bytes.NewReader(body)), ownerID)
+	req.SetPathValue("id", defaultTenantID.String())
+	w := httptest.NewRecorder()
+
+	h.handleTransferTeamOwnership().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	newOwnerRole, err := store.GetTenantRole(context.Background(), defaultTenantID, targetID)
+	if err != nil {
+		t.Fatalf("get new owner role: %v", err)
+	}
+	if newOwnerRole != database.TenantRoleOwner {
+		t.Fatalf("expected transferred owner role %q, got %q", database.TenantRoleOwner, newOwnerRole)
+	}
+
+	previousOwnerRole, err := store.GetTenantRole(context.Background(), defaultTenantID, ownerID)
+	if err != nil {
+		t.Fatalf("get previous owner role: %v", err)
+	}
+	if previousOwnerRole != database.TenantRoleAdmin {
+		t.Fatalf("expected previous owner role %q, got %q", database.TenantRoleAdmin, previousOwnerRole)
+	}
 }
 
 func TestHandleGetTeamAudit(t *testing.T) {

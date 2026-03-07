@@ -27,6 +27,10 @@ var ErrTeamLastOwner = errors.New("team must retain at least one owner")
 var ErrUserOnlyTeam = errors.New("user cannot leave their only team")
 var ErrTeamInviteAlreadyPending = errors.New("team invite already pending")
 var ErrTeamInviteNotFound = errors.New("team invite not found")
+var ErrTeamTransferRequiresOwner = errors.New("team ownership transfer requires owner")
+var ErrTeamTransferSelf = errors.New("cannot transfer ownership to self")
+var ErrTeamTransferTargetNotMember = errors.New("ownership transfer target must be a team member")
+var ErrTeamTransferTargetAlreadyOwner = errors.New("ownership transfer target is already owner")
 
 const (
 	TeamInviteStatusPending  = "pending"
@@ -603,6 +607,57 @@ func (s *Store) LeaveTeam(ctx context.Context, tenantID, userID uuid.UUID) (uuid
 	}
 
 	return nextActiveTenantID, nil
+}
+
+func (s *Store) TransferTeamOwnership(ctx context.Context, tenantID, actorID, targetUserID uuid.UUID) error {
+	if actorID == targetUserID {
+		return ErrTeamTransferSelf
+	}
+
+	return s.Transact(ctx, func(tx *sql.Tx) error {
+		var actorRole string
+		if err := tx.QueryRowContext(ctx,
+			"SELECT role FROM tenant_members WHERE tenant_id = ? AND user_id = ?",
+			tenantID, actorID,
+		).Scan(&actorRole); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrTenantMembershipRequired
+			}
+			return fmt.Errorf("could not resolve actor role: %w", err)
+		}
+		if actorRole != TenantRoleOwner {
+			return ErrTeamTransferRequiresOwner
+		}
+
+		var targetRole string
+		if err := tx.QueryRowContext(ctx,
+			"SELECT role FROM tenant_members WHERE tenant_id = ? AND user_id = ?",
+			tenantID, targetUserID,
+		).Scan(&targetRole); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrTeamTransferTargetNotMember
+			}
+			return fmt.Errorf("could not resolve target role: %w", err)
+		}
+		if targetRole == TenantRoleOwner {
+			return ErrTeamTransferTargetAlreadyOwner
+		}
+
+		if _, err := tx.ExecContext(ctx,
+			"UPDATE tenant_members SET role = ? WHERE tenant_id = ? AND user_id = ?",
+			TenantRoleOwner, tenantID, targetUserID,
+		); err != nil {
+			return fmt.Errorf("could not promote target owner: %w", err)
+		}
+		if _, err := tx.ExecContext(ctx,
+			"UPDATE tenant_members SET role = ? WHERE tenant_id = ? AND user_id = ?",
+			TenantRoleAdmin, tenantID, actorID,
+		); err != nil {
+			return fmt.Errorf("could not demote current owner: %w", err)
+		}
+
+		return nil
+	})
 }
 
 func (s *Store) CountTeamOwners(ctx context.Context, tenantID uuid.UUID) (int, error) {

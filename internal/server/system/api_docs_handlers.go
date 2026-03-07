@@ -406,6 +406,10 @@ func openAPISpecV1(publicURL string) map[string]any {
 					"properties": map[string]any{
 						"status":         map[string]any{"type": "string"},
 						"active_team_id": map[string]any{"type": "string", "format": "uuid"},
+						"recent_team_ids": map[string]any{
+							"type":  "array",
+							"items": map[string]any{"type": "string", "format": "uuid"},
+						},
 					},
 				},
 				"IPExclusion": map[string]any{
@@ -758,6 +762,22 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"200": jsonRefResp("Status", "#/components/schemas/Status"),
 						"400": errResp("Invalid request"),
 						"403": errResp("Access denied"),
+					}),
+			},
+			"/api/user/teams/{id}/transfer-ownership": map[string]any{
+				"post": op([]string{"Teams"}, "Transfer team ownership", "Transfers ownership from the current owner to another existing team member.", secCookie(), []any{paramRef("#/components/parameters/teamID")},
+					jsonBody(map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"target_user_id": map[string]any{"type": "string", "format": "uuid"},
+						},
+						"required": []string{"target_user_id"},
+					}),
+					map[string]any{
+						"200": jsonRefResp("Status", "#/components/schemas/Status"),
+						"400": errResp("Invalid target user"),
+						"403": errResp("Only owners can transfer ownership"),
+						"409": errResp("Transfer conflict"),
 					}),
 			},
 			"/api/user/teams/{id}/members": map[string]any{

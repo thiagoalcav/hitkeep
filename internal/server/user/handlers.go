@@ -128,6 +128,10 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleUpdateTeam()))
+	mux.HandleFunc("POST /api/user/teams/{id}/transfer-ownership", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleTransferTeamOwnership()))
 	mux.HandleFunc("GET /api/user/teams/{id}/members", ctx.Handler(shared.HandlerConfig{
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,

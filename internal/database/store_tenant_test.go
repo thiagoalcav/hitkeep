@@ -490,6 +490,54 @@ func TestAcceptTeamInvitesByEmailCreatesMembership(t *testing.T) {
 	}
 }
 
+func TestTransferTeamOwnership(t *testing.T) {
+	store := setupTenantStore(t)
+	ctx := context.Background()
+
+	ownerID, err := store.CreateUser(ctx, "owner-transfer@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create owner user: %v", err)
+	}
+	adminID, err := store.CreateUser(ctx, "admin-transfer@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+
+	teamID := uuid.New()
+	if _, err := store.DB().ExecContext(ctx,
+		"INSERT INTO tenants (id, name, created_at) VALUES (?, ?, ?)",
+		teamID, "Ownership Transfer", time.Now().UTC(),
+	); err != nil {
+		t.Fatalf("insert tenant: %v", err)
+	}
+	if err := store.AddTeamMember(ctx, teamID, ownerID, TenantRoleOwner, ownerID); err != nil {
+		t.Fatalf("add owner to tenant: %v", err)
+	}
+	if err := store.AddTeamMember(ctx, teamID, adminID, TenantRoleAdmin, ownerID); err != nil {
+		t.Fatalf("add admin to tenant: %v", err)
+	}
+
+	if err := store.TransferTeamOwnership(ctx, teamID, ownerID, adminID); err != nil {
+		t.Fatalf("transfer team ownership: %v", err)
+	}
+
+	ownerRole, err := store.GetTenantRole(ctx, teamID, ownerID)
+	if err != nil {
+		t.Fatalf("get previous owner role: %v", err)
+	}
+	if ownerRole != TenantRoleAdmin {
+		t.Fatalf("expected previous owner role %q, got %q", TenantRoleAdmin, ownerRole)
+	}
+
+	newOwnerRole, err := store.GetTenantRole(ctx, teamID, adminID)
+	if err != nil {
+		t.Fatalf("get new owner role: %v", err)
+	}
+	if newOwnerRole != TenantRoleOwner {
+		t.Fatalf("expected new owner role %q, got %q", TenantRoleOwner, newOwnerRole)
+	}
+}
+
 func TestCanAssignTenantRole(t *testing.T) {
 	cases := []struct {
 		name      string

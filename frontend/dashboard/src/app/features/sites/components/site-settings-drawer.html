@@ -14,7 +14,7 @@
             </div>
         </div>
 
-        <p-tabs [(value)]="activeTab" styleClass="flex-1">
+        <p-tabs [value]="activeTab()" (valueChange)="onActiveTabChange($event)" styleClass="flex-1">
             <p-tablist>
                 <p-tab value="0">
                     <div class="flex items-center gap-2">

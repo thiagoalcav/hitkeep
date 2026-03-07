@@ -5,10 +5,11 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "build": "ng build",
+    "build": "ng build && npm run sync:public",
+    "sync:public": "node scripts/sync-public.mjs",
     "transloco:optimize": "transloco-optimize dist/dashboard/browser/i18n",
     "build:tracker": "esbuild src/tracker/index.js --bundle --minify --outfile=dist/dashboard/browser/hk.js",
-    "build:prod": "ng build --configuration production && npm run transloco:optimize && npm run build:tracker",
+    "build:prod": "ng build --configuration production && npm run transloco:optimize && npm run build:tracker && npm run sync:public",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "lint": "ng lint",

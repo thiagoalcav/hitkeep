@@ -1,18 +1,20 @@
-import { Component, inject, input, signal, effect, computed } from "@angular/core";
-
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
+import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
 import { compatForm } from "@angular/forms/signals/compat";
-import { HttpClient } from "@angular/common/http";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { ConfirmationService } from "primeng/api";
-import { ConfirmPopupModule } from "primeng/confirmpopup";
-import { TableModule } from "primeng/table";
-import { ButtonModule } from "primeng/button";
-import { SelectModule } from "primeng/select";
-import { InputTextModule } from "primeng/inputtext";
-import { Site } from "@models/analytics.types";
 import { RelativeDateTime } from "@components/relative-date-time/relative-date-time";
+import { Site } from "@models/analytics.types";
+import { TeamService } from "@services/team.service";
+import { SiteService } from "@features/sites/services/site.service";
+import { ConfirmationService } from "primeng/api";
+import { ButtonModule } from "primeng/button";
+import { ConfirmPopupModule } from "primeng/confirmpopup";
+import { InputTextModule } from "primeng/inputtext";
+import { MessageModule } from "primeng/message";
+import { SelectModule } from "primeng/select";
+import { TableModule } from "primeng/table";
 
 interface SiteMember {
     id: string;
@@ -24,12 +26,49 @@ interface SiteMember {
 
 @Component({
     selector: "app-site-team-settings",
-    standalone: true,
-    imports: [ReactiveFormsModule, ConfirmPopupModule, TableModule, ButtonModule, SelectModule, InputTextModule, RelativeDateTime, TranslocoPipe],
+    imports: [ReactiveFormsModule, ConfirmPopupModule, TableModule, ButtonModule, SelectModule, InputTextModule, MessageModule, RelativeDateTime, TranslocoPipe],
     providers: [ConfirmationService],
+    changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <p-confirmpopup key="site-member-remove" />
         <div class="flex flex-col gap-4">
+            @if (availableTransferTeams().length) {
+                <div class="rounded-xl border border-surface-200 bg-surface-50 p-4 flex flex-col gap-3">
+                    <div>
+                        <h3 class="text-base font-semibold">{{ "sites.team.transfer.title" | transloco }}</h3>
+                        <p class="text-sm text-muted-color">{{ "sites.team.transfer.description" | transloco }}</p>
+                    </div>
+                    @if (transferSuccessKey(); as key) {
+                        <p-message severity="success" [text]="key | transloco" />
+                    }
+                    @if (transferErrorKey(); as key) {
+                        <p-message severity="error" [text]="key | transloco" />
+                    }
+                    <div class="flex flex-col md:flex-row gap-3 md:items-end">
+                        <div class="flex-1">
+                            <label for="site-transfer-team" class="text-sm font-medium mb-2 block">{{ "sites.team.transfer.teamLabel" | transloco }}</label>
+                            <p-select
+                                inputId="site-transfer-team"
+                                [options]="availableTransferTeams()"
+                                [formControl]="transferForm.teamId().control()"
+                                optionLabel="label"
+                                optionValue="value"
+                                [placeholder]="'sites.team.transfer.teamPlaceholder' | transloco"
+                                class="w-full"
+                            />
+                        </div>
+
+                        <p-button
+                            [label]="'sites.team.transfer.action' | transloco"
+                            icon="pi pi-arrow-right-arrow-left"
+                            [loading]="isTransferring()"
+                            [disabled]="isTransferring() || transferForm().invalid()"
+                            (onClick)="transferSite()"
+                        />
+                    </div>
+                </div>
+            }
+
             <div class="flex items-end gap-2">
                 <div class="flex-1">
                     <label for="member-email" class="text-sm font-medium mb-2 block">{{ "common.emailAddress" | transloco }}</label>
@@ -94,6 +133,8 @@ export class SiteTeamSettings {
     private http = inject(HttpClient);
     private confirmationService = inject(ConfirmationService);
     private transloco = inject(TranslocoService);
+    private teamService = inject(TeamService);
+    private siteService = inject(SiteService);
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
     site = input.required<Site | null>();
@@ -101,12 +142,19 @@ export class SiteTeamSettings {
     protected members = signal<SiteMember[]>([]);
     protected isLoading = signal(false);
     protected isAdding = signal(false);
+    protected isTransferring = signal(false);
+    protected transferErrorKey = signal<string | null>(null);
+    protected transferSuccessKey = signal<string | null>(null);
 
     private readonly memberFormModel = signal({
         email: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.email] }),
         role: new FormControl("viewer", { nonNullable: true, validators: [Validators.required] })
     });
     protected readonly memberForm = compatForm(this.memberFormModel);
+    private readonly transferFormModel = signal({
+        teamId: new FormControl("", { nonNullable: true, validators: [Validators.required] })
+    });
+    protected readonly transferForm = compatForm(this.transferFormModel);
 
     protected roleOptions = computed(() => {
         this.activeLanguage();
@@ -116,6 +164,17 @@ export class SiteTeamSettings {
             { label: this.transloco.translate("roles.editor"), value: "editor" },
             { label: this.transloco.translate("roles.viewer"), value: "viewer" }
         ];
+    });
+    protected readonly availableTransferTeams = computed(() => {
+        this.activeLanguage();
+        const currentTeamId = this.teamService.activeTeamId();
+        return this.teamService
+            .teams()
+            .filter((team) => team.id !== currentTeamId && (team.role === "owner" || team.role === "admin"))
+            .map((team) => ({
+                label: team.name,
+                value: team.id
+            }));
     });
 
     constructor() {
@@ -166,6 +225,41 @@ export class SiteTeamSettings {
                     console.error("Failed to add member", err);
                     this.isAdding.set(false);
                     alert(this.transloco.translate("sites.team.errors.addFailed"));
+                }
+            });
+    }
+
+    transferSite() {
+        const siteId = this.site()?.id;
+        const teamId = this.transferForm.teamId().value().trim();
+        if (!siteId || !teamId) return;
+
+        this.isTransferring.set(true);
+        this.transferErrorKey.set(null);
+        this.transferSuccessKey.set(null);
+
+        this.http
+            .post(`/api/sites/${siteId}/transfer-team`, {
+                team_id: teamId
+            })
+            .subscribe({
+                next: () => {
+                    this.transferForm.teamId().control().reset("");
+                    this.transferSuccessKey.set("sites.team.transfer.success");
+                    this.siteService.sites.update((sites) => sites.filter((site) => site.id !== siteId));
+                    if (this.siteService.activeSite()?.id === siteId) {
+                        this.siteService.activeSite.set(null);
+                    }
+                    this.siteService.loadSites();
+                    this.isTransferring.set(false);
+                },
+                error: (error: unknown) => {
+                    if (error instanceof HttpErrorResponse && error.status === 403) {
+                        this.transferErrorKey.set("sites.team.transfer.errors.forbidden");
+                    } else {
+                        this.transferErrorKey.set("sites.team.transfer.errors.generic");
+                    }
+                    this.isTransferring.set(false);
                 }
             });
     }

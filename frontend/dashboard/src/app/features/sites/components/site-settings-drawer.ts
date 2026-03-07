@@ -30,6 +30,10 @@ export class SiteSettingsDrawer {
     site = input.required<Site | null>();
     activeTab = model<string>("0");
 
+    onActiveTabChange(value: string | number | undefined) {
+        this.activeTab.set(value == null ? "0" : String(value));
+    }
+
     onVisibleChange(isVisible: boolean) {
         if (!isVisible) {
             // Attempting to close

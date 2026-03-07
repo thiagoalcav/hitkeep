@@ -5,8 +5,6 @@ import { compatForm } from "@angular/forms/signals/compat";
 import { TranslocoPipe } from "@jsverse/transloco";
 import { SelectModule } from "primeng/select";
 import { SkeletonModule } from "primeng/skeleton";
-import { ButtonModule } from "primeng/button";
-import { ButtonGroup } from "primeng/buttongroup";
 import { Site } from "@models/analytics.types";
 import { SiteFavicon } from "@features/sites/components/site-favicon";
 import { ShareDashboardLink } from "@features/share/components/share-dashboard-link";
@@ -14,7 +12,7 @@ import { ShareService } from "@services/share.service";
 @Component({
     selector: "app-site-selector",
     standalone: true,
-    imports: [ReactiveFormsModule, SelectModule, SkeletonModule, ButtonModule, ButtonGroup, SiteFavicon, ShareDashboardLink, TranslocoPipe],
+    imports: [ReactiveFormsModule, SelectModule, SkeletonModule, SiteFavicon, ShareDashboardLink, TranslocoPipe],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <div class="flex flex-col gap-2 w-full" role="region" [attr.aria-label]="'sites.selector.regionAria' | transloco">
@@ -68,11 +66,33 @@ import { ShareService } from "@services/share.service";
 
                     @if (sites().length > 0) {
                         @if (!shareService.isShareMode()) {
-                            <p-buttonGroup>
-                                <p-button icon="pi pi-cog" [ariaLabel]="'sites.selector.siteSettingsAria' | transloco" [text]="true" size="small" (onClick)="settingsClicked.emit()" />
-                                <p-button icon="pi pi-code" [ariaLabel]="'sites.selector.trackingCodeAria' | transloco" [text]="true" size="small" (onClick)="trackingClicked.emit()" />
-                                <p-button icon="pi pi-share-alt" [ariaLabel]="'sites.selector.shareDashboardAria' | transloco" [text]="true" size="small" (onClick)="openShareDialog()" [disabled]="!current()" />
-                            </p-buttonGroup>
+                            <div class="flex items-center gap-1 rounded-xl border border-surface-200 bg-surface-50 p-1 dark:border-surface-700 dark:bg-surface-900/60">
+                                <button
+                                    type="button"
+                                    (click)="settingsClicked.emit()"
+                                    class="flex size-8 items-center justify-center rounded-lg text-muted-color transition-colors hover:bg-white hover:text-[var(--p-text-color)] focus:outline-none focus:ring-2 focus:ring-primary-500 dark:hover:bg-surface-800"
+                                    [attr.aria-label]="'sites.selector.siteSettingsAria' | transloco"
+                                >
+                                    <i class="pi pi-cog text-sm" aria-hidden="true"></i>
+                                </button>
+                                <button
+                                    type="button"
+                                    (click)="trackingClicked.emit()"
+                                    class="flex size-8 items-center justify-center rounded-lg text-muted-color transition-colors hover:bg-white hover:text-[var(--p-text-color)] focus:outline-none focus:ring-2 focus:ring-primary-500 dark:hover:bg-surface-800"
+                                    [attr.aria-label]="'sites.selector.trackingCodeAria' | transloco"
+                                >
+                                    <i class="pi pi-code text-sm" aria-hidden="true"></i>
+                                </button>
+                                <button
+                                    type="button"
+                                    (click)="openShareDialog()"
+                                    class="flex size-8 items-center justify-center rounded-lg text-muted-color transition-colors hover:bg-white hover:text-[var(--p-text-color)] focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-surface-800"
+                                    [attr.aria-label]="'sites.selector.shareDashboardAria' | transloco"
+                                    [disabled]="!current()"
+                                >
+                                    <i class="pi pi-share-alt text-sm" aria-hidden="true"></i>
+                                </button>
+                            </div>
                             @defer (when shareDialogLoaded()) {
                                 <app-share-dashboard-link #shareDialog />
                             }

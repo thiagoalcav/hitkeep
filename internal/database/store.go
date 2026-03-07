@@ -42,6 +42,9 @@ func (s *Store) Connect() error {
 	}
 
 	s.db = db
+	if _, err := s.db.Exec("SET TimeZone = 'UTC';"); err != nil {
+		return fmt.Errorf("could not set database timezone: %w", err)
+	}
 	if err := s.loadExcelExtension(); err != nil {
 		slog.Warn("DuckDB excel extension unavailable; XLSX exports may fail", "error", err)
 	}

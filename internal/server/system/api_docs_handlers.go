@@ -412,6 +412,17 @@ func openAPISpecV1(publicURL string) map[string]any {
 						},
 					},
 				},
+				"TeamArchiveResponse": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"status":         map[string]any{"type": "string"},
+						"active_team_id": map[string]any{"type": "string", "format": "uuid"},
+						"recent_team_ids": map[string]any{
+							"type":  "array",
+							"items": map[string]any{"type": "string", "format": "uuid"},
+						},
+					},
+				},
 				"IPExclusion": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
@@ -778,6 +789,14 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"400": errResp("Invalid target user"),
 						"403": errResp("Only owners can transfer ownership"),
 						"409": errResp("Transfer conflict"),
+					}),
+			},
+			"/api/user/teams/{id}/archive": map[string]any{
+				"post": op([]string{"Teams"}, "Archive team", "Archives a non-default team after all sites have been transferred or removed.", secCookie(), []any{paramRef("#/components/parameters/teamID")}, nil,
+					map[string]any{
+						"200": jsonRefResp("Archive team response", "#/components/schemas/TeamArchiveResponse"),
+						"400": errResp("Cannot archive the default team or a team that still owns sites"),
+						"403": errResp("Only owners can archive teams"),
 					}),
 			},
 			"/api/user/teams/{id}/members": map[string]any{

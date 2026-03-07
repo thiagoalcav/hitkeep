@@ -753,6 +753,58 @@ func (h *handler) handleTransferTeamOwnership() http.HandlerFunc {
 	}
 }
 
+func (h *handler) handleArchiveTeam() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		actorID := shared.GetUserIDFromContext(r)
+		if actorID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		teamID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+		if err != nil {
+			http.Error(w, "Invalid team ID", http.StatusBadRequest)
+			return
+		}
+
+		if err := h.ctx.Store.ArchiveTenant(r.Context(), teamID, actorID); err != nil {
+			switch {
+			case errors.Is(err, database.ErrTenantMembershipRequired), errors.Is(err, database.ErrTeamArchiveRequiresOwner):
+				writeTeamActionError(w, http.StatusForbidden, "team_archive_forbidden", "Only team owners can archive this team")
+				return
+			case errors.Is(err, database.ErrTeamArchiveDefaultTenant):
+				writeTeamActionError(w, http.StatusBadRequest, "team_archive_default_forbidden", "The default team cannot be archived")
+				return
+			case errors.Is(err, database.ErrTeamArchiveHasSites):
+				writeTeamActionError(w, http.StatusBadRequest, "team_archive_has_sites", "Transfer or delete all sites before archiving this team")
+				return
+			default:
+				slog.Error("Failed to archive team", "error", err, "team_id", teamID, "actor_id", actorID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		h.appendTeamAudit(r, teamID, actorID, "team.archived", fmt.Sprintf("Team %s archived", teamID), nil)
+
+		teams, activeTeamID, teamsErr := h.ctx.Store.ListUserTeams(r.Context(), actorID)
+		if teamsErr != nil {
+			slog.Warn("Failed to load team list after archiving team", "error", teamsErr, "user_id", actorID, "team_id", teamID)
+			teams = nil
+			activeTeamID, _ = h.ctx.Store.GetActiveTenantID(r.Context(), actorID)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]any{
+			"status":          "ok",
+			"active_team_id":  activeTeamID,
+			"recent_team_ids": orderedRecentTeamIDs(teams, activeTeamID),
+		}); err != nil {
+			slog.Error("Failed to encode archive team response", "error", err, "team_id", teamID, "actor_id", actorID)
+		}
+	}
+}
+
 func (h *handler) handleRemoveTeamMember() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		actorID := shared.GetUserIDFromContext(r)

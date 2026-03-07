@@ -31,6 +31,9 @@ var ErrTeamTransferRequiresOwner = errors.New("team ownership transfer requires 
 var ErrTeamTransferSelf = errors.New("cannot transfer ownership to self")
 var ErrTeamTransferTargetNotMember = errors.New("ownership transfer target must be a team member")
 var ErrTeamTransferTargetAlreadyOwner = errors.New("ownership transfer target is already owner")
+var ErrTeamArchiveRequiresOwner = errors.New("team archive requires owner")
+var ErrTeamArchiveDefaultTenant = errors.New("default team cannot be archived")
+var ErrTeamArchiveHasSites = errors.New("team archive requires empty site list")
 
 const (
 	TeamInviteStatusPending  = "pending"
@@ -83,7 +86,11 @@ func (s *Store) GetSiteTenantID(ctx context.Context, siteID uuid.UUID) (uuid.UUI
 func (s *Store) IsTenantMember(ctx context.Context, tenantID, userID uuid.UUID) (bool, error) {
 	var count int
 	if err := s.db.QueryRowContext(ctx,
-		"SELECT COUNT(*) FROM tenant_members WHERE tenant_id = ? AND user_id = ?",
+		`SELECT COUNT(*)
+		FROM tenant_members tm
+		JOIN tenants t ON t.id = tm.tenant_id
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = t.id
+		WHERE tm.tenant_id = ? AND tm.user_id = ? AND ta.tenant_id IS NULL`,
 		tenantID, userID,
 	).Scan(&count); err != nil {
 		return false, fmt.Errorf("could not query tenant membership: %w", err)
@@ -94,7 +101,11 @@ func (s *Store) IsTenantMember(ctx context.Context, tenantID, userID uuid.UUID) 
 func (s *Store) GetTenantRole(ctx context.Context, tenantID, userID uuid.UUID) (string, error) {
 	var role string
 	err := s.db.QueryRowContext(ctx,
-		"SELECT role FROM tenant_members WHERE tenant_id = ? AND user_id = ?",
+		`SELECT tm.role
+		FROM tenant_members tm
+		JOIN tenants t ON t.id = tm.tenant_id
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = t.id
+		WHERE tm.tenant_id = ? AND tm.user_id = ? AND ta.tenant_id IS NULL`,
 		tenantID, userID,
 	).Scan(&role)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -148,7 +159,9 @@ func (s *Store) ListUserTeams(ctx context.Context, userID uuid.UUID) ([]api.Team
 		SELECT t.id, t.name, COALESCE(t.logo_url, ''), tm.role, t.created_at
 		FROM tenants t
 		JOIN tenant_members tm ON tm.tenant_id = t.id
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = t.id
 		WHERE tm.user_id = ?
+			AND ta.tenant_id IS NULL
 		ORDER BY
 			CASE tm.role
 				WHEN 'owner' THEN 0
@@ -672,6 +685,147 @@ func (s *Store) CountTeamOwners(ctx context.Context, tenantID uuid.UUID) (int, e
 	return count, nil
 }
 
+func (s *Store) CountTeamSites(ctx context.Context, tenantID uuid.UUID) (int, error) {
+	var count int
+	err := s.db.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM site_tenants WHERE tenant_id = ?",
+		tenantID,
+	).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("could not count tenant sites: %w", err)
+	}
+	return count, nil
+}
+
+func (s *Store) ArchiveTenant(ctx context.Context, tenantID, actorID uuid.UUID) error {
+	return s.Transact(ctx, func(tx *sql.Tx) error {
+		var isDefault bool
+		err := tx.QueryRowContext(ctx, `
+			SELECT t.is_default
+			FROM tenants t
+			LEFT JOIN tenant_archives ta ON ta.tenant_id = t.id
+			WHERE t.id = ? AND ta.tenant_id IS NULL`,
+			tenantID,
+		).Scan(&isDefault)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrTenantMembershipRequired
+		}
+		if err != nil {
+			return fmt.Errorf("could not resolve team: %w", err)
+		}
+		if isDefault {
+			return ErrTeamArchiveDefaultTenant
+		}
+
+		var actorRole string
+		if err := tx.QueryRowContext(ctx,
+			`SELECT tm.role
+			FROM tenant_members tm
+			JOIN tenants t ON t.id = tm.tenant_id
+			LEFT JOIN tenant_archives ta ON ta.tenant_id = t.id
+			WHERE tm.tenant_id = ? AND tm.user_id = ? AND ta.tenant_id IS NULL`,
+			tenantID, actorID,
+		).Scan(&actorRole); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrTenantMembershipRequired
+			}
+			return fmt.Errorf("could not resolve actor team role: %w", err)
+		}
+		if actorRole != TenantRoleOwner {
+			return ErrTeamArchiveRequiresOwner
+		}
+
+		var siteCount int
+		if err := tx.QueryRowContext(ctx,
+			"SELECT COUNT(*) FROM site_tenants WHERE tenant_id = ?",
+			tenantID,
+		).Scan(&siteCount); err != nil {
+			return fmt.Errorf("could not count tenant sites: %w", err)
+		}
+		if siteCount > 0 {
+			return ErrTeamArchiveHasSites
+		}
+
+		defaultTenantID, err := getDefaultTenantID(ctx, tx)
+		if err != nil {
+			return err
+		}
+
+		memberRows, err := tx.QueryContext(ctx,
+			"SELECT CAST(user_id AS VARCHAR) FROM tenant_members WHERE tenant_id = ?",
+			tenantID,
+		)
+		if err != nil {
+			return fmt.Errorf("could not query team members for archive: %w", err)
+		}
+		memberIDs := make([]uuid.UUID, 0)
+		for memberRows.Next() {
+			var raw string
+			if err := memberRows.Scan(&raw); err != nil {
+				_ = memberRows.Close()
+				return fmt.Errorf("could not scan archived team member: %w", err)
+			}
+			memberID, err := uuid.Parse(strings.TrimSpace(raw))
+			if err != nil {
+				_ = memberRows.Close()
+				return fmt.Errorf("invalid archived team member id %q: %w", raw, err)
+			}
+			memberIDs = append(memberIDs, memberID)
+		}
+		if err := memberRows.Err(); err != nil {
+			_ = memberRows.Close()
+			return fmt.Errorf("could not read archived team members: %w", err)
+		}
+		if err := memberRows.Close(); err != nil {
+			return fmt.Errorf("could not close archived team member rows: %w", err)
+		}
+
+		now := time.Now().UTC()
+		for _, memberID := range memberIDs {
+			if err := ensureTenantMemberTx(ctx, tx, defaultTenantID, memberID, TenantRoleMember, actorID); err != nil {
+				return err
+			}
+		}
+
+		if _, err := tx.ExecContext(ctx,
+			"INSERT INTO tenant_archives (tenant_id, archived_at, archived_by) VALUES (?, ?, ?)",
+			tenantID, now, nullableUUID(actorID),
+		); err != nil {
+			return fmt.Errorf("could not archive tenant: %w", err)
+		}
+
+		for _, memberID := range memberIDs {
+			currentActiveTenantID, err := getActiveTenantID(ctx, tx, memberID)
+			if err != nil {
+				currentActiveTenantID = uuid.Nil
+			}
+			if currentActiveTenantID != tenantID {
+				continue
+			}
+
+			replacementTenantID, err := getPrimaryTenantID(ctx, tx, memberID)
+			if err != nil {
+				return fmt.Errorf("could not resolve replacement team after archive: %w", err)
+			}
+			locale, err := getUserLocaleTx(ctx, tx, memberID)
+			if err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, `
+				INSERT INTO user_preferences (user_id, default_locale, updated_at, active_tenant_id)
+				VALUES (?, ?, ?, ?)
+				ON CONFLICT (user_id) DO UPDATE SET
+					active_tenant_id = excluded.active_tenant_id,
+					updated_at = excluded.updated_at
+			`, memberID, locale, now, replacementTenantID); err != nil {
+				return fmt.Errorf("could not update active team after archive: %w", err)
+			}
+		}
+
+		return nil
+	})
+}
+
 func (s *Store) AppendTeamAuditEntry(ctx context.Context, tenantID, actorID uuid.UUID, action, details string, targetUserID *uuid.UUID) error {
 	action = strings.TrimSpace(action)
 	if action == "" {
@@ -832,7 +986,11 @@ func (s *Store) CreateTenant(ctx context.Context, creatorID uuid.UUID, name, log
 
 func (s *Store) ListNonDefaultTenantIDs(ctx context.Context) ([]uuid.UUID, error) {
 	rows, err := s.db.QueryContext(ctx,
-		"SELECT CAST(id AS VARCHAR) FROM tenants WHERE is_default = FALSE ORDER BY created_at",
+		`SELECT CAST(t.id AS VARCHAR)
+		FROM tenants t
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = t.id
+		WHERE t.is_default = FALSE AND ta.tenant_id IS NULL
+		ORDER BY t.created_at`,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not list non-default tenants: %w", err)
@@ -927,16 +1085,19 @@ func tenantRoleRank(role string) int {
 func getPrimaryTenantID(ctx context.Context, q tenantRowQueryer, userID uuid.UUID) (uuid.UUID, error) {
 	var tenantIDRaw sql.NullString
 	err := q.QueryRowContext(ctx, `
-		SELECT CAST(tenant_id AS VARCHAR)
-		FROM tenant_members
-		WHERE user_id = ?
+		SELECT CAST(tm.tenant_id AS VARCHAR)
+		FROM tenant_members tm
+		JOIN tenants t ON t.id = tm.tenant_id
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = t.id
+		WHERE tm.user_id = ?
+			AND ta.tenant_id IS NULL
 		ORDER BY
-			CASE role
+			CASE tm.role
 				WHEN 'owner' THEN 0
 				WHEN 'admin' THEN 1
 				ELSE 2
 			END ASC,
-			added_at ASC
+			tm.added_at ASC
 		LIMIT 1
 	`, userID).Scan(&tenantIDRaw)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -965,7 +1126,12 @@ func getActiveTenantID(ctx context.Context, q tenantRowQueryer, userID uuid.UUID
 		JOIN tenant_members tm
 			ON tm.tenant_id = up.active_tenant_id
 			AND tm.user_id = ?
+		JOIN tenants t
+			ON t.id = up.active_tenant_id
+		LEFT JOIN tenant_archives ta
+			ON ta.tenant_id = t.id
 		WHERE up.user_id = ?
+			AND ta.tenant_id IS NULL
 		LIMIT 1
 	`, userID, userID).Scan(&tenantIDRaw)
 	if errors.Is(err, sql.ErrNoRows) {

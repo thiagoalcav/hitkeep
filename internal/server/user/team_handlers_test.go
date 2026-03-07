@@ -636,6 +636,86 @@ func TestHandleTransferTeamOwnership(t *testing.T) {
 	}
 }
 
+func TestHandleArchiveTeam(t *testing.T) {
+	h, store, ownerID := setupUserSecurityTestEnv(t)
+	defer store.Close()
+
+	team, err := store.CreateTenant(context.Background(), ownerID, "Archive API", "")
+	if err != nil {
+		t.Fatalf("create team: %v", err)
+	}
+	if err := store.SetActiveTenantID(context.Background(), ownerID, team.ID); err != nil {
+		t.Fatalf("set active tenant: %v", err)
+	}
+
+	req := withTestUser(httptest.NewRequest(http.MethodPost, "/api/user/teams/"+team.ID.String()+"/archive", nil), ownerID)
+	req.SetPathValue("id", team.ID.String())
+	w := httptest.NewRecorder()
+
+	h.handleArchiveTeam().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var resp struct {
+		Status        string      `json:"status"`
+		ActiveTeamID  uuid.UUID   `json:"active_team_id"`
+		RecentTeamIDs []uuid.UUID `json:"recent_team_ids"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode archive response: %v", err)
+	}
+	if resp.Status != "ok" {
+		t.Fatalf("expected status ok, got %q", resp.Status)
+	}
+	if resp.ActiveTeamID == team.ID {
+		t.Fatalf("expected archived team not to remain active")
+	}
+
+	teams, _, err := store.ListUserTeams(context.Background(), ownerID)
+	if err != nil {
+		t.Fatalf("list user teams: %v", err)
+	}
+	for _, listedTeam := range teams {
+		if listedTeam.ID == team.ID {
+			t.Fatalf("expected archived team %s to be omitted from team list", team.ID)
+		}
+	}
+}
+
+func TestHandleArchiveTeamReturnsStructuredErrorWhenSitesRemain(t *testing.T) {
+	h, store, ownerID := setupUserSecurityTestEnv(t)
+	defer store.Close()
+
+	team, err := store.CreateTenant(context.Background(), ownerID, "Archive Blocked API", "")
+	if err != nil {
+		t.Fatalf("create team: %v", err)
+	}
+	if err := store.SetActiveTenantID(context.Background(), ownerID, team.ID); err != nil {
+		t.Fatalf("set active tenant: %v", err)
+	}
+	if _, err := store.CreateSite(context.Background(), ownerID, "archive-api-blocked.test"); err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	req := withTestUser(httptest.NewRequest(http.MethodPost, "/api/user/teams/"+team.ID.String()+"/archive", nil), ownerID)
+	req.SetPathValue("id", team.ID.String())
+	w := httptest.NewRecorder()
+
+	h.handleArchiveTeam().ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+
+	var resp map[string]string
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode archive error response: %v", err)
+	}
+	if resp["code"] != "team_archive_has_sites" {
+		t.Fatalf("expected code %q, got %q", "team_archive_has_sites", resp["code"])
+	}
+}
+
 func TestHandleGetTeamAudit(t *testing.T) {
 	h, store, ownerID := setupUserSecurityTestEnv(t)
 	defer store.Close()

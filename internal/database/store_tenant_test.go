@@ -261,6 +261,80 @@ func TestSetActiveTenantIDAndScopedSites(t *testing.T) {
 	}
 }
 
+func TestArchiveTenantHidesArchivedTeamAndResetsActiveTeam(t *testing.T) {
+	store := setupTenantStore(t)
+	ctx := context.Background()
+
+	ownerID, err := store.CreateUser(ctx, "archive-owner@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create owner user: %v", err)
+	}
+
+	team, err := store.CreateTenant(ctx, ownerID, "Archive Ready", "")
+	if err != nil {
+		t.Fatalf("create team: %v", err)
+	}
+	if err := store.SetActiveTenantID(ctx, ownerID, team.ID); err != nil {
+		t.Fatalf("set active tenant: %v", err)
+	}
+
+	if err := store.ArchiveTenant(ctx, team.ID, ownerID); err != nil {
+		t.Fatalf("archive tenant: %v", err)
+	}
+
+	teams, activeTenantID, err := store.ListUserTeams(ctx, ownerID)
+	if err != nil {
+		t.Fatalf("list user teams: %v", err)
+	}
+	for _, listedTeam := range teams {
+		if listedTeam.ID == team.ID {
+			t.Fatalf("expected archived team %s to be omitted from team list", team.ID)
+		}
+	}
+
+	defaultTenantID, err := store.GetDefaultTenantID(ctx)
+	if err != nil {
+		t.Fatalf("get default tenant: %v", err)
+	}
+	if activeTenantID != defaultTenantID {
+		t.Fatalf("expected active tenant to fall back to default %s, got %s", defaultTenantID, activeTenantID)
+	}
+
+	var archivedAt time.Time
+	if err := store.DB().QueryRowContext(ctx, "SELECT archived_at FROM tenant_archives WHERE tenant_id = ?", team.ID).Scan(&archivedAt); err != nil {
+		t.Fatalf("query tenant_archives: %v", err)
+	}
+	if archivedAt.IsZero() {
+		t.Fatalf("expected archived_at to be set")
+	}
+}
+
+func TestArchiveTenantFailsWhenTeamStillOwnsSites(t *testing.T) {
+	store := setupTenantStore(t)
+	ctx := context.Background()
+
+	ownerID, err := store.CreateUser(ctx, "archive-sites-owner@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create owner user: %v", err)
+	}
+
+	team, err := store.CreateTenant(ctx, ownerID, "Archive Blocked", "")
+	if err != nil {
+		t.Fatalf("create team: %v", err)
+	}
+	if err := store.SetActiveTenantID(ctx, ownerID, team.ID); err != nil {
+		t.Fatalf("set active tenant: %v", err)
+	}
+	if _, err := store.CreateSite(ctx, ownerID, "archive-blocked.test"); err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	err = store.ArchiveTenant(ctx, team.ID, ownerID)
+	if !errors.Is(err, ErrTeamArchiveHasSites) {
+		t.Fatalf("expected ErrTeamArchiveHasSites, got %v", err)
+	}
+}
+
 func TestLeaveTeamReassignsActiveTenant(t *testing.T) {
 	store := setupTenantStore(t)
 	ctx := context.Background()

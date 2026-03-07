@@ -75,6 +75,9 @@ Unlike other solutions that require you to manage a complex stack (PostgreSQL, R
 ### Teams — Create Team
 ![HitKeep create team dialog](./.github/assets/feature-create-team.png)
 
+### Teams — Transfer Site
+![HitKeep site transfer between teams](./.github/assets/feature-site-transfer.png)
+
 ### Teams — Overview
 ![HitKeep team administration overview](./.github/assets/admin-team-overview.png)
 
@@ -111,7 +114,7 @@ Visit **[hitkeep.com](https://hitkeep.com)** for the complete documentation, inc
 - **Embedded DuckDB + NSQ:** Columnar analytics storage with in-process burst buffering.
 - **Privacy-First Tracking:** Cookie-less by default, bot filtering, DNT support, optional `sendBeacon` disable.
 - **Analytics Coverage:** Traffic overview, raw hits, events, goals, funnels, and UTM attribution fields.
-- **Teams & Multitenancy:** Shared control plane plus isolated per-team analytics databases for non-default teams.
+- **Teams & Multitenancy:** Shared control plane plus isolated per-team analytics databases, team invites, ownership transfer, and cross-team site moves.
 - **Security & Auth:** JWT sessions, remember-me tokens, password reset, TOTP MFA, and WebAuthn passkeys.
 - **RBAC & Team Management:** Instance roles and per-site roles with delegated permissions.
 - **API Clients:** Create scoped API tokens for automation and integrations.

@@ -2,11 +2,12 @@ import { ComponentFixture, TestBed } from "@angular/core/testing";
 import { provideHttpClient } from "@angular/common/http";
 import { TranslocoTestingModule } from "@jsverse/transloco";
 import { vi } from "vitest";
-import { TeamSwitcher } from "./team-switcher";
 import { Team } from "@models/analytics.types";
+import { TeamSwitcher } from "./team-switcher";
 
 interface TeamSwitcherTestAccess {
-    onTeamChange(team: Team | null): Promise<void>;
+    onTeamOptionSelected(team: Team | undefined, menu: { hide(): void }): Promise<void>;
+    onCreateTeam(menu: { hide(): void }): void;
     teamLogoUrl(team: Team): string;
 }
 
@@ -30,11 +31,18 @@ describe("TeamSwitcher", () => {
                             teams: {
                                 switcher: {
                                     label: "Teams",
-                                    placeholder: "Select a team",
                                     regionAria: "Team switcher",
                                     selectAria: "Select team",
+                                    placeholder: "Select a team",
                                     currentTeamAria: "Current team {{ name }}",
-                                    addTeamAria: "Add team"
+                                    addTeamAria: "Create a new team",
+                                    openMenuAria: "Open team menu for {{ name }}",
+                                    menuAria: "Team menu",
+                                    currentLabel: "Current team",
+                                    activeLabel: "Active"
+                                },
+                                createDialog: {
+                                    createAction: "Create team"
                                 },
                                 roles: {
                                     owner: "Owner",
@@ -69,47 +77,59 @@ describe("TeamSwitcher", () => {
         expect(component).toBeTruthy();
     });
 
-    it("should render a select when multiple teams exist", () => {
-        const select = fixture.nativeElement.querySelector("p-select");
-        expect(select).toBeTruthy();
+    it("should render the compact trigger button", () => {
+        const trigger = fixture.nativeElement.querySelector("[data-testid='team-switcher-trigger']");
+        expect(trigger).toBeTruthy();
+        expect(trigger.textContent).toContain("Alpha Team");
     });
 
-    it("should render single-team view when only one team exists", () => {
+    it("should keep the closed state subtle without the role label", () => {
+        const trigger = fixture.nativeElement.querySelector("[data-testid='team-switcher-trigger']");
+        expect(trigger.textContent).not.toContain("Owner");
+    });
+
+    it("should still render a trigger when only one team exists", () => {
         fixture.componentRef.setInput("teams", [mockTeams[0]]);
         fixture.detectChanges();
 
-        const select = fixture.nativeElement.querySelector("p-select");
-        expect(select).toBeFalsy();
+        const trigger = fixture.nativeElement.querySelector("[data-testid='team-switcher-trigger']");
+        expect(trigger).toBeTruthy();
     });
 
-    it("should emit addClicked when add button is pressed", () => {
+    it("should emit addClicked from the create action", () => {
         const emitSpy = vi.spyOn(component.addClicked, "emit");
         fixture.componentRef.setInput("showAdd", true);
         fixture.detectChanges();
+        const access = component as unknown as TeamSwitcherTestAccess;
+        const hide = vi.fn();
 
-        const addButton = fixture.nativeElement.querySelector("button");
-        addButton.click();
+        access.onCreateTeam({ hide });
 
+        expect(hide).toHaveBeenCalled();
         expect(emitSpy).toHaveBeenCalled();
     });
 
     it("should emit teamSelected when switching is allowed", async () => {
         const emitSpy = vi.spyOn(component.teamSelected, "emit");
         const access = component as unknown as TeamSwitcherTestAccess;
+        const hide = vi.fn();
 
-        await access.onTeamChange(mockTeams[1]);
+        await access.onTeamOptionSelected(mockTeams[1], { hide });
 
+        expect(hide).toHaveBeenCalled();
         expect(emitSpy).toHaveBeenCalledWith(mockTeams[1]);
     });
 
     it("should not emit teamSelected when beforeSwitch rejects", async () => {
         const emitSpy = vi.spyOn(component.teamSelected, "emit");
         const access = component as unknown as TeamSwitcherTestAccess;
+        const hide = vi.fn();
         fixture.componentRef.setInput("beforeSwitch", () => false);
         fixture.detectChanges();
 
-        await access.onTeamChange(mockTeams[1]);
+        await access.onTeamOptionSelected(mockTeams[1], { hide });
 
+        expect(hide).toHaveBeenCalled();
         expect(emitSpy).not.toHaveBeenCalled();
     });
 

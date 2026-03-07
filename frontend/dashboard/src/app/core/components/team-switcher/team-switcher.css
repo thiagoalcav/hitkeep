@@ -1,0 +1,17 @@
+:host {
+    display: block;
+    min-width: 0;
+}
+
+:host ::ng-deep .team-switcher-menu .p-menu-list {
+    padding: 0.5rem;
+}
+
+:host ::ng-deep .team-switcher-menu .p-menu-separator {
+    margin: 0.35rem 0;
+}
+
+:host ::ng-deep .team-switcher-menu .p-menu-item-content,
+:host ::ng-deep .team-switcher-menu .p-menu-item-link {
+    padding: 0;
+}

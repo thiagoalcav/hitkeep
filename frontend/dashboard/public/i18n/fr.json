@@ -46,7 +46,11 @@
             "selectAria": "Sélectionner l'équipe active",
             "placeholder": "Sélectionner une équipe",
             "currentTeamAria": "Équipe actuelle : {{name}}",
-            "addTeamAria": "Créer une nouvelle équipe"
+            "addTeamAria": "Créer une nouvelle équipe",
+            "openMenuAria": "Ouvrir le menu de l'équipe {{name}}",
+            "menuAria": "Menu de l'équipe",
+            "currentLabel": "Équipe actuelle",
+            "activeLabel": "Active"
         },
         "roles": {
             "owner": "Propriétaire",

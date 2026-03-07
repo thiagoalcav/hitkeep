@@ -79,6 +79,13 @@ describe("MainLayout", () => {
         expect(switchers.length).toBeGreaterThan(0);
     });
 
+    it("should place the desktop team switcher in the account cluster", () => {
+        const topbarCluster = fixture.nativeElement.querySelector(".layout-topbar__account-cluster");
+        expect(topbarCluster).toBeTruthy();
+        expect(topbarCluster.querySelector("app-team-switcher")).toBeTruthy();
+        expect(topbarCluster.querySelector("app-user-controls")).toBeTruthy();
+    });
+
     it("should show administration section for team owner/admin role", () => {
         const adminLinks = Array.from(fixture.nativeElement.querySelectorAll("nav a")) as HTMLElement[];
         const hasTeamLink = adminLinks.some((link: HTMLElement) => link.getAttribute("href") === "/admin/team");

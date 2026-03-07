@@ -1,0 +1,99 @@
+<div class="min-w-0">
+    @if (showBrand() && !compact()) {
+    <div class="mb-2 px-1">
+        <div class="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--p-text-muted-color)]">{{ "teams.switcher.label" | transloco }}</div>
+    </div>
+    } @if (loading()) {
+    <p-skeleton height="44px" borderRadius="999px" />
+    } @else {
+    <button
+        type="button"
+        [id]="triggerId"
+        data-testid="team-switcher-trigger"
+        class="flex w-full min-w-0 items-center gap-3 rounded-full border border-surface-200/80 bg-white/80 px-3 py-2 text-left shadow-sm transition-colors hover:border-surface-300 hover:bg-surface-50 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-surface-700/80 dark:bg-surface-900/80 dark:hover:border-surface-600 dark:hover:bg-surface-800/80"
+        [class.pr-2]="compact()"
+        [class.opacity-70]="switching()"
+        [disabled]="switching()"
+        [attr.aria-controls]="triggerId + '-menu'"
+        [attr.aria-expanded]="isMenuOpen()"
+        [attr.aria-haspopup]="'menu'"
+        [attr.aria-label]="'teams.switcher.openMenuAria' | transloco: { name: activeTeamName() }"
+        (click)="teamMenu.toggle($event)"
+    >
+        <img [src]="teamLogoUrl(activeTeam())" [alt]="activeTeamName()" class="size-9 shrink-0 rounded-full border border-white/70 object-cover shadow-sm dark:border-surface-800/80" />
+        <div class="min-w-0 flex-1">
+            <div class="truncate text-sm font-semibold text-[var(--p-text-color)]">{{ activeTeamName() }}</div>
+        </div>
+        <i class="pi text-xs text-muted-color transition-transform" [class.pi-chevron-down]="!isMenuOpen()" [class.pi-chevron-up]="isMenuOpen()" aria-hidden="true"></i>
+    </button>
+
+    <p-menu
+        #teamMenu
+        [id]="triggerId + '-menu'"
+        [model]="menuItems()"
+        [popup]="true"
+        appendTo="body"
+        [style]="menuStyle()"
+        styleClass="team-switcher-menu overflow-hidden rounded-3xl border border-surface-200/80 shadow-2xl dark:border-surface-700/80"
+        [ariaLabel]="'teams.switcher.menuAria' | transloco"
+        (onShow)="isMenuOpen.set(true)"
+        (onHide)="isMenuOpen.set(false)"
+    >
+        <ng-template #start>
+            @if (activeTeam(); as team) {
+            <div class="border-b border-surface-200/80 px-4 pb-3 pt-4 dark:border-surface-700/80">
+                <div class="mb-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--p-text-muted-color)]">{{ "teams.switcher.currentLabel" | transloco }}</div>
+                <div class="flex items-center gap-3">
+                    <img [src]="teamLogoUrl(team)" [alt]="team.name" class="size-11 shrink-0 rounded-full border border-white/70 object-cover shadow-sm dark:border-surface-800/80" />
+                    <div class="min-w-0 flex-1">
+                        <div class="truncate text-sm font-semibold text-[var(--p-text-color)]">{{ team.name }}</div>
+                        <div class="mt-1">
+                            <p-tag [value]="roleLabel(team.role)" [severity]="roleSeverity(team.role)" [rounded]="true" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+            }
+        </ng-template>
+
+        <ng-template #item let-item>
+            @if (item.kind === "team" && item.team) {
+            <button
+                type="button"
+                class="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+                [class.bg-primary-50/80]="item.active"
+                [class.dark:bg-primary-900/20]="item.active"
+                [disabled]="switching() || item.active"
+                (click)="onTeamOptionSelected(item.team, teamMenu)"
+            >
+                <img [src]="teamLogoUrl(item.team)" [alt]="item.team.name" class="size-9 shrink-0 rounded-full border border-white/70 object-cover shadow-sm dark:border-surface-800/80" />
+                <div class="min-w-0 flex-1">
+                    <div class="truncate text-sm font-medium text-[var(--p-text-color)]">{{ item.team.name }}</div>
+                    <div class="mt-1 flex items-center gap-2">
+                        <span class="text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--p-text-muted-color)]">{{ roleLabel(item.team.role) }}</span>
+                        @if (item.active) {
+                        <span class="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-600 dark:text-primary-300">{{ "teams.switcher.activeLabel" | transloco }}</span>
+                        }
+                    </div>
+                </div>
+                @if (item.active) {
+                <i class="pi pi-check text-sm text-primary-600 dark:text-primary-300" aria-hidden="true"></i>
+                }
+            </button>
+            } @else if (item.kind === "action") {
+            <button
+                type="button"
+                class="flex w-full items-center gap-3 rounded-2xl px-3 py-2 text-left font-medium text-[var(--p-text-color)] transition-colors hover:bg-surface-100 dark:hover:bg-surface-800"
+                [attr.aria-label]="'teams.switcher.addTeamAria' | transloco"
+                (click)="onCreateTeam(teamMenu)"
+            >
+                <span class="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300">
+                    <i class="pi pi-plus text-sm" aria-hidden="true"></i>
+                </span>
+                <span class="truncate">{{ "teams.createDialog.createAction" | transloco }}</span>
+            </button>
+            }
+        </ng-template>
+    </p-menu>
+    }
+</div>

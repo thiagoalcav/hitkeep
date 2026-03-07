@@ -1,120 +1,31 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from "@angular/core";
-import { FormControl, ReactiveFormsModule } from "@angular/forms";
-import { compatForm } from "@angular/forms/signals/compat";
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from "@angular/core";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { SelectModule } from "primeng/select";
+import { Menu } from "primeng/menu";
+import { MenuItem } from "primeng/api";
+import { MenuModule } from "primeng/menu";
 import { SkeletonModule } from "primeng/skeleton";
 import { TagModule } from "primeng/tag";
 import { Team, TeamRole } from "@models/analytics.types";
 
+interface TeamSwitcherMenuItem extends MenuItem {
+    team?: Team;
+    active?: boolean;
+    kind?: "team" | "action";
+}
+
 @Component({
     selector: "app-team-switcher",
-    imports: [ReactiveFormsModule, SelectModule, SkeletonModule, TagModule, TranslocoPipe],
-    changeDetection: ChangeDetectionStrategy.OnPush,
-    template: `
-        <div
-            [class]="compact() ? 'flex w-full flex-col gap-2 rounded-2xl border border-surface-200/80 bg-linear-to-b from-white to-surface-50 p-2 shadow-sm dark:border-surface-700/80 dark:from-surface-900 dark:to-surface-800' : 'flex w-full flex-col gap-2'"
-            role="region"
-            [attr.aria-label]="'teams.switcher.regionAria' | transloco"
-        >
-            @if (showBrand()) {
-                <div class="mb-1 flex select-none items-center gap-3 px-2">
-                    <div class="flex size-9 items-center justify-center rounded-2xl bg-linear-to-br from-primary-500 to-emerald-500 shadow-sm">
-                        <img src="/icon.png" alt="HitKeep Logo" class="h-6 w-6 object-cover" />
-                    </div>
-                    <div class="min-w-0">
-                        <div class="truncate text-sm font-semibold uppercase tracking-[0.24em] text-muted-color">Workspace</div>
-                        <span class="block truncate text-xl font-bold tracking-tight text-[var(--p-text-color)]">HitKeep</span>
-                    </div>
-                </div>
-            }
-
-            <div class="flex items-center" [class.justify-between]="!compact()" [class.justify-end]="compact()">
-                @if (!compact()) {
-                    <label [for]="selectId" class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--p-text-muted-color)]">
-                        <span class="inline-block size-2 rounded-full bg-emerald-500"></span>
-                        {{ "teams.switcher.label" | transloco }}
-                    </label>
-                }
-                @if (showAdd()) {
-                    <button
-                        type="button"
-                        (click)="addClicked.emit()"
-                        class="flex h-8 min-w-8 cursor-pointer items-center justify-center rounded-xl border border-surface-200 bg-white/80 px-2 text-muted-color shadow-sm transition-colors hover:bg-surface-100 hover:text-[var(--p-text-color)] focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-surface-700 dark:bg-surface-900/80 dark:hover:bg-surface-800"
-                        [attr.aria-label]="'teams.switcher.addTeamAria' | transloco"
-                    >
-                        <i class="pi pi-plus text-xs" aria-hidden="true"></i>
-                    </button>
-                }
-            </div>
-
-            @if (loading()) {
-                <p-skeleton height="40px" class="rounded-md" />
-            } @else if (isSingleTeam()) {
-                <div
-                    [class]="
-                        compact()
-                            ? 'flex min-w-0 items-center gap-3 rounded-2xl border border-surface-200/80 bg-white/70 px-3 py-2 shadow-sm dark:border-surface-700/80 dark:bg-surface-900/70'
-                            : 'flex min-w-0 items-center gap-3 rounded-2xl border border-surface-200/80 bg-[var(--p-surface-ground)] px-3 py-2 shadow-sm dark:border-surface-700/80'
-                    "
-                    [attr.aria-label]="'teams.switcher.currentTeamAria' | transloco: { name: activeTeam().name }"
-                >
-                    <img [src]="teamLogoUrl(activeTeam())" [alt]="activeTeam().name" class="size-9 max-w-9 rounded-2xl object-cover shadow-sm" />
-                    <div class="min-w-0">
-                        <div class="truncate text-sm font-semibold">{{ activeTeam().name }}</div>
-                        <div class="text-xs uppercase tracking-[0.18em] text-muted-color">{{ roleLabel(activeTeam().role) }}</div>
-                    </div>
-                </div>
-            } @else {
-                <p-select
-                    [inputId]="selectId"
-                    [options]="teams()"
-                    [formControl]="teamForm.selectedTeam().control()"
-                    [filter]="true"
-                    filterBy="name"
-                    dataKey="id"
-                    optionLabel="name"
-                    [loading]="switching()"
-                    [placeholder]="'teams.switcher.placeholder' | transloco"
-                    class="w-full text-sm"
-                    [fluid]="true"
-                    [attr.aria-label]="'teams.switcher.selectAria' | transloco"
-                    (onChange)="onTeamChange($event.value)"
-                >
-                    <ng-template pTemplate="selectedItem" let-selected>
-                        @if (selected) {
-                            <div class="flex min-w-0 grow items-center gap-3 py-0.5">
-                                <img [src]="teamLogoUrl(selected)" [alt]="selected.name" class="size-9 max-w-9 rounded-2xl object-cover shadow-sm" />
-                                <div class="min-w-0">
-                                    <div class="truncate text-sm font-semibold">{{ selected.name }}</div>
-                                    <div class="text-xs uppercase tracking-[0.18em] text-muted-color">{{ roleLabel(selected.role) }}</div>
-                                </div>
-                            </div>
-                        }
-                    </ng-template>
-
-                    <ng-template pTemplate="item" let-team>
-                        <div class="flex w-full min-w-0 items-center justify-between gap-3 rounded-xl px-1 py-1">
-                            <div class="flex min-w-0 items-center gap-3">
-                                <img [src]="teamLogoUrl(team)" [alt]="team.name" class="size-9 max-w-9 shrink-0 rounded-2xl object-cover shadow-sm" />
-                                <div class="min-w-0">
-                                    <div class="truncate font-semibold">{{ team.name }}</div>
-                                    <div class="text-xs uppercase tracking-[0.18em] text-muted-color">{{ roleLabel(team.role) }}</div>
-                                </div>
-                            </div>
-                            <p-tag [value]="roleLabel(team.role)" [severity]="roleSeverity(team.role)" [rounded]="true" />
-                        </div>
-                    </ng-template>
-                </p-select>
-            }
-        </div>
-    `
+    imports: [MenuModule, SkeletonModule, TagModule, TranslocoPipe],
+    templateUrl: "./team-switcher.html",
+    styleUrl: "./team-switcher.css",
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TeamSwitcher {
     private static nextId = 0;
 
-    private transloco = inject(TranslocoService);
-    protected readonly selectId = `team-dropdown-${TeamSwitcher.nextId++}`;
+    private readonly transloco = inject(TranslocoService);
+
+    protected readonly triggerId = `team-menu-trigger-${TeamSwitcher.nextId++}`;
 
     teams = input.required<Team[]>();
     currentTeamId = input<string>("");
@@ -124,51 +35,65 @@ export class TeamSwitcher {
     showAdd = input<boolean>(false);
     compact = input<boolean>(false);
     beforeSwitch = input<((nextTeam: Team) => boolean | Promise<boolean>) | undefined>(undefined);
+
     teamSelected = output<Team>();
     addClicked = output<void>();
 
-    protected readonly isSingleTeam = computed(() => !this.loading() && this.teams().length <= 1);
-    protected readonly activeTeam = computed(() => this.teams().find((t) => t.id === this.currentTeamId()) ?? this.teams()[0] ?? null);
+    protected readonly isMenuOpen = signal(false);
+    protected readonly activeTeam = computed(() => this.teams().find((team) => team.id === this.currentTeamId()) ?? this.teams()[0] ?? null);
+    protected readonly activeTeamName = computed(() => this.activeTeam()?.name ?? this.transloco.translate("teams.switcher.placeholder"));
+    protected readonly menuItems = computed<TeamSwitcherMenuItem[]>(() => {
+        const items: TeamSwitcherMenuItem[] = this.teams().map((team) => ({
+            id: team.id,
+            label: team.name,
+            team,
+            active: team.id === this.activeTeam()?.id,
+            kind: "team"
+        }));
 
-    private readonly teamFormModel = signal({
-        selectedTeam: new FormControl<Team | null>(null)
+        if (this.showAdd()) {
+            items.push({ separator: true });
+            items.push({
+                id: "create-team",
+                label: "create-team",
+                icon: "pi pi-plus",
+                kind: "action"
+            });
+        }
+
+        return items;
     });
-    protected readonly teamForm = compatForm(this.teamFormModel);
+    protected readonly menuStyle = computed(() => ({
+        width: this.compact() ? "19rem" : "20rem"
+    }));
 
-    constructor() {
-        effect(() => {
-            if (this.switching()) {
-                return;
-            }
-            const currentTeam = this.teams().find((team) => team.id === this.currentTeamId()) ?? this.teams()[0] ?? null;
-            this.teamForm.selectedTeam().control().setValue(currentTeam, { emitEvent: false });
-        });
-    }
-
-    protected async onTeamChange(team: Team | null) {
-        if (!team || team.id === this.currentTeamId()) {
+    protected async onTeamOptionSelected(team: Team | undefined, menu: Menu) {
+        if (!team || this.switching() || team.id === this.currentTeamId()) {
             return;
         }
 
         const proceed = await this.canSwitchTeam(team);
         if (!proceed) {
-            const currentTeam = this.activeTeam();
-            this.teamForm.selectedTeam().control().setValue(currentTeam, { emitEvent: false });
+            menu.hide();
             return;
         }
+
+        menu.hide();
         this.teamSelected.emit(team);
     }
 
-    private async canSwitchTeam(nextTeam: Team): Promise<boolean> {
-        const checker = this.beforeSwitch();
-        if (!checker) {
-            return true;
+    protected onCreateTeam(menu: Menu) {
+        if (!this.showAdd()) {
+            return;
         }
-        const allowed = checker(nextTeam);
-        return typeof (allowed as Promise<boolean>)?.then === "function" ? await allowed : Boolean(allowed);
+        menu.hide();
+        this.addClicked.emit();
     }
 
-    protected teamLogoUrl(team: Team): string {
+    protected teamLogoUrl(team: Team | null): string {
+        if (!team) {
+            return this.generateInitialsAvatar({ id: "team", name: "Team", logo_url: "", role: "member", created_at: "" });
+        }
         if (team.logo_url) {
             return team.logo_url;
         }
@@ -189,6 +114,15 @@ export class TeamSwitcher {
             default:
                 return "secondary";
         }
+    }
+
+    private async canSwitchTeam(nextTeam: Team): Promise<boolean> {
+        const checker = this.beforeSwitch();
+        if (!checker) {
+            return true;
+        }
+        const allowed = checker(nextTeam);
+        return typeof (allowed as Promise<boolean>)?.then === "function" ? await allowed : Boolean(allowed);
     }
 
     private generateInitialsAvatar(team: Team): string {

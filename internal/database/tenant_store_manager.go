@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
@@ -25,6 +26,25 @@ type TenantStoreManager struct {
 	stores map[uuid.UUID]*Store
 
 	defaultID uuid.UUID
+}
+
+var siteAnalyticsTransferTables = []string{
+	"goal_rollups_hourly",
+	"goal_rollups_daily",
+	"goal_rollups_monthly",
+	"funnel_rollups_hourly",
+	"funnel_rollups_daily",
+	"funnel_rollups_monthly",
+	"session_rollups_hourly",
+	"session_rollups_daily",
+	"session_rollups_monthly",
+	"hit_rollups_hourly",
+	"hit_rollups_daily",
+	"hit_rollups_monthly",
+	"goals",
+	"funnels",
+	"events",
+	"hits",
 }
 
 // NewTenantStoreManager creates a TenantStoreManager that wraps the shared store.
@@ -189,6 +209,64 @@ func (m *TenantStoreManager) DeleteSite(ctx context.Context, siteID uuid.UUID) e
 	return nil
 }
 
+// TransferSite copies site-scoped analytics into the destination tenant store,
+// updates the shared site->tenant mapping, and removes stale analytics from the
+// previous tenant's data plane.
+func (m *TenantStoreManager) TransferSite(ctx context.Context, siteID, destinationTenantID uuid.UUID) error {
+	sourceTenantID, err := m.shared.GetSiteTenantID(ctx, siteID)
+	if err != nil {
+		return fmt.Errorf("resolve source tenant for site %s: %w", siteID, err)
+	}
+	if sourceTenantID == destinationTenantID {
+		return nil
+	}
+
+	site, err := m.shared.GetSiteByID(ctx, siteID)
+	if err != nil {
+		return fmt.Errorf("load site %s for transfer: %w", siteID, err)
+	}
+	if site == nil {
+		return fmt.Errorf("site %s not found", siteID)
+	}
+
+	sourceStore, err := m.ForTenant(ctx, sourceTenantID)
+	if err != nil {
+		return err
+	}
+	destinationStore, err := m.ForTenant(ctx, destinationTenantID)
+	if err != nil {
+		return err
+	}
+
+	if sourceStore != destinationStore {
+		if err := copySiteAnalyticsBetweenStores(ctx, sourceStore, destinationStore, siteID); err != nil {
+			return err
+		}
+		if err := deleteSiteAnalyticsOnly(ctx, sourceStore, siteID, sourceStore != m.shared); err != nil {
+			return err
+		}
+	}
+
+	if err := m.shared.UpdateSiteTenant(ctx, siteID, destinationTenantID); err != nil {
+		return fmt.Errorf("update shared site tenant mapping: %w", err)
+	}
+
+	defaultID, err := m.DefaultTenantID(ctx)
+	if err != nil {
+		return fmt.Errorf("resolve default tenant after site transfer: %w", err)
+	}
+	if destinationTenantID != defaultID {
+		if err := destinationStore.UpsertSiteMirror(ctx, site); err != nil {
+			return fmt.Errorf("upsert destination site mirror: %w", err)
+		}
+	}
+	if err := m.SyncSite(ctx, siteID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Close closes all per-tenant stores. The caller is responsible for
 // closing the shared store separately.
 func (m *TenantStoreManager) Close() error {
@@ -264,6 +342,89 @@ func (m *TenantStoreManager) syncSiteTenantData(ctx context.Context, siteID, ten
 		return err
 	}
 	return nil
+}
+
+func copySiteAnalyticsBetweenStores(ctx context.Context, sourceStore, destinationStore *Store, siteID uuid.UUID) error {
+	if sourceStore == nil || destinationStore == nil {
+		return fmt.Errorf("source and destination stores are required")
+	}
+	if sourceStore.db == destinationStore.db {
+		return nil
+	}
+
+	for _, table := range siteAnalyticsTransferTables {
+		if !isSafeIdentifier(table) {
+			return fmt.Errorf("unsafe analytics transfer table %q", table)
+		}
+		if err := copySiteAnalyticsTable(ctx, sourceStore.db, destinationStore.db, table, siteID); err != nil {
+			return fmt.Errorf("copy site analytics table %s: %w", table, err)
+		}
+	}
+
+	return nil
+}
+
+func copySiteAnalyticsTable(ctx context.Context, sourceDB, destinationDB *sql.DB, table string, siteID uuid.UUID) error {
+	// #nosec G201 -- table is validated via isSafeIdentifier before formatting.
+	query := fmt.Sprintf("SELECT * FROM %s WHERE site_id = ?", table)
+	rows, err := sourceDB.QueryContext(ctx, query, siteID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return fmt.Errorf("list columns: %w", err)
+	}
+	if len(columns) == 0 {
+		return nil
+	}
+	for _, column := range columns {
+		if !isSafeIdentifier(column) {
+			return fmt.Errorf("unsafe analytics transfer column %q", column)
+		}
+	}
+
+	// #nosec G201 -- table and columns are validated via isSafeIdentifier before formatting.
+	insertSQL := fmt.Sprintf(
+		"INSERT OR REPLACE INTO %s (%s) VALUES (%s)",
+		table,
+		strings.Join(columns, ", "),
+		placeholders(len(columns)),
+	)
+
+	values := make([]any, len(columns))
+	scanTargets := make([]any, len(columns))
+	for i := range values {
+		scanTargets[i] = &values[i]
+	}
+
+	for rows.Next() {
+		if err := rows.Scan(scanTargets...); err != nil {
+			return fmt.Errorf("scan row: %w", err)
+		}
+		if _, err := destinationDB.ExecContext(ctx, insertSQL, values...); err != nil {
+			return fmt.Errorf("insert row: %w", err)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate rows: %w", err)
+	}
+
+	return nil
+}
+
+func placeholders(count int) string {
+	if count <= 0 {
+		return ""
+	}
+
+	values := make([]string, count)
+	for i := 0; i < count; i++ {
+		values[i] = "?"
+	}
+	return strings.Join(values, ", ")
 }
 
 func (m *TenantStoreManager) backfillLegacyGoals(ctx context.Context, tenantStore *Store, siteID, tenantID uuid.UUID) error {

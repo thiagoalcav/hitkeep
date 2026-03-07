@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -44,6 +45,33 @@ func setupTestEnv(t *testing.T) (*handler, *database.Store, uuid.UUID) {
 	}
 
 	return &handler{ctx: ctx}, store, userID
+}
+
+func setupFileBackedTransferEnv(t *testing.T) (*handler, *database.Store, *database.TenantStoreManager, uuid.UUID) {
+	t.Helper()
+
+	tmpDir := t.TempDir()
+	store := database.NewStore(filepath.Join(tmpDir, "hitkeep.db"))
+	if err := store.Connect(); err != nil {
+		t.Fatalf("failed to connect to file-backed test db: %v", err)
+	}
+	if err := store.Migrate(context.Background()); err != nil {
+		t.Fatalf("failed to migrate file-backed test db: %v", err)
+	}
+
+	userID, err := store.CreateUser(context.Background(), "transfer@example.com", "hashed_secret")
+	if err != nil {
+		t.Fatalf("failed to create test user: %v", err)
+	}
+
+	tenantStores := database.NewTenantStoreManager(store, filepath.Join(tmpDir, "tenant-data"))
+	ctx := &shared.Context{
+		Store:        store,
+		TenantStores: tenantStores,
+		Config:       &config.Config{},
+	}
+
+	return &handler{ctx: ctx}, store, tenantStores, userID
 }
 
 func TestHandleCreateSite(t *testing.T) {
@@ -239,6 +267,41 @@ func TestHandleGetSites(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestHandleTransferSiteTeam(t *testing.T) {
+	h, store, tenantStores, userID := setupFileBackedTransferEnv(t)
+	defer store.Close()
+	defer tenantStores.Close()
+
+	site, err := store.CreateSite(context.Background(), userID, "move-me.test")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	destinationTeam, err := store.CreateTenant(context.Background(), userID, "Destination", "")
+	if err != nil {
+		t.Fatalf("create destination team: %v", err)
+	}
+
+	body, _ := json.Marshal(map[string]string{"team_id": destinationTeam.ID.String()})
+	req := httptest.NewRequest(http.MethodPost, "/api/sites/"+site.ID.String()+"/transfer-team", bytes.NewReader(body))
+	req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, userID))
+	req.SetPathValue("id", site.ID.String())
+	w := httptest.NewRecorder()
+
+	h.handleTransferSiteTeam().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	tenantID, err := store.GetSiteTenantID(context.Background(), site.ID)
+	if err != nil {
+		t.Fatalf("get site tenant after transfer: %v", err)
+	}
+	if tenantID != destinationTeam.ID {
+		t.Fatalf("expected destination team %s, got %s", destinationTeam.ID, tenantID)
 	}
 }
 

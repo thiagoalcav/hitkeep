@@ -364,3 +364,87 @@ func TestDeleteSiteRemovesTenantAndSharedData(t *testing.T) {
 		t.Fatalf("expected tenant site mirror deleted, got count=%d", tenantCount)
 	}
 }
+
+func TestTransferSiteMovesAnalyticsToDestinationTenant(t *testing.T) {
+	ctx := context.Background()
+	store := newSharedTestStore(t)
+	basePath := t.TempDir()
+	mgr := NewTenantStoreManager(store, basePath)
+	t.Cleanup(func() { _ = mgr.Close() })
+
+	userID, err := store.CreateUser(ctx, "transfer-site@test.com", "hash")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	site, err := store.CreateSite(ctx, userID, "transfer-site.test")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+	if err := store.CreateGoal(ctx, &api.Goal{
+		ID:        uuid.New(),
+		SiteID:    site.ID,
+		Name:      "Signup",
+		Type:      "event",
+		Value:     "signup",
+		CreatedAt: time.Now().UTC(),
+	}); err != nil {
+		t.Fatalf("create goal in shared store: %v", err)
+	}
+	if err := store.CreateHit(ctx, &api.Hit{
+		ID:        uuid.New(),
+		SiteID:    site.ID,
+		SessionID: uuid.New(),
+		PageID:    uuid.New(),
+		Timestamp: time.Now().UTC(),
+		Path:      "/pricing",
+	}); err != nil {
+		t.Fatalf("create hit in shared store: %v", err)
+	}
+
+	destinationTeam, err := store.CreateTenant(ctx, userID, "Destination Team", "")
+	if err != nil {
+		t.Fatalf("create destination team: %v", err)
+	}
+
+	if err := mgr.TransferSite(ctx, site.ID, destinationTeam.ID); err != nil {
+		t.Fatalf("TransferSite: %v", err)
+	}
+
+	tenantStore, err := mgr.ForTenant(ctx, destinationTeam.ID)
+	if err != nil {
+		t.Fatalf("ForTenant(destination): %v", err)
+	}
+
+	goals, err := tenantStore.GetGoals(ctx, site.ID)
+	if err != nil {
+		t.Fatalf("tenant GetGoals: %v", err)
+	}
+	if len(goals) != 1 {
+		t.Fatalf("expected 1 goal in destination tenant store, got %d", len(goals))
+	}
+
+	var hitCount int
+	if err := tenantStore.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM hits WHERE site_id = ?", site.ID).Scan(&hitCount); err != nil {
+		t.Fatalf("count transferred hits in destination store: %v", err)
+	}
+	if hitCount != 1 {
+		t.Fatalf("expected 1 transferred hit in destination tenant store, got %d", hitCount)
+	}
+
+	tenantID, err := store.GetSiteTenantID(ctx, site.ID)
+	if err != nil {
+		t.Fatalf("GetSiteTenantID after transfer: %v", err)
+	}
+	if tenantID != destinationTeam.ID {
+		t.Fatalf("expected site tenant %s, got %s", destinationTeam.ID, tenantID)
+	}
+
+	var sharedHitCount int
+	if err := store.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM hits WHERE site_id = ?", site.ID).Scan(&sharedHitCount); err != nil {
+		t.Fatalf("count shared hits after transfer: %v", err)
+	}
+	if sharedHitCount != 0 {
+		t.Fatalf("expected shared analytics to be cleared after transfer, got %d hit rows", sharedHitCount)
+	}
+}

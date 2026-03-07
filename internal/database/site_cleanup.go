@@ -47,6 +47,25 @@ var knownSiteDeleteTables = func() map[string]struct{} {
 	return known
 }()
 
+var siteAnalyticsDeleteSteps = []siteDeleteStep{
+	{table: "goal_rollups_hourly", query: "DELETE FROM goal_rollups_hourly WHERE site_id = ?"},
+	{table: "goal_rollups_daily", query: "DELETE FROM goal_rollups_daily WHERE site_id = ?"},
+	{table: "goal_rollups_monthly", query: "DELETE FROM goal_rollups_monthly WHERE site_id = ?"},
+	{table: "funnel_rollups_hourly", query: "DELETE FROM funnel_rollups_hourly WHERE site_id = ?"},
+	{table: "funnel_rollups_daily", query: "DELETE FROM funnel_rollups_daily WHERE site_id = ?"},
+	{table: "funnel_rollups_monthly", query: "DELETE FROM funnel_rollups_monthly WHERE site_id = ?"},
+	{table: "session_rollups_hourly", query: "DELETE FROM session_rollups_hourly WHERE site_id = ?"},
+	{table: "session_rollups_daily", query: "DELETE FROM session_rollups_daily WHERE site_id = ?"},
+	{table: "session_rollups_monthly", query: "DELETE FROM session_rollups_monthly WHERE site_id = ?"},
+	{table: "hit_rollups_hourly", query: "DELETE FROM hit_rollups_hourly WHERE site_id = ?"},
+	{table: "hit_rollups_daily", query: "DELETE FROM hit_rollups_daily WHERE site_id = ?"},
+	{table: "hit_rollups_monthly", query: "DELETE FROM hit_rollups_monthly WHERE site_id = ?"},
+	{table: "goals", query: "DELETE FROM goals WHERE site_id = ?"},
+	{table: "funnels", query: "DELETE FROM funnels WHERE site_id = ?"},
+	{table: "events", query: "DELETE FROM events WHERE site_id = ?"},
+	{table: "hits", query: "DELETE FROM hits WHERE site_id = ?"},
+}
+
 type queryer interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
@@ -93,6 +112,44 @@ func deleteSiteChildren(ctx context.Context, tx *sql.Tx, siteID uuid.UUID) error
 		}
 	}
 
+	return nil
+}
+
+func deleteSiteAnalyticsOnly(ctx context.Context, store *Store, siteID uuid.UUID, deleteSiteRow bool) error {
+	tx, err := store.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("could not begin analytics cleanup transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	existingTables, err := listTables(ctx, tx)
+	if err != nil {
+		return err
+	}
+
+	for _, step := range siteAnalyticsDeleteSteps {
+		if _, ok := existingTables[step.table]; !ok {
+			continue
+		}
+		if !isSafeIdentifier(step.table) {
+			return fmt.Errorf("unsafe table name %q", step.table)
+		}
+		if _, err := tx.ExecContext(ctx, step.query, siteID); err != nil {
+			return fmt.Errorf("could not delete analytics from %s: %w", step.table, err)
+		}
+	}
+
+	if deleteSiteRow {
+		if _, ok := existingTables["sites"]; ok {
+			if _, err := tx.ExecContext(ctx, "DELETE FROM sites WHERE id = ?", siteID); err != nil {
+				return fmt.Errorf("could not delete mirrored site row: %w", err)
+			}
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("could not commit analytics cleanup transaction: %w", err)
+	}
 	return nil
 }
 

@@ -62,6 +62,10 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		SitePerm:    authcore.PermSiteManageData,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleUpdateSiteRetention()))
+	mux.HandleFunc("POST /api/sites/{id}/transfer-team", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteManageTeam,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleTransferSiteTeam()))
 	mux.HandleFunc("GET /api/sites/{id}/exclusions", ctx.Handler(shared.HandlerConfig{
 		SitePerm:    authcore.PermSiteManageData,
 		RateLimiter: ctx.ApiLimiter,
@@ -77,6 +81,15 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 }
 
 var domainRegex = regexp.MustCompile(`^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$`)
+
+func canManageTenantRole(role string) bool {
+	switch strings.TrimSpace(strings.ToLower(role)) {
+	case database.TenantRoleOwner, database.TenantRoleAdmin:
+		return true
+	default:
+		return false
+	}
+}
 
 func (h *handler) handleGetSites() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -273,6 +286,90 @@ func (h *handler) handleUpdateSiteRetention() http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func (h *handler) handleTransferSiteTeam() http.HandlerFunc {
+	type request struct {
+		TeamID string `json:"team_id"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.ctx.Store == nil || h.ctx.TenantStores == nil {
+			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
+			return
+		}
+
+		userID := shared.GetUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		siteID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+		if err != nil {
+			http.Error(w, "Invalid site_id", http.StatusBadRequest)
+			return
+		}
+
+		var req request
+		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+		if err := decoder.Decode(&struct{}{}); err != io.EOF {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		destinationTeamID, err := uuid.Parse(strings.TrimSpace(req.TeamID))
+		if err != nil {
+			http.Error(w, "Invalid team_id", http.StatusBadRequest)
+			return
+		}
+
+		destinationRole, err := h.ctx.Store.GetTenantRole(r.Context(), destinationTeamID, userID)
+		if err != nil || !canManageTenantRole(destinationRole) {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
+
+		sourceTeamID, err := h.ctx.Store.GetSiteTenantID(r.Context(), siteID)
+		if err != nil {
+			slog.Error("Failed to resolve source team for site transfer", "error", err, "site_id", siteID, "user_id", userID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		if err := h.ctx.TenantStores.TransferSite(r.Context(), siteID, destinationTeamID); err != nil {
+			slog.Error("Failed to transfer site to team", "error", err, "site_id", siteID, "source_team_id", sourceTeamID, "destination_team_id", destinationTeamID, "user_id", userID)
+			http.Error(w, "Failed to transfer site", http.StatusInternalServerError)
+			return
+		}
+
+		site, _ := h.ctx.Store.GetSiteByID(r.Context(), siteID)
+		siteLabel := siteID.String()
+		if site != nil && site.Domain != "" {
+			siteLabel = site.Domain
+		}
+		if err := h.ctx.Store.AppendTeamAuditEntry(r.Context(), sourceTeamID, userID, "site.transferred_out", fmt.Sprintf("Site %s moved to team %s", siteLabel, destinationTeamID), nil); err != nil {
+			slog.Warn("Failed to append source team site transfer audit entry", "error", err, "site_id", siteID, "team_id", sourceTeamID)
+		}
+		if err := h.ctx.Store.AppendTeamAuditEntry(r.Context(), destinationTeamID, userID, "site.transferred_in", fmt.Sprintf("Site %s moved into this team", siteLabel), nil); err != nil {
+			slog.Warn("Failed to append destination team site transfer audit entry", "error", err, "site_id", siteID, "team_id", destinationTeamID)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]any{
+			"status":              "ok",
+			"site_id":             siteID,
+			"source_team_id":      sourceTeamID,
+			"destination_team_id": destinationTeamID,
+		}); err != nil {
+			slog.Error("Failed to encode site transfer response", "error", err, "site_id", siteID, "user_id", userID)
+		}
 	}
 }
 

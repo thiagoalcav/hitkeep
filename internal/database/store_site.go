@@ -129,6 +129,20 @@ func (s *Store) CreateSite(ctx context.Context, userID uuid.UUID, domain string)
 	}, nil
 }
 
+func (s *Store) UpdateSiteTenant(ctx context.Context, siteID, tenantID uuid.UUID) error {
+	now := time.Now().UTC()
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO site_tenants (site_id, tenant_id, created_at)
+		VALUES (?, ?, ?)
+		ON CONFLICT (site_id) DO UPDATE SET
+			tenant_id = excluded.tenant_id
+	`, siteID, tenantID, now)
+	if err != nil {
+		return fmt.Errorf("could not update site tenant mapping: %w", err)
+	}
+	return nil
+}
+
 func (s *Store) GetSites(ctx context.Context, userID uuid.UUID) ([]api.Site, error) {
 	instanceRole, err := s.GetInstanceRole(ctx, userID)
 	if err != nil {

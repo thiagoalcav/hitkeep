@@ -862,6 +862,18 @@
                 "leaveConfirm": "Dieses Team verlassen? Dein aktiver Team-Kontext wird sofort umgeschaltet.",
                 "leaveAction": "Team verlassen",
                 "leaveSuccess": "Du hast das Team verlassen.",
+                "archiveSectionTitle": "Team archivieren",
+                "archiveSectionDescription": "Archiviert dieses Team, nachdem alle zugeordneten Websites verschoben oder entfernt wurden.",
+                "archiveSectionHint": "Das Archivieren blendet das Team aus den normalen Teamlisten aus. Verschiebe oder lösche zuerst alle Websites dieses Teams.",
+                "archiveConfirm": "Dieses Team archivieren? Mitglieder verlieren es im aktiven Team-Umschalter.",
+                "archiveAction": "Team archivieren",
+                "archiveSuccess": "Das Team wurde archiviert.",
+                "archiveErrors": {
+                    "hasSites": "Verschiebe oder lösche zuerst alle Team-Websites, bevor du das Team archivierst.",
+                    "defaultTeam": "Das Standard-Team kann nicht archiviert werden.",
+                    "forbidden": "Nur Team-Eigentümer können dieses Team archivieren.",
+                    "generic": "Das Team konnte nicht archiviert werden. Bitte erneut versuchen."
+                },
                 "leaveErrors": {
                     "lastOwner": "Du kannst das Team nicht als letzter Eigentümer verlassen.",
                     "onlyTeam": "Du kannst dein einziges Team nicht verlassen.",

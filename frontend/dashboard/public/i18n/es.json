@@ -862,6 +862,18 @@
                 "leaveConfirm": "¿Salir de este equipo? Tu contexto de equipo activo cambiará inmediatamente.",
                 "leaveAction": "Salir del equipo",
                 "leaveSuccess": "Has salido del equipo.",
+                "archiveSectionTitle": "Archivar equipo",
+                "archiveSectionDescription": "Archiva este equipo después de transferir o eliminar todos sus sitios.",
+                "archiveSectionHint": "Archivar oculta el equipo de las listas normales de equipos. Transfiere o elimina primero todos los sitios de este equipo.",
+                "archiveConfirm": "¿Archivar este equipo? Los miembros dejarán de verlo en el selector de equipo activo.",
+                "archiveAction": "Archivar equipo",
+                "archiveSuccess": "El equipo se archivó.",
+                "archiveErrors": {
+                    "hasSites": "Transfiere o elimina todos los sitios del equipo antes de archivarlo.",
+                    "defaultTeam": "El equipo predeterminado no se puede archivar.",
+                    "forbidden": "Solo los propietarios del equipo pueden archivarlo.",
+                    "generic": "No se pudo archivar el equipo. Inténtalo de nuevo."
+                },
                 "leaveErrors": {
                     "lastOwner": "No puedes salir siendo el último propietario.",
                     "onlyTeam": "No puedes salir de tu único equipo.",

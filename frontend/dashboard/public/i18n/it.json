@@ -862,6 +862,18 @@
                 "leaveConfirm": "Lasciare questo team? Il contesto del team attivo cambierà immediatamente.",
                 "leaveAction": "Lascia il team",
                 "leaveSuccess": "Hai lasciato il team.",
+                "archiveSectionTitle": "Archivia team",
+                "archiveSectionDescription": "Archivia questo team dopo aver trasferito o rimosso tutti i suoi siti.",
+                "archiveSectionHint": "L'archiviazione nasconde il team dagli elenchi normali dei team. Trasferisci o elimina prima tutti i siti di questo team.",
+                "archiveConfirm": "Archiviare questo team? I membri non lo vedranno più nel selettore del team attivo.",
+                "archiveAction": "Archivia team",
+                "archiveSuccess": "Il team è stato archiviato.",
+                "archiveErrors": {
+                    "hasSites": "Trasferisci o elimina tutti i siti del team prima di archiviarlo.",
+                    "defaultTeam": "Il team predefinito non può essere archiviato.",
+                    "forbidden": "Solo i proprietari del team possono archiviarlo.",
+                    "generic": "Impossibile archiviare il team. Riprova."
+                },
                 "leaveErrors": {
                     "lastOwner": "Non puoi lasciare il team come ultimo proprietario.",
                     "onlyTeam": "Non puoi lasciare il tuo unico team.",

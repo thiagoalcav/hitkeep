@@ -64,3 +64,13 @@
     display: flex;
     justify-content: flex-start;
 }
+
+.team-settings__danger-note {
+    margin-top: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in srgb, var(--p-red-500) 20%, transparent);
+    background: color-mix(in srgb, var(--p-red-500) 8%, var(--p-surface-card));
+    color: var(--p-text-muted-color);
+    font-size: 0.85rem;
+}

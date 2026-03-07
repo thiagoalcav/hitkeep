@@ -122,6 +122,17 @@ export class TeamService {
         );
     }
 
+    archiveTeam(teamID: string) {
+        this.isSwitching.set(true);
+        return this.http.post<LeaveTeamResponse>(`/api/user/teams/${encodeURIComponent(teamID)}/archive`, {}).pipe(
+            tap((response) => {
+                this.teams.update((teams) => teams.filter((team) => team.id !== teamID));
+                this.activeTeamId.set(response.active_team_id || this.teams()[0]?.id || "");
+            }),
+            finalize(() => this.isSwitching.set(false))
+        );
+    }
+
     createTeam(payload: { name: string; logo_url: string }) {
         return this.http.post<{ team: Team }>("/api/user/teams", payload).pipe(
             tap((response) => {

@@ -862,6 +862,18 @@
                 "leaveConfirm": "Quitter cette équipe ? Votre contexte d'équipe actif changera immédiatement.",
                 "leaveAction": "Quitter l'équipe",
                 "leaveSuccess": "Vous avez quitté l'équipe.",
+                "archiveSectionTitle": "Archiver l'équipe",
+                "archiveSectionDescription": "Archivez cette équipe après avoir transféré ou supprimé tous ses sites.",
+                "archiveSectionHint": "L'archivage masque l'équipe des listes d'équipes normales. Transférez ou supprimez d'abord tous les sites de cette équipe.",
+                "archiveConfirm": "Archiver cette équipe ? Les membres ne la verront plus dans le sélecteur d'équipe actif.",
+                "archiveAction": "Archiver l'équipe",
+                "archiveSuccess": "L'équipe a été archivée.",
+                "archiveErrors": {
+                    "hasSites": "Transférez ou supprimez tous les sites de l'équipe avant de l'archiver.",
+                    "defaultTeam": "L'équipe par défaut ne peut pas être archivée.",
+                    "forbidden": "Seuls les propriétaires de l'équipe peuvent l'archiver.",
+                    "generic": "Impossible d'archiver l'équipe. Veuillez réessayer."
+                },
                 "leaveErrors": {
                     "lastOwner": "Vous ne pouvez pas quitter l'équipe en tant que dernier propriétaire.",
                     "onlyTeam": "Vous ne pouvez pas quitter votre seule équipe.",

@@ -17,7 +17,7 @@ describe("TeamSettingsPage", () => {
         id: "team-1",
         name: "Acme",
         logo_url: "",
-        role: "admin" as const,
+        role: "owner" as const,
         created_at: "2026-01-01T00:00:00Z"
     });
 
@@ -25,6 +25,7 @@ describe("TeamSettingsPage", () => {
         activeTeam,
         updateTeam: vi.fn(() => of({ status: "ok" })),
         leaveTeam: vi.fn(() => of({ status: "ok", active_team_id: "team-2" })),
+        archiveTeam: vi.fn(() => of({ status: "ok", active_team_id: "team-2" })),
         loadTeams: vi.fn(() => of({ active_team_id: "team-2", teams: [] }))
     };
 
@@ -76,6 +77,18 @@ describe("TeamSettingsPage", () => {
 
         expect(teamServiceMock.leaveTeam).toHaveBeenCalled();
         expect((teamServiceMock.leaveTeam as any).mock.calls[0][0]).toBe("team-1");
+        expect(permissionServiceMock.loadPermissions).toHaveBeenCalled();
+        expect(navigateSpy).toHaveBeenCalledWith("/dashboard");
+    });
+
+    it("should call archiveTeam for current team", () => {
+        const router = TestBed.inject(Router);
+        const navigateSpy = vi.spyOn(router, "navigateByUrl").mockResolvedValue(true);
+
+        (component as any).archiveTeam();
+
+        expect(teamServiceMock.archiveTeam).toHaveBeenCalled();
+        expect((teamServiceMock.archiveTeam as any).mock.calls[0][0]).toBe("team-1");
         expect(permissionServiceMock.loadPermissions).toHaveBeenCalled();
         expect(navigateSpy).toHaveBeenCalledWith("/dashboard");
     });

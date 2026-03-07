@@ -247,4 +247,27 @@ describe("TeamService", () => {
         expect(service.activeTeamId()).toBe("team-a");
         expect(service.teams().map((team) => team.id)).toEqual(["team-a"]);
     });
+
+    it("should archive team and update local state", () => {
+        service.teams.set([
+            { id: "team-a", name: "Team A", logo_url: "", role: "owner", created_at: "2026-01-01T00:00:00Z" },
+            { id: "team-b", name: "Team B", logo_url: "", role: "owner", created_at: "2026-01-02T00:00:00Z" }
+        ]);
+        service.activeTeamId.set("team-b");
+
+        service.archiveTeam("team-b").subscribe((response) => {
+            expect(response.status).toBe("ok");
+        });
+
+        const req = httpMock.expectOne("/api/user/teams/team-b/archive");
+        expect(req.request.method).toBe("POST");
+        expect(req.request.body).toEqual({});
+        req.flush({
+            status: "ok",
+            active_team_id: "team-a"
+        });
+
+        expect(service.activeTeamId()).toBe("team-a");
+        expect(service.teams().map((team) => team.id)).toEqual(["team-a"]);
+    });
 });

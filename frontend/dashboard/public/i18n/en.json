@@ -862,6 +862,18 @@
                 "leaveConfirm": "Leave this team? Your active team context will switch immediately.",
                 "leaveAction": "Leave team",
                 "leaveSuccess": "You left the team.",
+                "archiveSectionTitle": "Archive team",
+                "archiveSectionDescription": "Archive this team after all of its sites have been transferred or removed.",
+                "archiveSectionHint": "Archiving hides the team from normal team lists. Transfer or delete every site in this team first.",
+                "archiveConfirm": "Archive this team? Members will lose access to it in the active team switcher.",
+                "archiveAction": "Archive team",
+                "archiveSuccess": "The team was archived.",
+                "archiveErrors": {
+                    "hasSites": "Transfer or delete all team sites before archiving.",
+                    "defaultTeam": "The default team cannot be archived.",
+                    "forbidden": "Only team owners can archive this team.",
+                    "generic": "Failed to archive team. Please try again."
+                },
                 "leaveErrors": {
                     "lastOwner": "You cannot leave as the last owner.",
                     "onlyTeam": "You cannot leave your only team.",

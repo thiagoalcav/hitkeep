@@ -35,14 +35,19 @@ export class TeamSettingsPage {
         const role = this.team()?.role;
         return role === "owner" || role === "admin";
     });
+    protected readonly canArchive = computed(() => this.team()?.role === "owner");
 
     protected readonly isSaving = signal(false);
     protected readonly isLeaving = signal(false);
+    protected readonly isArchiving = signal(false);
     protected readonly successKey = signal("");
     protected readonly errorKey = signal("");
     protected readonly leaveErrorKey = signal("");
     protected readonly leaveSuccessKey = signal("");
+    protected readonly archiveErrorKey = signal("");
+    protected readonly archiveSuccessKey = signal("");
     protected readonly leaveConfirmKey = "team-settings-leave";
+    protected readonly archiveConfirmKey = "team-settings-archive";
 
     protected readonly form = new FormGroup({
         name: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.maxLength(120)] }),
@@ -129,16 +134,7 @@ export class TeamSettingsPage {
             .subscribe({
                 next: () => {
                     this.leaveSuccessKey.set("admin.team.settings.leaveSuccess");
-                    this.siteService.sites.set([]);
-                    this.siteService.activeSite.set(null);
-                    this.siteService.loadSites();
-                    this.perms.loadPermissions().subscribe({ error: () => undefined });
-                    this.teamService.loadTeams().subscribe({
-                        next: () => {
-                            this.router.navigateByUrl("/dashboard");
-                        },
-                        error: () => this.router.navigateByUrl("/dashboard")
-                    });
+                    this.refreshTeamContext();
                 },
                 error: (error: unknown) => {
                     const errorCode = this.extractTeamErrorCode(error);
@@ -157,6 +153,84 @@ export class TeamSettingsPage {
                     this.leaveErrorKey.set("admin.team.settings.leaveErrors.generic");
                 }
             });
+    }
+
+    protected confirmArchiveTeam(event: Event): void {
+        const target = event.currentTarget;
+        if (!(target instanceof HTMLElement) || this.isArchiving() || !this.canArchive()) {
+            return;
+        }
+
+        this.confirmationService.confirm({
+            key: this.archiveConfirmKey,
+            target,
+            message: this.transloco.translate("admin.team.settings.archiveConfirm"),
+            icon: "pi pi-exclamation-triangle",
+            rejectButtonProps: {
+                label: this.transloco.translate("common.actions.cancel"),
+                severity: "secondary",
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: this.transloco.translate("admin.team.settings.archiveAction"),
+                severity: "danger"
+            },
+            accept: () => this.archiveTeam()
+        });
+    }
+
+    protected archiveTeam(): void {
+        if (this.isArchiving()) {
+            return;
+        }
+
+        const t = this.team();
+        if (!t || !this.canArchive()) {
+            return;
+        }
+
+        this.archiveErrorKey.set("");
+        this.archiveSuccessKey.set("");
+        this.isArchiving.set(true);
+
+        this.teamService
+            .archiveTeam(t.id)
+            .pipe(finalize(() => this.isArchiving.set(false)))
+            .subscribe({
+                next: () => {
+                    this.archiveSuccessKey.set("admin.team.settings.archiveSuccess");
+                    this.refreshTeamContext();
+                },
+                error: (error: unknown) => {
+                    const errorCode = this.extractTeamErrorCode(error);
+                    if (errorCode === "team_archive_has_sites") {
+                        this.archiveErrorKey.set("admin.team.settings.archiveErrors.hasSites");
+                        return;
+                    }
+                    if (errorCode === "team_archive_default_forbidden") {
+                        this.archiveErrorKey.set("admin.team.settings.archiveErrors.defaultTeam");
+                        return;
+                    }
+                    if (errorCode === "team_archive_forbidden") {
+                        this.archiveErrorKey.set("admin.team.settings.archiveErrors.forbidden");
+                        return;
+                    }
+                    this.archiveErrorKey.set("admin.team.settings.archiveErrors.generic");
+                }
+            });
+    }
+
+    private refreshTeamContext(): void {
+        this.siteService.sites.set([]);
+        this.siteService.activeSite.set(null);
+        this.siteService.loadSites();
+        this.perms.loadPermissions().subscribe({ error: () => undefined });
+        this.teamService.loadTeams().subscribe({
+            next: () => {
+                this.router.navigateByUrl("/dashboard");
+            },
+            error: () => this.router.navigateByUrl("/dashboard")
+        });
     }
 
     private extractTeamErrorCode(error: unknown): string | null {

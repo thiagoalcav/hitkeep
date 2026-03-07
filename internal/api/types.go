@@ -369,6 +369,13 @@ type TeamAuditListResponse struct {
 	Action  string           `json:"action,omitempty"`
 }
 
+type AdminDeleteUserBlockedResponse struct {
+	Status  string `json:"status"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Teams   []Team `json:"teams"`
+}
+
 type IPExclusion struct {
 	ID          uuid.UUID  `json:"id"`
 	SiteID      *uuid.UUID `json:"site_id,omitempty"`

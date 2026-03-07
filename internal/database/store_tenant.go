@@ -190,6 +190,44 @@ func (s *Store) ListUserTeams(ctx context.Context, userID uuid.UUID) ([]api.Team
 	return teams, activeTenantID, nil
 }
 
+func (s *Store) ListSoleOwnerTeams(ctx context.Context, userID uuid.UUID) ([]api.Team, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT t.id, t.name, COALESCE(t.logo_url, ''), tm.role, t.created_at
+		FROM tenants t
+		JOIN tenant_members tm ON tm.tenant_id = t.id
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = t.id
+		WHERE tm.user_id = ?
+			AND tm.role = ?
+			AND ta.tenant_id IS NULL
+			AND NOT EXISTS (
+				SELECT 1
+				FROM tenant_members other
+				WHERE other.tenant_id = t.id
+					AND other.role = ?
+					AND other.user_id <> ?
+			)
+		ORDER BY t.created_at ASC
+	`, userID, TenantRoleOwner, TenantRoleOwner, userID)
+	if err != nil {
+		return nil, fmt.Errorf("could not list sole-owner teams: %w", err)
+	}
+	defer rows.Close()
+
+	teams := make([]api.Team, 0)
+	for rows.Next() {
+		var team api.Team
+		if err := rows.Scan(&team.ID, &team.Name, &team.LogoURL, &team.Role, &team.CreatedAt); err != nil {
+			return nil, fmt.Errorf("could not scan sole-owner team: %w", err)
+		}
+		teams = append(teams, team)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("could not read sole-owner team rows: %w", err)
+	}
+
+	return teams, nil
+}
+
 func (s *Store) ListTeamMembers(ctx context.Context, tenantID uuid.UUID) ([]api.TeamMember, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT tm.id, tm.user_id, u.email, tm.role, tm.added_at

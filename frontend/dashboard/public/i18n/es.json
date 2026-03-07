@@ -841,6 +841,9 @@
             "instanceAdmin": "Administrador de la instancia",
             "user": "Usuario"
         },
+        "errors": {
+            "deleteUserBlockedOwnership": "No se puede eliminar a {{email}} hasta transferir la propiedad de: {{teams}}."
+        },
         "confirmDeleteUser": "Eliminar usuario {{email}}?",
         "confirmDeleteSite": "Eliminar sitio {{domain}}? Esta accion no se puede deshacer.",
         "team": {

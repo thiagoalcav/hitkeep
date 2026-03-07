@@ -16,7 +16,23 @@ import (
 var (
 	ErrUserEmailAlreadyExists = errors.New("user email already exists")
 	ErrUserNotFound           = errors.New("user not found")
+	ErrUserOwnsTeams          = errors.New("user owns teams")
 )
+
+type UserOwnsTeamsError struct {
+	Teams []api.Team
+}
+
+func (e *UserOwnsTeamsError) Error() string {
+	if len(e.Teams) == 0 {
+		return ErrUserOwnsTeams.Error()
+	}
+	return fmt.Sprintf("%s: %d blocking team(s)", ErrUserOwnsTeams.Error(), len(e.Teams))
+}
+
+func (e *UserOwnsTeamsError) Unwrap() error {
+	return ErrUserOwnsTeams
+}
 
 // GetUserCount returns the total number of users.
 func (s *Store) GetUserCount(ctx context.Context) (int, error) {
@@ -322,6 +338,14 @@ func (s *Store) UpdateUserProfile(ctx context.Context, userID uuid.UUID, email s
 
 // DeleteUser removes a user by ID.
 func (s *Store) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	blockingTeams, err := s.ListSoleOwnerTeams(ctx, id)
+	if err != nil {
+		return fmt.Errorf("could not verify team ownership before deleting user: %w", err)
+	}
+	if len(blockingTeams) > 0 {
+		return &UserOwnsTeamsError{Teams: blockingTeams}
+	}
+
 	siteIDs, err := s.listUserSiteIDs(ctx, id)
 	if err != nil {
 		return err
@@ -339,12 +363,19 @@ func (s *Store) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if err := deleteUserRows(ctx, tx, id); err != nil {
+	if err := cleanupUserRows(ctx, tx, id); err != nil {
 		return err
 	}
 
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("could not commit transaction: %w", err)
+	}
+
+	// DuckDB's foreign key checks may still reject parent-row deletion when child rows
+	// were removed earlier in the same transaction. Delete the user record after the
+	// cleanup transaction has committed so the constraint check sees the new state.
+	if _, err := s.db.ExecContext(ctx, "DELETE FROM users WHERE id = ?", id); err != nil {
+		return fmt.Errorf("could not delete user: %w", err)
 	}
 	return nil
 }
@@ -370,9 +401,30 @@ func (s *Store) listUserSiteIDs(ctx context.Context, userID uuid.UUID) ([]uuid.U
 	return siteIDs, nil
 }
 
-func deleteUserRows(ctx context.Context, tx *sql.Tx, userID uuid.UUID) error {
+func cleanupUserRows(ctx context.Context, tx *sql.Tx, userID uuid.UUID) error {
 	if _, err := tx.ExecContext(ctx, "UPDATE share_links SET created_by = NULL WHERE created_by = ?", userID); err != nil {
 		return fmt.Errorf("could not null share link owner: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, "UPDATE team_invites SET created_by = NULL WHERE created_by = ?", userID); err != nil {
+		return fmt.Errorf("could not null team invite created_by: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, "UPDATE team_invites SET invited_user_id = NULL WHERE invited_user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not null team invite invited_user_id: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, "UPDATE team_audit_log SET actor_id = NULL WHERE actor_id = ?", userID); err != nil {
+		return fmt.Errorf("could not null team audit actor_id: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, "UPDATE team_audit_log SET target_user_id = NULL WHERE target_user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not null team audit target_user_id: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM site_members WHERE user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not delete user site memberships: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM tenant_members WHERE user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not delete user tenant memberships: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM instance_roles WHERE user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not delete instance role: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, "UPDATE site_members SET added_by = NULL WHERE added_by = ?", userID); err != nil {
 		return fmt.Errorf("could not null site member added_by: %w", err)
@@ -383,17 +435,17 @@ func deleteUserRows(ctx context.Context, tx *sql.Tx, userID uuid.UUID) error {
 	if _, err := tx.ExecContext(ctx, "UPDATE instance_roles SET granted_by = NULL WHERE granted_by = ?", userID); err != nil {
 		return fmt.Errorf("could not null instance role granted_by: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM site_members WHERE user_id = ?", userID); err != nil {
-		return fmt.Errorf("could not delete user site memberships: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM tenant_members WHERE user_id = ?", userID); err != nil {
-		return fmt.Errorf("could not delete user tenant memberships: %w", err)
-	}
 	if _, err := tx.ExecContext(ctx, "DELETE FROM api_client_site_roles WHERE api_client_id IN (SELECT id FROM api_clients WHERE user_id = ?)", userID); err != nil {
 		return fmt.Errorf("could not delete user api client site roles: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, "DELETE FROM api_clients WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete user api clients: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM site_report_subscriptions WHERE user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not delete user site report subscriptions: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM digest_subscriptions WHERE user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not delete user digest subscriptions: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, "DELETE FROM remember_me_tokens WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete remember tokens: %w", err)
@@ -410,11 +462,8 @@ func deleteUserRows(ctx context.Context, tx *sql.Tx, userID uuid.UUID) error {
 	if _, err := tx.ExecContext(ctx, "DELETE FROM user_totp_factors WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete user totp factors: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM instance_roles WHERE user_id = ?", userID); err != nil {
-		return fmt.Errorf("could not delete instance role: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM users WHERE id = ?", userID); err != nil {
-		return fmt.Errorf("could not delete user: %w", err)
+	if _, err := tx.ExecContext(ctx, "DELETE FROM user_preferences WHERE user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not delete user preferences: %w", err)
 	}
 	return nil
 }

@@ -144,6 +144,16 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"message": map[string]any{"type": "string"},
 					},
 				},
+				"AdminDeleteUserBlockedResponse": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"status":  map[string]any{"type": "string"},
+						"code":    map[string]any{"type": "string"},
+						"message": map[string]any{"type": "string"},
+						"teams":   map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/Team"}},
+					},
+					"required": []string{"status", "code", "message", "teams"},
+				},
 				"SiteTransferResponse": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
@@ -996,7 +1006,10 @@ func openAPISpecV1(publicURL string) map[string]any {
 					map[string]any{"200": jsonRefResp("Status", "#/components/schemas/Status")}),
 			},
 			"/api/admin/users/{id}": map[string]any{
-				"delete": op([]string{"Admin"}, "Delete user", "Deletes user account (cannot delete self).", secCookie(), []any{paramRef("#/components/parameters/adminUserID")}, nil, map[string]any{"200": jsonRefResp("Status", "#/components/schemas/Status")}),
+				"delete": op([]string{"Admin"}, "Delete user", "Deletes user account (cannot delete self). Deletion is blocked if the target user is the sole owner of any team.", secCookie(), []any{paramRef("#/components/parameters/adminUserID")}, nil, map[string]any{
+					"200": jsonRefResp("Status", "#/components/schemas/Status"),
+					"409": jsonRefResp("Delete user blocked response", "#/components/schemas/AdminDeleteUserBlockedResponse"),
+				}),
 			},
 			"/api/admin/sites": map[string]any{
 				"get": op([]string{"Admin"}, "List all sites", "Lists all sites for admin management.", secCookie(), nil, nil, map[string]any{"200": jsonSchemaResp("Site list", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/Site"}})}),

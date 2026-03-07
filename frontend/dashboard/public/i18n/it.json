@@ -841,6 +841,9 @@
             "instanceAdmin": "Amministratore istanza",
             "user": "Utente"
         },
+        "errors": {
+            "deleteUserBlockedOwnership": "Impossibile eliminare {{email}} finché la proprietà non viene trasferita per: {{teams}}."
+        },
         "confirmDeleteUser": "Eliminare l'utente {{email}}?",
         "confirmDeleteSite": "Eliminare il sito {{domain}}? Questa azione non puo essere annullata.",
         "team": {

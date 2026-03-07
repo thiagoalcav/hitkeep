@@ -24,6 +24,10 @@
                             </span>
                         </div>
 
+                        @if (deleteUserBlock()) {
+                        <p-message severity="warn" styleClass="w-full mb-4" [text]="deleteUserBlockMessage()" />
+                        }
+
                         <div class="hk-crud-table-wrap">
                             <p-table
                                 #usersTable

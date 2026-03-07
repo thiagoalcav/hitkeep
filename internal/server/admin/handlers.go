@@ -3,14 +3,17 @@ package admin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
 
 	"github.com/google/uuid"
 
+	"hitkeep/internal/api"
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/blocking"
+	"hitkeep/internal/database"
 	"hitkeep/internal/mailables"
 	serverauth "hitkeep/internal/server/auth"
 	"hitkeep/internal/server/shared"
@@ -256,6 +259,20 @@ func (h *handler) handleDeleteUser() http.HandlerFunc {
 
 		err = h.ctx.Store.DeleteUser(r.Context(), targetUserID)
 		if err != nil {
+			var ownsTeamsErr *database.UserOwnsTeamsError
+			if errors.As(err, &ownsTeamsErr) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusConflict)
+				if encodeErr := json.NewEncoder(w).Encode(api.AdminDeleteUserBlockedResponse{
+					Status:  "error",
+					Code:    "user_owns_teams",
+					Message: "Transfer ownership before deleting this user.",
+					Teams:   ownsTeamsErr.Teams,
+				}); encodeErr != nil {
+					slog.Error("Failed to encode delete user blocked response", "error", encodeErr, "target_user_id", targetUserID)
+				}
+				return
+			}
 			slog.Error("Failed to delete user", "error", err)
 			http.Error(w, "Failed to delete user", http.StatusInternalServerError)
 			return

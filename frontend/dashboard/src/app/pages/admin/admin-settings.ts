@@ -10,7 +10,9 @@ import { SelectModule } from "primeng/select";
 import { CardModule } from "primeng/card";
 import { TabsModule } from "primeng/tabs";
 import { InputTextModule } from "primeng/inputtext";
+import { MessageModule } from "primeng/message";
 import { HttpClient } from "@angular/common/http";
+import { HttpErrorResponse } from "@angular/common/http";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 import { PageHeader } from "@components/page-header/page-header";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
@@ -35,10 +37,25 @@ interface Site {
     created_at: string;
 }
 
+interface DeleteUserBlockedResponse {
+    status: string;
+    code: string;
+    message: string;
+    teams: {
+        id: string;
+        name: string;
+    }[];
+}
+
+interface DeleteUserBlockState {
+    email: string;
+    teams: string[];
+}
+
 @Component({
     selector: "app-admin-settings",
     standalone: true,
-    imports: [ReactiveFormsModule, ConfirmPopupModule, TableModule, ButtonModule, SelectModule, CardModule, TabsModule, InputTextModule, PageHeader, PageBreadcrumb, AdminGlobalExclusionSettings, RelativeDateTime, TranslocoPipe],
+    imports: [ReactiveFormsModule, ConfirmPopupModule, TableModule, ButtonModule, SelectModule, CardModule, TabsModule, InputTextModule, MessageModule, PageHeader, PageBreadcrumb, AdminGlobalExclusionSettings, RelativeDateTime, TranslocoPipe],
     templateUrl: "./admin-settings.html",
     styleUrl: "./admin-settings.css",
     providers: [ConfirmationService]
@@ -56,7 +73,19 @@ export class AdminSettings implements OnInit {
     protected isLoadingSites = signal(false);
     protected currentUserId = signal<string>("");
     protected roleControls = signal<Record<string, FormControl<InstanceRole>>>({});
+    protected deleteUserBlock = signal<DeleteUserBlockState | null>(null);
     protected readonly usersByID = computed(() => new Map(this.users().map((user) => [user.id, user] as const)));
+    protected readonly deleteUserBlockMessage = computed(() => {
+        const block = this.deleteUserBlock();
+        if (!block) {
+            return "";
+        }
+
+        return this.transloco.translate("admin.errors.deleteUserBlockedOwnership", {
+            email: block.email,
+            teams: block.teams.join(", ")
+        });
+    });
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         this.activeLanguage();
         return [{ label: this.transloco.translate("nav.administration") }, { label: this.transloco.translate("nav.systemSettings"), isCurrent: true }];
@@ -108,6 +137,13 @@ export class AdminSettings implements OnInit {
         this.isLoading.set(true);
         this.http.get<User[]>("/api/admin/users").subscribe({
             next: (users) => {
+                this.deleteUserBlock.update((current) => {
+                    if (!current) {
+                        return null;
+                    }
+                    const stillExists = users.some((user) => user.email === current.email);
+                    return stillExists ? current : null;
+                });
                 const normalizedUsers = users.map((user) => ({
                     ...user,
                     instance_role: this.normalizeInstanceRole(user.instance_role)
@@ -228,9 +264,15 @@ export class AdminSettings implements OnInit {
                 severity: "danger"
             },
             accept: () => {
+                this.deleteUserBlock.set(null);
                 this.http.delete(`/api/admin/users/${user.id}`).subscribe({
                     next: () => this.loadUsers(),
-                    error: (err) => console.error("Failed to delete user", err)
+                    error: (err) => {
+                        if (this.handleDeleteUserError(err, user)) {
+                            return;
+                        }
+                        console.error("Failed to delete user", err);
+                    }
                 });
             }
         });
@@ -258,5 +300,25 @@ export class AdminSettings implements OnInit {
                 });
             }
         });
+    }
+
+    private handleDeleteUserError(err: unknown, user: User): boolean {
+        const httpErr = err instanceof HttpErrorResponse ? err : null;
+        const response = httpErr?.error as DeleteUserBlockedResponse | undefined;
+        if (!response || response.code !== "user_owns_teams" || !Array.isArray(response.teams)) {
+            return false;
+        }
+
+        const teamNames = response.teams.map((team) => team?.name?.trim()).filter((name): name is string => !!name);
+
+        if (teamNames.length === 0) {
+            return false;
+        }
+
+        this.deleteUserBlock.set({
+            email: user.email,
+            teams: teamNames
+        });
+        return true;
     }
 }

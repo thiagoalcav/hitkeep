@@ -841,6 +841,9 @@
             "instanceAdmin": "Administrateur de l'instance",
             "user": "Utilisateur"
         },
+        "errors": {
+            "deleteUserBlockedOwnership": "Impossible de supprimer {{email}} tant que la propriété n'a pas été transférée pour : {{teams}}."
+        },
         "confirmDeleteUser": "Supprimer l'utilisateur {{email}}?",
         "confirmDeleteSite": "Supprimer le site {{domain}}? Cette action est irreversible.",
         "team": {

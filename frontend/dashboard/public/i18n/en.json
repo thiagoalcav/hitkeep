@@ -841,6 +841,9 @@
             "instanceAdmin": "Instance admin",
             "user": "User"
         },
+        "errors": {
+            "deleteUserBlockedOwnership": "Cannot delete {{email}} until ownership is transferred for: {{teams}}."
+        },
         "confirmDeleteUser": "Delete user {{email}}?",
         "confirmDeleteSite": "Delete site {{domain}}? This action cannot be undone.",
         "team": {

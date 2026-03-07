@@ -440,34 +440,12 @@ func (h *handler) handleExportShareHits() http.HandlerFunc {
 }
 
 func (h *handler) handleGetShareGoals() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		site, ok := h.loadShareSite(w, r)
-		if !ok {
-			return
-		}
-		if !h.ensureSiteMatch(w, r, site) {
-			return
-		}
-
-		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), site.ID)
-		if err != nil {
-			slog.Error("Failed to resolve analytics store", "error", err, "site_id", site.ID)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		goals, err := analyticsStore.GetGoals(r.Context(), site.ID)
-		if err != nil {
-			slog.Error("Failed to get share goals", "error", err)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(goals); err != nil {
-			slog.Error("Failed to encode response", "error", err)
-		}
-	}
+	return h.handleGetShareDefinitions(
+		func(ctx context.Context, store *database.Store, siteID uuid.UUID) (any, error) {
+			return store.GetGoals(ctx, siteID)
+		},
+		"Failed to get share goals",
+	)
 }
 
 func (h *handler) handleGetShareGoalTimeseries() http.HandlerFunc {
@@ -478,6 +456,18 @@ func (h *handler) handleGetShareGoalTimeseries() http.HandlerFunc {
 }
 
 func (h *handler) handleGetShareFunnels() http.HandlerFunc {
+	return h.handleGetShareDefinitions(
+		func(ctx context.Context, store *database.Store, siteID uuid.UUID) (any, error) {
+			return store.GetFunnels(ctx, siteID)
+		},
+		"Failed to get share funnels",
+	)
+}
+
+func (h *handler) handleGetShareDefinitions(
+	fetch func(context.Context, *database.Store, uuid.UUID) (any, error),
+	logMessage string,
+) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		site, ok := h.loadShareSite(w, r)
 		if !ok {
@@ -494,15 +484,15 @@ func (h *handler) handleGetShareFunnels() http.HandlerFunc {
 			return
 		}
 
-		funnels, err := analyticsStore.GetFunnels(r.Context(), site.ID)
+		definitions, err := fetch(r.Context(), analyticsStore, site.ID)
 		if err != nil {
-			slog.Error("Failed to get share funnels", "error", err)
+			slog.Error(logMessage, "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(funnels); err != nil {
+		if err := json.NewEncoder(w).Encode(definitions); err != nil {
 			slog.Error("Failed to encode response", "error", err)
 		}
 	}

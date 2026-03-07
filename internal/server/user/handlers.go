@@ -132,6 +132,10 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleGetTeamMembers()))
+	mux.HandleFunc("GET /api/user/teams/{id}/invites", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetTeamInvites()))
 	mux.HandleFunc("GET /api/user/teams/{id}/audit", ctx.Handler(shared.HandlerConfig{
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
@@ -140,6 +144,14 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleAddTeamMember()))
+	mux.HandleFunc("POST /api/user/teams/{id}/invites/{inviteId}/resend", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleResendTeamInvite()))
+	mux.HandleFunc("DELETE /api/user/teams/{id}/invites/{inviteId}", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleRevokeTeamInvite()))
 	mux.HandleFunc("DELETE /api/user/teams/{id}/members/{userId}", ctx.Handler(shared.HandlerConfig{
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,

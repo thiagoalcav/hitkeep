@@ -184,6 +184,8 @@ var userFKReferences = []userFKReference{
 	{table: "site_members", column: "added_by", query: "UPDATE site_members SET added_by = ? WHERE added_by = ?"},
 	{table: "site_members", column: "user_id", query: "UPDATE site_members SET user_id = ? WHERE user_id = ?"},
 	{table: "sites", column: "user_id", query: "UPDATE sites SET user_id = ? WHERE user_id = ?"},
+	{table: "team_invites", column: "created_by", query: "UPDATE team_invites SET created_by = ? WHERE created_by = ?"},
+	{table: "team_invites", column: "invited_user_id", query: "UPDATE team_invites SET invited_user_id = ? WHERE invited_user_id = ?"},
 	{table: "tenant_members", column: "added_by", query: "UPDATE tenant_members SET added_by = ? WHERE added_by = ?"},
 	{table: "tenant_members", column: "user_id", query: "UPDATE tenant_members SET user_id = ? WHERE user_id = ?"},
 	{table: "user_passkey_challenges", column: "user_id", query: "UPDATE user_passkey_challenges SET user_id = ? WHERE user_id = ?"},

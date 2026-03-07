@@ -340,6 +340,22 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"added_at": map[string]any{"type": "string", "format": "date-time"},
 					},
 				},
+				"TeamInvite": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"id":              map[string]any{"type": "string", "format": "uuid"},
+						"team_id":         map[string]any{"type": "string", "format": "uuid"},
+						"email":           map[string]any{"type": "string", "format": "email"},
+						"role":            map[string]any{"type": "string"},
+						"invited_user_id": map[string]any{"type": "string", "format": "uuid"},
+						"status":          map[string]any{"type": "string"},
+						"created_by":      map[string]any{"type": "string", "format": "uuid"},
+						"created_at":      map[string]any{"type": "string", "format": "date-time"},
+						"expires_at":      map[string]any{"type": "string", "format": "date-time"},
+						"accepted_at":     map[string]any{"type": "string", "format": "date-time"},
+						"revoked_at":      map[string]any{"type": "string", "format": "date-time"},
+					},
+				},
 				"TeamAuditEntry": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
@@ -747,7 +763,7 @@ func openAPISpecV1(publicURL string) map[string]any {
 			"/api/user/teams/{id}/members": map[string]any{
 				"get": op([]string{"Teams"}, "List team members", "Lists members for the specified team.", secCookie(), []any{paramRef("#/components/parameters/teamID")}, nil,
 					map[string]any{"200": jsonSchemaResp("Team members", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/TeamMember"}})}),
-				"post": op([]string{"Teams"}, "Add team member", "Adds or updates a team member role; creates invite user when needed.", secCookie(), []any{paramRef("#/components/parameters/teamID")},
+				"post": op([]string{"Teams"}, "Invite team member", "Creates a pending invite for a user or updates the role of an existing member.", secCookie(), []any{paramRef("#/components/parameters/teamID")},
 					jsonBody(map[string]any{
 						"type": "object",
 						"properties": map[string]any{
@@ -757,7 +773,22 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"required": []string{"email", "role"},
 					}),
 					map[string]any{
-						"200": jsonRefResp("Status", "#/components/schemas/Status"),
+						"200": jsonSchemaResp("Invite or update response", map[string]any{
+							"type": "object",
+							"properties": map[string]any{
+								"status":    map[string]any{"type": "string"},
+								"is_invite": map[string]any{"type": "boolean"},
+								"invite":    map[string]any{"$ref": "#/components/schemas/TeamInvite"},
+							},
+						}),
+						"403": errResp("Access denied"),
+						"409": errResp("Invite already pending"),
+					}),
+			},
+			"/api/user/teams/{id}/invites": map[string]any{
+				"get": op([]string{"Teams"}, "List team invites", "Lists pending invites for the specified team.", secCookie(), []any{paramRef("#/components/parameters/teamID")}, nil,
+					map[string]any{
+						"200": jsonSchemaResp("Team invites", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/TeamInvite"}}),
 						"403": errResp("Access denied"),
 					}),
 			},
@@ -766,6 +797,34 @@ func openAPISpecV1(publicURL string) map[string]any {
 					map[string]any{
 						"200": jsonSchemaResp("Team audit entries", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/TeamAuditEntry"}}),
 						"403": errResp("Access denied"),
+					}),
+			},
+			"/api/user/teams/{id}/invites/{inviteId}/resend": map[string]any{
+				"post": op([]string{"Teams"}, "Resend team invite", "Refreshes and resends a pending invite.", secCookie(), []any{
+					paramRef("#/components/parameters/teamID"),
+					map[string]any{"name": "inviteId", "in": "path", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}},
+				}, nil,
+					map[string]any{
+						"200": jsonSchemaResp("Invite resend response", map[string]any{
+							"type": "object",
+							"properties": map[string]any{
+								"status": map[string]any{"type": "string"},
+								"invite": map[string]any{"$ref": "#/components/schemas/TeamInvite"},
+							},
+						}),
+						"403": errResp("Access denied"),
+						"404": errResp("Invite not found"),
+					}),
+			},
+			"/api/user/teams/{id}/invites/{inviteId}": map[string]any{
+				"delete": op([]string{"Teams"}, "Revoke team invite", "Revokes a pending invite.", secCookie(), []any{
+					paramRef("#/components/parameters/teamID"),
+					map[string]any{"name": "inviteId", "in": "path", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}},
+				}, nil,
+					map[string]any{
+						"200": jsonRefResp("Status", "#/components/schemas/Status"),
+						"403": errResp("Access denied"),
+						"404": errResp("Invite not found"),
 					}),
 			},
 			"/api/user/teams/{id}/members/{userId}": map[string]any{

@@ -839,6 +839,83 @@ func TestHandleMFAPasskeyLoginFinish(t *testing.T) {
 	}
 }
 
+func TestHandleAcceptInviteActivatesPendingTeamInvite(t *testing.T) {
+	h, store := setupAuthTestEnv(t)
+	defer store.Close()
+
+	ownerHash, err := HashPassword("password123")
+	if err != nil {
+		t.Fatalf("failed to hash owner password: %v", err)
+	}
+	ownerID, err := store.CreateUser(context.Background(), "owner-invite@example.com", ownerHash)
+	if err != nil {
+		t.Fatalf("failed to create owner user: %v", err)
+	}
+
+	inviteeHash, err := HashPassword("password123")
+	if err != nil {
+		t.Fatalf("failed to hash invitee password: %v", err)
+	}
+	inviteeID, err := store.CreateUser(context.Background(), "accept-invite@example.com", inviteeHash)
+	if err != nil {
+		t.Fatalf("failed to create invitee user: %v", err)
+	}
+
+	teamID := uuid.New()
+	if _, err := store.DB().ExecContext(context.Background(),
+		"INSERT INTO tenants (id, name, created_at) VALUES (?, ?, ?)",
+		teamID, "Accept Invite", time.Now().UTC(),
+	); err != nil {
+		t.Fatalf("failed to insert team: %v", err)
+	}
+	if err := store.AddTeamMember(context.Background(), teamID, ownerID, database.TenantRoleOwner, ownerID); err != nil {
+		t.Fatalf("failed to add owner to team: %v", err)
+	}
+	if _, err := store.CreateTeamInvite(context.Background(), teamID, "accept-invite@example.com", database.TenantRoleAdmin, &inviteeID, ownerID); err != nil {
+		t.Fatalf("failed to create team invite: %v", err)
+	}
+
+	token, err := store.CreatePasswordResetToken(context.Background(), "accept-invite@example.com")
+	if err != nil {
+		t.Fatalf("failed to create invite token: %v", err)
+	}
+
+	body, _ := json.Marshal(map[string]string{
+		"token":    token,
+		"password": "new-password-123",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/accept-invite", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	h.handleAcceptInvite().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	isMember, err := store.IsTenantMember(context.Background(), teamID, inviteeID)
+	if err != nil {
+		t.Fatalf("check invitee membership: %v", err)
+	}
+	if !isMember {
+		t.Fatalf("expected invitee to become a team member")
+	}
+
+	role, err := store.GetTenantRole(context.Background(), teamID, inviteeID)
+	if err != nil {
+		t.Fatalf("get invitee role: %v", err)
+	}
+	if role != database.TenantRoleAdmin {
+		t.Fatalf("expected invitee role %q, got %q", database.TenantRoleAdmin, role)
+	}
+
+	invites, err := store.ListTeamInvites(context.Background(), teamID)
+	if err != nil {
+		t.Fatalf("list team invites: %v", err)
+	}
+	if len(invites) != 0 {
+		t.Fatalf("expected no pending invites after acceptance, got %d", len(invites))
+	}
+}
+
 func containsFactor(factors []string, factor string) bool {
 	return slices.Contains(factors, factor)
 }

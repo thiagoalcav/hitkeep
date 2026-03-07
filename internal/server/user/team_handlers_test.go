@@ -314,6 +314,124 @@ func TestHandleAddTeamMemberRoleChangeAllowed(t *testing.T) {
 	}
 }
 
+func TestHandleAddTeamMemberCreatesPendingInvite(t *testing.T) {
+	h, store, ownerID := setupUserSecurityTestEnv(t)
+	defer store.Close()
+
+	customTenantID := uuid.New()
+	if _, err := store.DB().ExecContext(context.Background(),
+		"INSERT INTO tenants (id, name, created_at) VALUES (?, ?, ?)",
+		customTenantID, "Invites", time.Now().UTC(),
+	); err != nil {
+		t.Fatalf("insert custom tenant: %v", err)
+	}
+	if err := store.AddTeamMember(context.Background(), customTenantID, ownerID, database.TenantRoleOwner, ownerID); err != nil {
+		t.Fatalf("add owner to custom tenant: %v", err)
+	}
+
+	body, _ := json.Marshal(map[string]string{
+		"email": "pending-invite@team.test",
+		"role":  database.TenantRoleAdmin,
+	})
+	req := withTestUser(httptest.NewRequest(http.MethodPost, "/api/user/teams/"+customTenantID.String()+"/members", bytes.NewReader(body)), ownerID)
+	req.SetPathValue("id", customTenantID.String())
+	w := httptest.NewRecorder()
+
+	h.handleAddTeamMember().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var resp struct {
+		Status   string         `json:"status"`
+		IsInvite bool           `json:"is_invite"`
+		Invite   api.TeamInvite `json:"invite"`
+	}
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if !resp.IsInvite {
+		t.Fatalf("expected pending invite response")
+	}
+	if resp.Invite.Status != database.TeamInviteStatusPending {
+		t.Fatalf("expected invite status %q, got %q", database.TeamInviteStatusPending, resp.Invite.Status)
+	}
+
+	invites, err := store.ListTeamInvites(context.Background(), customTenantID)
+	if err != nil {
+		t.Fatalf("list team invites: %v", err)
+	}
+	if len(invites) != 1 {
+		t.Fatalf("expected 1 pending invite, got %d", len(invites))
+	}
+
+	invitee, err := store.GetUserByEmail(context.Background(), "pending-invite@team.test")
+	if err != nil || invitee == nil {
+		t.Fatalf("get invitee user: %v", err)
+	}
+	isMember, err := store.IsTenantMember(context.Background(), customTenantID, invitee.ID)
+	if err != nil {
+		t.Fatalf("check tenant membership: %v", err)
+	}
+	if isMember {
+		t.Fatalf("expected pending invite not to create active team membership")
+	}
+}
+
+func TestHandleGetAndRevokeTeamInvites(t *testing.T) {
+	h, store, ownerID := setupUserSecurityTestEnv(t)
+	defer store.Close()
+
+	customTenantID := uuid.New()
+	if _, err := store.DB().ExecContext(context.Background(),
+		"INSERT INTO tenants (id, name, created_at) VALUES (?, ?, ?)",
+		customTenantID, "Invite Admin", time.Now().UTC(),
+	); err != nil {
+		t.Fatalf("insert custom tenant: %v", err)
+	}
+	if err := store.AddTeamMember(context.Background(), customTenantID, ownerID, database.TenantRoleOwner, ownerID); err != nil {
+		t.Fatalf("add owner to custom tenant: %v", err)
+	}
+
+	invite, err := store.CreateTeamInvite(context.Background(), customTenantID, "revoke-invite@team.test", database.TenantRoleMember, nil, ownerID)
+	if err != nil {
+		t.Fatalf("create team invite: %v", err)
+	}
+
+	listReq := withTestUser(httptest.NewRequest(http.MethodGet, "/api/user/teams/"+customTenantID.String()+"/invites", nil), ownerID)
+	listReq.SetPathValue("id", customTenantID.String())
+	listW := httptest.NewRecorder()
+	h.handleGetTeamInvites().ServeHTTP(listW, listReq)
+	if listW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, listW.Code, listW.Body.String())
+	}
+
+	var invites []api.TeamInvite
+	if err := json.NewDecoder(listW.Body).Decode(&invites); err != nil {
+		t.Fatalf("decode invites response: %v", err)
+	}
+	if len(invites) != 1 || invites[0].ID != invite.ID {
+		t.Fatalf("expected invite %s, got %+v", invite.ID, invites)
+	}
+
+	revokeReq := withTestUser(httptest.NewRequest(http.MethodDelete, "/api/user/teams/"+customTenantID.String()+"/invites/"+invite.ID.String(), nil), ownerID)
+	revokeReq.SetPathValue("id", customTenantID.String())
+	revokeReq.SetPathValue("inviteId", invite.ID.String())
+	revokeW := httptest.NewRecorder()
+	h.handleRevokeTeamInvite().ServeHTTP(revokeW, revokeReq)
+	if revokeW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, revokeW.Code, revokeW.Body.String())
+	}
+
+	invites, err = store.ListTeamInvites(context.Background(), customTenantID)
+	if err != nil {
+		t.Fatalf("list team invites after revoke: %v", err)
+	}
+	if len(invites) != 0 {
+		t.Fatalf("expected no pending invites after revoke, got %d", len(invites))
+	}
+}
+
 func TestHandleRemoveTeamMemberLastOwnerBlocked(t *testing.T) {
 	h, store, ownerID := setupUserSecurityTestEnv(t)
 	defer store.Close()

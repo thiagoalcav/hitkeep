@@ -25,6 +25,14 @@ const (
 var ErrTenantMembershipRequired = errors.New("tenant membership required")
 var ErrTeamLastOwner = errors.New("team must retain at least one owner")
 var ErrUserOnlyTeam = errors.New("user cannot leave their only team")
+var ErrTeamInviteAlreadyPending = errors.New("team invite already pending")
+var ErrTeamInviteNotFound = errors.New("team invite not found")
+
+const (
+	TeamInviteStatusPending  = "pending"
+	TeamInviteStatusAccepted = "accepted"
+	TeamInviteStatusRevoked  = "revoked"
+)
 
 type tenantRowQueryer interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
@@ -218,6 +226,286 @@ func (s *Store) AddTeamMember(ctx context.Context, tenantID, userID uuid.UUID, r
 	}
 
 	return nil
+}
+
+func (s *Store) CreateTeamInvite(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	email string,
+	role string,
+	invitedUserID *uuid.UUID,
+	createdBy uuid.UUID,
+) (*api.TeamInvite, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	role = strings.TrimSpace(strings.ToLower(role))
+	if email == "" {
+		return nil, fmt.Errorf("invite email is required")
+	}
+	if !IsValidTenantRole(role) {
+		return nil, fmt.Errorf("invalid tenant role")
+	}
+
+	invite := &api.TeamInvite{
+		ID:        uuid.New(),
+		TeamID:    tenantID,
+		Email:     email,
+		Role:      role,
+		Status:    TeamInviteStatusPending,
+		CreatedAt: time.Now().UTC(),
+		ExpiresAt: time.Now().UTC().Add(7 * 24 * time.Hour),
+	}
+	if invitedUserID != nil && *invitedUserID != uuid.Nil {
+		userID := *invitedUserID
+		invite.InvitedUserID = &userID
+	}
+	if createdBy != uuid.Nil {
+		actorID := createdBy
+		invite.CreatedBy = &actorID
+	}
+
+	err := s.Transact(ctx, func(tx *sql.Tx) error {
+		var existingID uuid.UUID
+		err := tx.QueryRowContext(ctx, `
+			SELECT id
+			FROM team_invites
+			WHERE tenant_id = ? AND lower(email) = lower(?) AND status = ?
+			ORDER BY created_at DESC
+			LIMIT 1
+		`, tenantID, email, TeamInviteStatusPending).Scan(&existingID)
+		if err == nil {
+			return ErrTeamInviteAlreadyPending
+		}
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("could not query pending invite: %w", err)
+		}
+
+		var invitedUserValue any
+		if invite.InvitedUserID != nil {
+			invitedUserValue = *invite.InvitedUserID
+		}
+		var createdByValue any
+		if invite.CreatedBy != nil {
+			createdByValue = *invite.CreatedBy
+		}
+
+		if _, err := tx.ExecContext(ctx, `
+			INSERT INTO team_invites (
+				id,
+				tenant_id,
+				email,
+				role,
+				invited_user_id,
+				status,
+				created_by,
+				created_at,
+				expires_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`, invite.ID, invite.TeamID, invite.Email, invite.Role, invitedUserValue, invite.Status, createdByValue, invite.CreatedAt, invite.ExpiresAt); err != nil {
+			return fmt.Errorf("could not insert team invite: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return invite, nil
+}
+
+func (s *Store) ListTeamInvites(ctx context.Context, tenantID uuid.UUID) ([]api.TeamInvite, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT
+			id,
+			tenant_id,
+			email,
+			role,
+			CAST(invited_user_id AS VARCHAR),
+			status,
+			CAST(created_by AS VARCHAR),
+			created_at,
+			expires_at,
+			accepted_at,
+			revoked_at
+		FROM team_invites
+		WHERE tenant_id = ? AND status = ?
+		ORDER BY created_at DESC
+	`, tenantID, TeamInviteStatusPending)
+	if err != nil {
+		return nil, fmt.Errorf("could not list team invites: %w", err)
+	}
+	defer rows.Close()
+
+	invites := make([]api.TeamInvite, 0)
+	for rows.Next() {
+		invite, err := scanTeamInvite(rows)
+		if err != nil {
+			return nil, err
+		}
+		invites = append(invites, invite)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("could not read team invites: %w", err)
+	}
+
+	return invites, nil
+}
+
+func (s *Store) GetTeamInvite(ctx context.Context, tenantID, inviteID uuid.UUID) (*api.TeamInvite, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT
+			id,
+			tenant_id,
+			email,
+			role,
+			CAST(invited_user_id AS VARCHAR),
+			status,
+			CAST(created_by AS VARCHAR),
+			created_at,
+			expires_at,
+			accepted_at,
+			revoked_at
+		FROM team_invites
+		WHERE tenant_id = ? AND id = ?
+		LIMIT 1
+	`, tenantID, inviteID)
+
+	invite, err := scanTeamInviteRow(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrTeamInviteNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return invite, nil
+}
+
+func (s *Store) ResendTeamInvite(ctx context.Context, tenantID, inviteID uuid.UUID) (*api.TeamInvite, error) {
+	now := time.Now().UTC()
+	expiresAt := now.Add(7 * 24 * time.Hour)
+
+	err := s.Transact(ctx, func(tx *sql.Tx) error {
+		result, err := tx.ExecContext(ctx, `
+			UPDATE team_invites
+			SET created_at = ?, expires_at = ?
+			WHERE tenant_id = ? AND id = ? AND status = ?
+		`, now, expiresAt, tenantID, inviteID, TeamInviteStatusPending)
+		if err != nil {
+			return fmt.Errorf("could not update team invite: %w", err)
+		}
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("could not update team invite: %w", err)
+		}
+		if rowsAffected == 0 {
+			return ErrTeamInviteNotFound
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return s.GetTeamInvite(ctx, tenantID, inviteID)
+}
+
+func (s *Store) RevokeTeamInvite(ctx context.Context, tenantID, inviteID uuid.UUID) error {
+	now := time.Now().UTC()
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE team_invites
+		SET status = ?, revoked_at = ?
+		WHERE tenant_id = ? AND id = ? AND status = ?
+	`, TeamInviteStatusRevoked, now, tenantID, inviteID, TeamInviteStatusPending)
+	if err != nil {
+		return fmt.Errorf("could not revoke team invite: %w", err)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("could not revoke team invite: %w", err)
+	}
+	if rowsAffected == 0 {
+		return ErrTeamInviteNotFound
+	}
+	return nil
+}
+
+func (s *Store) AcceptTeamInvitesByEmail(ctx context.Context, email string, userID uuid.UUID) ([]api.TeamInvite, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" {
+		return nil, fmt.Errorf("invite email is required")
+	}
+
+	accepted := make([]api.TeamInvite, 0)
+	err := s.Transact(ctx, func(tx *sql.Tx) error {
+		rows, err := tx.QueryContext(ctx, `
+			SELECT
+				id,
+				tenant_id,
+				email,
+				role,
+				CAST(invited_user_id AS VARCHAR),
+				status,
+				CAST(created_by AS VARCHAR),
+				created_at,
+				expires_at,
+				accepted_at,
+				revoked_at
+			FROM team_invites
+			WHERE lower(email) = lower(?) AND status = ?
+			ORDER BY created_at ASC
+		`, email, TeamInviteStatusPending)
+		if err != nil {
+			return fmt.Errorf("could not query pending invites: %w", err)
+		}
+		defer rows.Close()
+
+		now := time.Now().UTC()
+		for rows.Next() {
+			invite, err := scanTeamInvite(rows)
+			if err != nil {
+				return err
+			}
+			if invite.ExpiresAt.Before(now) {
+				if _, err := tx.ExecContext(ctx, `
+					UPDATE team_invites
+					SET status = ?, revoked_at = ?
+					WHERE id = ?
+				`, TeamInviteStatusRevoked, now, invite.ID); err != nil {
+					return fmt.Errorf("could not expire team invite: %w", err)
+				}
+				continue
+			}
+
+			createdBy := uuid.Nil
+			if invite.CreatedBy != nil {
+				createdBy = *invite.CreatedBy
+			}
+			if err := ensureTenantMemberTx(ctx, tx, invite.TeamID, userID, invite.Role, createdBy); err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, `
+				UPDATE team_invites
+				SET invited_user_id = ?, status = ?, accepted_at = ?
+				WHERE id = ?
+			`, userID, TeamInviteStatusAccepted, now, invite.ID); err != nil {
+				return fmt.Errorf("could not accept team invite: %w", err)
+			}
+			userIDCopy := userID
+			invite.InvitedUserID = &userIDCopy
+			invite.Status = TeamInviteStatusAccepted
+			invite.AcceptedAt = &now
+			accepted = append(accepted, invite)
+		}
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("could not read pending invites: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return accepted, nil
 }
 
 func (s *Store) RemoveTeamMember(ctx context.Context, tenantID, userID uuid.UUID) error {
@@ -704,6 +992,67 @@ func countTeamOwnersTx(ctx context.Context, tx *sql.Tx, tenantID uuid.UUID) (int
 		return 0, fmt.Errorf("could not count tenant owners: %w", err)
 	}
 	return count, nil
+}
+
+func scanTeamInvite(scanner interface {
+	Scan(dest ...any) error
+}) (api.TeamInvite, error) {
+	var invite api.TeamInvite
+	var invitedUserRaw sql.NullString
+	var createdByRaw sql.NullString
+	var acceptedAt sql.NullTime
+	var revokedAt sql.NullTime
+	if err := scanner.Scan(
+		&invite.ID,
+		&invite.TeamID,
+		&invite.Email,
+		&invite.Role,
+		&invitedUserRaw,
+		&invite.Status,
+		&createdByRaw,
+		&invite.CreatedAt,
+		&invite.ExpiresAt,
+		&acceptedAt,
+		&revokedAt,
+	); err != nil {
+		return api.TeamInvite{}, fmt.Errorf("could not scan team invite: %w", err)
+	}
+
+	if invitedUserRaw.Valid && strings.TrimSpace(invitedUserRaw.String) != "" {
+		invitedUserID, err := uuid.Parse(invitedUserRaw.String)
+		if err != nil {
+			return api.TeamInvite{}, fmt.Errorf("invalid invited user id %q: %w", invitedUserRaw.String, err)
+		}
+		invite.InvitedUserID = &invitedUserID
+	}
+	if createdByRaw.Valid && strings.TrimSpace(createdByRaw.String) != "" {
+		createdBy, err := uuid.Parse(createdByRaw.String)
+		if err != nil {
+			return api.TeamInvite{}, fmt.Errorf("invalid created by id %q: %w", createdByRaw.String, err)
+		}
+		invite.CreatedBy = &createdBy
+	}
+	if acceptedAt.Valid {
+		accepted := acceptedAt.Time
+		invite.AcceptedAt = &accepted
+	}
+	if revokedAt.Valid {
+		revoked := revokedAt.Time
+		invite.RevokedAt = &revoked
+	}
+
+	return invite, nil
+}
+
+func scanTeamInviteRow(row *sql.Row) (*api.TeamInvite, error) {
+	invite, err := scanTeamInvite(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+		return nil, err
+	}
+	return &invite, nil
 }
 
 func getUserLocaleTx(ctx context.Context, tx *sql.Tx, userID uuid.UUID) (string, error) {

@@ -82,6 +82,26 @@ func (s *Store) CompletePasswordReset(ctx context.Context, token string, newHash
 	})
 }
 
+func (s *Store) ResolvePasswordResetEmail(ctx context.Context, token string) (string, error) {
+	var email string
+	var expiresAt time.Time
+	err := s.db.QueryRowContext(ctx,
+		"SELECT email, expires_at FROM password_resets WHERE token = ?",
+		token,
+	).Scan(&email, &expiresAt)
+	if err == sql.ErrNoRows {
+		return "", fmt.Errorf("invalid or expired token")
+	}
+	if err != nil {
+		return "", err
+	}
+	if time.Now().After(expiresAt) {
+		_, _ = s.db.ExecContext(ctx, "DELETE FROM password_resets WHERE token = ?", token)
+		return "", fmt.Errorf("token expired")
+	}
+	return email, nil
+}
+
 func (s *Store) UpdatePasswordByID(ctx context.Context, userID string, newHashedPassword string) error {
 	return s.Transact(ctx, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, "UPDATE users SET password = ? WHERE id = ?", newHashedPassword, userID); err != nil {

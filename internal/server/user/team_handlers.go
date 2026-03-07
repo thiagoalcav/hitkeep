@@ -35,6 +35,32 @@ func (h *handler) appendTeamAudit(r *http.Request, teamID, actorID uuid.UUID, ac
 	}
 }
 
+func (h *handler) sendTeamInviteEmail(r *http.Request, teamID, actorID uuid.UUID, invite *api.TeamInvite) {
+	if h.ctx.Mailer == nil || invite == nil {
+		return
+	}
+
+	inviteToken, err := h.ctx.Store.CreatePasswordResetToken(r.Context(), invite.Email)
+	if err != nil {
+		slog.Warn("Failed to create invite token for team invite", "error", err, "email", invite.Email, "team_id", teamID)
+		return
+	}
+
+	teamName := "HitKeep Team"
+	if team, err := h.ctx.Store.GetTenant(r.Context(), teamID); err == nil && team != nil {
+		teamName = team.Name
+	}
+	inviterName := "Someone"
+	if inviter, err := h.ctx.Store.GetUserByID(r.Context(), actorID); err == nil && inviter != nil {
+		inviterName = inviter.Email
+	}
+
+	inviteLink := strings.TrimRight(h.ctx.Config.PublicURL, "/") + "/accept-invite?token=" + inviteToken
+	if err := h.ctx.Mailer.Send(invite.Email, mailables.NewTeamInvite(inviteLink, teamName, inviterName, invite.Role, true)); err != nil {
+		slog.Warn("Failed to send team invite email", "error", err, "email", invite.Email, "team_id", teamID)
+	}
+}
+
 func (h *handler) handleCreateTeam() http.HandlerFunc {
 	type request struct {
 		Name    string `json:"name"`
@@ -239,6 +265,40 @@ func (h *handler) handleGetTeamMembers() http.HandlerFunc {
 	}
 }
 
+func (h *handler) handleGetTeamInvites() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := shared.GetUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		teamID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+		if err != nil {
+			http.Error(w, "Invalid team ID", http.StatusBadRequest)
+			return
+		}
+
+		role, err := h.ctx.Store.GetTenantRole(r.Context(), teamID, userID)
+		if err != nil || !canManageTeam(role) {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
+
+		invites, err := h.ctx.Store.ListTeamInvites(r.Context(), teamID)
+		if err != nil {
+			slog.Error("Failed to list team invites", "error", err, "user_id", userID, "team_id", teamID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(invites); err != nil {
+			slog.Error("Failed to encode team invites response", "error", err, "user_id", userID, "team_id", teamID)
+		}
+	}
+}
+
 func (h *handler) handleGetTeamAudit() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := shared.GetUserIDFromContext(r)
@@ -337,7 +397,6 @@ func (h *handler) handleAddTeamMember() http.HandlerFunc {
 			return
 		}
 
-		isNewUser := false
 		var targetUserID uuid.UUID
 		wasMember := false
 		previousRole := ""
@@ -378,56 +437,163 @@ func (h *handler) handleAddTeamMember() http.HandlerFunc {
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-			isNewUser = true
 		}
 
-		if err := h.ctx.Store.AddTeamMember(r.Context(), teamID, targetUserID, role, actorID); err != nil {
-			slog.Error("Failed to add team member", "error", err, "team_id", teamID, "target_user_id", targetUserID, "actor_id", actorID)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+		if wasMember {
+			if err := h.ctx.Store.AddTeamMember(r.Context(), teamID, targetUserID, role, actorID); err != nil {
+				slog.Error("Failed to update team member", "error", err, "team_id", teamID, "target_user_id", targetUserID, "actor_id", actorID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			details := fmt.Sprintf("Member %s set to role %s", email, role)
+			if previousRole != "" {
+				details = fmt.Sprintf("Member %s role changed from %s to %s", email, previousRole, role)
+			}
+			targetID := targetUserID
+			h.appendTeamAudit(r, teamID, actorID, "member.role_updated", details, &targetID)
+
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(map[string]any{
+				"status":    "ok",
+				"is_invite": false,
+			}); err != nil {
+				slog.Error("Failed to encode add team member response", "error", err, "team_id", teamID, "actor_id", actorID)
+			}
 			return
 		}
 
-		action := "member.added"
-		switch {
-		case isNewUser:
-			action = "member.invited"
-		case wasMember:
-			action = "member.role_updated"
-		}
-		details := fmt.Sprintf("Member %s set to role %s", email, role)
-		if wasMember && previousRole != "" {
-			details = fmt.Sprintf("Member %s role changed from %s to %s", email, previousRole, role)
-		}
-		targetID := targetUserID
-		h.appendTeamAudit(r, teamID, actorID, action, details, &targetID)
-
-		if isNewUser && h.ctx.Mailer != nil {
-			inviteToken, err := h.ctx.Store.CreatePasswordResetToken(r.Context(), email)
-			if err != nil {
-				slog.Warn("Failed to create invite token for team invite", "error", err, "email", email, "team_id", teamID)
-			} else {
-				teamName := "HitKeep Team"
-				if team, err := h.ctx.Store.GetTenant(r.Context(), teamID); err == nil && team != nil {
-					teamName = team.Name
-				}
-				inviterName := "Someone"
-				if inviter, err := h.ctx.Store.GetUserByID(r.Context(), actorID); err == nil && inviter != nil {
-					inviterName = inviter.Email
-				}
-
-				inviteLink := strings.TrimRight(h.ctx.Config.PublicURL, "/") + "/accept-invite?token=" + inviteToken
-				if err := h.ctx.Mailer.Send(email, mailables.NewTeamInvite(inviteLink, teamName, inviterName, role, true)); err != nil {
-					slog.Warn("Failed to send team invite email", "error", err, "email", email, "team_id", teamID)
-				}
+		invite, err := h.ctx.Store.CreateTeamInvite(r.Context(), teamID, email, role, &targetUserID, actorID)
+		if err != nil {
+			switch {
+			case errors.Is(err, database.ErrTeamInviteAlreadyPending):
+				http.Error(w, "Invite already pending", http.StatusConflict)
+				return
+			default:
+				slog.Error("Failed to create team invite", "error", err, "team_id", teamID, "target_user_id", targetUserID, "actor_id", actorID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
 			}
 		}
+
+		details := fmt.Sprintf("Invitation sent to %s with role %s", email, role)
+		targetID := targetUserID
+		h.appendTeamAudit(r, teamID, actorID, "member.invited", details, &targetID)
+		h.sendTeamInviteEmail(r, teamID, actorID, invite)
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(map[string]any{
 			"status":    "ok",
-			"is_invite": isNewUser,
+			"is_invite": true,
+			"invite":    invite,
 		}); err != nil {
 			slog.Error("Failed to encode add team member response", "error", err, "team_id", teamID, "actor_id", actorID)
+		}
+	}
+}
+
+func (h *handler) handleResendTeamInvite() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		actorID := shared.GetUserIDFromContext(r)
+		if actorID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		teamID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+		if err != nil {
+			http.Error(w, "Invalid team ID", http.StatusBadRequest)
+			return
+		}
+		inviteID, err := uuid.Parse(strings.TrimSpace(r.PathValue("inviteId")))
+		if err != nil {
+			http.Error(w, "Invalid invite ID", http.StatusBadRequest)
+			return
+		}
+
+		actorRole, err := h.ctx.Store.GetTenantRole(r.Context(), teamID, actorID)
+		if err != nil || !canManageTeam(actorRole) {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
+
+		invite, err := h.ctx.Store.ResendTeamInvite(r.Context(), teamID, inviteID)
+		if err != nil {
+			switch {
+			case errors.Is(err, database.ErrTeamInviteNotFound):
+				http.Error(w, "Invite not found", http.StatusNotFound)
+				return
+			default:
+				slog.Error("Failed to resend team invite", "error", err, "team_id", teamID, "invite_id", inviteID, "actor_id", actorID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		h.sendTeamInviteEmail(r, teamID, actorID, invite)
+		h.appendTeamAudit(r, teamID, actorID, "member.invite_resent", fmt.Sprintf("Invitation resent to %s", invite.Email), invite.InvitedUserID)
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]any{"status": "ok", "invite": invite}); err != nil {
+			slog.Error("Failed to encode resend invite response", "error", err, "team_id", teamID, "invite_id", inviteID)
+		}
+	}
+}
+
+func (h *handler) handleRevokeTeamInvite() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		actorID := shared.GetUserIDFromContext(r)
+		if actorID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		teamID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+		if err != nil {
+			http.Error(w, "Invalid team ID", http.StatusBadRequest)
+			return
+		}
+		inviteID, err := uuid.Parse(strings.TrimSpace(r.PathValue("inviteId")))
+		if err != nil {
+			http.Error(w, "Invalid invite ID", http.StatusBadRequest)
+			return
+		}
+
+		actorRole, err := h.ctx.Store.GetTenantRole(r.Context(), teamID, actorID)
+		if err != nil || !canManageTeam(actorRole) {
+			http.Error(w, "Access denied", http.StatusForbidden)
+			return
+		}
+
+		invite, err := h.ctx.Store.GetTeamInvite(r.Context(), teamID, inviteID)
+		if err != nil {
+			switch {
+			case errors.Is(err, database.ErrTeamInviteNotFound):
+				http.Error(w, "Invite not found", http.StatusNotFound)
+				return
+			default:
+				slog.Error("Failed to load team invite", "error", err, "team_id", teamID, "invite_id", inviteID, "actor_id", actorID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		if err := h.ctx.Store.RevokeTeamInvite(r.Context(), teamID, inviteID); err != nil {
+			switch {
+			case errors.Is(err, database.ErrTeamInviteNotFound):
+				http.Error(w, "Invite not found", http.StatusNotFound)
+				return
+			default:
+				slog.Error("Failed to revoke team invite", "error", err, "team_id", teamID, "invite_id", inviteID, "actor_id", actorID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+		}
+
+		h.appendTeamAudit(r, teamID, actorID, "member.invite_revoked", fmt.Sprintf("Invitation revoked for %s", invite.Email), invite.InvitedUserID)
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+			slog.Error("Failed to encode revoke invite response", "error", err, "team_id", teamID, "invite_id", inviteID)
 		}
 	}
 }

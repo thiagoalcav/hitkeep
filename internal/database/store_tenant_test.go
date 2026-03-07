@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -349,6 +350,143 @@ func TestAppendAndListTeamAuditEntries(t *testing.T) {
 	}
 	if entry.TargetUserID == nil || *entry.TargetUserID != targetID {
 		t.Fatalf("expected target %s, got %v", targetID, entry.TargetUserID)
+	}
+}
+
+func TestCreateAndListTeamInvites(t *testing.T) {
+	store := setupTenantStore(t)
+	ctx := context.Background()
+
+	ownerID, err := store.CreateUser(ctx, "owner-invite@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create owner user: %v", err)
+	}
+	teamID, err := store.GetDefaultTenantID(ctx)
+	if err != nil {
+		t.Fatalf("get default tenant: %v", err)
+	}
+
+	invite, err := store.CreateTeamInvite(ctx, teamID, "invitee@tenant.test", TenantRoleAdmin, nil, ownerID)
+	if err != nil {
+		t.Fatalf("create team invite: %v", err)
+	}
+	if invite.Status != TeamInviteStatusPending {
+		t.Fatalf("expected pending invite status, got %q", invite.Status)
+	}
+
+	invites, err := store.ListTeamInvites(ctx, teamID)
+	if err != nil {
+		t.Fatalf("list team invites: %v", err)
+	}
+	if len(invites) != 1 {
+		t.Fatalf("expected 1 team invite, got %d", len(invites))
+	}
+	if invites[0].Email != "invitee@tenant.test" {
+		t.Fatalf("expected invite email %q, got %q", "invitee@tenant.test", invites[0].Email)
+	}
+}
+
+func TestCreateTeamInviteRejectsDuplicatePendingInvite(t *testing.T) {
+	store := setupTenantStore(t)
+	ctx := context.Background()
+
+	ownerID, err := store.CreateUser(ctx, "owner-dup@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create owner user: %v", err)
+	}
+	teamID, err := store.GetDefaultTenantID(ctx)
+	if err != nil {
+		t.Fatalf("get default tenant: %v", err)
+	}
+
+	if _, err := store.CreateTeamInvite(ctx, teamID, "dup@tenant.test", TenantRoleMember, nil, ownerID); err != nil {
+		t.Fatalf("create first team invite: %v", err)
+	}
+	if _, err := store.CreateTeamInvite(ctx, teamID, "dup@tenant.test", TenantRoleMember, nil, ownerID); !errors.Is(err, ErrTeamInviteAlreadyPending) {
+		t.Fatalf("expected ErrTeamInviteAlreadyPending, got %v", err)
+	}
+}
+
+func TestRevokeTeamInviteRemovesPendingInvite(t *testing.T) {
+	store := setupTenantStore(t)
+	ctx := context.Background()
+
+	ownerID, err := store.CreateUser(ctx, "owner-revoke@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create owner user: %v", err)
+	}
+	teamID, err := store.GetDefaultTenantID(ctx)
+	if err != nil {
+		t.Fatalf("get default tenant: %v", err)
+	}
+
+	invite, err := store.CreateTeamInvite(ctx, teamID, "revoke@tenant.test", TenantRoleMember, nil, ownerID)
+	if err != nil {
+		t.Fatalf("create team invite: %v", err)
+	}
+	if err := store.RevokeTeamInvite(ctx, teamID, invite.ID); err != nil {
+		t.Fatalf("revoke team invite: %v", err)
+	}
+
+	invites, err := store.ListTeamInvites(ctx, teamID)
+	if err != nil {
+		t.Fatalf("list team invites: %v", err)
+	}
+	if len(invites) != 0 {
+		t.Fatalf("expected no pending invites after revoke, got %d", len(invites))
+	}
+}
+
+func TestAcceptTeamInvitesByEmailCreatesMembership(t *testing.T) {
+	store := setupTenantStore(t)
+	ctx := context.Background()
+
+	ownerID, err := store.CreateUser(ctx, "owner-accept@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create owner user: %v", err)
+	}
+	inviteeID, err := store.CreateUser(ctx, "accept@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create invitee user: %v", err)
+	}
+
+	teamID := uuid.New()
+	if _, err := store.DB().ExecContext(ctx,
+		"INSERT INTO tenants (id, name, created_at) VALUES (?, ?, ?)",
+		teamID, "Invite Accept", time.Now().UTC(),
+	); err != nil {
+		t.Fatalf("insert tenant: %v", err)
+	}
+
+	if _, err := store.CreateTeamInvite(ctx, teamID, "accept@tenant.test", TenantRoleAdmin, &inviteeID, ownerID); err != nil {
+		t.Fatalf("create team invite: %v", err)
+	}
+
+	accepted, err := store.AcceptTeamInvitesByEmail(ctx, "accept@tenant.test", inviteeID)
+	if err != nil {
+		t.Fatalf("accept team invites: %v", err)
+	}
+	if len(accepted) != 1 {
+		t.Fatalf("expected 1 accepted invite, got %d", len(accepted))
+	}
+	if accepted[0].Status != TeamInviteStatusAccepted {
+		t.Fatalf("expected accepted invite status, got %q", accepted[0].Status)
+	}
+
+	isMember, err := store.IsTenantMember(ctx, teamID, inviteeID)
+	if err != nil {
+		t.Fatalf("check tenant membership: %v", err)
+	}
+	if !isMember {
+		t.Fatalf("expected invitee to become a team member")
+	}
+
+	role, err := store.GetTenantRole(ctx, teamID, inviteeID)
+	if err != nil {
+		t.Fatalf("get tenant role: %v", err)
+	}
+	if role != TenantRoleAdmin {
+		t.Fatalf("expected invitee role %q, got %q", TenantRoleAdmin, role)
 	}
 }
 

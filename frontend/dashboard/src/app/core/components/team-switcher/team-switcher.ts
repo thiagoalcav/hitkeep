@@ -13,11 +13,7 @@ import { Team, TeamRole } from "@models/analytics.types";
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <div
-            [class]="
-                compact()
-                    ? 'flex w-full flex-col gap-2 rounded-2xl border border-surface-200/80 bg-linear-to-b from-white to-surface-50 p-2 shadow-sm dark:border-surface-700/80 dark:from-surface-900 dark:to-surface-800'
-                    : 'flex w-full flex-col gap-2'
-            "
+            [class]="compact() ? 'flex w-full flex-col gap-2 rounded-2xl border border-surface-200/80 bg-linear-to-b from-white to-surface-50 p-2 shadow-sm dark:border-surface-700/80 dark:from-surface-900 dark:to-surface-800' : 'flex w-full flex-col gap-2'"
             role="region"
             [attr.aria-label]="'teams.switcher.regionAria' | transloco"
         >

@@ -58,13 +58,7 @@ interface SiteMember {
                             />
                         </div>
 
-                        <p-button
-                            [label]="'sites.team.transfer.action' | transloco"
-                            icon="pi pi-arrow-right-arrow-left"
-                            [loading]="isTransferring()"
-                            [disabled]="isTransferring() || transferForm().invalid()"
-                            (onClick)="transferSite()"
-                        />
+                        <p-button [label]="'sites.team.transfer.action' | transloco" icon="pi pi-arrow-right-arrow-left" [loading]="isTransferring()" [disabled]="isTransferring() || transferForm().invalid()" (onClick)="transferSite()" />
                     </div>
                 </div>
             }

@@ -9,16 +9,16 @@ const publicDir = resolve(__dirname, "../../../public");
 mkdirSync(publicDir, { recursive: true });
 
 for (const entry of readdirSync(publicDir, { withFileTypes: true })) {
-  if (entry.name === "embed.go") {
-    continue;
-  }
+    if (entry.name === "embed.go") {
+        continue;
+    }
 
-  rmSync(resolve(publicDir, entry.name), { recursive: true, force: true });
+    rmSync(resolve(publicDir, entry.name), { recursive: true, force: true });
 }
 
 for (const entry of readdirSync(sourceDir, { withFileTypes: true })) {
-  cpSync(resolve(sourceDir, entry.name), resolve(publicDir, entry.name), {
-    recursive: true,
-    force: true
-  });
+    cpSync(resolve(sourceDir, entry.name), resolve(publicDir, entry.name), {
+        recursive: true,
+        force: true
+    });
 }

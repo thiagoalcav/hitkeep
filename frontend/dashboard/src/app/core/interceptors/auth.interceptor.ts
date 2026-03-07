@@ -17,10 +17,7 @@ interface ReturnUrlRouterContext {
 }
 
 export function resolveCurrentReturnUrl(router: ReturnUrlRouterContext): string {
-    const browserPath =
-        typeof window !== "undefined" && typeof window.location !== "undefined"
-            ? `${window.location.pathname || ""}${window.location.search || ""}${window.location.hash || ""}`
-            : "";
+    const browserPath = typeof window !== "undefined" && typeof window.location !== "undefined" ? `${window.location.pathname || ""}${window.location.search || ""}${window.location.hash || ""}` : "";
 
     const candidate = browserPath && browserPath !== "/" ? browserPath : router.url || router.routerState.snapshot.url || "/dashboard";
     if (!candidate.startsWith("/") || candidate.startsWith("//")) {

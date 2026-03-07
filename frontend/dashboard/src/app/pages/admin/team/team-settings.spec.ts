@@ -63,12 +63,7 @@ describe("TeamSettingsPage", () => {
                     preloadLangs: true
                 })
             ],
-            providers: [
-                provideRouter([]),
-                { provide: TeamService, useValue: teamServiceMock },
-                { provide: SiteService, useValue: siteServiceMock },
-                { provide: PermissionService, useValue: permissionServiceMock }
-            ]
+            providers: [provideRouter([]), { provide: TeamService, useValue: teamServiceMock }, { provide: SiteService, useValue: siteServiceMock }, { provide: PermissionService, useValue: permissionServiceMock }]
         }).compileComponents();
 
         fixture = TestBed.createComponent(TeamSettingsPage);

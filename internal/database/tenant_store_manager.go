@@ -453,7 +453,7 @@ func placeholders(count int) string {
 	}
 
 	values := make([]string, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		values[i] = "?"
 	}
 	return strings.Join(values, ", ")

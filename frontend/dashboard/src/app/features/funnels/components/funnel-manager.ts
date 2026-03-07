@@ -27,7 +27,23 @@ interface FunnelStepControl {
 
 @Component({
     selector: "app-funnel-manager",
-    imports: [DragDropModule, ReactiveFormsModule, DialogModule, ButtonModule, DividerModule, IconFieldModule, InputIconModule, InputGroupModule, InputGroupAddonModule, InputTextModule, SelectButtonModule, TableModule, TagModule, TooltipModule, TranslocoPipe],
+    imports: [
+        DragDropModule,
+        ReactiveFormsModule,
+        DialogModule,
+        ButtonModule,
+        DividerModule,
+        IconFieldModule,
+        InputIconModule,
+        InputGroupModule,
+        InputGroupAddonModule,
+        InputTextModule,
+        SelectButtonModule,
+        TableModule,
+        TagModule,
+        TooltipModule,
+        TranslocoPipe
+    ],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <p-dialog [header]="'funnels.manager.dialogTitle' | transloco" [(visible)]="visible" [modal]="true" [style]="{ width: '800px', maxWidth: '90vw' }" [draggable]="false" [resizable]="false">
@@ -100,8 +116,10 @@ interface FunnelStepControl {
                         @for (step of stepControls(); track $index; let i = $index) {
                             <div cdkDrag class="flex gap-2 items-center">
                                 <i cdkDragHandle class="pi pi-bars text-muted-color cursor-grab shrink-0"></i>
-                                <span class="flex w-7 h-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
-                                      [class]="i === 0 ? 'bg-primary text-primary-contrast' : 'bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-300'">
+                                <span
+                                    class="flex w-7 h-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                                    [class]="i === 0 ? 'bg-primary text-primary-contrast' : 'bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-300'"
+                                >
                                     {{ i + 1 }}
                                 </span>
                                 <p-selectbutton [options]="types()" [formControl]="step.typeControl" optionLabel="label" optionValue="value" size="small" ariaLabelledBy="funnel-steps-label" />
@@ -109,11 +127,7 @@ interface FunnelStepControl {
                                     <p-inputgroup-addon>
                                         <i [class]="step.typeControl.value === 'event' ? 'pi pi-bolt' : 'pi pi-link'"></i>
                                     </p-inputgroup-addon>
-                                    <input
-                                        pInputText
-                                        [formControl]="step.valueControl"
-                                        [placeholder]="step.typeControl.value === 'path' ? ('funnels.manager.stepPathPlaceholder' | transloco) : ('funnels.manager.stepEventPlaceholder' | transloco)"
-                                    />
+                                    <input pInputText [formControl]="step.valueControl" [placeholder]="step.typeControl.value === 'path' ? ('funnels.manager.stepPathPlaceholder' | transloco) : ('funnels.manager.stepEventPlaceholder' | transloco)" />
                                 </p-inputgroup>
                                 <p-button icon="pi pi-times" (onClick)="removeStep(i)" severity="danger" [text]="true" [rounded]="true" size="small" [disabled]="stepControls().length <= 2" />
                                 <div *cdkDragPlaceholder class="rounded-md border-2 border-dashed border-primary/30 bg-primary/5 h-10 w-full"></div>

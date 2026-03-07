@@ -109,20 +109,19 @@
                         [ariaLabel]="'teams.management.transferOwnershipAria' | transloco: { email: member.email }"
                         (onClick)="confirmTransferOwnership($event, member)"
                     />
-                    }
-                    @if (canRemoveMember(member)) {
-                        <p-button
-                            icon="pi pi-trash"
-                            severity="danger"
-                            [text]="true"
-                            [type]="'button'"
-                            [loading]="removingUserID() === member.user_id"
-                            [disabled]="isRoleUpdating(member) || transferringUserID() === member.user_id"
-                            [ariaLabel]="'teams.management.removeAria' | transloco: { email: member.email }"
-                            (onClick)="confirmRemoveMember($event, member)"
-                        />
+                    } @if (canRemoveMember(member)) {
+                    <p-button
+                        icon="pi pi-trash"
+                        severity="danger"
+                        [text]="true"
+                        [type]="'button'"
+                        [loading]="removingUserID() === member.user_id"
+                        [disabled]="isRoleUpdating(member) || transferringUserID() === member.user_id"
+                        [ariaLabel]="'teams.management.removeAria' | transloco: { email: member.email }"
+                        (onClick)="confirmRemoveMember($event, member)"
+                    />
                     } @else if (!canTransferMember(member)) {
-                        <span class="text-xs text-muted-color">{{ "teams.management.notAllowed" | transloco }}</span>
+                    <span class="text-xs text-muted-color">{{ "teams.management.notAllowed" | transloco }}</span>
                     }
                 </td>
             </tr>
@@ -192,5 +191,4 @@
         </p-table>
     </div>
 </div>
-}
-}
+} }

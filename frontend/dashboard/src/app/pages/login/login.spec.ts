@@ -75,11 +75,11 @@ describe("Login", () => {
 
     it("resolves valid in-app returnUrl", () => {
         returnUrl = "/events?range=30d";
-        expect((component)["resolveReturnUrl"]()).toBe("/events?range=30d");
+        expect(component["resolveReturnUrl"]()).toBe("/events?range=30d");
     });
 
     it("falls back for unsafe returnUrl", () => {
         returnUrl = "https://evil.example/phish";
-        expect((component)["resolveReturnUrl"]()).toBe("/dashboard");
+        expect(component["resolveReturnUrl"]()).toBe("/dashboard");
     });
 });

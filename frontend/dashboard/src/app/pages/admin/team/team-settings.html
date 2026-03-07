@@ -54,10 +54,9 @@
             <h3>{{ "admin.team.settings.leaveSectionTitle" | transloco }}</h3>
             <p class="team-settings__description">{{ "admin.team.settings.leaveSectionDescription" | transloco }}</p>
             @if (leaveSuccessKey(); as key) {
-                <p-message severity="success" [text]="key | transloco" />
-            }
-            @if (leaveErrorKey(); as key) {
-                <p-message severity="error" [text]="key | transloco" />
+            <p-message severity="success" [text]="key | transloco" />
+            } @if (leaveErrorKey(); as key) {
+            <p-message severity="error" [text]="key | transloco" />
             }
             <div class="team-settings__danger-actions">
                 <p-button severity="danger" [label]="'admin.team.settings.leaveAction' | transloco" [loading]="isLeaving()" [disabled]="isLeaving()" (onClick)="confirmLeaveTeam($event)" />
@@ -71,14 +70,11 @@
             <h3>{{ "admin.team.settings.archiveSectionTitle" | transloco }}</h3>
             <p class="team-settings__description">{{ "admin.team.settings.archiveSectionDescription" | transloco }}</p>
             @if (archiveSuccessKey(); as key) {
-                <p-message severity="success" [text]="key | transloco" />
+            <p-message severity="success" [text]="key | transloco" />
+            } @if (archiveErrorKey(); as key) {
+            <p-message severity="error" [text]="key | transloco" />
             }
-            @if (archiveErrorKey(); as key) {
-                <p-message severity="error" [text]="key | transloco" />
-            }
-            <div class="team-settings__danger-note">
-                {{ "admin.team.settings.archiveSectionHint" | transloco }}
-            </div>
+            <div class="team-settings__danger-note">{{ "admin.team.settings.archiveSectionHint" | transloco }}</div>
             <div class="team-settings__danger-actions">
                 <p-button severity="danger" [label]="'admin.team.settings.archiveAction' | transloco" [loading]="isArchiving()" [disabled]="isArchiving()" (onClick)="confirmArchiveTeam($event)" />
             </div>

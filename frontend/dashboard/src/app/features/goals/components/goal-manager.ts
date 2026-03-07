@@ -104,9 +104,7 @@ import { Goal } from "@models/analytics.types";
                             <p-inputgroup-addon><i class="pi pi-bolt"></i></p-inputgroup-addon>
                             <input pInputText id="g-value" [formControl]="newGoalForm.value().control()" [placeholder]="'goals.manager.eventNamePlaceholder' | transloco" />
                         </p-inputgroup>
-                        <small class="text-xs text-muted-color">
-                            {{ "goals.manager.eventNameHelpPrefix" | transloco }} <code>hk.event('name')</code>{{ "goals.manager.eventNameHelpSuffix" | transloco }}
-                        </small>
+                        <small class="text-xs text-muted-color"> {{ "goals.manager.eventNameHelpPrefix" | transloco }} <code>hk.event('name')</code>{{ "goals.manager.eventNameHelpSuffix" | transloco }} </small>
                     }
                 </div>
             </div>

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -401,6 +402,31 @@ func TestTransferSiteMovesAnalyticsToDestinationTenant(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("create hit in shared store: %v", err)
 	}
+	if err := store.CreateEvent(ctx, &api.Event{
+		ID:        uuid.New(),
+		SiteID:    site.ID,
+		SessionID: uuid.New(),
+		Name:      "signup",
+		Properties: map[string]any{
+			"plan":  "pro",
+			"steps": []string{"landing", "checkout"},
+		},
+		Timestamp: time.Now().UTC(),
+	}); err != nil {
+		t.Fatalf("create event in shared store: %v", err)
+	}
+	if err := store.CreateFunnel(ctx, &api.Funnel{
+		ID:     uuid.New(),
+		SiteID: site.ID,
+		Name:   "Signup funnel",
+		Steps: []api.FunnelStep{
+			{Type: "path", Value: "/"},
+			{Type: "event", Value: "signup"},
+		},
+		CreatedAt: time.Now().UTC(),
+	}); err != nil {
+		t.Fatalf("create funnel in shared store: %v", err)
+	}
 
 	destinationTeam, err := store.CreateTenant(ctx, userID, "Destination Team", "")
 	if err != nil {
@@ -430,6 +456,29 @@ func TestTransferSiteMovesAnalyticsToDestinationTenant(t *testing.T) {
 	}
 	if hitCount != 1 {
 		t.Fatalf("expected 1 transferred hit in destination tenant store, got %d", hitCount)
+	}
+
+	var eventCount int
+	var eventProperties string
+	if err := tenantStore.DB().QueryRowContext(ctx, "SELECT COUNT(*), CAST(MAX(properties) AS VARCHAR) FROM events WHERE site_id = ?", site.ID).Scan(&eventCount, &eventProperties); err != nil {
+		t.Fatalf("query transferred events in destination store: %v", err)
+	}
+	if eventCount != 1 {
+		t.Fatalf("expected 1 event in destination tenant store, got %d", eventCount)
+	}
+	if !strings.Contains(eventProperties, "\"plan\":\"pro\"") {
+		t.Fatalf("expected transferred event properties to contain plan=pro, got %s", eventProperties)
+	}
+
+	funnels, err := tenantStore.GetFunnels(ctx, site.ID)
+	if err != nil {
+		t.Fatalf("tenant GetFunnels: %v", err)
+	}
+	if len(funnels) != 1 {
+		t.Fatalf("expected 1 funnel in destination tenant store, got %d", len(funnels))
+	}
+	if len(funnels[0].Steps) != 2 {
+		t.Fatalf("expected transferred funnel steps, got %#v", funnels[0].Steps)
 	}
 
 	tenantID, err := store.GetSiteTenantID(ctx, site.ID)

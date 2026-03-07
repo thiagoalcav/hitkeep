@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -377,6 +378,10 @@ func copySiteAnalyticsTable(ctx context.Context, sourceDB, destinationDB *sql.DB
 	if err != nil {
 		return fmt.Errorf("list columns: %w", err)
 	}
+	columnTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return fmt.Errorf("list column types: %w", err)
+	}
 	if len(columns) == 0 {
 		return nil
 	}
@@ -404,6 +409,12 @@ func copySiteAnalyticsTable(ctx context.Context, sourceDB, destinationDB *sql.DB
 		if err := rows.Scan(scanTargets...); err != nil {
 			return fmt.Errorf("scan row: %w", err)
 		}
+		for i := range values {
+			values[i], err = normalizeAnalyticsTransferValue(values[i], columnTypes[i])
+			if err != nil {
+				return fmt.Errorf("normalize %s.%s: %w", table, columns[i], err)
+			}
+		}
 		if _, err := destinationDB.ExecContext(ctx, insertSQL, values...); err != nil {
 			return fmt.Errorf("insert row: %w", err)
 		}
@@ -413,6 +424,27 @@ func copySiteAnalyticsTable(ctx context.Context, sourceDB, destinationDB *sql.DB
 	}
 
 	return nil
+}
+
+func normalizeAnalyticsTransferValue(value any, columnType *sql.ColumnType) (any, error) {
+	if value == nil || columnType == nil {
+		return value, nil
+	}
+
+	if strings.EqualFold(columnType.DatabaseTypeName(), "JSON") {
+		switch typed := value.(type) {
+		case string, []byte:
+			return typed, nil
+		default:
+			encoded, err := json.Marshal(typed)
+			if err != nil {
+				return nil, fmt.Errorf("marshal json value: %w", err)
+			}
+			return string(encoded), nil
+		}
+	}
+
+	return value, nil
 }
 
 func placeholders(count int) string {

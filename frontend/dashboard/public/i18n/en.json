@@ -246,6 +246,8 @@
         "empty": {
             "noTrafficTitle": "No traffic recorded yet",
             "noTrafficDescription": "Install the tracking snippet on your website to start collecting analytics data.",
+            "teamTitle": "No sites in {{team}} yet",
+            "teamDescription": "Create the first site in {{team}} to start collecting analytics data for this team.",
             "getTrackingCode": "Get tracking code",
             "createSite": "Create site"
         }

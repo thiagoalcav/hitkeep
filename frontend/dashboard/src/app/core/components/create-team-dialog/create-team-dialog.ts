@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject, model, signal } from "@angular/core";
 import { HttpErrorResponse } from "@angular/common/http";
+import { Router } from "@angular/router";
 import { ReactiveFormsModule, FormControl, Validators } from "@angular/forms";
 import { compatForm } from "@angular/forms/signals/compat";
 import { TranslocoPipe } from "@jsverse/transloco";
@@ -42,6 +43,7 @@ export class CreateTeamDialog {
     private teamService = inject(TeamService);
     private siteService = inject(SiteService);
     private perms = inject(PermissionService);
+    private router = inject(Router);
 
     protected isSubmitting = signal(false);
     protected createError = signal<string | null>(null);
@@ -85,11 +87,13 @@ export class CreateTeamDialog {
                         this.siteService.loadSites();
                         this.perms.loadPermissions().subscribe({ error: () => undefined });
                         this.visible.set(false);
+                        this.router.navigateByUrl("/dashboard");
                     },
                     error: () => {
                         this.siteService.loadSites();
                         this.perms.loadPermissions().subscribe({ error: () => undefined });
                         this.visible.set(false);
+                        this.router.navigateByUrl("/dashboard");
                     }
                 });
             },

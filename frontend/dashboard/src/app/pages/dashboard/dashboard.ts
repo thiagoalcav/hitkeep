@@ -43,6 +43,7 @@ import { RelativeDateTime } from "@components/relative-date-time/relative-date-t
 import { buildTakeoutExportMenuItems, DEFAULT_HITS_EXPORT_FORMAT, TakeoutExportFormat } from "@core/export/export-formats";
 import { TakeoutDownloadService } from "@services/takeout-download.service";
 import { AddSiteDialog } from "@features/sites/components/add-site-dialog";
+import { TeamService } from "@services/team.service";
 
 interface RangeSelectEvent {
     value: {
@@ -104,6 +105,7 @@ export class Dashboard {
     protected statsService = inject(StatsService);
     protected hitService = inject(HitService);
     private shareService = inject(ShareService);
+    private teamService = inject(TeamService);
     private siteSettings = inject(SiteSettingsService);
     private takeoutDownloadService = inject(TakeoutDownloadService);
     private localeService = inject(TranslocoLocaleService);
@@ -134,6 +136,7 @@ export class Dashboard {
     protected isAddSiteVisible = signal(false);
     protected funnelDateRange = computed(() => this.getCurrentDateRange());
     protected siteDomain = computed(() => this.siteService.activeSite()?.domain ?? null);
+    protected emptyTeamName = computed(() => this.teamService.activeTeam()?.name ?? null);
     protected siteFaviconUrl = computed(() => {
         const domain = this.siteDomain();
         return domain ? `/api/favicon/${encodeURIComponent(domain)}` : "";

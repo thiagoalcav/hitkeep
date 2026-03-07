@@ -5,6 +5,8 @@ import { TranslocoTestingModule } from "@jsverse/transloco";
 import { provideTranslocoLocale } from "@jsverse/transloco-locale";
 
 import { Dashboard } from "@pages/dashboard/dashboard";
+import { SiteService } from "@features/sites/services/site.service";
+import { TeamService } from "@services/team.service";
 
 describe("Dashboard", () => {
     let component: Dashboard;
@@ -43,5 +45,27 @@ describe("Dashboard", () => {
 
     it("should create", () => {
         expect(component).toBeTruthy();
+    });
+
+    it("should show team onboarding copy when the active team has no sites", () => {
+        const siteService = TestBed.inject(SiteService);
+        const teamService = TestBed.inject(TeamService);
+
+        siteService.sites.set([]);
+        siteService.activeSite.set(null);
+        teamService.teams.set([
+            {
+                id: "team-1",
+                name: "Acme Growth",
+                logo_url: "",
+                role: "owner",
+                created_at: "2026-01-01T00:00:00Z"
+            }
+        ]);
+        teamService.activeTeamId.set("team-1");
+
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.textContent).toContain("dashboard.empty.teamTitle");
     });
 });

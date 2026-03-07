@@ -246,6 +246,8 @@
         "empty": {
             "noTrafficTitle": "Aucun trafic enregistre pour le moment",
             "noTrafficDescription": "Installez le snippet de suivi sur votre site pour commencer a collecter des donnees analytiques.",
+            "teamTitle": "Aucun site dans {{team}} pour le moment",
+            "teamDescription": "Creez le premier site dans {{team}} pour commencer a collecter des donnees analytiques pour cette equipe.",
             "getTrackingCode": "Obtenir le code de suivi",
             "createSite": "Creer un site"
         }

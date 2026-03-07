@@ -224,8 +224,13 @@
     } @else {
     <div class="flex flex-col items-center justify-center h-[50vh] gap-4">
         <i class="pi pi-globe text-6xl text-primary opacity-20"></i>
+        @if (emptyTeamName(); as teamName) {
+        <h2 class="text-2xl font-semibold text-muted-color">{{ "dashboard.empty.teamTitle" | transloco: { team: teamName } }}</h2>
+        <p class="text-center text-muted-color max-w-xl">{{ "dashboard.empty.teamDescription" | transloco: { team: teamName } }}</p>
+        } @else {
         <h2 class="text-2xl font-semibold text-muted-color">{{ "common.noSiteSelected" | transloco }}</h2>
         <p class="text-muted-color">{{ "dashboard.noSiteDescription" | transloco }}</p>
+        }
         @if (!isShareMode()) {
         <p-button [label]="'dashboard.empty.createSite' | transloco" icon="pi pi-plus" size="small" (onClick)="isAddSiteVisible.set(true)" />
         }

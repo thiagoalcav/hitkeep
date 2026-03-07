@@ -456,6 +456,14 @@ func openAPISpecV1(publicURL string) map[string]any {
 						},
 					},
 				},
+				"AdminDeleteTeamResponse": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"status":  map[string]any{"type": "string"},
+						"team_id": map[string]any{"type": "string", "format": "uuid"},
+						"name":    map[string]any{"type": "string"},
+					},
+				},
 				"IPExclusion": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
@@ -1016,6 +1024,13 @@ func openAPISpecV1(publicURL string) map[string]any {
 			},
 			"/api/admin/sites/{id}": map[string]any{
 				"delete": op([]string{"Admin"}, "Delete site (admin)", "Deletes site by admin endpoint.", secCookie(), []any{paramRef("#/components/parameters/siteID")}, nil, map[string]any{"200": jsonRefResp("Status", "#/components/schemas/Status")}),
+			},
+			"/api/admin/teams/{id}": map[string]any{
+				"delete": op([]string{"Admin"}, "Delete archived team", "Permanently deletes an archived non-default team and removes its per-tenant analytics database directory.", secCookie(), []any{paramRef("#/components/parameters/teamID")}, nil, map[string]any{
+					"200": jsonRefResp("Delete archived team response", "#/components/schemas/AdminDeleteTeamResponse"),
+					"400": errResp("Archive the team first, and ensure it has no sites"),
+					"404": errResp("Team not found"),
+				}),
 			},
 			"/api/admin/exclusions": map[string]any{
 				"get": op([]string{"Admin"}, "List global exclusions", "Lists instance-level IP/CIDR exclusions used by ingest filtering.", secCookie(), nil, nil,

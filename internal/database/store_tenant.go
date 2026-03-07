@@ -34,6 +34,9 @@ var ErrTeamTransferTargetAlreadyOwner = errors.New("ownership transfer target is
 var ErrTeamArchiveRequiresOwner = errors.New("team archive requires owner")
 var ErrTeamArchiveDefaultTenant = errors.New("default team cannot be archived")
 var ErrTeamArchiveHasSites = errors.New("team archive requires empty site list")
+var ErrTeamPurgeDefaultTenant = errors.New("default team cannot be purged")
+var ErrTeamPurgeNotArchived = errors.New("team must be archived before purge")
+var ErrTeamPurgeHasSites = errors.New("team purge requires empty site list")
 
 const (
 	TeamInviteStatusPending  = "pending"
@@ -862,6 +865,99 @@ func (s *Store) ArchiveTenant(ctx context.Context, tenantID, actorID uuid.UUID) 
 
 		return nil
 	})
+}
+
+func (s *Store) GetPurgeableTenant(ctx context.Context, tenantID uuid.UUID) (*api.Team, error) {
+	team, err := s.getPurgeableTenant(ctx, s.db, tenantID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return team, nil
+}
+
+func (s *Store) DeleteArchivedTenantMetadata(ctx context.Context, tenantID uuid.UUID) (*api.Team, error) {
+	deleted, err := s.GetPurgeableTenant(ctx, tenantID)
+	if err != nil || deleted == nil {
+		return deleted, err
+	}
+
+	if err := s.Transact(ctx, func(tx *sql.Tx) error {
+		statements := []struct {
+			query string
+			args  []any
+		}{
+			{query: "DELETE FROM team_audit_log WHERE tenant_id = ?", args: []any{tenantID}},
+			{query: "DELETE FROM team_invites WHERE tenant_id = ?", args: []any{tenantID}},
+			{query: "DELETE FROM tenant_members WHERE tenant_id = ?", args: []any{tenantID}},
+			{query: "DELETE FROM tenant_archives WHERE tenant_id = ?", args: []any{tenantID}},
+		}
+
+		for _, stmt := range statements {
+			if _, err := tx.ExecContext(ctx, stmt.query, stmt.args...); err != nil {
+				return fmt.Errorf("could not purge archived tenant metadata: %w", err)
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	if _, err := s.db.ExecContext(ctx, "DELETE FROM tenants WHERE id = ?", tenantID); err != nil {
+		return nil, fmt.Errorf("could not delete archived tenant row: %w", err)
+	}
+
+	return deleted, nil
+}
+
+func (s *Store) getPurgeableTenant(ctx context.Context, queryer tenantRowQueryer, tenantID uuid.UUID) (*api.Team, error) {
+	var (
+		team       api.Team
+		isDefault  bool
+		archivedAt sql.NullTime
+	)
+
+	err := queryer.QueryRowContext(ctx, `
+		SELECT
+			t.id,
+			t.name,
+			COALESCE(t.logo_url, ''),
+			t.created_at,
+			t.is_default,
+			ta.archived_at
+		FROM tenants t
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = t.id
+		WHERE t.id = ?
+		LIMIT 1
+	`, tenantID).Scan(&team.ID, &team.Name, &team.LogoURL, &team.CreatedAt, &isDefault, &archivedAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("could not query tenant purge state: %w", err)
+	}
+
+	if isDefault {
+		return nil, ErrTeamPurgeDefaultTenant
+	}
+	if !archivedAt.Valid {
+		return nil, ErrTeamPurgeNotArchived
+	}
+
+	var siteCount int
+	if err := queryer.QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM site_tenants WHERE tenant_id = ?",
+		tenantID,
+	).Scan(&siteCount); err != nil {
+		return nil, fmt.Errorf("could not count tenant sites for purge: %w", err)
+	}
+	if siteCount > 0 {
+		return nil, ErrTeamPurgeHasSites
+	}
+
+	return &team, nil
 }
 
 func (s *Store) AppendTeamAuditEntry(ctx context.Context, tenantID, actorID uuid.UUID, action, details string, targetUserID *uuid.UUID) error {

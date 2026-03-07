@@ -45,6 +45,10 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		InstancePerm: authcore.PermInstanceManageUsers,
 		RateLimiter:  ctx.ApiLimiter,
 	}, h.handleAdminDeleteSite()))
+	mux.HandleFunc("DELETE /api/admin/teams/{id}", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceManageUsers,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleAdminDeleteTeam()))
 	mux.HandleFunc("GET /api/admin/exclusions", ctx.Handler(shared.HandlerConfig{
 		InstancePerm: authcore.PermInstanceViewAllSites,
 		RateLimiter:  ctx.ApiLimiter,
@@ -281,6 +285,50 @@ func (h *handler) handleDeleteUser() http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
 			slog.Error("Failed to encode response", "error", err)
+		}
+	}
+}
+
+func (h *handler) handleAdminDeleteTeam() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.ctx.TenantStores == nil {
+			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
+			return
+		}
+
+		teamID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+		if err != nil {
+			http.Error(w, "Invalid team ID", http.StatusBadRequest)
+			return
+		}
+
+		deleted, err := h.ctx.TenantStores.PurgeArchivedTenant(r.Context(), teamID)
+		if err != nil {
+			switch {
+			case errors.Is(err, database.ErrTeamPurgeDefaultTenant):
+				http.Error(w, "The default team cannot be deleted", http.StatusBadRequest)
+			case errors.Is(err, database.ErrTeamPurgeNotArchived):
+				http.Error(w, "Archive the team before deleting it", http.StatusBadRequest)
+			case errors.Is(err, database.ErrTeamPurgeHasSites):
+				http.Error(w, "Transfer or delete all sites before deleting the team", http.StatusBadRequest)
+			default:
+				slog.Error("Failed to purge archived team", "error", err, "team_id", teamID)
+				http.Error(w, "Internal error", http.StatusInternalServerError)
+			}
+			return
+		}
+		if deleted == nil {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(api.AdminDeleteTeamResponse{
+			Status: "ok",
+			TeamID: deleted.ID,
+			Name:   deleted.Name,
+		}); err != nil {
+			slog.Error("Failed to encode delete team response", "error", err, "team_id", teamID)
 		}
 	}
 }

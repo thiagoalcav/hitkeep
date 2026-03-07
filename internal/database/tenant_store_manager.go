@@ -12,6 +12,8 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+
+	"hitkeep/internal/api"
 )
 
 // TenantStoreManager provides per-tenant database isolation.
@@ -210,6 +212,33 @@ func (m *TenantStoreManager) DeleteSite(ctx context.Context, siteID uuid.UUID) e
 	return nil
 }
 
+// PurgeArchivedTenant removes the per-tenant analytics database directory and
+// deletes archived control-plane records for a non-default tenant.
+func (m *TenantStoreManager) PurgeArchivedTenant(ctx context.Context, tenantID uuid.UUID) (*api.Team, error) {
+	team, err := m.shared.GetPurgeableTenant(ctx, tenantID)
+	if err != nil || team == nil {
+		return team, err
+	}
+
+	if err := m.closeTenantStore(tenantID); err != nil {
+		return nil, err
+	}
+
+	if err := os.RemoveAll(m.tenantDataDir(tenantID)); err != nil {
+		return nil, fmt.Errorf("remove tenant data directory: %w", err)
+	}
+
+	deleted, err := m.shared.DeleteArchivedTenantMetadata(ctx, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	if deleted != nil {
+		slog.Info("Purged archived tenant", "tenant_id", tenantID, "name", deleted.Name)
+	}
+
+	return deleted, nil
+}
+
 // TransferSite copies site-scoped analytics into the destination tenant store,
 // updates the shared site->tenant mapping, and removes stale analytics from the
 // previous tenant's data plane.
@@ -290,7 +319,7 @@ func (m *TenantStoreManager) Close() error {
 // openTenantStore creates the directory structure and opens a new DuckDB
 // connection for a non-default tenant. Must be called with m.mu held.
 func (m *TenantStoreManager) openTenantStore(ctx context.Context, tenantID uuid.UUID) (*Store, error) {
-	dir := filepath.Join(m.basePath, "tenants", tenantID.String())
+	dir := m.tenantDataDir(tenantID)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("could not create tenant data directory %s: %w", dir, err)
 	}
@@ -308,6 +337,26 @@ func (m *TenantStoreManager) openTenantStore(ctx context.Context, tenantID uuid.
 
 	slog.Info("Opened per-tenant database", "tenant_id", tenantID, "path", dbPath)
 	return store, nil
+}
+
+func (m *TenantStoreManager) tenantDataDir(tenantID uuid.UUID) string {
+	return filepath.Join(m.basePath, "tenants", tenantID.String())
+}
+
+func (m *TenantStoreManager) closeTenantStore(tenantID uuid.UUID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	store, ok := m.stores[tenantID]
+	if !ok {
+		return nil
+	}
+	delete(m.stores, tenantID)
+
+	if err := store.Close(); err != nil {
+		return fmt.Errorf("close tenant store %s: %w", tenantID, err)
+	}
+	return nil
 }
 
 func (m *TenantStoreManager) syncSiteTenantData(ctx context.Context, siteID, tenantID uuid.UUID) error {

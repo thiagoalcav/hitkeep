@@ -376,6 +376,12 @@ type AdminDeleteUserBlockedResponse struct {
 	Teams   []Team `json:"teams"`
 }
 
+type AdminDeleteTeamResponse struct {
+	Status string    `json:"status"`
+	TeamID uuid.UUID `json:"team_id"`
+	Name   string    `json:"name"`
+}
+
 type IPExclusion struct {
 	ID          uuid.UUID  `json:"id"`
 	SiteID      *uuid.UUID `json:"site_id,omitempty"`

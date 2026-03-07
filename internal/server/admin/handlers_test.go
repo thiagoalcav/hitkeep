@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/google/uuid"
@@ -15,10 +17,11 @@ import (
 	"hitkeep/internal/server/shared"
 )
 
-func setupAdminTestEnv(t *testing.T) (*handler, *database.Store, uuid.UUID, uuid.UUID) {
+func setupAdminTestEnv(t *testing.T) (*handler, *database.Store, *database.TenantStoreManager, string, uuid.UUID, uuid.UUID) {
 	t.Helper()
 
-	store := database.NewStore(":memory:")
+	basePath := t.TempDir()
+	store := database.NewStore(filepath.Join(basePath, "shared.db"))
 	if err := store.Connect(); err != nil {
 		t.Fatalf("connect store: %v", err)
 	}
@@ -36,15 +39,19 @@ func setupAdminTestEnv(t *testing.T) (*handler, *database.Store, uuid.UUID, uuid
 		t.Fatalf("create actor user: %v", err)
 	}
 
+	tenantStores := database.NewTenantStoreManager(store, basePath)
+	t.Cleanup(func() { _ = tenantStores.Close() })
+
 	ctx := &shared.Context{
-		Store: store,
+		Store:        store,
+		TenantStores: tenantStores,
 		Config: &config.Config{
 			PublicURL: "http://localhost:8080",
 			JWTSecret: "test-secret",
 		},
 	}
 
-	return &handler{ctx: ctx}, store, actorUserID, targetUserID
+	return &handler{ctx: ctx}, store, tenantStores, basePath, actorUserID, targetUserID
 }
 
 func withAdminTestUser(req *http.Request, userID uuid.UUID) *http.Request {
@@ -52,7 +59,7 @@ func withAdminTestUser(req *http.Request, userID uuid.UUID) *http.Request {
 }
 
 func TestHandleDeleteUserReturnsConflictForSoleOwner(t *testing.T) {
-	h, store, actorUserID, targetUserID := setupAdminTestEnv(t)
+	h, store, _, _, actorUserID, targetUserID := setupAdminTestEnv(t)
 
 	req := withAdminTestUser(httptest.NewRequest(http.MethodDelete, "/api/admin/users/"+targetUserID.String(), nil), actorUserID)
 	req.SetPathValue("id", targetUserID.String())
@@ -84,7 +91,7 @@ func TestHandleDeleteUserReturnsConflictForSoleOwner(t *testing.T) {
 }
 
 func TestHandleDeleteUserDeletesWhenTeamHasAnotherOwner(t *testing.T) {
-	h, store, actorUserID, targetUserID := setupAdminTestEnv(t)
+	h, store, _, _, actorUserID, targetUserID := setupAdminTestEnv(t)
 
 	defaultTenantID, err := store.GetDefaultTenantID(context.Background())
 	if err != nil {
@@ -109,5 +116,75 @@ func TestHandleDeleteUserDeletesWhenTeamHasAnotherOwner(t *testing.T) {
 	}
 	if user != nil {
 		t.Fatalf("expected user to be deleted, got %+v", user)
+	}
+}
+
+func TestHandleDeleteTeamPurgesArchivedTenantData(t *testing.T) {
+	h, store, tenantStores, basePath, actorUserID, _ := setupAdminTestEnv(t)
+	ctx := context.Background()
+
+	team, err := store.CreateTenant(ctx, actorUserID, "Archived Team", "")
+	if err != nil {
+		t.Fatalf("create team: %v", err)
+	}
+	if _, err := tenantStores.ForTenant(ctx, team.ID); err != nil {
+		t.Fatalf("open tenant store: %v", err)
+	}
+
+	dbPath := filepath.Join(basePath, "tenants", team.ID.String(), "hitkeep.db")
+	if _, err := os.Stat(dbPath); err != nil {
+		t.Fatalf("expected tenant db to exist before purge: %v", err)
+	}
+
+	if err := store.ArchiveTenant(ctx, team.ID, actorUserID); err != nil {
+		t.Fatalf("archive team: %v", err)
+	}
+
+	req := withAdminTestUser(httptest.NewRequest(http.MethodDelete, "/api/admin/teams/"+team.ID.String(), nil), actorUserID)
+	req.SetPathValue("id", team.ID.String())
+	w := httptest.NewRecorder()
+
+	h.handleAdminDeleteTeam().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var resp api.AdminDeleteTeamResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp.TeamID != team.ID {
+		t.Fatalf("expected deleted team id %s, got %s", team.ID, resp.TeamID)
+	}
+
+	remaining, err := store.GetTenant(ctx, team.ID)
+	if err != nil {
+		t.Fatalf("get tenant after purge: %v", err)
+	}
+	if remaining != nil {
+		t.Fatalf("expected tenant to be deleted, got %+v", remaining)
+	}
+
+	if _, err := os.Stat(dbPath); !os.IsNotExist(err) {
+		t.Fatalf("expected tenant db to be removed, stat err=%v", err)
+	}
+}
+
+func TestHandleDeleteTeamRequiresArchiveFirst(t *testing.T) {
+	h, store, _, _, actorUserID, _ := setupAdminTestEnv(t)
+	ctx := context.Background()
+
+	team, err := store.CreateTenant(ctx, actorUserID, "Active Team", "")
+	if err != nil {
+		t.Fatalf("create team: %v", err)
+	}
+
+	req := withAdminTestUser(httptest.NewRequest(http.MethodDelete, "/api/admin/teams/"+team.ID.String(), nil), actorUserID)
+	req.SetPathValue("id", team.ID.String())
+	w := httptest.NewRecorder()
+
+	h.handleAdminDeleteTeam().ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
 	}
 }

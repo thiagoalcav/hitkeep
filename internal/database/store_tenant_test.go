@@ -335,6 +335,60 @@ func TestArchiveTenantFailsWhenTeamStillOwnsSites(t *testing.T) {
 	}
 }
 
+func TestDeleteArchivedTenantMetadataRemovesArchivedTeamRows(t *testing.T) {
+	store := setupTenantStore(t)
+	ctx := context.Background()
+
+	ownerID, err := store.CreateUser(ctx, "purge-owner@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create owner user: %v", err)
+	}
+
+	team, err := store.CreateTenant(ctx, ownerID, "Purge Ready", "")
+	if err != nil {
+		t.Fatalf("create team: %v", err)
+	}
+	if err := store.ArchiveTenant(ctx, team.ID, ownerID); err != nil {
+		t.Fatalf("archive tenant: %v", err)
+	}
+
+	deleted, err := store.DeleteArchivedTenantMetadata(ctx, team.ID)
+	if err != nil {
+		t.Fatalf("delete archived tenant metadata: %v", err)
+	}
+	if deleted == nil || deleted.ID != team.ID {
+		t.Fatalf("expected deleted team %s, got %+v", team.ID, deleted)
+	}
+
+	remaining, err := store.GetTenant(ctx, team.ID)
+	if err != nil {
+		t.Fatalf("get tenant after delete: %v", err)
+	}
+	if remaining != nil {
+		t.Fatalf("expected tenant metadata to be deleted, got %+v", remaining)
+	}
+}
+
+func TestDeleteArchivedTenantMetadataRequiresArchivedTeam(t *testing.T) {
+	store := setupTenantStore(t)
+	ctx := context.Background()
+
+	ownerID, err := store.CreateUser(ctx, "purge-active-owner@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create owner user: %v", err)
+	}
+
+	team, err := store.CreateTenant(ctx, ownerID, "Purge Blocked", "")
+	if err != nil {
+		t.Fatalf("create team: %v", err)
+	}
+
+	_, err = store.DeleteArchivedTenantMetadata(ctx, team.ID)
+	if !errors.Is(err, ErrTeamPurgeNotArchived) {
+		t.Fatalf("expected ErrTeamPurgeNotArchived, got %v", err)
+	}
+}
+
 func TestLeaveTeamReassignsActiveTenant(t *testing.T) {
 	store := setupTenantStore(t)
 	ctx := context.Background()

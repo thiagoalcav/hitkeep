@@ -12,23 +12,39 @@ import { Team, TeamRole } from "@models/analytics.types";
     imports: [ReactiveFormsModule, SelectModule, SkeletonModule, TagModule, TranslocoPipe],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
-        <div class="flex flex-col gap-2 w-full" role="region" [attr.aria-label]="'teams.switcher.regionAria' | transloco">
+        <div
+            [class]="
+                compact()
+                    ? 'flex w-full flex-col gap-2 rounded-2xl border border-surface-200/80 bg-linear-to-b from-white to-surface-50 p-2 shadow-sm dark:border-surface-700/80 dark:from-surface-900 dark:to-surface-800'
+                    : 'flex w-full flex-col gap-2'
+            "
+            role="region"
+            [attr.aria-label]="'teams.switcher.regionAria' | transloco"
+        >
             @if (showBrand()) {
-                <div class="flex items-center gap-3 select-none px-2 mb-1">
-                    <img src="/icon.png" alt="HitKeep Logo" class="w-8 h-8 object-cover" />
-                    <span class="font-bold tracking-tight text-xl text-[var(--p-text-color)]">HitKeep</span>
+                <div class="mb-1 flex select-none items-center gap-3 px-2">
+                    <div class="flex size-9 items-center justify-center rounded-2xl bg-linear-to-br from-primary-500 to-emerald-500 shadow-sm">
+                        <img src="/icon.png" alt="HitKeep Logo" class="h-6 w-6 object-cover" />
+                    </div>
+                    <div class="min-w-0">
+                        <div class="truncate text-sm font-semibold uppercase tracking-[0.24em] text-muted-color">Workspace</div>
+                        <span class="block truncate text-xl font-bold tracking-tight text-[var(--p-text-color)]">HitKeep</span>
+                    </div>
                 </div>
             }
 
             <div class="flex items-center" [class.justify-between]="!compact()" [class.justify-end]="compact()">
                 @if (!compact()) {
-                    <label [for]="selectId" class="text-xs font-semibold text-[var(--p-text-muted-color)] uppercase">{{ "teams.switcher.label" | transloco }}</label>
+                    <label [for]="selectId" class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--p-text-muted-color)]">
+                        <span class="inline-block size-2 rounded-full bg-emerald-500"></span>
+                        {{ "teams.switcher.label" | transloco }}
+                    </label>
                 }
                 @if (showAdd()) {
                     <button
                         type="button"
                         (click)="addClicked.emit()"
-                        class="cursor-pointer flex items-center justify-center size-6 rounded-md border border-surface-200 dark:border-surface-700 text-muted-color hover:text-[var(--p-text-color)] hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        class="flex h-8 min-w-8 cursor-pointer items-center justify-center rounded-xl border border-surface-200 bg-white/80 px-2 text-muted-color shadow-sm transition-colors hover:bg-surface-100 hover:text-[var(--p-text-color)] focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-surface-700 dark:bg-surface-900/80 dark:hover:bg-surface-800"
                         [attr.aria-label]="'teams.switcher.addTeamAria' | transloco"
                     >
                         <i class="pi pi-plus text-xs" aria-hidden="true"></i>
@@ -42,13 +58,16 @@ import { Team, TeamRole } from "@models/analytics.types";
                 <div
                     [class]="
                         compact()
-                            ? 'flex items-center gap-2 min-w-0 rounded-md border border-surface-200 dark:border-surface-700 px-3 py-2'
-                            : 'flex items-center gap-2 min-w-0 rounded-md border border-surface-200 dark:border-surface-700 bg-[var(--p-surface-ground)] px-2 py-1.5'
+                            ? 'flex min-w-0 items-center gap-3 rounded-2xl border border-surface-200/80 bg-white/70 px-3 py-2 shadow-sm dark:border-surface-700/80 dark:bg-surface-900/70'
+                            : 'flex min-w-0 items-center gap-3 rounded-2xl border border-surface-200/80 bg-[var(--p-surface-ground)] px-3 py-2 shadow-sm dark:border-surface-700/80'
                     "
                     [attr.aria-label]="'teams.switcher.currentTeamAria' | transloco: { name: activeTeam().name }"
                 >
-                    <img [src]="teamLogoUrl(activeTeam())" [alt]="activeTeam().name" class="size-5 max-w-5 rounded-full object-cover" />
-                    <span class="truncate text-sm font-medium">{{ activeTeam().name }}</span>
+                    <img [src]="teamLogoUrl(activeTeam())" [alt]="activeTeam().name" class="size-9 max-w-9 rounded-2xl object-cover shadow-sm" />
+                    <div class="min-w-0">
+                        <div class="truncate text-sm font-semibold">{{ activeTeam().name }}</div>
+                        <div class="text-xs uppercase tracking-[0.18em] text-muted-color">{{ roleLabel(activeTeam().role) }}</div>
+                    </div>
                 </div>
             } @else {
                 <p-select
@@ -62,23 +81,30 @@ import { Team, TeamRole } from "@models/analytics.types";
                     [loading]="switching()"
                     [placeholder]="'teams.switcher.placeholder' | transloco"
                     class="w-full text-sm"
+                    [fluid]="true"
                     [attr.aria-label]="'teams.switcher.selectAria' | transloco"
                     (onChange)="onTeamChange($event.value)"
                 >
                     <ng-template pTemplate="selectedItem" let-selected>
                         @if (selected) {
-                            <div class="flex items-center shrink-0 grow-0 gap-2 min-w-0">
-                                <img [src]="teamLogoUrl(selected)" [alt]="selected.name" class="size-5 max-w-5 rounded-full object-cover" />
-                                <span class="text-sm font-medium truncate">{{ selected.name }}</span>
+                            <div class="flex min-w-0 grow items-center gap-3 py-0.5">
+                                <img [src]="teamLogoUrl(selected)" [alt]="selected.name" class="size-9 max-w-9 rounded-2xl object-cover shadow-sm" />
+                                <div class="min-w-0">
+                                    <div class="truncate text-sm font-semibold">{{ selected.name }}</div>
+                                    <div class="text-xs uppercase tracking-[0.18em] text-muted-color">{{ roleLabel(selected.role) }}</div>
+                                </div>
                             </div>
                         }
                     </ng-template>
 
                     <ng-template pTemplate="item" let-team>
-                        <div class="flex items-center justify-between gap-2 w-full min-w-0">
-                            <div class="flex items-center gap-2 min-w-0">
-                                <img [src]="teamLogoUrl(team)" [alt]="team.name" class="size-5 max-w-5 rounded-full object-cover shrink-0" />
-                                <span class="truncate font-medium">{{ team.name }}</span>
+                        <div class="flex w-full min-w-0 items-center justify-between gap-3 rounded-xl px-1 py-1">
+                            <div class="flex min-w-0 items-center gap-3">
+                                <img [src]="teamLogoUrl(team)" [alt]="team.name" class="size-9 max-w-9 shrink-0 rounded-2xl object-cover shadow-sm" />
+                                <div class="min-w-0">
+                                    <div class="truncate font-semibold">{{ team.name }}</div>
+                                    <div class="text-xs uppercase tracking-[0.18em] text-muted-color">{{ roleLabel(team.role) }}</div>
+                                </div>
                             </div>
                             <p-tag [value]="roleLabel(team.role)" [severity]="roleSeverity(team.role)" [rounded]="true" />
                         </div>
@@ -189,7 +215,7 @@ export class TeamSwitcher {
     }
 
     private paletteFromSeed(seed: string): { background: string; foreground: string } {
-        const palettes: Array<{ background: string; foreground: string }> = [
+        const palettes: { background: string; foreground: string }[] = [
             { background: "#DCFCE7", foreground: "#065F46" },
             { background: "#DBEAFE", foreground: "#1E3A8A" },
             { background: "#FCE7F3", foreground: "#9D174D" },

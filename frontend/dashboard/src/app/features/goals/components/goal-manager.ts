@@ -85,8 +85,8 @@ import { Goal } from "@models/analytics.types";
                 </div>
 
                 <div class="flex flex-col gap-1">
-                    <label class="text-xs font-medium">{{ "common.columns.type" | transloco }}</label>
-                    <p-selectbutton [options]="types()" [formControl]="newGoalForm.type().control()" optionLabel="label" optionValue="value" size="small" />
+                    <span id="goal-type-label" class="text-xs font-medium">{{ "common.columns.type" | transloco }}</span>
+                    <p-selectbutton [options]="types()" [formControl]="newGoalForm.type().control()" optionLabel="label" optionValue="value" size="small" ariaLabelledBy="goal-type-label" />
                 </div>
 
                 <div class="flex flex-col gap-1">

@@ -94,7 +94,7 @@ interface FunnelStepControl {
                 </div>
 
                 <div class="flex flex-col gap-1">
-                    <label class="text-xs font-medium mb-1">{{ "funnels.manager.stepsLabel" | transloco }}</label>
+                    <span id="funnel-steps-label" class="text-xs font-medium mb-1">{{ "funnels.manager.stepsLabel" | transloco }}</span>
 
                     <div cdkDropList (cdkDropListDropped)="reorderStep($event)" class="flex flex-col gap-3">
                         @for (step of stepControls(); track $index; let i = $index) {
@@ -104,7 +104,7 @@ interface FunnelStepControl {
                                       [class]="i === 0 ? 'bg-primary text-primary-contrast' : 'bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-300'">
                                     {{ i + 1 }}
                                 </span>
-                                <p-selectbutton [options]="types()" [formControl]="step.typeControl" optionLabel="label" optionValue="value" size="small" />
+                                <p-selectbutton [options]="types()" [formControl]="step.typeControl" optionLabel="label" optionValue="value" size="small" ariaLabelledBy="funnel-steps-label" />
                                 <p-inputgroup>
                                     <p-inputgroup-addon>
                                         <i [class]="step.typeControl.value === 'event' ? 'pi pi-bolt' : 'pi pi-link'"></i>

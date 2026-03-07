@@ -6,7 +6,22 @@
     <div class="team-audit__readonly">{{ "admin.team.audit.readOnly" | transloco }}</div>
 } @else {
     <div class="team-audit__toolbar">
-        <p-button [label]="'settings.apiClients.actions.refresh' | transloco" icon="pi pi-refresh" [text]="true" [disabled]="isLoading()" (onClick)="refresh()" />
+        <div class="team-audit__filters">
+            <label class="team-audit__filter-label" for="team-audit-action">{{ "admin.team.audit.filterLabel" | transloco }}</label>
+            <p-select inputId="team-audit-action" [options]="actionOptions()" [formControl]="actionControl" optionLabel="label" optionValue="value" appendTo="body" class="team-audit__filter-select">
+                <ng-template #selectedItem let-selectedOption>
+                    <span class="team-audit__filter-value">{{ (selectedOption?.label || "admin.team.audit.filters.all") | transloco }}</span>
+                </ng-template>
+                <ng-template #item let-option>
+                    <span class="team-audit__filter-value">{{ option.label | transloco }}</span>
+                </ng-template>
+            </p-select>
+        </div>
+
+        <div class="team-audit__actions">
+            <span class="team-audit__summary">{{ loadedSummaryKey() | transloco: { loaded: rows().length, total: total() } }}</span>
+            <p-button [label]="'settings.apiClients.actions.refresh' | transloco" icon="pi pi-refresh" [text]="true" [disabled]="isLoading()" (onClick)="refresh()" />
+        </div>
     </div>
 
     <div class="hk-crud-table-wrap">
@@ -38,4 +53,10 @@
             </ng-template>
         </p-table>
     </div>
+
+    @if (hasMore()) {
+        <div class="team-audit__load-more">
+            <p-button [label]="'admin.team.audit.loadMore' | transloco" icon="pi pi-angle-down" [outlined]="true" [disabled]="isLoading()" (onClick)="loadMore()" />
+        </div>
+    }
 }

@@ -1,7 +1,36 @@
 .team-audit__toolbar {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
     margin-bottom: 0.75rem;
+}
+
+.team-audit__filters,
+.team-audit__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.team-audit__filters {
+    flex-wrap: wrap;
+}
+
+.team-audit__filter-label,
+.team-audit__summary {
+    color: var(--p-text-muted-color);
+    font-size: 0.9rem;
+}
+
+.team-audit__filter-select {
+    min-width: 15rem;
+}
+
+.team-audit__filter-value {
+    color: var(--p-text-color);
+    font-weight: 500;
 }
 
 .team-audit__readonly {
@@ -23,4 +52,23 @@
     background: color-mix(in oklab, var(--p-red-500) 12%, transparent);
     border: 1px solid color-mix(in oklab, var(--p-red-500) 32%, transparent);
     color: var(--p-red-600);
+}
+
+.team-audit__load-more {
+    display: flex;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+@media (max-width: 720px) {
+    .team-audit__toolbar,
+    .team-audit__filters,
+    .team-audit__actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .team-audit__filter-select {
+        min-width: 100%;
+    }
 }

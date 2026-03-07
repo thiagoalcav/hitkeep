@@ -7,14 +7,14 @@ import { ShareService } from "@services/share.service";
 
 export const SKIP_AUTH_REDIRECT = new HttpContextToken<boolean>(() => false);
 
-type ReturnUrlRouterContext = {
+interface ReturnUrlRouterContext {
     url: string;
     routerState: {
         snapshot: {
             url: string;
         };
     };
-};
+}
 
 export function resolveCurrentReturnUrl(router: ReturnUrlRouterContext): string {
     const browserPath =

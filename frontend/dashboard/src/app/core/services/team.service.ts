@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { finalize, of, tap } from "rxjs";
-import { Team, TeamAuditEntry, TeamInvite, TeamMember, TeamRole, UserTeamsResponse } from "@models/analytics.types";
+import { Team, TeamAuditListResponse, TeamInvite, TeamMember, TeamRole, UserTeamsResponse } from "@models/analytics.types";
 
 interface SetActiveTeamResponse {
     status: string;
@@ -101,8 +101,20 @@ export class TeamService {
         return this.http.delete<RemoveTeamMemberResponse>(`/api/user/teams/${encodeURIComponent(teamID)}/members/${encodeURIComponent(userID)}`);
     }
 
-    listTeamAudit(teamID: string) {
-        return this.http.get<TeamAuditEntry[]>(`/api/user/teams/${encodeURIComponent(teamID)}/audit`);
+    listTeamAudit(teamID: string, params: { action?: string; limit?: number; offset?: number } = {}) {
+        const search = new URLSearchParams();
+        if (params.action) {
+            search.set("action", params.action);
+        }
+        if (typeof params.limit === "number") {
+            search.set("limit", String(params.limit));
+        }
+        if (typeof params.offset === "number") {
+            search.set("offset", String(params.offset));
+        }
+
+        const query = search.toString();
+        return this.http.get<TeamAuditListResponse>(`/api/user/teams/${encodeURIComponent(teamID)}/audit${query ? `?${query}` : ""}`);
     }
 
     transferTeamOwnership(teamID: string, targetUserID: string) {

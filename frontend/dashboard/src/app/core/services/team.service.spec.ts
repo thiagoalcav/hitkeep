@@ -195,24 +195,30 @@ describe("TeamService", () => {
     });
 
     it("should list team audit entries", () => {
-        service.listTeamAudit("team-id").subscribe((entries) => {
-            expect(entries.length).toBe(1);
-            expect(entries[0].action).toBe("member.role_updated");
+        service.listTeamAudit("team-id").subscribe((response) => {
+            expect(response.entries.length).toBe(1);
+            expect(response.entries[0].action).toBe("member.role_updated");
         });
 
         const req = httpMock.expectOne("/api/user/teams/team-id/audit");
         expect(req.request.method).toBe("GET");
-        req.flush([
-            {
-                id: "audit-1",
-                team_id: "team-id",
-                action: "member.role_updated",
-                details: "Role changed from member to admin",
-                actor_email: "owner@example.com",
-                target_email: "member@example.com",
-                created_at: "2026-01-04T00:00:00Z"
-            }
-        ]);
+        req.flush({
+            entries: [
+                {
+                    id: "audit-1",
+                    team_id: "team-id",
+                    action: "member.role_updated",
+                    details: "Role changed from member to admin",
+                    actor_email: "owner@example.com",
+                    target_email: "member@example.com",
+                    created_at: "2026-01-04T00:00:00Z"
+                }
+            ],
+            total: 1,
+            limit: 25,
+            offset: 0,
+            has_more: false
+        });
     });
 
     it("should transfer team ownership", () => {

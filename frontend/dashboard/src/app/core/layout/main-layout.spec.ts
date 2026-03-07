@@ -8,6 +8,14 @@ import { TranslocoTestingModule } from "@jsverse/transloco";
 import { TeamService } from "@services/team.service";
 import { vi } from "vitest";
 
+interface MainLayoutTestAccess {
+    beforeTeamSwitch(): boolean;
+    isSiteSettingsVisible: {
+        (): boolean;
+        set(value: boolean): void;
+    };
+}
+
 describe("MainLayout", () => {
     let component: MainLayout;
     let fixture: ComponentFixture<MainLayout>;
@@ -89,27 +97,30 @@ describe("MainLayout", () => {
 
     it("should allow team switch without confirmation when settings drawer is closed", () => {
         const confirmSpy = vi.spyOn(window, "confirm");
-        const result = (component as any).beforeTeamSwitch();
+        const access = component as unknown as MainLayoutTestAccess;
+        const result = access.beforeTeamSwitch();
         expect(result).toBe(true);
         expect(confirmSpy).not.toHaveBeenCalled();
     });
 
     it("should block team switch when settings drawer is open and user cancels", () => {
         const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
-        (component as any).isSiteSettingsVisible.set(true);
-        const result = (component as any).beforeTeamSwitch();
+        const access = component as unknown as MainLayoutTestAccess;
+        access.isSiteSettingsVisible.set(true);
+        const result = access.beforeTeamSwitch();
         expect(result).toBe(false);
         expect(confirmSpy).toHaveBeenCalled();
-        expect((component as any).isSiteSettingsVisible()).toBe(true);
+        expect(access.isSiteSettingsVisible()).toBe(true);
     });
 
     it("should close settings drawer when switch is confirmed", () => {
         const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
-        (component as any).isSiteSettingsVisible.set(true);
-        const result = (component as any).beforeTeamSwitch();
+        const access = component as unknown as MainLayoutTestAccess;
+        access.isSiteSettingsVisible.set(true);
+        const result = access.beforeTeamSwitch();
         expect(result).toBe(true);
         expect(confirmSpy).toHaveBeenCalled();
-        expect((component as any).isSiteSettingsVisible()).toBe(false);
+        expect(access.isSiteSettingsVisible()).toBe(false);
     });
 
     function flushBootstrapRequests() {

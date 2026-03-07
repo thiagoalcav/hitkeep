@@ -760,6 +760,18 @@
             "emailPlaceholder": "user@example.com",
             "addMemberAction": "Mitglied hinzufügen",
             "confirmRemove": "{{email}} von der Seite entfernen?",
+            "transfer": {
+                "title": "Website verschieben",
+                "description": "Verschiebe diese Website samt Analysedaten in ein anderes Team, das du verwalten darfst.",
+                "teamLabel": "Zielteam",
+                "teamPlaceholder": "Zielteam auswählen",
+                "action": "Website verschieben",
+                "success": "Website erfolgreich verschoben.",
+                "errors": {
+                    "forbidden": "Du darfst diese Website nicht in das ausgewählte Team verschieben.",
+                    "generic": "Die Website konnte nicht verschoben werden."
+                }
+            },
             "errors": {
                 "addFailed": "Mitglied konnte nicht hinzugefügt werden. Stellen Sie sicher, dass der Benutzer existiert.",
                 "removeFailed": "Mitglied konnte nicht entfernt werden: {{error}}"
@@ -886,7 +898,17 @@
                 "readOnly": "Du hast keine Berechtigung, Team-Aktivitäten zu sehen.",
                 "empty": "Noch keine Team-Aktivität vorhanden.",
                 "loadError": "Team-Aktivität konnte nicht geladen werden.",
+                "loadMore": "Mehr Aktivitäten laden",
                 "forbidden": "Du hast keine Berechtigung, Team-Aktivitäten zu sehen.",
+                "filterLabel": "Aktivität filtern",
+                "filters": {
+                    "all": "Alle Aktivitäten"
+                },
+                "summary": {
+                    "empty": "Noch keine Einträge geladen.",
+                    "partial": "{{loaded}} von {{total}} Aktivitäten angezeigt",
+                    "complete": "Alle {{total}} Aktivitäten werden angezeigt"
+                },
                 "columns": {
                     "actor": "Akteur",
                     "action": "Aktion",
@@ -897,10 +919,17 @@
                     "teamCreated": "Team erstellt",
                     "teamUpdated": "Team aktualisiert",
                     "memberInvited": "Mitglied eingeladen",
+                    "memberInviteAccepted": "Einladung angenommen",
+                    "memberInviteResent": "Einladung erneut gesendet",
+                    "memberInviteRevoked": "Einladung widerrufen",
                     "memberAdded": "Mitglied hinzugefügt",
                     "memberRoleUpdated": "Mitgliederrolle geändert",
                     "memberRemoved": "Mitglied entfernt",
                     "memberLeft": "Mitglied hat das Team verlassen",
+                    "ownershipTransferred": "Eigentümerschaft übertragen",
+                    "teamArchived": "Team archiviert",
+                    "siteTransferredIn": "Website verschoben nach innen",
+                    "siteTransferredOut": "Website verschoben nach außen",
                     "unknown": "Unbekannte Aktion"
                 }
             }

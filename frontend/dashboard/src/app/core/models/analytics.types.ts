@@ -56,6 +56,15 @@ export interface TeamAuditEntry {
     created_at: string;
 }
 
+export interface TeamAuditListResponse {
+    entries: TeamAuditEntry[];
+    total: number;
+    limit: number;
+    offset: number;
+    has_more: boolean;
+    action?: string;
+}
+
 export interface IPExclusion {
     id: string;
     site_id?: string;

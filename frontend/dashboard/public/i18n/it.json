@@ -760,6 +760,18 @@
             "emailPlaceholder": "user@example.com",
             "addMemberAction": "Aggiungi membro",
             "confirmRemove": "Rimuovere {{email}} dal sito?",
+            "transfer": {
+                "title": "Trasferisci sito",
+                "description": "Sposta questo sito e i relativi dati analitici in un altro team che puoi amministrare.",
+                "teamLabel": "Team di destinazione",
+                "teamPlaceholder": "Seleziona un team di destinazione",
+                "action": "Trasferisci sito",
+                "success": "Sito trasferito con successo.",
+                "errors": {
+                    "forbidden": "Non hai i permessi per trasferire questo sito al team selezionato.",
+                    "generic": "Impossibile trasferire il sito."
+                }
+            },
             "errors": {
                 "addFailed": "Impossibile aggiungere il membro. Assicurati che l'utente esista.",
                 "removeFailed": "Impossibile rimuovere il membro: {{error}}"
@@ -886,7 +898,17 @@
                 "readOnly": "Non hai il permesso di vedere l'attività del team.",
                 "empty": "Nessuna attività del team per ora.",
                 "loadError": "Impossibile caricare l'attività del team.",
+                "loadMore": "Carica altra attività",
                 "forbidden": "Non hai il permesso di vedere l'attività del team.",
+                "filterLabel": "Filtra attività",
+                "filters": {
+                    "all": "Tutta l'attività"
+                },
+                "summary": {
+                    "empty": "Nessuna voce caricata finora.",
+                    "partial": "Mostrate {{loaded}} attività su {{total}}",
+                    "complete": "Mostrate tutte le {{total}} attività"
+                },
                 "columns": {
                     "actor": "Attore",
                     "action": "Azione",
@@ -897,10 +919,17 @@
                     "teamCreated": "Team creato",
                     "teamUpdated": "Team aggiornato",
                     "memberInvited": "Membro invitato",
+                    "memberInviteAccepted": "Invito accettato",
+                    "memberInviteResent": "Invito reinviato",
+                    "memberInviteRevoked": "Invito revocato",
                     "memberAdded": "Membro aggiunto",
                     "memberRoleUpdated": "Ruolo membro aggiornato",
                     "memberRemoved": "Membro rimosso",
                     "memberLeft": "Membro uscito dal team",
+                    "ownershipTransferred": "Proprietà trasferita",
+                    "teamArchived": "Team archiviato",
+                    "siteTransferredIn": "Sito spostato qui",
+                    "siteTransferredOut": "Sito spostato altrove",
                     "unknown": "Azione sconosciuta"
                 }
             }

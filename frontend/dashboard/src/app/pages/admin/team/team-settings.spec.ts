@@ -9,6 +9,17 @@ import { SiteService } from "@features/sites/services/site.service";
 import { PermissionService } from "@services/permission.service";
 import { vi } from "vitest";
 
+interface TeamSettingsTestAccess {
+    leaveTeam(): void;
+    archiveTeam(): void;
+}
+
+interface MockWithCalls {
+    mock: {
+        calls: unknown[][];
+    };
+}
+
 describe("TeamSettingsPage", () => {
     let fixture: ComponentFixture<TeamSettingsPage>;
     let component: TeamSettingsPage;
@@ -72,11 +83,12 @@ describe("TeamSettingsPage", () => {
     it("should call leaveTeam for current team", () => {
         const router = TestBed.inject(Router);
         const navigateSpy = vi.spyOn(router, "navigateByUrl").mockResolvedValue(true);
+        const access = component as unknown as TeamSettingsTestAccess;
 
-        (component as any).leaveTeam();
+        access.leaveTeam();
 
         expect(teamServiceMock.leaveTeam).toHaveBeenCalled();
-        expect((teamServiceMock.leaveTeam as any).mock.calls[0][0]).toBe("team-1");
+        expect((teamServiceMock.leaveTeam as unknown as MockWithCalls).mock.calls[0][0]).toBe("team-1");
         expect(permissionServiceMock.loadPermissions).toHaveBeenCalled();
         expect(navigateSpy).toHaveBeenCalledWith("/dashboard");
     });
@@ -84,11 +96,12 @@ describe("TeamSettingsPage", () => {
     it("should call archiveTeam for current team", () => {
         const router = TestBed.inject(Router);
         const navigateSpy = vi.spyOn(router, "navigateByUrl").mockResolvedValue(true);
+        const access = component as unknown as TeamSettingsTestAccess;
 
-        (component as any).archiveTeam();
+        access.archiveTeam();
 
         expect(teamServiceMock.archiveTeam).toHaveBeenCalled();
-        expect((teamServiceMock.archiveTeam as any).mock.calls[0][0]).toBe("team-1");
+        expect((teamServiceMock.archiveTeam as unknown as MockWithCalls).mock.calls[0][0]).toBe("team-1");
         expect(permissionServiceMock.loadPermissions).toHaveBeenCalled();
         expect(navigateSpy).toHaveBeenCalledWith("/dashboard");
     });

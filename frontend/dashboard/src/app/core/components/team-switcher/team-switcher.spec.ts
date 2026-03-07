@@ -5,6 +5,11 @@ import { vi } from "vitest";
 import { TeamSwitcher } from "./team-switcher";
 import { Team } from "@models/analytics.types";
 
+interface TeamSwitcherTestAccess {
+    onTeamChange(team: Team | null): Promise<void>;
+    teamLogoUrl(team: Team): string;
+}
+
 describe("TeamSwitcher", () => {
     let component: TeamSwitcher;
     let fixture: ComponentFixture<TeamSwitcher>;
@@ -90,24 +95,27 @@ describe("TeamSwitcher", () => {
 
     it("should emit teamSelected when switching is allowed", async () => {
         const emitSpy = vi.spyOn(component.teamSelected, "emit");
+        const access = component as unknown as TeamSwitcherTestAccess;
 
-        await (component as any).onTeamChange(mockTeams[1]);
+        await access.onTeamChange(mockTeams[1]);
 
         expect(emitSpy).toHaveBeenCalledWith(mockTeams[1]);
     });
 
     it("should not emit teamSelected when beforeSwitch rejects", async () => {
         const emitSpy = vi.spyOn(component.teamSelected, "emit");
+        const access = component as unknown as TeamSwitcherTestAccess;
         fixture.componentRef.setInput("beforeSwitch", () => false);
         fixture.detectChanges();
 
-        await (component as any).onTeamChange(mockTeams[1]);
+        await access.onTeamChange(mockTeams[1]);
 
         expect(emitSpy).not.toHaveBeenCalled();
     });
 
     it("should generate local SVG avatar when logo is missing", () => {
-        const url = (component as any).teamLogoUrl(mockTeams[0]) as string;
+        const access = component as unknown as TeamSwitcherTestAccess;
+        const url = access.teamLogoUrl(mockTeams[0]);
         expect(url.startsWith("data:image/svg+xml;utf8,")).toBe(true);
     });
 });

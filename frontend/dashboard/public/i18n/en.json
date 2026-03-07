@@ -760,6 +760,18 @@
             "emailPlaceholder": "user@example.com",
             "addMemberAction": "Add member",
             "confirmRemove": "Remove {{email}} from site?",
+            "transfer": {
+                "title": "Transfer site",
+                "description": "Move this site and its analytics data into another team you can administer.",
+                "teamLabel": "Destination team",
+                "teamPlaceholder": "Select a destination team",
+                "action": "Transfer site",
+                "success": "Site transferred successfully.",
+                "errors": {
+                    "forbidden": "You do not have permission to transfer this site to the selected team.",
+                    "generic": "Failed to transfer site."
+                }
+            },
             "errors": {
                 "addFailed": "Failed to add member. Ensure user exists.",
                 "removeFailed": "Failed to remove member: {{error}}"
@@ -886,7 +898,17 @@
                 "readOnly": "You do not have permission to view team activity.",
                 "empty": "No team activity yet.",
                 "loadError": "Failed to load team activity.",
+                "loadMore": "Load more activity",
                 "forbidden": "You do not have permission to view team activity.",
+                "filterLabel": "Filter activity",
+                "filters": {
+                    "all": "All activity"
+                },
+                "summary": {
+                    "empty": "No entries loaded yet.",
+                    "partial": "Showing {{loaded}} of {{total}} activities",
+                    "complete": "Showing all {{total}} activities"
+                },
                 "columns": {
                     "actor": "Actor",
                     "action": "Action",
@@ -897,10 +919,17 @@
                     "teamCreated": "Team created",
                     "teamUpdated": "Team updated",
                     "memberInvited": "Member invited",
+                    "memberInviteAccepted": "Invite accepted",
+                    "memberInviteResent": "Invite resent",
+                    "memberInviteRevoked": "Invite revoked",
                     "memberAdded": "Member added",
                     "memberRoleUpdated": "Member role updated",
                     "memberRemoved": "Member removed",
                     "memberLeft": "Member left",
+                    "ownershipTransferred": "Ownership transferred",
+                    "teamArchived": "Team archived",
+                    "siteTransferredIn": "Site moved in",
+                    "siteTransferredOut": "Site moved out",
                     "unknown": "Unknown action"
                 }
             }

@@ -360,6 +360,15 @@ type TeamAuditEntry struct {
 	CreatedAt    time.Time  `json:"created_at"`
 }
 
+type TeamAuditListResponse struct {
+	Entries []TeamAuditEntry `json:"entries"`
+	Total   int              `json:"total"`
+	Limit   int              `json:"limit"`
+	Offset  int              `json:"offset"`
+	HasMore bool             `json:"has_more"`
+	Action  string           `json:"action,omitempty"`
+}
+
 type IPExclusion struct {
 	ID          uuid.UUID  `json:"id"`
 	SiteID      *uuid.UUID `json:"site_id,omitempty"`

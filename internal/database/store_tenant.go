@@ -847,10 +847,34 @@ func (s *Store) AppendTeamAuditEntry(ctx context.Context, tenantID, actorID uuid
 	return nil
 }
 
-func (s *Store) ListTeamAuditEntries(ctx context.Context, tenantID uuid.UUID, limit int) ([]api.TeamAuditEntry, error) {
+func (s *Store) ListTeamAuditEntries(ctx context.Context, tenantID uuid.UUID, action string, limit int, offset int) ([]api.TeamAuditEntry, int, error) {
 	if limit <= 0 || limit > 200 {
 		limit = 100
 	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	action = strings.TrimSpace(action)
+
+	whereClause := "WHERE ta.tenant_id = ?"
+	countArgs := []any{tenantID}
+	queryArgs := []any{tenantID}
+	if action != "" {
+		whereClause += " AND ta.action = ?"
+		countArgs = append(countArgs, action)
+		queryArgs = append(queryArgs, action)
+	}
+
+	var total int
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM team_audit_log ta
+	`+whereClause, countArgs...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("could not count team audit entries: %w", err)
+	}
+
+	queryArgs = append(queryArgs, limit, offset)
 
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT
@@ -866,12 +890,13 @@ func (s *Store) ListTeamAuditEntries(ctx context.Context, tenantID uuid.UUID, li
 		FROM team_audit_log ta
 		LEFT JOIN users actor ON actor.id = ta.actor_id
 		LEFT JOIN users target ON target.id = ta.target_user_id
-		WHERE ta.tenant_id = ?
+		`+whereClause+`
 		ORDER BY ta.created_at DESC
 		LIMIT ?
-	`, tenantID, limit)
+		OFFSET ?
+	`, queryArgs...)
 	if err != nil {
-		return nil, fmt.Errorf("could not list team audit entries: %w", err)
+		return nil, 0, fmt.Errorf("could not list team audit entries: %w", err)
 	}
 	defer rows.Close()
 
@@ -891,7 +916,7 @@ func (s *Store) ListTeamAuditEntries(ctx context.Context, tenantID uuid.UUID, li
 			&targetIDRaw,
 			&entry.TargetEmail,
 		); err != nil {
-			return nil, fmt.Errorf("could not scan team audit entry: %w", err)
+			return nil, 0, fmt.Errorf("could not scan team audit entry: %w", err)
 		}
 
 		if actorIDRaw.Valid && strings.TrimSpace(actorIDRaw.String) != "" {
@@ -907,10 +932,10 @@ func (s *Store) ListTeamAuditEntries(ctx context.Context, tenantID uuid.UUID, li
 		entries = append(entries, entry)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("could not read team audit entries: %w", err)
+		return nil, 0, fmt.Errorf("could not read team audit entries: %w", err)
 	}
 
-	return entries, nil
+	return entries, total, nil
 }
 
 func (s *Store) GetTenant(ctx context.Context, tenantID uuid.UUID) (*api.Team, error) {

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/mail"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -331,7 +332,29 @@ func (h *handler) handleGetTeamAudit() http.HandlerFunc {
 			return
 		}
 
-		entries, err := h.ctx.Store.ListTeamAuditEntries(r.Context(), teamID, 100)
+		limit := 25
+		if rawLimit := strings.TrimSpace(r.URL.Query().Get("limit")); rawLimit != "" {
+			parsedLimit, parseErr := strconv.Atoi(rawLimit)
+			if parseErr != nil {
+				http.Error(w, "Invalid limit", http.StatusBadRequest)
+				return
+			}
+			limit = parsedLimit
+		}
+
+		offset := 0
+		if rawOffset := strings.TrimSpace(r.URL.Query().Get("offset")); rawOffset != "" {
+			parsedOffset, parseErr := strconv.Atoi(rawOffset)
+			if parseErr != nil {
+				http.Error(w, "Invalid offset", http.StatusBadRequest)
+				return
+			}
+			offset = parsedOffset
+		}
+
+		action := strings.TrimSpace(r.URL.Query().Get("action"))
+
+		entries, total, err := h.ctx.Store.ListTeamAuditEntries(r.Context(), teamID, action, limit, offset)
 		if err != nil {
 			slog.Error("Failed to list team audit entries", "error", err, "user_id", userID, "team_id", teamID)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -339,7 +362,14 @@ func (h *handler) handleGetTeamAudit() http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(entries); err != nil {
+		if err := json.NewEncoder(w).Encode(api.TeamAuditListResponse{
+			Entries: entries,
+			Total:   total,
+			Limit:   limit,
+			Offset:  offset,
+			HasMore: offset+len(entries) < total,
+			Action:  action,
+		}); err != nil {
 			slog.Error("Failed to encode team audit response", "error", err, "user_id", userID, "team_id", teamID)
 		}
 	}

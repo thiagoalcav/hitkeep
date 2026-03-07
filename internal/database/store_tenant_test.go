@@ -404,12 +404,15 @@ func TestAppendAndListTeamAuditEntries(t *testing.T) {
 		t.Fatalf("append team audit entry: %v", err)
 	}
 
-	entries, err := store.ListTeamAuditEntries(ctx, tenantID, 20)
+	entries, total, err := store.ListTeamAuditEntries(ctx, tenantID, "", 20, 0)
 	if err != nil {
 		t.Fatalf("list team audit entries: %v", err)
 	}
 	if len(entries) == 0 {
 		t.Fatalf("expected at least one team audit entry")
+	}
+	if total == 0 {
+		t.Fatalf("expected audit total to be populated")
 	}
 
 	entry := entries[0]

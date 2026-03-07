@@ -746,7 +746,7 @@ func TestHandleGetTeamAudit(t *testing.T) {
 		t.Fatalf("expected status %d, got %d", http.StatusOK, updateW.Code)
 	}
 
-	req := withTestUser(httptest.NewRequest(http.MethodGet, "/api/user/teams/"+defaultTenantID.String()+"/audit", nil), ownerID)
+	req := withTestUser(httptest.NewRequest(http.MethodGet, "/api/user/teams/"+defaultTenantID.String()+"/audit?limit=5&action=member.role_updated", nil), ownerID)
 	req.SetPathValue("id", defaultTenantID.String())
 	w := httptest.NewRecorder()
 	h.handleGetTeamAudit().ServeHTTP(w, req)
@@ -754,11 +754,17 @@ func TestHandleGetTeamAudit(t *testing.T) {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
 	}
 
-	var entries []api.TeamAuditEntry
-	if err := json.NewDecoder(w.Body).Decode(&entries); err != nil {
+	var response api.TeamAuditListResponse
+	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
 		t.Fatalf("decode audit response: %v", err)
 	}
-	if len(entries) == 0 {
+	if len(response.Entries) == 0 {
 		t.Fatalf("expected at least one audit entry")
+	}
+	if response.Action != "member.role_updated" {
+		t.Fatalf("expected action filter to be echoed, got %q", response.Action)
+	}
+	if response.Limit != 5 {
+		t.Fatalf("expected limit 5, got %d", response.Limit)
 	}
 }

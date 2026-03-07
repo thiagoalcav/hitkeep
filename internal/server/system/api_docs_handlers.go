@@ -144,6 +144,15 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"message": map[string]any{"type": "string"},
 					},
 				},
+				"SiteTransferResponse": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"status":              map[string]any{"type": "string"},
+						"site_id":             map[string]any{"type": "string", "format": "uuid"},
+						"source_team_id":      map[string]any{"type": "string", "format": "uuid"},
+						"destination_team_id": map[string]any{"type": "string", "format": "uuid"},
+					},
+				},
 				"Site": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
@@ -368,6 +377,20 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"target_user_id": map[string]any{"type": "string", "format": "uuid"},
 						"target_email":   map[string]any{"type": "string", "format": "email"},
 						"created_at":     map[string]any{"type": "string", "format": "date-time"},
+					},
+				},
+				"TeamAuditListResponse": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"entries": map[string]any{
+							"type":  "array",
+							"items": map[string]any{"$ref": "#/components/schemas/TeamAuditEntry"},
+						},
+						"total":    map[string]any{"type": "integer"},
+						"limit":    map[string]any{"type": "integer"},
+						"offset":   map[string]any{"type": "integer"},
+						"has_more": map[string]any{"type": "boolean"},
+						"action":   map[string]any{"type": "string"},
 					},
 				},
 				"TeamListResponse": map[string]any{
@@ -832,9 +855,30 @@ func openAPISpecV1(publicURL string) map[string]any {
 					}),
 			},
 			"/api/user/teams/{id}/audit": map[string]any{
-				"get": op([]string{"Teams"}, "List team audit log", "Lists recent audit events for team management actions.", secCookie(), []any{paramRef("#/components/parameters/teamID")}, nil,
+				"get": op([]string{"Teams"}, "List team audit log", "Lists recent audit events for team management actions.", secCookie(), []any{
+					paramRef("#/components/parameters/teamID"),
 					map[string]any{
-						"200": jsonSchemaResp("Team audit entries", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/TeamAuditEntry"}}),
+						"name":        "action",
+						"in":          "query",
+						"description": "Optional exact audit action to filter by.",
+						"schema":      map[string]any{"type": "string"},
+					},
+					map[string]any{
+						"name":        "limit",
+						"in":          "query",
+						"description": "Maximum number of audit rows to return (default 25, max 200).",
+						"schema":      map[string]any{"type": "integer", "minimum": 1, "maximum": 200},
+					},
+					map[string]any{
+						"name":        "offset",
+						"in":          "query",
+						"description": "Zero-based audit row offset for pagination.",
+						"schema":      map[string]any{"type": "integer", "minimum": 0},
+					},
+				}, nil,
+					map[string]any{
+						"200": jsonRefResp("Team audit entries", "#/components/schemas/TeamAuditListResponse"),
+						"400": errResp("Invalid query parameters"),
 						"403": errResp("Access denied"),
 					}),
 			},
@@ -1018,6 +1062,20 @@ func openAPISpecV1(publicURL string) map[string]any {
 				"put": op([]string{"Sites"}, "Update retention policy", "Updates per-site retention days.", secCookie(), []any{paramRef("#/components/parameters/siteID")},
 					jsonBody(map[string]any{"type": "object", "properties": map[string]any{"days": map[string]any{"type": "integer", "minimum": 0}}, "required": []string{"days"}}),
 					map[string]any{"200": desc("Updated")}),
+			},
+			"/api/sites/{id}/transfer-team": map[string]any{
+				"post": op([]string{"Sites"}, "Transfer site to another team", "Moves a site into another team the caller can administer and migrates analytics data to the destination tenant store.", secCookie(), []any{paramRef("#/components/parameters/siteID")},
+					jsonBody(map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"team_id": map[string]any{"type": "string", "format": "uuid"},
+						},
+						"required": []string{"team_id"},
+					}),
+					map[string]any{
+						"200": jsonRefResp("Site transferred", "#/components/schemas/SiteTransferResponse"),
+						"403": errResp("Access denied"),
+					}),
 			},
 			"/api/sites/{id}/exclusions": map[string]any{
 				"get": op([]string{"Sites"}, "List site exclusions", "Lists per-site IP/CIDR exclusions used by ingest filtering.", secCookie(), []any{paramRef("#/components/parameters/siteID")}, nil,

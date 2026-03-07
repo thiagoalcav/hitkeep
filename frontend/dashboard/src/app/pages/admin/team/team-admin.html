@@ -8,10 +8,9 @@
     <div class="max-w-6xl mx-auto w-full">
         <p-tabs [(value)]="activeTab">
             <p-tablist>
-                <p-tab value="0">{{ "admin.team.tabs.overview" | transloco }}</p-tab>
-                <p-tab value="1">{{ "admin.team.tabs.members" | transloco }}</p-tab>
-                <p-tab value="2">{{ "admin.team.tabs.settings" | transloco }}</p-tab>
-                <p-tab value="3">{{ "admin.team.tabs.activity" | transloco }}</p-tab>
+                @for (tab of tabs(); track tab.value) {
+                <p-tab [value]="tab.value">{{ tab.label }}</p-tab>
+                }
             </p-tablist>
             <p-tabpanels>
                 <p-tabpanel value="0">
@@ -23,9 +22,11 @@
                 <p-tabpanel value="2">
                     <app-team-settings />
                 </p-tabpanel>
+                @if (canViewAudit()) {
                 <p-tabpanel value="3">
                     <app-team-audit />
                 </p-tabpanel>
+                }
             </p-tabpanels>
         </p-tabs>
     </div>

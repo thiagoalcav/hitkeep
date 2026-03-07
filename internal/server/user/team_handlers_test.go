@@ -768,3 +768,49 @@ func TestHandleGetTeamAudit(t *testing.T) {
 		t.Fatalf("expected limit 5, got %d", response.Limit)
 	}
 }
+
+func TestHandleGetTeamAuditAllowsAdminAndRejectsMembers(t *testing.T) {
+	h, store, ownerID := setupUserSecurityTestEnv(t)
+	defer store.Close()
+
+	defaultTenantID, err := store.GetDefaultTenantID(context.Background())
+	if err != nil {
+		t.Fatalf("get default tenant: %v", err)
+	}
+
+	adminID, err := store.CreateUser(context.Background(), "audit-admin@team.test", "hash")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+	if err := store.AddTeamMember(context.Background(), defaultTenantID, adminID, database.TenantRoleAdmin, ownerID); err != nil {
+		t.Fatalf("add admin to team: %v", err)
+	}
+
+	memberID, err := store.CreateUser(context.Background(), "audit-basic@team.test", "hash")
+	if err != nil {
+		t.Fatalf("create member user: %v", err)
+	}
+	if err := store.AddTeamMember(context.Background(), defaultTenantID, memberID, database.TenantRoleMember, ownerID); err != nil {
+		t.Fatalf("add member to team: %v", err)
+	}
+
+	if err := store.AppendTeamAuditEntry(context.Background(), defaultTenantID, ownerID, "team.updated", "Updated logo", nil); err != nil {
+		t.Fatalf("append team audit entry: %v", err)
+	}
+
+	adminReq := withTestUser(httptest.NewRequest(http.MethodGet, "/api/user/teams/"+defaultTenantID.String()+"/audit", nil), adminID)
+	adminReq.SetPathValue("id", defaultTenantID.String())
+	adminW := httptest.NewRecorder()
+	h.handleGetTeamAudit().ServeHTTP(adminW, adminReq)
+	if adminW.Code != http.StatusOK {
+		t.Fatalf("expected admin status %d, got %d: %s", http.StatusOK, adminW.Code, adminW.Body.String())
+	}
+
+	memberReq := withTestUser(httptest.NewRequest(http.MethodGet, "/api/user/teams/"+defaultTenantID.String()+"/audit", nil), memberID)
+	memberReq.SetPathValue("id", defaultTenantID.String())
+	memberW := httptest.NewRecorder()
+	h.handleGetTeamAudit().ServeHTTP(memberW, memberReq)
+	if memberW.Code != http.StatusForbidden {
+		t.Fatalf("expected member status %d, got %d: %s", http.StatusForbidden, memberW.Code, memberW.Body.String())
+	}
+}

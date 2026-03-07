@@ -30,6 +30,20 @@ export interface TeamMember {
     added_at: string;
 }
 
+export interface TeamInvite {
+    id: string;
+    team_id: string;
+    email: string;
+    role: TeamRole;
+    invited_user_id?: string;
+    status: "pending" | "accepted" | "revoked";
+    created_by?: string;
+    created_at: string;
+    expires_at: string;
+    accepted_at?: string;
+    revoked_at?: string;
+}
+
 export interface TeamAuditEntry {
     id: string;
     team_id: string;

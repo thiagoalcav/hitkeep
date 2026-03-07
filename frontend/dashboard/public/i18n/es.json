@@ -65,7 +65,20 @@
             "empty": "No se encontraron miembros del equipo.",
             "removeAction": "Eliminar",
             "removeAria": "Eliminar {{email}} del equipo",
+            "resendAction": "Reenviar invitación",
+            "revokeInviteAction": "Revocar invitación",
+            "transferOwnershipAction": "Transferir propiedad",
+            "transferOwnershipAria": "Transferir la propiedad del equipo a {{email}}",
+            "resendInviteAria": "Reenviar la invitación de {{email}}",
+            "revokeInviteAria": "Revocar la invitación de {{email}}",
             "confirmRemove": "¿Eliminar a {{email}} de este equipo?",
+            "confirmResendInvite": "¿Reenviar la invitación de {{email}}?",
+            "confirmRevokeInvite": "¿Revocar la invitación de {{email}}?",
+            "confirmTransferOwnership": "¿Transferir la propiedad del equipo a {{email}}? Tú pasarás a ser administrador.",
+            "pendingTitle": "Invitaciones pendientes",
+            "pendingSubtitle": "Invitaciones que aún no han sido aceptadas.",
+            "pendingEmpty": "No hay invitaciones pendientes.",
+            "expiresLabel": "Caduca",
             "invite": {
                 "emailLabel": "Correo electrónico",
                 "emailPlaceholder": "user@example.com",
@@ -75,18 +88,27 @@
             },
             "status": {
                 "inviteSent": "Invitación enviada correctamente.",
+                "inviteResent": "Invitación reenviada correctamente.",
+                "inviteRevoked": "Invitación revocada correctamente.",
                 "memberUpdated": "Miembro actualizado correctamente.",
                 "roleUpdated": "Rol actualizado correctamente.",
-                "memberRemoved": "Miembro eliminado correctamente."
+                "memberRemoved": "Miembro eliminado correctamente.",
+                "ownershipTransferred": "Propiedad transferida correctamente."
             },
             "errors": {
                 "loadFailed": "No se pudieron cargar los miembros del equipo.",
                 "inviteFailed": "No se pudo invitar al miembro.",
+                "inviteResendFailed": "No se pudo reenviar la invitación.",
+                "inviteRevokeFailed": "No se pudo revocar la invitación.",
                 "roleUpdateFailed": "No se pudo actualizar el rol del miembro.",
+                "ownershipTransferFailed": "No se pudo transferir la propiedad.",
                 "removeFailed": "No se pudo eliminar al miembro.",
                 "forbidden": "No tienes permiso para gestionar este equipo.",
                 "alreadyMember": "Este usuario ya es miembro del equipo.",
-                "lastOwner": "Debe permanecer al menos un propietario en el equipo."
+                "lastOwner": "Debe permanecer al menos un propietario en el equipo.",
+                "transferRequired": "Usa la acción dedicada de transferencia para asignar el rol de propietario.",
+                "transferTargetInvalid": "La propiedad solo puede transferirse a un miembro existente del equipo.",
+                "ownershipTransferConflict": "No se pudo completar la transferencia de propiedad."
             }
         },
         "createDialog": {
@@ -837,6 +859,7 @@
                 "saveError": "Error al guardar la configuración del equipo. Inténtalo de nuevo.",
                 "leaveSectionTitle": "Salir del equipo",
                 "leaveSectionDescription": "Elimínate de este equipo y cambia a otro equipo del que formes parte.",
+                "leaveConfirm": "¿Salir de este equipo? Tu contexto de equipo activo cambiará inmediatamente.",
                 "leaveAction": "Salir del equipo",
                 "leaveSuccess": "Has salido del equipo.",
                 "leaveErrors": {

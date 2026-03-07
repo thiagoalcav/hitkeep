@@ -100,6 +100,32 @@
     width: 100%;
 }
 
+.team-members__actions {
+    align-items: center;
+    display: flex;
+    gap: 0.25rem;
+    justify-content: flex-end;
+}
+
+.team-members__pending {
+    border: 1px solid var(--p-content-border-color);
+    border-radius: 0.75rem;
+    margin-top: 1rem;
+    padding: 0.75rem;
+}
+
+.team-members__pending-header {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.team-members__pending-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
 @media (max-width: 768px) {
     .team-members__invite-grid {
         grid-template-columns: 1fr;
@@ -107,5 +133,9 @@
 
     .team-members__invite-actions {
         justify-content: stretch;
+    }
+
+    .team-members__actions {
+        justify-content: flex-start;
     }
 }

@@ -65,7 +65,20 @@
             "empty": "No team members found.",
             "removeAction": "Remove",
             "removeAria": "Remove {{email}} from team",
+            "resendAction": "Resend invite",
+            "revokeInviteAction": "Revoke invite",
+            "transferOwnershipAction": "Transfer ownership",
+            "transferOwnershipAria": "Transfer team ownership to {{email}}",
+            "resendInviteAria": "Resend invite for {{email}}",
+            "revokeInviteAria": "Revoke invite for {{email}}",
             "confirmRemove": "Remove {{email}} from this team?",
+            "confirmResendInvite": "Resend the invite for {{email}}?",
+            "confirmRevokeInvite": "Revoke the invite for {{email}}?",
+            "confirmTransferOwnership": "Transfer team ownership to {{email}}? You will become an admin.",
+            "pendingTitle": "Pending invites",
+            "pendingSubtitle": "Invites that have not been accepted yet.",
+            "pendingEmpty": "No pending invites.",
+            "expiresLabel": "Expires",
             "invite": {
                 "emailLabel": "Email address",
                 "emailPlaceholder": "user@example.com",
@@ -75,18 +88,27 @@
             },
             "status": {
                 "inviteSent": "Invite sent successfully.",
+                "inviteResent": "Invite resent successfully.",
+                "inviteRevoked": "Invite revoked successfully.",
                 "memberUpdated": "Member updated successfully.",
                 "roleUpdated": "Role updated successfully.",
-                "memberRemoved": "Member removed successfully."
+                "memberRemoved": "Member removed successfully.",
+                "ownershipTransferred": "Ownership transferred successfully."
             },
             "errors": {
                 "loadFailed": "Failed to load team members.",
                 "inviteFailed": "Failed to invite member.",
+                "inviteResendFailed": "Failed to resend invite.",
+                "inviteRevokeFailed": "Failed to revoke invite.",
                 "roleUpdateFailed": "Failed to update member role.",
+                "ownershipTransferFailed": "Failed to transfer ownership.",
                 "removeFailed": "Failed to remove member.",
                 "forbidden": "You do not have permission to manage this team.",
                 "alreadyMember": "This user is already a member of the team.",
-                "lastOwner": "At least one owner must remain in the team."
+                "lastOwner": "At least one owner must remain in the team.",
+                "transferRequired": "Use the dedicated ownership transfer action to assign the owner role.",
+                "transferTargetInvalid": "Ownership can only be transferred to an existing team member.",
+                "ownershipTransferConflict": "Ownership transfer could not be completed."
             }
         },
         "createDialog": {
@@ -837,6 +859,7 @@
                 "saveError": "Failed to save team settings. Please try again.",
                 "leaveSectionTitle": "Leave team",
                 "leaveSectionDescription": "Remove yourself from this team and switch to another team you belong to.",
+                "leaveConfirm": "Leave this team? Your active team context will switch immediately.",
                 "leaveAction": "Leave team",
                 "leaveSuccess": "You left the team.",
                 "leaveErrors": {

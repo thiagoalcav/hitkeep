@@ -1,3 +1,5 @@
+<p-confirmpopup [key]="leaveConfirmKey" />
+
 @if (team(); as t) {
 <div class="team-settings__sections">
     @if (successKey(); as key) {
@@ -57,7 +59,7 @@
                 <p-message severity="error" [text]="key | transloco" />
             }
             <div class="team-settings__danger-actions">
-                <p-button severity="danger" [label]="'admin.team.settings.leaveAction' | transloco" [loading]="isLeaving()" [disabled]="isLeaving()" (onClick)="leaveTeam()" />
+                <p-button severity="danger" [label]="'admin.team.settings.leaveAction' | transloco" [loading]="isLeaving()" [disabled]="isLeaving()" (onClick)="confirmLeaveTeam($event)" />
             </div>
         </div>
     </p-card>

@@ -104,6 +104,27 @@ describe("TeamService", () => {
         ]);
     });
 
+    it("should list pending team invites", () => {
+        service.listTeamInvites("team-id").subscribe((invites) => {
+            expect(invites.length).toBe(1);
+            expect(invites[0].email).toBe("invitee@example.com");
+        });
+
+        const req = httpMock.expectOne("/api/user/teams/team-id/invites");
+        expect(req.request.method).toBe("GET");
+        req.flush([
+            {
+                id: "invite-id",
+                team_id: "team-id",
+                email: "invitee@example.com",
+                role: "admin",
+                status: "pending",
+                created_at: "2026-01-03T00:00:00Z",
+                expires_at: "2026-01-10T00:00:00Z"
+            }
+        ]);
+    });
+
     it("should upsert team member", () => {
         service
             .upsertTeamMember("team-id", {
@@ -123,6 +144,41 @@ describe("TeamService", () => {
         req.flush({
             status: "ok",
             is_invite: true
+        });
+    });
+
+    it("should resend team invite", () => {
+        service.resendTeamInvite("team-id", "invite-id").subscribe((response) => {
+            expect(response.status).toBe("ok");
+            expect(response.invite.id).toBe("invite-id");
+        });
+
+        const req = httpMock.expectOne("/api/user/teams/team-id/invites/invite-id/resend");
+        expect(req.request.method).toBe("POST");
+        expect(req.request.body).toEqual({});
+        req.flush({
+            status: "ok",
+            invite: {
+                id: "invite-id",
+                team_id: "team-id",
+                email: "invitee@example.com",
+                role: "member",
+                status: "pending",
+                created_at: "2026-01-03T00:00:00Z",
+                expires_at: "2026-01-10T00:00:00Z"
+            }
+        });
+    });
+
+    it("should revoke team invite", () => {
+        service.revokeTeamInvite("team-id", "invite-id").subscribe((response) => {
+            expect(response.status).toBe("ok");
+        });
+
+        const req = httpMock.expectOne("/api/user/teams/team-id/invites/invite-id");
+        expect(req.request.method).toBe("DELETE");
+        req.flush({
+            status: "ok"
         });
     });
 
@@ -157,6 +213,17 @@ describe("TeamService", () => {
                 created_at: "2026-01-04T00:00:00Z"
             }
         ]);
+    });
+
+    it("should transfer team ownership", () => {
+        service.transferTeamOwnership("team-id", "user-id").subscribe((response) => {
+            expect(response.status).toBe("ok");
+        });
+
+        const req = httpMock.expectOne("/api/user/teams/team-id/transfer-ownership");
+        expect(req.request.method).toBe("POST");
+        expect(req.request.body).toEqual({ target_user_id: "user-id" });
+        req.flush({ status: "ok" });
     });
 
     it("should leave team and update local state", () => {

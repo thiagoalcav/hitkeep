@@ -65,7 +65,20 @@
             "empty": "Keine Teammitglieder gefunden.",
             "removeAction": "Entfernen",
             "removeAria": "{{email}} aus dem Team entfernen",
+            "resendAction": "Einladung erneut senden",
+            "revokeInviteAction": "Einladung widerrufen",
+            "transferOwnershipAction": "Inhaberschaft übertragen",
+            "transferOwnershipAria": "Team-Inhaberschaft an {{email}} übertragen",
+            "resendInviteAria": "Einladung für {{email}} erneut senden",
+            "revokeInviteAria": "Einladung für {{email}} widerrufen",
             "confirmRemove": "{{email}} aus diesem Team entfernen?",
+            "confirmResendInvite": "Einladung für {{email}} erneut senden?",
+            "confirmRevokeInvite": "Einladung für {{email}} widerrufen?",
+            "confirmTransferOwnership": "Team-Inhaberschaft an {{email}} übertragen? Du wirst danach Admin.",
+            "pendingTitle": "Ausstehende Einladungen",
+            "pendingSubtitle": "Einladungen, die noch nicht angenommen wurden.",
+            "pendingEmpty": "Keine ausstehenden Einladungen.",
+            "expiresLabel": "Läuft ab",
             "invite": {
                 "emailLabel": "E-Mail-Adresse",
                 "emailPlaceholder": "user@example.com",
@@ -75,18 +88,27 @@
             },
             "status": {
                 "inviteSent": "Einladung erfolgreich gesendet.",
+                "inviteResent": "Einladung erfolgreich erneut gesendet.",
+                "inviteRevoked": "Einladung erfolgreich widerrufen.",
                 "memberUpdated": "Mitglied erfolgreich aktualisiert.",
                 "roleUpdated": "Rolle erfolgreich aktualisiert.",
-                "memberRemoved": "Mitglied erfolgreich entfernt."
+                "memberRemoved": "Mitglied erfolgreich entfernt.",
+                "ownershipTransferred": "Inhaberschaft erfolgreich übertragen."
             },
             "errors": {
                 "loadFailed": "Teammitglieder konnten nicht geladen werden.",
                 "inviteFailed": "Mitglied konnte nicht eingeladen werden.",
+                "inviteResendFailed": "Einladung konnte nicht erneut gesendet werden.",
+                "inviteRevokeFailed": "Einladung konnte nicht widerrufen werden.",
                 "roleUpdateFailed": "Mitgliederrolle konnte nicht aktualisiert werden.",
+                "ownershipTransferFailed": "Inhaberschaft konnte nicht übertragen werden.",
                 "removeFailed": "Mitglied konnte nicht entfernt werden.",
                 "forbidden": "Keine Berechtigung, dieses Team zu verwalten.",
                 "alreadyMember": "Dieser Benutzer ist bereits ein Mitglied des Teams.",
-                "lastOwner": "Mindestens ein Inhaber muss im Team verbleiben."
+                "lastOwner": "Mindestens ein Inhaber muss im Team verbleiben.",
+                "transferRequired": "Verwende die Aktion zur Inhaber-Übertragung, um die Inhaberrolle zu vergeben.",
+                "transferTargetInvalid": "Die Inhaberschaft kann nur auf ein bestehendes Teammitglied übertragen werden.",
+                "ownershipTransferConflict": "Die Übertragung der Inhaberschaft konnte nicht abgeschlossen werden."
             }
         },
         "createDialog": {
@@ -837,6 +859,7 @@
                 "saveError": "Fehler beim Speichern der Team-Einstellungen. Bitte erneut versuchen.",
                 "leaveSectionTitle": "Team verlassen",
                 "leaveSectionDescription": "Entferne dich aus diesem Team und wechsle zu einem anderen Team, in dem du Mitglied bist.",
+                "leaveConfirm": "Dieses Team verlassen? Dein aktiver Team-Kontext wird sofort umgeschaltet.",
                 "leaveAction": "Team verlassen",
                 "leaveSuccess": "Du hast das Team verlassen.",
                 "leaveErrors": {

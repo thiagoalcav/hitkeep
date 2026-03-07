@@ -1,4 +1,6 @@
 <p-confirmpopup [key]="confirmKey" />
+<p-confirmpopup [key]="inviteConfirmKey" />
+<p-confirmpopup [key]="ownershipConfirmKey" />
 
 @if (errorKey(); as error) {
 <div class="team-members__alert team-members__alert--error">{{ error | transloco }}</div>
@@ -95,20 +97,32 @@
                     }
                 </td>
                 <td><app-relative-date-time [value]="member.added_at" /></td>
-                <td>
-                    @if (canRemoveMember(member)) {
+                <td class="team-members__actions">
+                    @if (canTransferMember(member)) {
                     <p-button
-                        icon="pi pi-trash"
-                        severity="danger"
+                        icon="pi pi-shield"
+                        severity="contrast"
                         [text]="true"
                         [type]="'button'"
-                        [loading]="removingUserID() === member.user_id"
-                        [disabled]="isRoleUpdating(member)"
-                        [ariaLabel]="'teams.management.removeAria' | transloco: { email: member.email }"
-                        (onClick)="confirmRemoveMember($event, member)"
+                        [loading]="transferringUserID() === member.user_id"
+                        [disabled]="isRoleUpdating(member) || removingUserID() === member.user_id"
+                        [ariaLabel]="'teams.management.transferOwnershipAria' | transloco: { email: member.email }"
+                        (onClick)="confirmTransferOwnership($event, member)"
                     />
-                    } @else {
-                    <span class="text-xs text-muted-color">{{ "teams.management.notAllowed" | transloco }}</span>
+                    }
+                    @if (canRemoveMember(member)) {
+                        <p-button
+                            icon="pi pi-trash"
+                            severity="danger"
+                            [text]="true"
+                            [type]="'button'"
+                            [loading]="removingUserID() === member.user_id"
+                            [disabled]="isRoleUpdating(member) || transferringUserID() === member.user_id"
+                            [ariaLabel]="'teams.management.removeAria' | transloco: { email: member.email }"
+                            (onClick)="confirmRemoveMember($event, member)"
+                        />
+                    } @else if (!canTransferMember(member)) {
+                        <span class="text-xs text-muted-color">{{ "teams.management.notAllowed" | transloco }}</span>
                     }
                 </td>
             </tr>
@@ -120,4 +134,63 @@
         </ng-template>
     </p-table>
 </div>
+
+@if (canManageMembers()) {
+<div class="team-members__pending">
+    <div class="team-members__pending-header">
+        <div>
+            <div class="team-members__pending-title">{{ "teams.management.pendingTitle" | transloco }}</div>
+            <div class="team-members__meta-subtitle">{{ "teams.management.pendingSubtitle" | transloco }}</div>
+        </div>
+    </div>
+
+    <div class="hk-crud-table-wrap">
+        <p-table [value]="pendingInvites()" [loading]="isLoading()" [sortField]="'created_at'" [sortOrder]="-1" styleClass="hk-crud-table p-datatable-sm">
+            <ng-template pTemplate="header">
+                <tr>
+                    <th>{{ "common.columns.email" | transloco }}</th>
+                    <th>{{ "common.columns.role" | transloco }}</th>
+                    <th>{{ "common.columns.created" | transloco }}</th>
+                    <th>{{ "teams.management.expiresLabel" | transloco }}</th>
+                    <th>{{ "common.columns.actions" | transloco }}</th>
+                </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-invite>
+                <tr>
+                    <td>{{ invite.email }}</td>
+                    <td><p-tag [value]="inviteRoleLabel(invite.role)" [severity]="roleSeverity(invite.role)" [rounded]="true" /></td>
+                    <td><app-relative-date-time [value]="invite.created_at" /></td>
+                    <td><app-relative-date-time [value]="invite.expires_at" /></td>
+                    <td class="team-members__actions">
+                        <p-button
+                            icon="pi pi-refresh"
+                            [text]="true"
+                            [type]="'button'"
+                            [loading]="isInviteActionLoading(invite)"
+                            [disabled]="isInviteActionLoading(invite)"
+                            [ariaLabel]="'teams.management.resendInviteAria' | transloco: { email: invite.email }"
+                            (onClick)="confirmResendInvite($event, invite)"
+                        />
+                        <p-button
+                            icon="pi pi-times"
+                            severity="danger"
+                            [text]="true"
+                            [type]="'button'"
+                            [loading]="isInviteActionLoading(invite)"
+                            [disabled]="isInviteActionLoading(invite)"
+                            [ariaLabel]="'teams.management.revokeInviteAria' | transloco: { email: invite.email }"
+                            (onClick)="confirmRevokeInvite($event, invite)"
+                        />
+                    </td>
+                </tr>
+            </ng-template>
+            <ng-template pTemplate="emptymessage">
+                <tr>
+                    <td colspan="5" class="text-center text-muted-color py-4">{{ "teams.management.pendingEmpty" | transloco }}</td>
+                </tr>
+            </ng-template>
+        </p-table>
+    </div>
+</div>
+}
 }

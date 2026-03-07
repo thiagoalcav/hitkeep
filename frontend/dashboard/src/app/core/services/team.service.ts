@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { finalize, of, tap } from "rxjs";
-import { Team, TeamAuditEntry, TeamMember, TeamRole, UserTeamsResponse } from "@models/analytics.types";
+import { Team, TeamAuditEntry, TeamInvite, TeamMember, TeamRole, UserTeamsResponse } from "@models/analytics.types";
 
 interface SetActiveTeamResponse {
     status: string;
@@ -17,15 +17,23 @@ interface UpsertTeamMemberRequest {
 interface UpsertTeamMemberResponse {
     status: string;
     is_invite: boolean;
+    invite?: TeamInvite;
 }
 
 interface RemoveTeamMemberResponse {
     status: string;
 }
 
+interface TeamActionErrorResponse {
+    status: string;
+    code: string;
+    message: string;
+}
+
 interface LeaveTeamResponse {
     status: string;
     active_team_id: string;
+    recent_team_ids?: string[];
 }
 
 @Injectable({ providedIn: "root" })
@@ -73,8 +81,20 @@ export class TeamService {
         return this.http.get<TeamMember[]>(`/api/user/teams/${encodeURIComponent(teamID)}/members`);
     }
 
+    listTeamInvites(teamID: string) {
+        return this.http.get<TeamInvite[]>(`/api/user/teams/${encodeURIComponent(teamID)}/invites`);
+    }
+
     upsertTeamMember(teamID: string, payload: UpsertTeamMemberRequest) {
         return this.http.post<UpsertTeamMemberResponse>(`/api/user/teams/${encodeURIComponent(teamID)}/members`, payload);
+    }
+
+    resendTeamInvite(teamID: string, inviteID: string) {
+        return this.http.post<{ status: string; invite: TeamInvite }>(`/api/user/teams/${encodeURIComponent(teamID)}/invites/${encodeURIComponent(inviteID)}/resend`, {});
+    }
+
+    revokeTeamInvite(teamID: string, inviteID: string) {
+        return this.http.delete<RemoveTeamMemberResponse>(`/api/user/teams/${encodeURIComponent(teamID)}/invites/${encodeURIComponent(inviteID)}`);
     }
 
     removeTeamMember(teamID: string, userID: string) {
@@ -83,6 +103,12 @@ export class TeamService {
 
     listTeamAudit(teamID: string) {
         return this.http.get<TeamAuditEntry[]>(`/api/user/teams/${encodeURIComponent(teamID)}/audit`);
+    }
+
+    transferTeamOwnership(teamID: string, targetUserID: string) {
+        return this.http.post<{ status: string }>(`/api/user/teams/${encodeURIComponent(teamID)}/transfer-ownership`, {
+            target_user_id: targetUserID
+        });
     }
 
     leaveTeam(teamID: string) {
@@ -113,3 +139,5 @@ export class TeamService {
         );
     }
 }
+
+export type { TeamActionErrorResponse, LeaveTeamResponse, UpsertTeamMemberResponse };

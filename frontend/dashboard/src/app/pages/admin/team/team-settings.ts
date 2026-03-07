@@ -1,26 +1,31 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from "@angular/core";
 import { HttpErrorResponse } from "@angular/common/http";
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
-import { TranslocoPipe } from "@jsverse/transloco";
+import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 import { CardModule } from "primeng/card";
 import { InputTextModule } from "primeng/inputtext";
 import { ButtonModule } from "primeng/button";
 import { MessageModule } from "primeng/message";
-import { TeamService } from "@services/team.service";
+import { TeamActionErrorResponse, TeamService } from "@services/team.service";
 import { SiteService } from "@features/sites/services/site.service";
 import { PermissionService } from "@services/permission.service";
 import { Router } from "@angular/router";
+import { ConfirmationService } from "primeng/api";
+import { ConfirmPopupModule } from "primeng/confirmpopup";
 import { finalize } from "rxjs";
 
 @Component({
     selector: "app-team-settings",
-    imports: [CardModule, TranslocoPipe, ReactiveFormsModule, InputTextModule, ButtonModule, MessageModule],
+    imports: [CardModule, TranslocoPipe, ReactiveFormsModule, InputTextModule, ButtonModule, MessageModule, ConfirmPopupModule],
     templateUrl: "./team-settings.html",
     styleUrl: "./team-settings.css",
-    changeDetection: ChangeDetectionStrategy.OnPush
+    changeDetection: ChangeDetectionStrategy.OnPush,
+    providers: [ConfirmationService]
 })
 export class TeamSettingsPage {
     private readonly router = inject(Router);
+    private readonly confirmationService = inject(ConfirmationService);
+    private readonly transloco = inject(TranslocoService);
     protected readonly teamService = inject(TeamService);
     private readonly siteService = inject(SiteService);
     private readonly perms = inject(PermissionService);
@@ -37,6 +42,7 @@ export class TeamSettingsPage {
     protected readonly errorKey = signal("");
     protected readonly leaveErrorKey = signal("");
     protected readonly leaveSuccessKey = signal("");
+    protected readonly leaveConfirmKey = "team-settings-leave";
 
     protected readonly form = new FormGroup({
         name: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.maxLength(120)] }),
@@ -79,6 +85,30 @@ export class TeamSettingsPage {
         });
     }
 
+    protected confirmLeaveTeam(event: Event): void {
+        const target = event.currentTarget;
+        if (!(target instanceof HTMLElement) || this.isLeaving()) {
+            return;
+        }
+
+        this.confirmationService.confirm({
+            key: this.leaveConfirmKey,
+            target,
+            message: this.transloco.translate("admin.team.settings.leaveConfirm"),
+            icon: "pi pi-exclamation-triangle",
+            rejectButtonProps: {
+                label: this.transloco.translate("common.actions.cancel"),
+                severity: "secondary",
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: this.transloco.translate("admin.team.settings.leaveAction"),
+                severity: "danger"
+            },
+            accept: () => this.leaveTeam()
+        });
+    }
+
     protected leaveTeam(): void {
         if (this.isLeaving()) {
             return;
@@ -111,16 +141,14 @@ export class TeamSettingsPage {
                     });
                 },
                 error: (error: unknown) => {
-                    if (error instanceof HttpErrorResponse && error.status === 400) {
-                        const errorText = typeof error.error === "string" ? error.error.toLowerCase() : "";
-                        if (errorText.includes("last owner")) {
-                            this.leaveErrorKey.set("admin.team.settings.leaveErrors.lastOwner");
-                            return;
-                        }
-                        if (errorText.includes("only team")) {
-                            this.leaveErrorKey.set("admin.team.settings.leaveErrors.onlyTeam");
-                            return;
-                        }
+                    const errorCode = this.extractTeamErrorCode(error);
+                    if (errorCode === "team_last_owner") {
+                        this.leaveErrorKey.set("admin.team.settings.leaveErrors.lastOwner");
+                        return;
+                    }
+                    if (errorCode === "user_only_team") {
+                        this.leaveErrorKey.set("admin.team.settings.leaveErrors.onlyTeam");
+                        return;
                     }
                     if (error instanceof HttpErrorResponse && error.status === 403) {
                         this.leaveErrorKey.set("teams.management.errors.forbidden");
@@ -129,5 +157,17 @@ export class TeamSettingsPage {
                     this.leaveErrorKey.set("admin.team.settings.leaveErrors.generic");
                 }
             });
+    }
+
+    private extractTeamErrorCode(error: unknown): string | null {
+        if (!(error instanceof HttpErrorResponse)) {
+            return null;
+        }
+        const body = error.error;
+        if (!body || typeof body !== "object") {
+            return null;
+        }
+        const actionError = body as Partial<TeamActionErrorResponse>;
+        return typeof actionError.code === "string" ? actionError.code : null;
     }
 }

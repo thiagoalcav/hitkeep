@@ -65,7 +65,20 @@
             "empty": "Nessun membro del team trovato.",
             "removeAction": "Rimuovi",
             "removeAria": "Rimuovi {{email}} dal team",
+            "resendAction": "Invia di nuovo l'invito",
+            "revokeInviteAction": "Revoca invito",
+            "transferOwnershipAction": "Trasferisci proprietà",
+            "transferOwnershipAria": "Trasferisci la proprietà del team a {{email}}",
+            "resendInviteAria": "Invia di nuovo l'invito per {{email}}",
+            "revokeInviteAria": "Revoca l'invito per {{email}}",
             "confirmRemove": "Rimuovere {{email}} da questo team?",
+            "confirmResendInvite": "Inviare di nuovo l'invito per {{email}}?",
+            "confirmRevokeInvite": "Revocare l'invito per {{email}}?",
+            "confirmTransferOwnership": "Trasferire la proprietà del team a {{email}}? Diventerai amministratore.",
+            "pendingTitle": "Inviti in sospeso",
+            "pendingSubtitle": "Inviti che non sono ancora stati accettati.",
+            "pendingEmpty": "Nessun invito in sospeso.",
+            "expiresLabel": "Scade",
             "invite": {
                 "emailLabel": "Indirizzo email",
                 "emailPlaceholder": "user@example.com",
@@ -75,18 +88,27 @@
             },
             "status": {
                 "inviteSent": "Invito inviato con successo.",
+                "inviteResent": "Invito inviato di nuovo con successo.",
+                "inviteRevoked": "Invito revocato con successo.",
                 "memberUpdated": "Membro aggiornato con successo.",
                 "roleUpdated": "Ruolo aggiornato con successo.",
-                "memberRemoved": "Membro rimosso con successo."
+                "memberRemoved": "Membro rimosso con successo.",
+                "ownershipTransferred": "Proprietà trasferita con successo."
             },
             "errors": {
                 "loadFailed": "Impossibile caricare i membri del team.",
                 "inviteFailed": "Impossibile invitare il membro.",
+                "inviteResendFailed": "Impossibile inviare di nuovo l'invito.",
+                "inviteRevokeFailed": "Impossibile revocare l'invito.",
                 "roleUpdateFailed": "Impossibile aggiornare il ruolo del membro.",
+                "ownershipTransferFailed": "Impossibile trasferire la proprietà.",
                 "removeFailed": "Impossibile rimuovere il membro.",
                 "forbidden": "Non hai i permessi per gestire questo team.",
                 "alreadyMember": "Questo utente è già membro del team.",
-                "lastOwner": "Almeno un proprietario deve rimanere nel team."
+                "lastOwner": "Almeno un proprietario deve rimanere nel team.",
+                "transferRequired": "Usa l'azione dedicata al trasferimento per assegnare il ruolo di proprietario.",
+                "transferTargetInvalid": "La proprietà può essere trasferita solo a un membro esistente del team.",
+                "ownershipTransferConflict": "Non è stato possibile completare il trasferimento della proprietà."
             }
         },
         "createDialog": {
@@ -837,6 +859,7 @@
                 "saveError": "Impossibile salvare le impostazioni del team. Riprova.",
                 "leaveSectionTitle": "Lascia il team",
                 "leaveSectionDescription": "Rimuoviti da questo team e passa a un altro team di cui fai parte.",
+                "leaveConfirm": "Lasciare questo team? Il contesto del team attivo cambierà immediatamente.",
                 "leaveAction": "Lascia il team",
                 "leaveSuccess": "Hai lasciato il team.",
                 "leaveErrors": {

@@ -65,7 +65,20 @@
             "empty": "Aucun membre d'équipe trouvé.",
             "removeAction": "Supprimer",
             "removeAria": "Supprimer {{email}} de l'équipe",
+            "resendAction": "Renvoyer l'invitation",
+            "revokeInviteAction": "Révoquer l'invitation",
+            "transferOwnershipAction": "Transférer la propriété",
+            "transferOwnershipAria": "Transférer la propriété de l'équipe à {{email}}",
+            "resendInviteAria": "Renvoyer l'invitation de {{email}}",
+            "revokeInviteAria": "Révoquer l'invitation de {{email}}",
             "confirmRemove": "Supprimer {{email}} de cette équipe ?",
+            "confirmResendInvite": "Renvoyer l'invitation de {{email}} ?",
+            "confirmRevokeInvite": "Révoquer l'invitation de {{email}} ?",
+            "confirmTransferOwnership": "Transférer la propriété de l'équipe à {{email}} ? Vous deviendrez administrateur.",
+            "pendingTitle": "Invitations en attente",
+            "pendingSubtitle": "Invitations qui n'ont pas encore été acceptées.",
+            "pendingEmpty": "Aucune invitation en attente.",
+            "expiresLabel": "Expire",
             "invite": {
                 "emailLabel": "Adresse e-mail",
                 "emailPlaceholder": "user@example.com",
@@ -75,18 +88,27 @@
             },
             "status": {
                 "inviteSent": "Invitation envoyée avec succès.",
+                "inviteResent": "Invitation renvoyée avec succès.",
+                "inviteRevoked": "Invitation révoquée avec succès.",
                 "memberUpdated": "Membre mis à jour avec succès.",
                 "roleUpdated": "Rôle mis à jour avec succès.",
-                "memberRemoved": "Membre supprimé avec succès."
+                "memberRemoved": "Membre supprimé avec succès.",
+                "ownershipTransferred": "Propriété transférée avec succès."
             },
             "errors": {
                 "loadFailed": "Impossible de charger les membres de l'équipe.",
                 "inviteFailed": "Impossible d'inviter le membre.",
+                "inviteResendFailed": "Impossible de renvoyer l'invitation.",
+                "inviteRevokeFailed": "Impossible de révoquer l'invitation.",
                 "roleUpdateFailed": "Impossible de mettre à jour le rôle du membre.",
+                "ownershipTransferFailed": "Impossible de transférer la propriété.",
                 "removeFailed": "Impossible de supprimer le membre.",
                 "forbidden": "Vous n'avez pas l'autorisation de gérer cette équipe.",
                 "alreadyMember": "Cet utilisateur est déjà membre de l'équipe.",
-                "lastOwner": "Au moins un propriétaire doit rester dans l'équipe."
+                "lastOwner": "Au moins un propriétaire doit rester dans l'équipe.",
+                "transferRequired": "Utilisez l'action dédiée au transfert pour attribuer le rôle de propriétaire.",
+                "transferTargetInvalid": "La propriété ne peut être transférée qu'à un membre existant de l'équipe.",
+                "ownershipTransferConflict": "Le transfert de propriété n'a pas pu être finalisé."
             }
         },
         "createDialog": {
@@ -837,6 +859,7 @@
                 "saveError": "Échec de l'enregistrement des paramètres de l'équipe. Veuillez réessayer.",
                 "leaveSectionTitle": "Quitter l'équipe",
                 "leaveSectionDescription": "Retirez-vous de cette équipe et basculez vers une autre équipe dont vous faites partie.",
+                "leaveConfirm": "Quitter cette équipe ? Votre contexte d'équipe actif changera immédiatement.",
                 "leaveAction": "Quitter l'équipe",
                 "leaveSuccess": "Vous avez quitté l'équipe.",
                 "leaveErrors": {

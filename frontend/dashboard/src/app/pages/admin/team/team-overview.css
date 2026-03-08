@@ -34,6 +34,110 @@
     font-size: 0.82rem;
 }
 
+.team-overview__usage {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.team-overview__usage-header {
+    align-items: flex-start;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+}
+
+.team-overview__usage-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem;
+}
+
+.team-overview__usage-header p {
+    color: var(--p-text-muted-color);
+    margin: 0;
+    max-width: 42rem;
+}
+
+.team-overview__usage-pending {
+    background: color-mix(in srgb, var(--p-primary-color) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--p-primary-color) 18%, transparent);
+    border-radius: 999px;
+    color: var(--p-text-color);
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+    white-space: nowrap;
+}
+
+.team-overview__usage-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+:host ::ng-deep .team-overview__usage-card .p-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.team-overview__usage-card-header {
+    align-items: baseline;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+}
+
+.team-overview__usage-limit {
+    color: var(--p-text-muted-color);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.team-overview__usage-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.team-overview__usage-value {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+
+.team-overview__usage-description,
+.team-overview__usage-footnote {
+    color: var(--p-text-muted-color);
+    font-size: 0.85rem;
+}
+
+.team-overview__usage-footnote--unlimited {
+    color: color-mix(in srgb, var(--p-primary-color) 75%, var(--p-text-color));
+    font-weight: 600;
+}
+
+:host ::ng-deep .team-overview__usage-card .p-progressbar {
+    height: 0.65rem;
+}
+
+:host ::ng-deep .team-overview__usage-card--healthy .p-progressbar-value {
+    background: linear-gradient(90deg, color-mix(in srgb, var(--p-primary-color) 70%, white), var(--p-primary-color));
+}
+
+:host ::ng-deep .team-overview__usage-card--warning .p-progressbar-value {
+    background: linear-gradient(90deg, #f6c453, #f59e0b);
+}
+
+:host ::ng-deep .team-overview__usage-card--critical .p-progressbar-value {
+    background: linear-gradient(90deg, #ef6a6a, #dc2626);
+}
+
+:host ::ng-deep .team-overview__usage-card--unlimited .p-card {
+    border-color: color-mix(in srgb, var(--p-primary-color) 20%, transparent);
+}
+
 .team-overview__actions h3 {
     font-size: 1rem;
     font-weight: 600;
@@ -48,4 +152,15 @@
 
 .team-overview__action-links a {
     text-decoration: none;
+}
+
+@media (max-width: 720px) {
+    .team-overview__usage-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .team-overview__usage-pending {
+        white-space: normal;
+    }
 }

@@ -21,9 +21,42 @@
         <p-card>
             <div class="team-overview__card-body">
                 <span class="team-overview__card-label">{{ "admin.team.overview.memberCount" | transloco }}</span>
-                <span class="team-overview__card-value">{{ teamService.teams().length }}</span>
+                <span class="team-overview__card-value">{{ t.usage?.current_members ?? 0 }}</span>
             </div>
         </p-card>
     </div>
+
+    @if (t.usage && t.entitlements) {
+    <section class="team-overview__usage">
+        <div class="team-overview__usage-header">
+            <div>
+                <h3>{{ "admin.team.overview.usage.title" | transloco }}</h3>
+                <p>{{ "admin.team.overview.usage.description" | transloco }}</p>
+            </div>
+            <span class="team-overview__usage-pending">{{ pendingInviteLabel(t.usage.current_pending_invites) }}</span>
+        </div>
+
+        <div class="team-overview__usage-grid">
+            @for (card of usageCards(); track card.key) {
+            <p-card [styleClass]="'team-overview__usage-card ' + card.className">
+                <div class="team-overview__usage-card-header">
+                    <span class="team-overview__card-label">{{ ("admin.team.overview.usage.metrics." + card.key) | transloco }}</span>
+                    <span class="team-overview__usage-limit">{{ card.limitLabel }}</span>
+                </div>
+                <div class="team-overview__usage-card-body">
+                    <span class="team-overview__usage-value">{{ card.displayValue }}</span>
+                    <span class="team-overview__usage-description">{{ card.description }}</span>
+                </div>
+                @if (card.hasFiniteLimit) {
+                <p-progressbar [value]="card.percentage" [showValue]="false" [attr.aria-label]="('admin.team.overview.usage.metrics.' + card.key) | transloco" />
+                <span class="team-overview__usage-footnote"> {{ "admin.team.overview.usage.progressLabel" | transloco: { count: card.percentage } }} </span>
+                } @else {
+                <span class="team-overview__usage-footnote team-overview__usage-footnote--unlimited"> {{ "admin.team.overview.usage.unlimitedFootnote" | transloco }} </span>
+                }
+            </p-card>
+            }
+        </div>
+    </section>
+    }
 </div>
 }

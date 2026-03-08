@@ -859,10 +859,26 @@
             "overview": {
                 "breadcrumb": "Team Overview",
                 "title": "Team",
-                "memberCount": "Teams",
+                "memberCount": "Members",
                 "quickActions": "Quick actions",
                 "manageMembers": "Manage members",
-                "teamSettings": "Team settings"
+                "teamSettings": "Team settings",
+                "usage": {
+                    "title": "Usage and limits",
+                    "description": "Track current team usage against plan limits before ingestion gets blocked.",
+                    "currentUsage": "{{count}} used",
+                    "unlimited": "Unlimited",
+                    "unlimitedFootnote": "Unlimited on the current plan",
+                    "limitValue": "Limit {{count}}",
+                    "progressLabel": "{{count}}% of limit",
+                    "pendingInviteOne": "1 pending invite",
+                    "pendingInviteMany": "{{count}} pending invites",
+                    "metrics": {
+                        "monthlyEvents": "Monthly events",
+                        "sites": "Sites",
+                        "members": "Members"
+                    }
+                }
             },
             "members": {
                 "breadcrumb": "Team Members",

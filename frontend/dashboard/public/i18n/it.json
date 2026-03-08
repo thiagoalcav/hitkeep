@@ -859,10 +859,26 @@
             "overview": {
                 "breadcrumb": "Panoramica del team",
                 "title": "Team",
-                "memberCount": "Team",
+                "memberCount": "Membri",
                 "quickActions": "Azioni rapide",
                 "manageMembers": "Gestisci membri",
-                "teamSettings": "Impostazioni del team"
+                "teamSettings": "Impostazioni del team",
+                "usage": {
+                    "title": "Utilizzo e limiti",
+                    "description": "Monitora l'utilizzo attuale del team rispetto ai limiti del piano prima che l'ingestione venga bloccata.",
+                    "currentUsage": "{{count}} utilizzati",
+                    "unlimited": "Illimitato",
+                    "unlimitedFootnote": "Illimitato nel piano attuale",
+                    "limitValue": "Limite {{count}}",
+                    "progressLabel": "{{count}}% del limite",
+                    "pendingInviteOne": "1 invito in sospeso",
+                    "pendingInviteMany": "{{count}} inviti in sospeso",
+                    "metrics": {
+                        "monthlyEvents": "Eventi mensili",
+                        "sites": "Siti",
+                        "members": "Membri"
+                    }
+                }
             },
             "members": {
                 "breadcrumb": "Membri del team",

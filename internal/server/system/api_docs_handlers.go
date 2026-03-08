@@ -343,11 +343,33 @@ func openAPISpecV1(publicURL string) map[string]any {
 				"Team": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
-						"id":         map[string]any{"type": "string", "format": "uuid"},
-						"name":       map[string]any{"type": "string"},
-						"logo_url":   map[string]any{"type": "string"},
-						"role":       map[string]any{"type": "string"},
-						"created_at": map[string]any{"type": "string", "format": "date-time"},
+						"id":           map[string]any{"type": "string", "format": "uuid"},
+						"name":         map[string]any{"type": "string"},
+						"logo_url":     map[string]any{"type": "string"},
+						"role":         map[string]any{"type": "string"},
+						"created_at":   map[string]any{"type": "string", "format": "date-time"},
+						"usage":        map[string]any{"$ref": "#/components/schemas/TeamUsageSummary"},
+						"entitlements": map[string]any{"$ref": "#/components/schemas/TeamEntitlements"},
+					},
+				},
+				"TeamUsageSummary": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"current_sites":           map[string]any{"type": "integer"},
+						"current_members":         map[string]any{"type": "integer"},
+						"current_pending_invites": map[string]any{"type": "integer"},
+						"current_monthly_events":  map[string]any{"type": "integer"},
+					},
+				},
+				"TeamEntitlements": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"max_sites_per_team":    map[string]any{"type": "integer"},
+						"max_team_members":      map[string]any{"type": "integer"},
+						"max_monthly_events":    map[string]any{"type": "integer"},
+						"max_retention_days":    map[string]any{"type": "integer"},
+						"allow_sso":             map[string]any{"type": "boolean"},
+						"allow_custom_branding": map[string]any{"type": "boolean"},
 					},
 				},
 				"TeamMember": map[string]any{

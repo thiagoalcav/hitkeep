@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 
 	"hitkeep/internal/api"
 	"hitkeep/internal/database"
+	"hitkeep/internal/entitlements"
 	"hitkeep/internal/mailables"
 	serverauth "hitkeep/internal/server/auth"
 	"hitkeep/internal/server/shared"
@@ -46,6 +48,60 @@ func writeTeamActionError(w http.ResponseWriter, statusCode int, code string, me
 	}); err != nil {
 		slog.Error("Failed to encode team action error", "error", err, "code", code)
 	}
+}
+
+func resolveTeamEntitlements(ctx context.Context, provider entitlements.Provider, teamID uuid.UUID) *api.TeamEntitlements {
+	defaults := &entitlements.Entitlements{
+		AllowSSO:            true,
+		AllowCustomBranding: true,
+	}
+
+	ent := defaults
+	if provider != nil {
+		if resolved, err := provider.ForTenant(ctx, teamID); err == nil && resolved != nil {
+			ent = resolved
+		}
+	}
+
+	return &api.TeamEntitlements{
+		MaxSitesPerTeam:     ent.MaxSitesPerTeam,
+		MaxTeamMembers:      ent.MaxTeamMembers,
+		MaxMonthlyEvents:    ent.MaxMonthlyEvents,
+		MaxRetentionDays:    ent.MaxRetentionDays,
+		AllowSSO:            ent.AllowSSO,
+		AllowCustomBranding: ent.AllowCustomBranding,
+	}
+}
+
+func (h *handler) hydrateTeamSummaries(r *http.Request, teams []api.Team) []api.Team {
+	if len(teams) == 0 {
+		return teams
+	}
+
+	enriched := make([]api.Team, len(teams))
+	copy(enriched, teams)
+	for idx, team := range enriched {
+		enriched[idx].Entitlements = resolveTeamEntitlements(r.Context(), h.ctx.Entitlements, team.ID)
+
+		analyticsStore := h.ctx.Store
+		if h.ctx.TenantStores != nil {
+			store, err := h.ctx.TenantStores.ForTenant(r.Context(), team.ID)
+			if err != nil {
+				slog.Warn("Failed to resolve analytics store for team usage", "error", err, "team_id", team.ID)
+				continue
+			}
+			analyticsStore = store
+		}
+
+		usage, err := h.ctx.Store.BuildTeamUsageSummary(r.Context(), team.ID, analyticsStore)
+		if err != nil {
+			slog.Warn("Failed to build team usage summary", "error", err, "team_id", team.ID)
+			continue
+		}
+		enriched[idx].Usage = usage
+	}
+
+	return enriched
 }
 
 func (h *handler) sendTeamInviteEmail(r *http.Request, teamID, actorID uuid.UUID, invite *api.TeamInvite) {
@@ -177,7 +233,7 @@ func (h *handler) handleGetTeams() http.HandlerFunc {
 		}{
 			ActiveTeamID:  activeTeamID,
 			RecentTeamIDs: orderedRecentTeamIDs(teams, activeTeamID),
-			Teams:         teams,
+			Teams:         h.hydrateTeamSummaries(r, teams),
 		}
 
 		w.Header().Set("Content-Type", "application/json")

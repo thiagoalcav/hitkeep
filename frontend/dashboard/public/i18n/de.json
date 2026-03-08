@@ -859,10 +859,26 @@
             "overview": {
                 "breadcrumb": "Team-Übersicht",
                 "title": "Team",
-                "memberCount": "Teams",
+                "memberCount": "Mitglieder",
                 "quickActions": "Schnellaktionen",
                 "manageMembers": "Mitglieder verwalten",
-                "teamSettings": "Team-Einstellungen"
+                "teamSettings": "Team-Einstellungen",
+                "usage": {
+                    "title": "Nutzung und Limits",
+                    "description": "Behalte die aktuelle Teamnutzung im Blick, bevor Limits die Erfassung blockieren.",
+                    "currentUsage": "{{count}} genutzt",
+                    "unlimited": "Unbegrenzt",
+                    "unlimitedFootnote": "Im aktuellen Tarif unbegrenzt",
+                    "limitValue": "Limit {{count}}",
+                    "progressLabel": "{{count}} % des Limits",
+                    "pendingInviteOne": "1 ausstehende Einladung",
+                    "pendingInviteMany": "{{count}} ausstehende Einladungen",
+                    "metrics": {
+                        "monthlyEvents": "Monatliche Events",
+                        "sites": "Websites",
+                        "members": "Mitglieder"
+                    }
+                }
             },
             "members": {
                 "breadcrumb": "Teammitglieder",

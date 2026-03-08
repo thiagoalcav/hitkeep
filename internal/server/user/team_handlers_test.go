@@ -19,6 +19,17 @@ func TestHandleGetTeams(t *testing.T) {
 	h, store, userID := setupUserSecurityTestEnv(t)
 	defer store.Close()
 
+	activeTeamID, err := store.GetActiveTenantID(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("get active tenant: %v", err)
+	}
+	if _, err := store.CreateSite(context.Background(), userID, "usage-api.test"); err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+	if _, err := store.CreateTeamInvite(context.Background(), activeTeamID, "pending-team-usage@test.dev", database.TenantRoleMember, nil, userID); err != nil {
+		t.Fatalf("create invite: %v", err)
+	}
+
 	req := withTestUser(httptest.NewRequest(http.MethodGet, "/api/user/teams", nil), userID)
 	w := httptest.NewRecorder()
 
@@ -43,6 +54,21 @@ func TestHandleGetTeams(t *testing.T) {
 	}
 	if len(resp.RecentTeamIDs) == 0 || resp.RecentTeamIDs[0] != resp.ActiveTeamID {
 		t.Fatalf("expected recent_team_ids to start with active team, got %+v", resp.RecentTeamIDs)
+	}
+	if resp.Teams[0].Usage == nil {
+		t.Fatalf("expected usage summary on team payload")
+	}
+	if resp.Teams[0].Entitlements == nil {
+		t.Fatalf("expected entitlements on team payload")
+	}
+	if resp.Teams[0].Usage.CurrentSites != 1 {
+		t.Fatalf("expected 1 team site, got %d", resp.Teams[0].Usage.CurrentSites)
+	}
+	if resp.Teams[0].Usage.CurrentMembers != 1 {
+		t.Fatalf("expected 1 team member, got %d", resp.Teams[0].Usage.CurrentMembers)
+	}
+	if resp.Teams[0].Usage.CurrentPendingInvites != 1 {
+		t.Fatalf("expected 1 pending invite, got %d", resp.Teams[0].Usage.CurrentPendingInvites)
 	}
 }
 

@@ -321,11 +321,29 @@ type SiteMember struct {
 }
 
 type Team struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	LogoURL   string    `json:"logo_url"`
-	Role      string    `json:"role"`
-	CreatedAt time.Time `json:"created_at"`
+	ID           uuid.UUID         `json:"id"`
+	Name         string            `json:"name"`
+	LogoURL      string            `json:"logo_url"`
+	Role         string            `json:"role"`
+	CreatedAt    time.Time         `json:"created_at"`
+	Usage        *TeamUsageSummary `json:"usage,omitempty"`
+	Entitlements *TeamEntitlements `json:"entitlements,omitempty"`
+}
+
+type TeamUsageSummary struct {
+	CurrentSites          int   `json:"current_sites"`
+	CurrentMembers        int   `json:"current_members"`
+	CurrentPendingInvites int   `json:"current_pending_invites"`
+	CurrentMonthlyEvents  int64 `json:"current_monthly_events"`
+}
+
+type TeamEntitlements struct {
+	MaxSitesPerTeam     int   `json:"max_sites_per_team"`
+	MaxTeamMembers      int   `json:"max_team_members"`
+	MaxMonthlyEvents    int64 `json:"max_monthly_events"`
+	MaxRetentionDays    int   `json:"max_retention_days"`
+	AllowSSO            bool  `json:"allow_sso"`
+	AllowCustomBranding bool  `json:"allow_custom_branding"`
 }
 
 type TeamMember struct {

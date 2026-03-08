@@ -859,10 +859,26 @@
             "overview": {
                 "breadcrumb": "Resumen del equipo",
                 "title": "Equipo",
-                "memberCount": "Equipos",
+                "memberCount": "Miembros",
                 "quickActions": "Acciones rápidas",
                 "manageMembers": "Gestionar miembros",
-                "teamSettings": "Configuración del equipo"
+                "teamSettings": "Configuración del equipo",
+                "usage": {
+                    "title": "Uso y límites",
+                    "description": "Supervisa el uso actual del equipo frente a los límites del plan antes de que se bloquee la ingesta.",
+                    "currentUsage": "{{count}} usados",
+                    "unlimited": "Ilimitado",
+                    "unlimitedFootnote": "Ilimitado en el plan actual",
+                    "limitValue": "Límite {{count}}",
+                    "progressLabel": "{{count}} % del límite",
+                    "pendingInviteOne": "1 invitación pendiente",
+                    "pendingInviteMany": "{{count}} invitaciones pendientes",
+                    "metrics": {
+                        "monthlyEvents": "Eventos mensuales",
+                        "sites": "Sitios",
+                        "members": "Miembros"
+                    }
+                }
             },
             "members": {
                 "breadcrumb": "Miembros del equipo",

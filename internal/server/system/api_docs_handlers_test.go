@@ -84,6 +84,29 @@ func TestOpenAPISpecV1TakeoutAndExportPathsListAllFormats(t *testing.T) {
 	}
 }
 
+func TestOpenAPISpecV1TeamSchemasExposeUsageAndEntitlements(t *testing.T) {
+	spec := openAPISpecV1("http://localhost:8080")
+	components := requireMap(t, spec, "components")
+	schemas := requireMap(t, components, "schemas")
+
+	teamSchema := requireMap(t, schemas, "Team")
+	teamProperties := requireMap(t, teamSchema, "properties")
+
+	if _, ok := teamProperties["usage"]; !ok {
+		t.Fatalf("expected Team schema to include usage")
+	}
+	if _, ok := teamProperties["entitlements"]; !ok {
+		t.Fatalf("expected Team schema to include entitlements")
+	}
+
+	if _, ok := schemas["TeamUsageSummary"]; !ok {
+		t.Fatalf("expected TeamUsageSummary schema to exist")
+	}
+	if _, ok := schemas["TeamEntitlements"]; !ok {
+		t.Fatalf("expected TeamEntitlements schema to exist")
+	}
+}
+
 func hasFormatParamRef(params []any) bool {
 	for _, p := range params {
 		pm, ok := p.(map[string]any)

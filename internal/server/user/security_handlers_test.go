@@ -19,6 +19,7 @@ import (
 	"hitkeep/internal/api"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
+	"hitkeep/internal/entitlements"
 	"hitkeep/internal/security"
 	serverauth "hitkeep/internal/server/auth"
 	"hitkeep/internal/server/shared"
@@ -50,8 +51,10 @@ func setupUserSecurityTestEnv(t *testing.T) (*handler, *database.Store, uuid.UUI
 	}
 
 	ctx := &shared.Context{
-		Store:  store,
-		Config: conf,
+		Store:        store,
+		TenantStores: database.NewTenantStoreManager(store, t.TempDir()),
+		Config:       conf,
+		Entitlements: entitlements.NewDefaultProvider(),
 	}
 
 	return &handler{ctx: ctx}, store, userID

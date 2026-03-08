@@ -5,7 +5,15 @@
         </div>
     </app-page-header>
 
-    <app-range-toolbar [timeRanges]="timeRanges()" [selectedRange]="selectedRange()" [loading]="isLoading()" (selectedRangeChange)="selectedRange.set($event)" (rangeChange)="onRangeChange($event)"> </app-range-toolbar>
+    <app-range-toolbar
+        [timeRanges]="timeRanges()"
+        [selectedRange]="selectedRange()"
+        [customRangeDates]="customRangeDates()"
+        [loading]="isLoading()"
+        (selectedRangeChange)="selectedRange.set($event)"
+        (customRangeDatesChange)="customRangeDates.set($event)"
+    >
+    </app-range-toolbar>
 
     @if (noSite()) {
     <div class="flex flex-col items-center justify-center h-[50vh] gap-4">
@@ -170,11 +178,3 @@
     </div>
     } }
 </div>
-
-<p-dialog [header]="'common.selectDateRange' | transloco" [(visible)]="isCustomRangeVisible" [modal]="true">
-    <p-datepicker [formControl]="rangeForm.customRangeDates().control()" selectionMode="range" [inline]="true" [showWeek]="false" />
-    <ng-template pTemplate="footer">
-        <p-button [label]="'common.actions.cancel' | transloco" (onClick)="isCustomRangeVisible.set(false)" styleClass="p-button-text" />
-        <p-button [label]="'common.actions.apply' | transloco" (onClick)="applyCustomRange()" />
-    </ng-template>
-</p-dialog>

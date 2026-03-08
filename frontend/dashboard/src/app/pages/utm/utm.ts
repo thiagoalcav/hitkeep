@@ -1,12 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal } from "@angular/core";
 import { injectActiveLang } from "@core/i18n/active-lang";
-import { FormControl, ReactiveFormsModule } from "@angular/forms";
-import { compatForm } from "@angular/forms/signals/compat";
+import { ReactiveFormsModule } from "@angular/forms";
 import { RouterLink } from "@angular/router";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 import { TranslocoLocaleService } from "@jsverse/transloco-locale";
-import { DatePickerModule } from "primeng/datepicker";
-import { DialogModule } from "primeng/dialog";
 import { ButtonModule } from "primeng/button";
 import { CardModule } from "primeng/card";
 import { SiteService } from "@features/sites/services/site.service";
@@ -14,16 +11,9 @@ import { StatsService } from "@features/analytics/services/stats.service";
 import { PageHeader } from "@components/page-header/page-header";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
 import { KpiCard } from "@features/analytics/components/kpi-card";
-import { RangeToolbar } from "@components/range-toolbar/range-toolbar";
+import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from "@components/range-toolbar/range-toolbar";
 import { MetricList } from "@features/analytics/components/metric-list";
 import { SeriesChart, SeriesChartPoint, SeriesDefinition } from "@features/analytics/components/series-chart";
-
-interface RangeSelectEvent {
-    value: {
-        label: string;
-        value: string;
-    };
-}
 
 type MetricFilterType = "utm_campaign" | "utm_content" | "utm_medium" | "utm_source" | "utm_term";
 interface MetricFilter {
@@ -34,7 +24,7 @@ interface MetricFilter {
 @Component({
     selector: "app-utm-dashboard",
     standalone: true,
-    imports: [ReactiveFormsModule, RouterLink, TranslocoPipe, DatePickerModule, DialogModule, ButtonModule, CardModule, PageHeader, PageBreadcrumb, RangeToolbar, KpiCard, MetricList, SeriesChart],
+    imports: [ReactiveFormsModule, RouterLink, TranslocoPipe, ButtonModule, CardModule, PageHeader, PageBreadcrumb, RangeToolbar, KpiCard, MetricList, SeriesChart],
     templateUrl: "./utm.html",
     styleUrl: "./utm.css",
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -46,26 +36,19 @@ export class UtmDashboard {
     private transloco = inject(TranslocoService);
     private readonly activeLanguage = injectActiveLang();
 
-    protected timeRanges = computed(() => {
-        this.activeLanguage();
-        return this.buildTimeRanges();
-    });
-    protected selectedRange = linkedSignal<{ label: string; value: string }[], { label: string; value: string }>({
+    protected timeRanges = signal<RangeOption[]>(DEFAULT_RANGE_OPTIONS);
+    protected selectedRange = linkedSignal<RangeOption[], RangeOption>({
         source: this.timeRanges,
         computation: (ranges, previous) => {
             const value = previous?.value.value ?? "30d";
             return ranges.find((r) => r.value === value) ?? ranges[2]!;
         }
     });
-    protected isCustomRangeVisible = signal(false);
+    protected readonly customRangeDates = signal<Date[] | null>(null);
     protected isRefreshing = computed(() => this.statsService.isLoading());
-    private readonly rangeFormModel = signal({
-        customRangeDates: new FormControl<Date[] | null>(null)
-    });
-    protected readonly rangeForm = compatForm(this.rangeFormModel);
     protected isShortRange = computed(() => {
         if (this.selectedRange().value === "24h") return true;
-        const customRangeDates = this.rangeForm.customRangeDates().value();
+        const customRangeDates = this.customRangeDates();
         if (this.selectedRange().value === "custom" && customRangeDates) {
             const d = customRangeDates;
             if (d.length === 2 && d[0] && d[1]) {
@@ -257,34 +240,13 @@ export class UtmDashboard {
         }
     }
 
-    protected onRangeChange(event: RangeSelectEvent) {
-        if (event.value.value === "custom") {
-            this.isCustomRangeVisible.set(true);
-        }
-    }
-
-    protected applyCustomRange() {
-        this.isCustomRangeVisible.set(false);
-        this.selectedRange.set({ ...this.selectedRange() });
-    }
-
-    private buildTimeRanges(): { label: string; value: string }[] {
-        return [
-            { label: this.transloco.translate("common.timeRanges.last24Hours"), value: "24h" },
-            { label: this.transloco.translate("common.timeRanges.last7Days"), value: "7d" },
-            { label: this.transloco.translate("common.timeRanges.last30Days"), value: "30d" },
-            { label: this.transloco.translate("common.timeRanges.lastYear"), value: "1y" },
-            { label: this.transloco.translate("common.timeRanges.customRange"), value: "custom" }
-        ];
-    }
-
     private getCurrentDateRange() {
         const range = this.selectedRange();
         const end = new Date();
         const start = new Date();
 
         if (range.value === "custom") {
-            const dates = this.rangeForm.customRangeDates().value();
+            const dates = this.customRangeDates();
             if (dates && dates.length === 2 && dates[0] && dates[1]) {
                 return { from: dates[0].toISOString(), to: dates[1].toISOString() };
             }

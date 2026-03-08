@@ -7,8 +7,6 @@ import { TranslocoLocaleService } from "@jsverse/transloco-locale";
 import { ButtonModule } from "primeng/button";
 import { CardModule } from "primeng/card";
 import { SelectModule } from "primeng/select";
-import { DatePickerModule } from "primeng/datepicker";
-import { DialogModule } from "primeng/dialog";
 import { SiteService } from "@features/sites/services/site.service";
 import { StatsService } from "@features/analytics/services/stats.service";
 import { AnalyticsService } from "@services/analytics.service";
@@ -20,15 +18,8 @@ import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/
 import { SeriesChart, SeriesDefinition, SeriesChartPoint } from "@features/analytics/components/series-chart";
 import { Goal, GoalSeriesPoint, SiteStats } from "@models/analytics.types";
 import { KpiCard } from "@features/analytics/components/kpi-card";
-import { RangeToolbar } from "@components/range-toolbar/range-toolbar";
+import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from "@components/range-toolbar/range-toolbar";
 import { finalize } from "rxjs";
-
-interface RangeSelectEvent {
-    value: {
-        label: string;
-        value: string;
-    };
-}
 
 type MetricFilterType = "path" | "referrer" | "device" | "country";
 interface MetricFilter {
@@ -39,7 +30,7 @@ interface MetricFilter {
 @Component({
     selector: "app-goals",
     standalone: true,
-    imports: [ReactiveFormsModule, ButtonModule, CardModule, SelectModule, DatePickerModule, DialogModule, PageHeader, PageBreadcrumb, RangeToolbar, SeriesChart, KpiCard, MetricList, GoalList, GoalManager, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, CardModule, SelectModule, PageHeader, PageBreadcrumb, RangeToolbar, SeriesChart, KpiCard, MetricList, GoalList, GoalManager, TranslocoPipe],
     templateUrl: "./goals.html",
     styleUrl: "./goals.css",
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -52,18 +43,14 @@ export class Goals {
     private transloco = inject(TranslocoService);
     private readonly activeLanguage = injectActiveLang();
 
-    protected timeRanges = computed(() => {
-        this.activeLanguage();
-        return this.buildTimeRanges();
-    });
-    protected selectedRange = linkedSignal<{ label: string; value: string }[], { label: string; value: string }>({
+    protected timeRanges = signal<RangeOption[]>(DEFAULT_RANGE_OPTIONS);
+    protected selectedRange = linkedSignal<RangeOption[], RangeOption>({
         source: this.timeRanges,
         computation: (ranges, previous) => {
             const value = previous?.value.value ?? "30d";
             return ranges.find((r) => r.value === value) ?? ranges[2]!;
         }
     });
-    protected isCustomRangeVisible = signal(false);
     private readonly goalFilterFormModel = signal({
         goalFilter: new FormControl<{ id: string; name: string } | null>(null),
         customRangeDates: new FormControl<Date[] | null>(null)
@@ -339,16 +326,6 @@ export class Goals {
         }
     }
 
-    private buildTimeRanges(): { label: string; value: string }[] {
-        return [
-            { label: this.transloco.translate("common.timeRanges.last24Hours"), value: "24h" },
-            { label: this.transloco.translate("common.timeRanges.last7Days"), value: "7d" },
-            { label: this.transloco.translate("common.timeRanges.last30Days"), value: "30d" },
-            { label: this.transloco.translate("common.timeRanges.lastYear"), value: "1y" },
-            { label: this.transloco.translate("common.timeRanges.customRange"), value: "custom" }
-        ];
-    }
-
     private loadGoalSeries(siteId: string, from: string, to: string, goalIds: string[]) {
         this.isGoalSeriesLoading.set(true);
         this.analyticsService
@@ -374,15 +351,6 @@ export class Goals {
     protected calcDelta(current: number, previous: number): number | null {
         if (previous === 0) return null;
         return ((current - previous) / previous) * 100;
-    }
-
-    protected onRangeChange(event: RangeSelectEvent) {
-        if (event.value.value === "custom") this.isCustomRangeVisible.set(true);
-    }
-
-    protected applyCustomRange() {
-        this.isCustomRangeVisible.set(false);
-        this.selectedRange.set({ ...this.selectedRange() });
     }
 
     protected getCurrentDateRange() {

@@ -6,7 +6,15 @@
         </div>
     </app-page-header>
 
-    <app-range-toolbar [timeRanges]="timeRanges()" [selectedRange]="selectedRange()" [loading]="isRefreshing()" (selectedRangeChange)="selectedRange.set($event)" (rangeChange)="onRangeChange($event)" (refresh)="refreshStats()">
+    <app-range-toolbar
+        [timeRanges]="timeRanges()"
+        [selectedRange]="selectedRange()"
+        [customRangeDates]="funnelFilterForm.customRangeDates().value()"
+        [loading]="isRefreshing()"
+        (selectedRangeChange)="selectedRange.set($event)"
+        (customRangeDatesChange)="funnelFilterForm.customRangeDates().control().setValue($event)"
+        (refresh)="refreshStats()"
+    >
         <p-button toolbar-right icon="pi pi-plus" [label]="'funnels.createAction' | transloco" (onClick)="openFunnelManager()" class="p-button-rounded p-button-secondary" size="small"> </p-button>
     </app-range-toolbar>
 
@@ -147,10 +155,3 @@
 </div>
 
 <!-- Date Range Dialog -->
-<p-dialog [header]="'common.selectDateRange' | transloco" [(visible)]="isCustomRangeVisible" [modal]="true">
-    <p-datepicker [formControl]="funnelFilterForm.customRangeDates().control()" selectionMode="range" [inline]="true" [showWeek]="false" />
-    <ng-template pTemplate="footer">
-        <p-button [label]="'common.actions.cancel' | transloco" (onClick)="isCustomRangeVisible.set(false)" styleClass="p-button-text" />
-        <p-button [label]="'common.actions.apply' | transloco" (onClick)="applyCustomRange()" />
-    </ng-template>
-</p-dialog>

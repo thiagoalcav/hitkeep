@@ -2,8 +2,7 @@ import { Component, effect, inject, signal, computed, linkedSignal, ChangeDetect
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { injectActiveLang } from "@core/i18n/active-lang";
 import { NgOptimizedImage } from "@angular/common";
-import { FormControl, ReactiveFormsModule } from "@angular/forms";
-import { compatForm } from "@angular/forms/signals/compat";
+import { ReactiveFormsModule } from "@angular/forms";
 import { debounceTime, distinctUntilChanged, finalize, Subject } from "rxjs";
 import { TranslocoService } from "@jsverse/transloco";
 import { TranslocoPipe } from "@jsverse/transloco";
@@ -18,8 +17,6 @@ import { IconFieldModule } from "primeng/iconfield";
 import { InputIconModule } from "primeng/inputicon";
 import { InputTextModule } from "primeng/inputtext";
 import { SkeletonModule } from "primeng/skeleton";
-import { DialogModule } from "primeng/dialog";
-import { DatePickerModule } from "primeng/datepicker";
 import { MenuItem } from "primeng/api";
 // Features
 import { SiteService } from "@features/sites/services/site.service";
@@ -37,20 +34,13 @@ import { PageHeader } from "@components/page-header/page-header";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
 import { KpiCard } from "@features/analytics/components/kpi-card";
 import { ShareService } from "@services/share.service";
-import { RangeToolbar } from "@components/range-toolbar/range-toolbar";
+import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from "@components/range-toolbar/range-toolbar";
 import { SiteSettingsService } from "@services/site-settings.service";
 import { RelativeDateTime } from "@components/relative-date-time/relative-date-time";
 import { buildTakeoutExportMenuItems, DEFAULT_HITS_EXPORT_FORMAT, TakeoutExportFormat } from "@core/export/export-formats";
 import { TakeoutDownloadService } from "@services/takeout-download.service";
 import { AddSiteDialog } from "@features/sites/components/add-site-dialog";
 import { TeamService } from "@services/team.service";
-
-interface RangeSelectEvent {
-    value: {
-        label: string;
-        value: string;
-    };
-}
 
 type MetricFilterType = "path" | "referrer" | "device" | "country";
 interface MetricFilter {
@@ -80,8 +70,6 @@ interface KpiCardData {
         InputIconModule,
         InputTextModule,
         SkeletonModule,
-        DialogModule,
-        DatePickerModule,
         PageHeader,
         PageBreadcrumb,
         RangeToolbar,
@@ -112,24 +100,17 @@ export class Dashboard {
     private transloco = inject(TranslocoService);
     private destroyRef = inject(DestroyRef);
     private readonly activeLanguage = injectActiveLang();
-    protected timeRanges = computed(() => {
-        this.activeLanguage();
-        return this.buildTimeRanges();
-    });
-    protected selectedRange = linkedSignal<{ label: string; value: string }[], { label: string; value: string }>({
+    protected timeRanges = signal<RangeOption[]>(DEFAULT_RANGE_OPTIONS);
+    protected selectedRange = linkedSignal<RangeOption[], RangeOption>({
         source: this.timeRanges,
         computation: (ranges, previous) => {
             const value = previous?.value.value ?? "30d";
             return ranges.find((r) => r.value === value) ?? ranges[2]!;
         }
     });
+    protected readonly customRangeDates = signal<Date[] | null>(null);
     private readonly autoRefreshIntervalMs = 30000;
     protected isShareMode = computed(() => this.shareService.isShareMode());
-    protected isCustomRangeVisible = signal(false);
-    private readonly rangeFormModel = signal({
-        customRangeDates: new FormControl<Date[] | null>(null)
-    });
-    protected readonly rangeForm = compatForm(this.rangeFormModel);
     protected showFunnelManager = signal(false);
     protected showFunnelViewer = signal(false);
     protected selectedFunnelId = signal<string | null>(null);
@@ -256,7 +237,7 @@ export class Dashboard {
     private lastTableEvent: TableLazyLoadEvent | null = null;
     protected isShortRange = computed(() => {
         if (this.selectedRange().value === "24h") return true;
-        const customRangeDates = this.rangeForm.customRangeDates().value();
+        const customRangeDates = this.customRangeDates();
         if (this.selectedRange().value === "custom" && customRangeDates) {
             const d = customRangeDates;
             if (d.length === 2 && d[0] && d[1]) {
@@ -274,7 +255,7 @@ export class Dashboard {
             return this.transloco.translate("dashboard.chartTitleWithRange", { range: range.label });
         }
 
-        const dates = this.rangeForm.customRangeDates().value();
+        const dates = this.customRangeDates();
         if (dates && dates.length === 2 && dates[0] && dates[1]) {
             const start = this.localeService.localizeDate(dates[0], undefined, { month: "short", day: "numeric" });
             const end = this.localeService.localizeDate(dates[1], undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -365,22 +346,13 @@ export class Dashboard {
         return ((current - previous) / previous) * 100;
     }
 
-    onRangeChange(event: RangeSelectEvent) {
-        if (event.value.value === "custom") this.isCustomRangeVisible.set(true);
-    }
-
-    applyCustomRange() {
-        this.isCustomRangeVisible.set(false);
-        this.selectedRange.set({ ...this.selectedRange() });
-    }
-
     protected getCurrentDateRange() {
         const range = this.selectedRange();
         const end = new Date();
         const start = new Date();
 
         if (range.value === "custom") {
-            const d = this.rangeForm.customRangeDates().value();
+            const d = this.customRangeDates();
             if (d && d.length === 2 && d[0] && d[1]) {
                 return { from: d[0].toISOString(), to: d[1].toISOString() };
             }
@@ -461,16 +433,6 @@ export class Dashboard {
             default:
                 return `${filter.type}: ${filter.value}`;
         }
-    }
-
-    private buildTimeRanges(): { label: string; value: string }[] {
-        return [
-            { label: this.transloco.translate("common.timeRanges.last24Hours"), value: "24h" },
-            { label: this.transloco.translate("common.timeRanges.last7Days"), value: "7d" },
-            { label: this.transloco.translate("common.timeRanges.last30Days"), value: "30d" },
-            { label: this.transloco.translate("common.timeRanges.lastYear"), value: "1y" },
-            { label: this.transloco.translate("common.timeRanges.customRange"), value: "custom" }
-        ];
     }
 
     protected exportFiltered(format: TakeoutExportFormat = DEFAULT_HITS_EXPORT_FORMAT) {

@@ -5,7 +5,15 @@
         </div>
     </app-page-header>
 
-    <app-range-toolbar [timeRanges]="timeRanges()" [selectedRange]="selectedRange()" [loading]="isRefreshing()" (selectedRangeChange)="selectedRange.set($event)" (rangeChange)="onRangeChange($event)" (refresh)="refreshStats()">
+    <app-range-toolbar
+        [timeRanges]="timeRanges()"
+        [selectedRange]="selectedRange()"
+        [customRangeDates]="customRangeDates()"
+        [loading]="isRefreshing()"
+        (selectedRangeChange)="selectedRange.set($event)"
+        (customRangeDatesChange)="customRangeDates.set($event)"
+        (refresh)="refreshStats()"
+    >
         <p-button toolbar-right routerLink="/utm/builder" icon="pi pi-link" [label]="'utmBuilder.breadcrumb' | transloco" severity="secondary" size="small" />
     </app-range-toolbar>
 
@@ -118,11 +126,3 @@
     </div>
     }
 </div>
-
-<p-dialog [header]="'common.selectDateRange' | transloco" [(visible)]="isCustomRangeVisible" [modal]="true">
-    <p-datepicker [formControl]="rangeForm.customRangeDates().control()" selectionMode="range" [inline]="true" [showWeek]="false" />
-    <ng-template pTemplate="footer">
-        <p-button [label]="'common.actions.cancel' | transloco" (onClick)="isCustomRangeVisible.set(false)" styleClass="p-button-text" />
-        <p-button [label]="'common.actions.apply' | transloco" (onClick)="applyCustomRange()" />
-    </ng-template>
-</p-dialog>

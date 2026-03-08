@@ -1,28 +1,21 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal, untracked } from "@angular/core";
-import { FormsModule, FormControl, ReactiveFormsModule } from "@angular/forms";
-import { compatForm } from "@angular/forms/signals/compat";
+import { FormsModule, ReactiveFormsModule } from "@angular/forms";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 import { TranslocoLocaleService } from "@jsverse/transloco-locale";
 import { SelectModule } from "primeng/select";
 import { CardModule } from "primeng/card";
 import { SkeletonModule } from "primeng/skeleton";
 import { ButtonModule } from "primeng/button";
-import { DatePickerModule } from "primeng/datepicker";
-import { DialogModule } from "primeng/dialog";
 import { SiteService } from "@features/sites/services/site.service";
 import { AnalyticsService } from "@core/services/analytics.service";
 import { MetricList } from "@features/analytics/components/metric-list";
-import { RangeToolbar, RangeOption } from "@components/range-toolbar/range-toolbar";
+import { DEFAULT_RANGE_OPTIONS, RangeToolbar, RangeOption } from "@components/range-toolbar/range-toolbar";
 import { PageHeader } from "@components/page-header/page-header";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
 import { SeriesChart, SeriesDefinition, SeriesChartPoint } from "@features/analytics/components/series-chart";
 import { MetricStat, EventSeriesPoint, EventAudience } from "@models/analytics.types";
 import { finalize } from "rxjs";
 import { injectActiveLang } from "@core/i18n/active-lang";
-
-interface RangeSelectEvent {
-    value: RangeOption;
-}
 
 interface EventFilterChip {
     key: string;
@@ -32,7 +25,7 @@ interface EventFilterChip {
 
 @Component({
     selector: "app-events",
-    imports: [FormsModule, ReactiveFormsModule, TranslocoPipe, SelectModule, CardModule, SkeletonModule, ButtonModule, DatePickerModule, DialogModule, MetricList, RangeToolbar, PageHeader, PageBreadcrumb, SeriesChart],
+    imports: [FormsModule, ReactiveFormsModule, TranslocoPipe, SelectModule, CardModule, SkeletonModule, ButtonModule, MetricList, RangeToolbar, PageHeader, PageBreadcrumb, SeriesChart],
     templateUrl: "./events.html",
     styleUrl: "./events.css",
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -44,10 +37,7 @@ export class Events {
     private transloco = inject(TranslocoService);
     private readonly activeLanguage = injectActiveLang();
 
-    protected timeRanges = computed<RangeOption[]>(() => {
-        this.activeLanguage();
-        return this.buildTimeRanges();
-    });
+    protected timeRanges = signal<RangeOption[]>(DEFAULT_RANGE_OPTIONS);
     protected selectedRange = linkedSignal<RangeOption[], RangeOption>({
         source: this.timeRanges,
         computation: (ranges, previous) => {
@@ -55,14 +45,10 @@ export class Events {
             return ranges.find((r) => r.value === value) ?? ranges[2]!;
         }
     });
-    protected isCustomRangeVisible = signal(false);
-    private readonly rangeFormModel = signal({
-        customRangeDates: new FormControl<Date[] | null>(null)
-    });
-    protected readonly rangeForm = compatForm(this.rangeFormModel);
+    protected readonly customRangeDates = signal<Date[] | null>(null);
     protected isShortRange = computed(() => {
         if (this.selectedRange().value === "24h") return true;
-        const d = this.rangeForm.customRangeDates().value();
+        const d = this.customRangeDates();
         if (this.selectedRange().value === "custom" && d && d.length === 2 && d[0] && d[1]) {
             return d[1].getTime() - d[0].getTime() < 48 * 60 * 60 * 1000;
         }
@@ -315,15 +301,6 @@ export class Events {
         }
     }
 
-    protected onRangeChange(event: RangeSelectEvent) {
-        if (event.value.value === "custom") this.isCustomRangeVisible.set(true);
-    }
-
-    protected applyCustomRange() {
-        this.isCustomRangeVisible.set(false);
-        this.selectedRange.set({ ...this.selectedRange() });
-    }
-
     private dimFilterLabel(dim: string, value: string): string {
         switch (dim) {
             case "path":
@@ -339,23 +316,13 @@ export class Events {
         }
     }
 
-    private buildTimeRanges(): RangeOption[] {
-        return [
-            { label: this.transloco.translate("common.timeRanges.last24Hours"), value: "24h" },
-            { label: this.transloco.translate("common.timeRanges.last7Days"), value: "7d" },
-            { label: this.transloco.translate("common.timeRanges.last30Days"), value: "30d" },
-            { label: this.transloco.translate("common.timeRanges.lastYear"), value: "1y" },
-            { label: this.transloco.translate("common.timeRanges.customRange"), value: "custom" }
-        ];
-    }
-
     protected getCurrentDateRange(): { from: string; to: string } | null {
         const range = this.selectedRange();
         const end = new Date();
         const start = new Date();
 
         if (range.value === "custom") {
-            const d = this.rangeForm.customRangeDates().value();
+            const d = this.customRangeDates();
             if (d && d.length === 2 && d[0] && d[1]) {
                 return { from: d[0].toISOString(), to: d[1].toISOString() };
             }

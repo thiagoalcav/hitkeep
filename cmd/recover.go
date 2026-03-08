@@ -3,6 +3,7 @@ package hitkeepcmd
 import (
 	"bufio"
 	"context"
+	"database/sql"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -377,30 +378,32 @@ func recoverRestoreBackup(args []string) {
 // restoreDatabase imports a backup snapshot into a fresh DuckDB at targetPath.
 // If targetPath already exists, it is renamed as a safety net.
 func restoreDatabase(ctx context.Context, targetPath, sourcePath string, isS3 bool, s3Conf *worker.S3Config) error {
-	// Safety rename existing DB.
-	if _, err := os.Stat(targetPath); err == nil {
-		backup := fmt.Sprintf("%s.pre-restore.%s", targetPath, time.Now().UTC().Format("2006-01-02T150405Z"))
-		if err := os.Rename(targetPath, backup); err != nil {
-			return fmt.Errorf("could not rename existing database %s to %s: %w", targetPath, backup, err)
-		}
-		fmt.Printf("  Existing DB renamed to %s\n", backup)
-
-		// Also rename WAL file if present.
-		walPath := targetPath + ".wal"
-		if _, err := os.Stat(walPath); err == nil {
-			walBackup := backup + ".wal"
-			if renameErr := os.Rename(walPath, walBackup); renameErr != nil {
-				slog.Warn("Could not rename WAL file", "path", walPath, "error", renameErr)
-			}
-		}
+	targetDir := filepath.Dir(targetPath)
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		return fmt.Errorf("create target directory %s: %w", targetDir, err)
 	}
 
-	// Open fresh empty DuckDB.
-	store := database.NewStore(targetPath)
+	tempPath := filepath.Join(targetDir, fmt.Sprintf(".%s.restore-%d.tmp", filepath.Base(targetPath), time.Now().UTC().UnixNano()))
+	tempWalPath := tempPath + ".wal"
+	defer func() {
+		_ = os.Remove(tempWalPath)
+		_ = os.Remove(tempPath)
+	}()
+
+	backupPath, err := moveExistingDatabaseAside(targetPath)
+	if err != nil {
+		return err
+	}
+	if backupPath != "" {
+		fmt.Printf("  Existing DB renamed to %s\n", backupPath)
+	}
+
+	// Import into a temporary database first so the final restored DB does not
+	// depend on a WAL created by the recovery command itself.
+	store := database.NewStore(tempPath)
 	if err := store.Connect(); err != nil {
 		return fmt.Errorf("could not create target database: %w", err)
 	}
-	defer store.Close()
 
 	db := store.DB()
 
@@ -421,7 +424,64 @@ func restoreDatabase(ctx context.Context, targetPath, sourcePath string, isS3 bo
 		return fmt.Errorf("import database from %s: %w", sourcePath, err)
 	}
 
+	if err := finalizeRestoredDatabase(ctx, db, tempPath, store); err != nil {
+		return err
+	}
+
+	if err := os.Rename(tempPath, targetPath); err != nil {
+		return fmt.Errorf("activate restored database %s: %w", targetPath, err)
+	}
+
 	return nil
+}
+
+func finalizeRestoredDatabase(ctx context.Context, db *sql.DB, dbPath string, store *database.Store) error {
+	if _, err := db.ExecContext(ctx, "CHECKPOINT;"); err != nil {
+		return fmt.Errorf("checkpoint restored database: %w", err)
+	}
+	if err := store.Close(); err != nil {
+		return fmt.Errorf("close restored database: %w", err)
+	}
+
+	walPath := dbPath + ".wal"
+	if _, err := os.Stat(walPath); err == nil {
+		return fmt.Errorf("restored database left unexpected WAL file %s; aborting to avoid partially replayable state", walPath)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("stat restored WAL %s: %w", walPath, err)
+	}
+
+	return nil
+}
+
+func moveExistingDatabaseAside(targetPath string) (string, error) {
+	backup := fmt.Sprintf("%s.pre-restore.%s", targetPath, time.Now().UTC().Format("2006-01-02T150405Z"))
+	renamed := false
+
+	if _, err := os.Stat(targetPath); err == nil {
+		if err := os.Rename(targetPath, backup); err != nil {
+			return "", fmt.Errorf("could not rename existing database %s to %s: %w", targetPath, backup, err)
+		}
+		renamed = true
+	} else if err != nil && !os.IsNotExist(err) {
+		return "", fmt.Errorf("stat existing database %s: %w", targetPath, err)
+	}
+
+	walPath := targetPath + ".wal"
+	if _, err := os.Stat(walPath); err == nil {
+		walBackup := backup + ".wal"
+		if renameErr := os.Rename(walPath, walBackup); renameErr != nil {
+			return "", fmt.Errorf("could not rename existing WAL %s to %s: %w", walPath, walBackup, renameErr)
+		}
+		renamed = true
+	} else if err != nil && !os.IsNotExist(err) {
+		return "", fmt.Errorf("stat existing WAL %s: %w", walPath, err)
+	}
+
+	if renamed {
+		return backup, nil
+	}
+
+	return "", nil
 }
 
 // findLatestLocalSnapshot finds the latest snapshot directory (lexicographic sort)

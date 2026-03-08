@@ -137,6 +137,7 @@
             "close": "Chiudi",
             "downloadXlsx": "Scarica XLSX",
             "exportCsv": "Esporta CSV",
+            "refresh": "Aggiorna",
             "save": "Salva"
         },
         "saved": "Salvato",
@@ -214,7 +215,13 @@
             "last7Days": "Ultimi 7 giorni",
             "last30Days": "Ultimi 30 giorni",
             "lastYear": "Ultimo anno",
-            "customRange": "Intervallo personalizzato"
+            "customRange": "Intervallo personalizzato",
+            "customShort": "Personalizzato",
+            "customRangeSummary": "{{start}} - {{end}}",
+            "customRangeHint": "Scegli un orario di inizio e fine preciso al minuto.",
+            "customStart": "Da",
+            "customEnd": "A",
+            "openCustomRangeAria": "Apri intervallo di tempo personalizzato"
         },
         "unknownError": "Errore sconosciuto",
         "unspecified": "Non specificato",

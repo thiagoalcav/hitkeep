@@ -265,6 +265,48 @@ type EventSeriesPoint struct {
 	Count int       `json:"count"`
 }
 
+type EcommerceParams struct {
+	SiteID   uuid.UUID
+	Start    time.Time
+	End      time.Time
+	Filters  []Filter
+	ItemID   string
+	ItemName string
+	Limit    int
+}
+
+type EcommerceSummary struct {
+	Revenue                float64 `json:"revenue"`
+	Orders                 int     `json:"orders"`
+	AverageOrderValue      float64 `json:"average_order_value"`
+	CheckoutStarts         int     `json:"checkout_starts"`
+	CheckoutConversionRate float64 `json:"checkout_conversion_rate"`
+	Currency               string  `json:"currency"`
+}
+
+type EcommerceSeriesPoint struct {
+	Time    time.Time `json:"time"`
+	Revenue float64   `json:"revenue"`
+	Orders  int       `json:"orders"`
+}
+
+type EcommerceProductStat struct {
+	ItemID   string  `json:"item_id"`
+	ItemName string  `json:"item_name"`
+	Revenue  float64 `json:"revenue"`
+	Orders   int     `json:"orders"`
+	Quantity int     `json:"quantity"`
+}
+
+type EcommerceSourceStat struct {
+	UTMSource   string  `json:"utm_source"`
+	UTMMedium   string  `json:"utm_medium"`
+	UTMCampaign string  `json:"utm_campaign"`
+	Referrer    string  `json:"referrer"`
+	Revenue     float64 `json:"revenue"`
+	Orders      int     `json:"orders"`
+}
+
 type GoalStats struct {
 	GoalID         uuid.UUID `json:"goal_id"`
 	Name           string    `json:"name"`

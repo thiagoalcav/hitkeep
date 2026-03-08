@@ -55,6 +55,22 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		SitePerm:    authcore.PermSiteView,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleExportSiteHits()))
+	mux.HandleFunc("GET /api/sites/{id}/ecommerce", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetSiteEcommerceSummary()))
+	mux.HandleFunc("GET /api/sites/{id}/ecommerce/timeseries", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetSiteEcommerceTimeseries()))
+	mux.HandleFunc("GET /api/sites/{id}/ecommerce/products", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetSiteEcommerceProducts()))
+	mux.HandleFunc("GET /api/sites/{id}/ecommerce/sources", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetSiteEcommerceSources()))
 	mux.HandleFunc("GET /api/favicon/{domain}", ctx.Handler(shared.HandlerConfig{
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleGetFavicon()))
@@ -818,6 +834,114 @@ func (h *handler) handleGetSiteStats() http.HandlerFunc {
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(stats); err != nil {
+			slog.Error("Failed to encode response", "error", err)
+		}
+	}
+}
+
+func (h *handler) parseEcommerceParams(w http.ResponseWriter, r *http.Request, defaultLimit int) (api.EcommerceParams, bool) {
+	if h.ctx.Store == nil {
+		http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
+		return api.EcommerceParams{}, false
+	}
+
+	siteIDStr := r.PathValue("id")
+	siteID, err := uuid.Parse(siteIDStr)
+	if err != nil {
+		http.Error(w, "Invalid site_id", http.StatusBadRequest)
+		return api.EcommerceParams{}, false
+	}
+
+	now := time.Now().UTC()
+	end := now.AddDate(0, 0, 1)
+	start := end.AddDate(0, 0, -30)
+	q := r.URL.Query()
+
+	if fromStr := q.Get("from"); fromStr != "" {
+		if parsed, err := time.Parse(time.RFC3339, fromStr); err == nil {
+			start = parsed
+		}
+	}
+	if toStr := q.Get("to"); toStr != "" {
+		if parsed, err := time.Parse(time.RFC3339, toStr); err == nil {
+			end = parsed
+		}
+	}
+
+	filters, err := parseFilters(q)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return api.EcommerceParams{}, false
+	}
+
+	limit := defaultLimit
+	if rawLimit := q.Get("limit"); rawLimit != "" {
+		parsed, err := strconv.Atoi(rawLimit)
+		if err != nil {
+			http.Error(w, "Invalid limit", http.StatusBadRequest)
+			return api.EcommerceParams{}, false
+		}
+		limit = parsed
+	}
+
+	return api.EcommerceParams{
+		SiteID:   siteID,
+		Start:    start,
+		End:      end,
+		Filters:  filters,
+		ItemID:   strings.TrimSpace(q.Get("item_id")),
+		ItemName: strings.TrimSpace(q.Get("item_name")),
+		Limit:    limit,
+	}, true
+}
+
+func (h *handler) handleGetSiteEcommerceSummary() http.HandlerFunc {
+	return h.handleGetSiteEcommerce(func(ctx context.Context, store *database.Store, params api.EcommerceParams) (any, error) {
+		return store.GetEcommerceSummary(ctx, params)
+	}, "summary")
+}
+
+func (h *handler) handleGetSiteEcommerceTimeseries() http.HandlerFunc {
+	return h.handleGetSiteEcommerce(func(ctx context.Context, store *database.Store, params api.EcommerceParams) (any, error) {
+		return store.GetEcommerceTimeSeries(ctx, params)
+	}, "timeseries")
+}
+
+func (h *handler) handleGetSiteEcommerceProducts() http.HandlerFunc {
+	return h.handleGetSiteEcommerce(func(ctx context.Context, store *database.Store, params api.EcommerceParams) (any, error) {
+		return store.GetEcommerceTopProducts(ctx, params)
+	}, "products")
+}
+
+func (h *handler) handleGetSiteEcommerceSources() http.HandlerFunc {
+	return h.handleGetSiteEcommerce(func(ctx context.Context, store *database.Store, params api.EcommerceParams) (any, error) {
+		return store.GetEcommerceSources(ctx, params)
+	}, "sources")
+}
+
+func (h *handler) handleGetSiteEcommerce(load func(context.Context, *database.Store, api.EcommerceParams) (any, error), label string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		params, ok := h.parseEcommerceParams(w, r, 10)
+		if !ok {
+			return
+		}
+
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), params.SiteID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", params.SiteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		payload, err := load(r.Context(), analyticsStore, params)
+		if err != nil {
+			slog.Error("Failed to get ecommerce "+label, "error", err, "site_id", params.SiteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(payload); err != nil {
 			slog.Error("Failed to encode response", "error", err)
 		}
 	}

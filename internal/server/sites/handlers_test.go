@@ -359,6 +359,149 @@ func TestHandleGetSiteStats(t *testing.T) {
 	}
 }
 
+func TestHandleGetSiteEcommerceSummary(t *testing.T) {
+	h, store, userID := setupTestEnv(t)
+	defer store.Close()
+
+	site, err := store.CreateSite(context.Background(), userID, "shop-summary.test")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	sessionID := uuid.New()
+	isUnique := true
+	timestamp := time.Date(2026, 3, 7, 9, 0, 0, 0, time.UTC)
+
+	if err := store.CreateHit(context.Background(), &api.Hit{
+		SiteID:        site.ID,
+		SessionID:     sessionID,
+		PageID:        uuid.New(),
+		Path:          "/pricing",
+		Timestamp:     timestamp,
+		ViewportWidth: new(1440),
+		CountryCode:   new("US"),
+		UTMSource:     new("google"),
+		UTMMedium:     new("cpc"),
+		UTMCampaign:   new("launch"),
+		IsUnique:      &isUnique,
+	}); err != nil {
+		t.Fatalf("create hit: %v", err)
+	}
+
+	if err := store.CreateEvent(context.Background(), &api.Event{
+		SiteID:    site.ID,
+		SessionID: sessionID,
+		Name:      "begin_checkout",
+		Timestamp: timestamp.Add(10 * time.Minute),
+		Properties: map[string]any{
+			"items": []map[string]any{
+				{"item_id": "pro", "item_name": "Pro", "quantity": 1, "price": 79.0},
+			},
+		},
+	}); err != nil {
+		t.Fatalf("create checkout: %v", err)
+	}
+
+	if err := store.CreateEvent(context.Background(), &api.Event{
+		SiteID:    site.ID,
+		SessionID: sessionID,
+		Name:      "purchase",
+		Timestamp: timestamp.Add(20 * time.Minute),
+		Properties: map[string]any{
+			"transaction_id": "ord_2001",
+			"value":          79.0,
+			"currency":       "USD",
+			"items": []map[string]any{
+				{"item_id": "pro", "item_name": "Pro", "quantity": 1, "price": 79.0},
+			},
+		},
+	}); err != nil {
+		t.Fatalf("create purchase: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/sites/"+site.ID.String()+"/ecommerce", nil)
+	req.SetPathValue("id", site.ID.String())
+	req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, userID))
+
+	w := httptest.NewRecorder()
+	h.handleGetSiteEcommerceSummary().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var summary api.EcommerceSummary
+	if err := json.NewDecoder(w.Body).Decode(&summary); err != nil {
+		t.Fatalf("decode summary: %v", err)
+	}
+	if summary.Orders != 1 || summary.CheckoutStarts != 1 || summary.Revenue != 79 {
+		t.Fatalf("unexpected summary: %+v", summary)
+	}
+}
+
+func TestHandleGetSiteEcommerceProductsSupportsItemFilter(t *testing.T) {
+	h, store, userID := setupTestEnv(t)
+	defer store.Close()
+
+	site, err := store.CreateSite(context.Background(), userID, "shop-products.test")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	sessionID := uuid.New()
+	isUnique := true
+	timestamp := time.Date(2026, 3, 7, 12, 0, 0, 0, time.UTC)
+
+	if err := store.CreateHit(context.Background(), &api.Hit{
+		SiteID:      site.ID,
+		SessionID:   sessionID,
+		PageID:      uuid.New(),
+		Path:        "/checkout",
+		Timestamp:   timestamp,
+		UTMSource:   new("newsletter"),
+		UTMMedium:   new("email"),
+		UTMCampaign: new("digest"),
+		IsUnique:    &isUnique,
+	}); err != nil {
+		t.Fatalf("create hit: %v", err)
+	}
+
+	if err := store.CreateEvent(context.Background(), &api.Event{
+		SiteID:    site.ID,
+		SessionID: sessionID,
+		Name:      "order_completed",
+		Timestamp: timestamp.Add(15 * time.Minute),
+		Properties: map[string]any{
+			"order_id": "ord_3001",
+			"amount":   100.0,
+			"currency": "USD",
+			"items": []map[string]any{
+				{"product_id": "starter", "product_name": "Starter", "quantity": 1, "price": 40.0},
+				{"product_id": "addon", "product_name": "Addon", "quantity": 2, "price": 30.0},
+			},
+		},
+	}); err != nil {
+		t.Fatalf("create purchase: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/sites/"+site.ID.String()+"/ecommerce/products?item_id=addon", nil)
+	req.SetPathValue("id", site.ID.String())
+	req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, userID))
+
+	w := httptest.NewRecorder()
+	h.handleGetSiteEcommerceProducts().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var products []api.EcommerceProductStat
+	if err := json.NewDecoder(w.Body).Decode(&products); err != nil {
+		t.Fatalf("decode products: %v", err)
+	}
+	if len(products) != 2 {
+		t.Fatalf("expected both products from the filtered purchase, got %+v", products)
+	}
+}
+
 func TestHandleGetSiteHits(t *testing.T) {
 	h, store, userID := setupTestEnv(t)
 	defer store.Close()
@@ -412,6 +555,16 @@ func TestHandleGetSiteHits(t *testing.T) {
 			}
 		})
 	}
+}
+
+//go:fix inline
+func siteStringPtr(value string) *string {
+	return new(value)
+}
+
+//go:fix inline
+func siteIntPtr(value int) *int {
+	return new(value)
 }
 
 func TestHandleExportSiteHitsSupportsAllFormats(t *testing.T) {

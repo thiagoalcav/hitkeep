@@ -120,6 +120,8 @@ func openAPISpecV1(publicURL string) map[string]any {
 				"filter":          map[string]any{"name": "filter", "in": "query", "description": "Filter in form type:value (repeatable).", "schema": map[string]any{"type": "string"}},
 				"filterType":      map[string]any{"name": "filter_type", "in": "query", "schema": map[string]any{"type": "string"}},
 				"filterValue":     map[string]any{"name": "filter_value", "in": "query", "schema": map[string]any{"type": "string"}},
+				"itemID":          map[string]any{"name": "item_id", "in": "query", "schema": map[string]any{"type": "string"}},
+				"itemName":        map[string]any{"name": "item_name", "in": "query", "schema": map[string]any{"type": "string"}},
 				"goalIDQuery":     map[string]any{"name": "goal_id", "in": "query", "schema": map[string]any{"type": "string", "format": "uuid"}},
 				"funnelIDQuery":   map[string]any{"name": "funnel_id", "in": "query", "schema": map[string]any{"type": "string", "format": "uuid"}},
 				"format": map[string]any{
@@ -264,6 +266,46 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"utm_source_hits":      map[string]any{"type": "integer"},
 						"utm_term_hits":        map[string]any{"type": "integer"},
 						"goals":                map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/GoalStats"}},
+					},
+				},
+				"EcommerceSummary": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"revenue":                  map[string]any{"type": "number"},
+						"orders":                   map[string]any{"type": "integer"},
+						"average_order_value":      map[string]any{"type": "number"},
+						"checkout_starts":          map[string]any{"type": "integer"},
+						"checkout_conversion_rate": map[string]any{"type": "number"},
+						"currency":                 map[string]any{"type": "string"},
+					},
+				},
+				"EcommerceSeriesPoint": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"time":    map[string]any{"type": "string", "format": "date-time"},
+						"revenue": map[string]any{"type": "number"},
+						"orders":  map[string]any{"type": "integer"},
+					},
+				},
+				"EcommerceProductStat": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"item_id":   map[string]any{"type": "string"},
+						"item_name": map[string]any{"type": "string"},
+						"revenue":   map[string]any{"type": "number"},
+						"orders":    map[string]any{"type": "integer"},
+						"quantity":  map[string]any{"type": "integer"},
+					},
+				},
+				"EcommerceSourceStat": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"utm_source":   map[string]any{"type": "string"},
+						"utm_medium":   map[string]any{"type": "string"},
+						"utm_campaign": map[string]any{"type": "string"},
+						"referrer":     map[string]any{"type": "string"},
+						"revenue":      map[string]any{"type": "number"},
+						"orders":       map[string]any{"type": "integer"},
 					},
 				},
 				"Goal": map[string]any{
@@ -1130,6 +1172,34 @@ func openAPISpecV1(publicURL string) map[string]any {
 					paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to"),
 					paramRef("#/components/parameters/query"), paramRef("#/components/parameters/filter"), paramRef("#/components/parameters/filterType"), paramRef("#/components/parameters/filterValue"), paramRef("#/components/parameters/format"),
 				}, nil, map[string]any{"200": desc("Export file stream")}),
+			},
+			"/api/sites/{id}/ecommerce": map[string]any{
+				"get": op([]string{"Sites"}, "Get ecommerce summary", "Returns revenue, orders, average order value, checkout starts, and checkout conversion for a site.", secAnyAuth(), []any{
+					paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to"),
+					paramRef("#/components/parameters/filter"), paramRef("#/components/parameters/filterType"), paramRef("#/components/parameters/filterValue"),
+					paramRef("#/components/parameters/itemID"), paramRef("#/components/parameters/itemName"),
+				}, nil, map[string]any{"200": jsonRefResp("Ecommerce summary", "#/components/schemas/EcommerceSummary")}),
+			},
+			"/api/sites/{id}/ecommerce/timeseries": map[string]any{
+				"get": op([]string{"Sites"}, "Get ecommerce timeseries", "Returns revenue and order counts over time for a site.", secAnyAuth(), []any{
+					paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to"),
+					paramRef("#/components/parameters/filter"), paramRef("#/components/parameters/filterType"), paramRef("#/components/parameters/filterValue"),
+					paramRef("#/components/parameters/itemID"), paramRef("#/components/parameters/itemName"),
+				}, nil, map[string]any{"200": jsonSchemaResp("Ecommerce timeseries", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/EcommerceSeriesPoint"}})}),
+			},
+			"/api/sites/{id}/ecommerce/products": map[string]any{
+				"get": op([]string{"Sites"}, "Get top ecommerce products", "Returns top products by revenue from purchase events.", secAnyAuth(), []any{
+					paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to"),
+					paramRef("#/components/parameters/filter"), paramRef("#/components/parameters/filterType"), paramRef("#/components/parameters/filterValue"),
+					paramRef("#/components/parameters/itemID"), paramRef("#/components/parameters/itemName"), paramRef("#/components/parameters/limit"),
+				}, nil, map[string]any{"200": jsonSchemaResp("Ecommerce products", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/EcommerceProductStat"}})}),
+			},
+			"/api/sites/{id}/ecommerce/sources": map[string]any{
+				"get": op([]string{"Sites"}, "Get ecommerce sources", "Returns revenue and order counts grouped by UTM source, medium, campaign, and referrer.", secAnyAuth(), []any{
+					paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to"),
+					paramRef("#/components/parameters/filter"), paramRef("#/components/parameters/filterType"), paramRef("#/components/parameters/filterValue"),
+					paramRef("#/components/parameters/itemID"), paramRef("#/components/parameters/itemName"), paramRef("#/components/parameters/limit"),
+				}, nil, map[string]any{"200": jsonSchemaResp("Ecommerce sources", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/EcommerceSourceStat"}})}),
 			},
 			"/api/favicon/{domain}": map[string]any{
 				"get": op([]string{"Sites"}, "Get favicon", "Proxies favicon by domain.", nil, []any{paramRef("#/components/parameters/domain")}, nil, map[string]any{"200": desc("Favicon image")}),

@@ -36,6 +36,9 @@ Unlike other solutions that require you to manage a complex stack (PostgreSQL, R
 ### Multi-Step Funnels
 ![HitKeep multi-step funnel analytics](./.github/assets/analytics-funnels.png)
 
+### Ecommerce Analytics
+![HitKeep ecommerce analytics with revenue KPIs, chart, top products, and revenue sources](./.github/assets/analytics-ecommerce.png)
+
 ### UTM Campaign Attribution
 ![HitKeep UTM tracking and campaign attribution](./.github/assets/analytics-utm.png)
 
@@ -116,7 +119,7 @@ Visit **[hitkeep.com](https://hitkeep.com)** for the complete documentation, inc
 - **Single Binary Runtime:** No external database, queue, or cache to provision.
 - **Embedded DuckDB + NSQ:** Columnar analytics storage with in-process burst buffering.
 - **Privacy-First Tracking:** Cookie-less by default, bot filtering, DNT support, optional `sendBeacon` disable.
-- **Analytics Coverage:** Traffic overview, raw hits, events, goals, funnels, and UTM attribution fields.
+- **Analytics Coverage:** Traffic overview, raw hits, events, goals, funnels, GA4-inspired ecommerce revenue reporting, and UTM attribution fields.
 - **Teams & Multitenancy:** Shared control plane plus isolated per-team analytics databases, team invites, ownership transfer, usage visibility, and cross-team site moves.
 - **Security & Auth:** JWT sessions, remember-me tokens, password reset, TOTP MFA, and WebAuthn passkeys.
 - **RBAC & Team Management:** Instance roles and per-site roles with delegated permissions.

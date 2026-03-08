@@ -151,6 +151,38 @@ export interface EventAudience {
     top_countries: MetricStat[];
 }
 
+export interface EcommerceSummary {
+    revenue: number;
+    orders: number;
+    average_order_value: number;
+    checkout_starts: number;
+    checkout_conversion_rate: number;
+    currency: string;
+}
+
+export interface EcommerceSeriesPoint {
+    time: string;
+    revenue: number;
+    orders: number;
+}
+
+export interface EcommerceProductStat {
+    item_id: string;
+    item_name: string;
+    revenue: number;
+    orders: number;
+    quantity: number;
+}
+
+export interface EcommerceSourceStat {
+    utm_source: string;
+    utm_medium: string;
+    utm_campaign: string;
+    referrer: string;
+    revenue: number;
+    orders: number;
+}
+
 export interface MetricStat {
     name: string;
     value: number;

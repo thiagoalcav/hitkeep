@@ -37,7 +37,9 @@
         "teamAria": "Vai alla gestione del team",
         "teamSectionToggleAria": "Attiva/disattiva navigazione del team",
         "teamSettings": "Impostazioni del team",
-        "teamSettingsAria": "Vai alle impostazioni del team"
+        "teamSettingsAria": "Vai alle impostazioni del team",
+        "ecommerce": "Ecommerce",
+        "ecommerceAria": "Go to ecommerce analytics"
     },
     "teams": {
         "switcher": {
@@ -1076,5 +1078,57 @@
                 "loadSpec": "Impossibile caricare il riferimento API per questa versione."
             }
         }
+    },
+    "ecommerce": {
+        "kpis": {
+            "revenue": "Revenue",
+            "orders": "Orders",
+            "averageOrderValue": "Avg. order value",
+            "checkoutConversion": "Checkout conversion"
+        },
+        "chart": {
+            "title": "Revenue over time",
+            "description": "Track revenue and completed purchases for the active date range.",
+            "revenue": "Revenue",
+            "orders": "Orders"
+        },
+        "filters": {
+            "product": "Product: {{value}}",
+            "utmSource": "UTM source: {{value}}"
+        },
+        "filtersPanels": {
+            "sources": "Top sources",
+            "referrers": "Top referrers",
+            "devices": "Top devices",
+            "countries": "Top countries"
+        },
+        "products": {
+            "title": "Top products",
+            "description": "See which products drive the most revenue and completed orders.",
+            "empty": "No purchase items matched the current filters."
+        },
+        "sources": {
+            "title": "Revenue sources",
+            "description": "Attribute revenue to source, medium, campaign, and referrer.",
+            "empty": "No revenue sources matched the current filters."
+        },
+        "columns": {
+            "product": "Product",
+            "quantity": "Quantity",
+            "orders": "Orders",
+            "revenue": "Revenue",
+            "source": "Source",
+            "campaign": "Campaign",
+            "referrer": "Referrer"
+        },
+        "actions": {
+            "filterProduct": "Filter",
+            "clearProductFilter": "Clear"
+        },
+        "empty": {
+            "title": "No ecommerce data yet",
+            "description": "Track purchase, begin_checkout, add_to_cart, and view_item events to populate ecommerce analytics."
+        },
+        "noSiteDescription": "Select a site to view ecommerce analytics."
     }
 }

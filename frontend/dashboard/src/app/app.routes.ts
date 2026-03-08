@@ -48,6 +48,10 @@ export const routes: Routes = [
                 loadComponent: () => import("@pages/events/events").then((m) => m.Events)
             },
             {
+                path: "ecommerce",
+                loadComponent: () => import("@pages/ecommerce/ecommerce").then((m) => m.EcommercePage)
+            },
+            {
                 path: "utm",
                 loadComponent: () => import("@pages/utm/utm").then((m) => m.UtmDashboard)
             },

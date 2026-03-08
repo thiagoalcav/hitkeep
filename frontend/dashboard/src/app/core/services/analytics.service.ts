@@ -1,7 +1,7 @@
 import { Injectable, inject } from "@angular/core";
 import { HttpClient, HttpParams } from "@angular/common/http";
 import { Observable } from "rxjs";
-import { GoalSeriesPoint, FunnelSeriesPoint, EventSeriesPoint, EventAudience } from "@models/analytics.types";
+import { GoalSeriesPoint, FunnelSeriesPoint, EventSeriesPoint, EventAudience, EcommerceSummary, EcommerceSeriesPoint, EcommerceProductStat, EcommerceSourceStat, SiteStats as SiteStatsModel } from "@models/analytics.types";
 
 export interface Site {
     id: string;
@@ -148,14 +148,17 @@ export class AnalyticsService {
     /**
      * Fetches aggregated statistics and chart data.
      */
-    getSiteStats(siteId: string, from?: string, to?: string, compareFrom?: string, compareTo?: string): Observable<SiteStats> {
+    getSiteStats(siteId: string, from?: string, to?: string, compareFrom?: string, compareTo?: string, filters: { type: string; value: string }[] = []): Observable<SiteStatsModel> {
         let params = new HttpParams();
         if (from) params = params.set("from", from);
         if (to) params = params.set("to", to);
         if (compareFrom) params = params.set("compare_from", compareFrom);
         if (compareTo) params = params.set("compare_to", compareTo);
+        for (const filter of filters) {
+            params = params.append("filter", `${filter.type}:${filter.value}`);
+        }
 
-        return this.http.get<SiteStats>(`/api/sites/${siteId}/stats`, { params });
+        return this.http.get<SiteStatsModel>(`/api/sites/${siteId}/stats`, { params });
     }
 
     // Events
@@ -190,6 +193,26 @@ export class AnalyticsService {
         if (dimensionKey) params = params.set("dimension_key", dimensionKey);
         if (dimensionValue) params = params.set("dimension_value", dimensionValue);
         return this.http.get<EventAudience>(`/api/sites/${siteId}/events/audience`, { params });
+    }
+
+    getEcommerceSummary(siteId: string, from: string, to: string, filters: { type: string; value: string }[] = [], itemId?: string | null, itemName?: string | null): Observable<EcommerceSummary> {
+        const params = this.buildEcommerceParams(from, to, filters, itemId, itemName);
+        return this.http.get<EcommerceSummary>(`/api/sites/${siteId}/ecommerce`, { params });
+    }
+
+    getEcommerceTimeseries(siteId: string, from: string, to: string, filters: { type: string; value: string }[] = [], itemId?: string | null, itemName?: string | null): Observable<EcommerceSeriesPoint[]> {
+        const params = this.buildEcommerceParams(from, to, filters, itemId, itemName);
+        return this.http.get<EcommerceSeriesPoint[]>(`/api/sites/${siteId}/ecommerce/timeseries`, { params });
+    }
+
+    getEcommerceProducts(siteId: string, from: string, to: string, filters: { type: string; value: string }[] = [], itemId?: string | null, itemName?: string | null, limit = 10): Observable<EcommerceProductStat[]> {
+        const params = this.buildEcommerceParams(from, to, filters, itemId, itemName).set("limit", limit);
+        return this.http.get<EcommerceProductStat[]>(`/api/sites/${siteId}/ecommerce/products`, { params });
+    }
+
+    getEcommerceSources(siteId: string, from: string, to: string, filters: { type: string; value: string }[] = [], itemId?: string | null, itemName?: string | null, limit = 10): Observable<EcommerceSourceStat[]> {
+        const params = this.buildEcommerceParams(from, to, filters, itemId, itemName).set("limit", limit);
+        return this.http.get<EcommerceSourceStat[]>(`/api/sites/${siteId}/ecommerce/sources`, { params });
     }
 
     /**
@@ -236,6 +259,20 @@ export class AnalyticsService {
     // Funnels
     getFunnels(siteId: string): Observable<Funnel[]> {
         return this.http.get<Funnel[]>(`/api/sites/${siteId}/funnels`);
+    }
+
+    private buildEcommerceParams(from: string, to: string, filters: { type: string; value: string }[] = [], itemId?: string | null, itemName?: string | null): HttpParams {
+        let params = new HttpParams().set("from", from).set("to", to);
+        for (const filter of filters) {
+            params = params.append("filter", `${filter.type}:${filter.value}`);
+        }
+        if (itemId) {
+            params = params.set("item_id", itemId);
+        }
+        if (itemName) {
+            params = params.set("item_name", itemName);
+        }
+        return params;
     }
 
     getFunnelTimeseries(siteId: string, from?: string, to?: string, funnelIds: string[] = []): Observable<FunnelSeriesPoint[]> {

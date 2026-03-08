@@ -53,6 +53,14 @@
                 <i class="pi pi-bolt" aria-hidden="true"></i> <span>{{ "nav.events" | transloco }}</span>
             </a>
             <a
+                routerLink="/ecommerce"
+                routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
+                class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
+                [attr.aria-label]="'nav.ecommerceAria' | transloco"
+            >
+                <i class="pi pi-shopping-bag" aria-hidden="true"></i> <span>{{ "nav.ecommerce" | transloco }}</span>
+            </a>
+            <a
                 routerLink="/utm"
                 routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                 [routerLinkActiveOptions]="{ exact: true }"
@@ -207,6 +215,9 @@
                 </a>
                 <a routerLink="/events" (click)="isMobileDrawerOpen.set(false)" routerLinkActive="bg-primary-50 text-primary-700" class="flex items-center gap-3 px-3 py-2 rounded-md font-medium" [attr.aria-label]="'nav.eventsAria' | transloco">
                     <i class="pi pi-bolt" aria-hidden="true"></i> <span>{{ "nav.events" | transloco }}</span>
+                </a>
+                <a routerLink="/ecommerce" (click)="isMobileDrawerOpen.set(false)" routerLinkActive="bg-primary-50 text-primary-700" class="flex items-center gap-3 px-3 py-2 rounded-md font-medium" [attr.aria-label]="'nav.ecommerceAria' | transloco">
+                    <i class="pi pi-shopping-bag" aria-hidden="true"></i> <span>{{ "nav.ecommerce" | transloco }}</span>
                 </a>
                 <a
                     routerLink="/utm"

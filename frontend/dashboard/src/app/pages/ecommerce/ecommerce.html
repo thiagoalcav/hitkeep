@@ -132,7 +132,7 @@
                         </td>
                         <td class="text-right">{{ formatNumber(product.quantity) }}</td>
                         <td class="text-right">{{ formatNumber(product.orders) }}</td>
-                        <td class="text-right">{{ formatCurrency(product.revenue, summary()?.currency || 'USD') }}</td>
+                        <td class="text-right">{{ formatMoney(product.revenue, resolveCurrency(summary()?.currency)) }}</td>
                         <td class="text-right">
                             <button type="button" class="ecommerce-table-filter" [class.ecommerce-table-filter--active]="isProductFilterActive(product)" (click)="toggleProductFilter(product)">
                                 {{ isProductFilterActive(product) ? ("ecommerce.actions.clearProductFilter" | transloco) : ("ecommerce.actions.filterProduct" | transloco) }}
@@ -177,7 +177,7 @@
                         <td>{{ source.utm_campaign }}</td>
                         <td>{{ source.referrer }}</td>
                         <td class="text-right">{{ formatNumber(source.orders) }}</td>
-                        <td class="text-right">{{ formatCurrency(source.revenue, summary()?.currency || 'USD') }}</td>
+                        <td class="text-right">{{ formatMoney(source.revenue, resolveCurrency(summary()?.currency)) }}</td>
                     </tr>
                 </ng-template>
                 <ng-template pTemplate="emptymessage">

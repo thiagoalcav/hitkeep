@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from "@angular/core/testing";
 import { signal } from "@angular/core";
 import { of } from "rxjs";
+import { vi } from "vitest";
 import { NoopAnimationsModule } from "@angular/platform-browser/animations";
 import { provideRouter } from "@angular/router";
 import { TranslocoTestingModule } from "@jsverse/transloco";
@@ -11,8 +12,68 @@ import { AnalyticsService } from "@core/services/analytics.service";
 
 describe("EcommercePage", () => {
     let fixture: ComponentFixture<EcommercePage>;
+    let analyticsServiceMock: {
+        getEcommerceSummary: ReturnType<typeof vi.fn>;
+        getEcommerceTimeseries: ReturnType<typeof vi.fn>;
+        getEcommerceProducts: ReturnType<typeof vi.fn>;
+        getEcommerceSources: ReturnType<typeof vi.fn>;
+        getSiteStats: ReturnType<typeof vi.fn>;
+    };
 
     beforeEach(async () => {
+        analyticsServiceMock = {
+            getEcommerceSummary: vi.fn(() =>
+                of({
+                    revenue: 180,
+                    orders: 2,
+                    average_order_value: 90,
+                    checkout_starts: 3,
+                    checkout_conversion_rate: 66.7,
+                    currency: "USD"
+                })
+            ),
+            getEcommerceTimeseries: vi.fn(() =>
+                of([
+                    { time: "2026-03-07T00:00:00Z", revenue: 120, orders: 1 },
+                    { time: "2026-03-08T00:00:00Z", revenue: 60, orders: 1 }
+                ])
+            ),
+            getEcommerceProducts: vi.fn(() =>
+                of([
+                    { item_id: "pro", item_name: "Pro", revenue: 120, orders: 1, quantity: 1 },
+                    { item_id: "starter", item_name: "Starter", revenue: 60, orders: 1, quantity: 2 }
+                ])
+            ),
+            getEcommerceSources: vi.fn(() => of([{ utm_source: "google", utm_medium: "cpc", utm_campaign: "launch", referrer: "Google", revenue: 120, orders: 1 }])),
+            getSiteStats: vi.fn(() =>
+                of({
+                    live_visitors: 0,
+                    total_pageviews: 0,
+                    unique_sessions: 0,
+                    bounce_rate: 0,
+                    avg_session_duration: 0,
+                    pages_per_session: 0,
+                    chart_data: [],
+                    top_pages: [],
+                    top_referrers: [{ name: "Google", value: 1 }],
+                    top_devices: [{ name: "Desktop", value: 1 }],
+                    top_countries: [{ name: "United States", value: 1 }],
+                    top_utm_campaigns: [],
+                    top_utm_contents: [],
+                    top_utm_mediums: [],
+                    top_utm_sources: [{ name: "google", value: 1 }],
+                    top_utm_terms: [],
+                    utm_campaign_hits: 0,
+                    utm_content_hits: 0,
+                    utm_medium_hits: 0,
+                    utm_source_hits: 0,
+                    utm_term_hits: 0,
+                    goals: [],
+                    funnels: []
+                })
+            )
+        };
+
         await TestBed.configureTestingModule({
             imports: [
                 EcommercePage,
@@ -113,54 +174,7 @@ describe("EcommercePage", () => {
                 },
                 {
                     provide: AnalyticsService,
-                    useValue: {
-                        getEcommerceSummary: () =>
-                            of({
-                                revenue: 180,
-                                orders: 2,
-                                average_order_value: 90,
-                                checkout_starts: 3,
-                                checkout_conversion_rate: 66.7,
-                                currency: "USD"
-                            }),
-                        getEcommerceTimeseries: () =>
-                            of([
-                                { time: "2026-03-07T00:00:00Z", revenue: 120, orders: 1 },
-                                { time: "2026-03-08T00:00:00Z", revenue: 60, orders: 1 }
-                            ]),
-                        getEcommerceProducts: () =>
-                            of([
-                                { item_id: "pro", item_name: "Pro", revenue: 120, orders: 1, quantity: 1 },
-                                { item_id: "starter", item_name: "Starter", revenue: 60, orders: 1, quantity: 2 }
-                            ]),
-                        getEcommerceSources: () => of([{ utm_source: "google", utm_medium: "cpc", utm_campaign: "launch", referrer: "Google", revenue: 120, orders: 1 }]),
-                        getSiteStats: () =>
-                            of({
-                                live_visitors: 0,
-                                total_pageviews: 0,
-                                unique_sessions: 0,
-                                bounce_rate: 0,
-                                avg_session_duration: 0,
-                                pages_per_session: 0,
-                                chart_data: [],
-                                top_pages: [],
-                                top_referrers: [{ name: "Google", value: 1 }],
-                                top_devices: [{ name: "Desktop", value: 1 }],
-                                top_countries: [{ name: "United States", value: 1 }],
-                                top_utm_campaigns: [],
-                                top_utm_contents: [],
-                                top_utm_mediums: [],
-                                top_utm_sources: [{ name: "google", value: 1 }],
-                                top_utm_terms: [],
-                                utm_campaign_hits: 0,
-                                utm_content_hits: 0,
-                                utm_medium_hits: 0,
-                                utm_source_hits: 0,
-                                utm_term_hits: 0,
-                                goals: [],
-                                funnels: []
-                            })
-                    }
+                    useValue: analyticsServiceMock
                 },
                 {
                     provide: TranslocoLocaleService,
@@ -193,5 +207,29 @@ describe("EcommercePage", () => {
         expect(text).toContain("Top products");
         expect(text).toContain("Revenue sources");
         expect(text).toContain("Pro");
+    });
+
+    it("does not crash when ecommerce currency is unspecified", () => {
+        analyticsServiceMock.getEcommerceSummary.mockReturnValue(
+            of({
+                revenue: 0,
+                orders: 0,
+                average_order_value: 0,
+                checkout_starts: 0,
+                checkout_conversion_rate: 0,
+                currency: "(Unspecified)"
+            })
+        );
+        analyticsServiceMock.getEcommerceTimeseries.mockReturnValue(of([]));
+        analyticsServiceMock.getEcommerceProducts.mockReturnValue(of([]));
+        analyticsServiceMock.getEcommerceSources.mockReturnValue(of([]));
+
+        fixture = TestBed.createComponent(EcommercePage);
+        expect(() => fixture.detectChanges()).not.toThrow();
+
+        const text = fixture.nativeElement.textContent;
+        expect(text).toContain("Revenue");
+        expect(text).toContain("Avg. order value");
+        expect(text).toContain("No ecommerce data yet");
     });
 });

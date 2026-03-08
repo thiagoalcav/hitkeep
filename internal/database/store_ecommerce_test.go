@@ -235,6 +235,46 @@ func TestGetEcommerceSummaryAndBreakdowns(t *testing.T) {
 	}
 }
 
+func TestGetEcommerceSummaryWithoutPurchasesLeavesCurrencyEmpty(t *testing.T) {
+	t.Parallel()
+
+	store := NewStore(":memory:")
+	if err := store.Connect(); err != nil {
+		t.Fatalf("connect store: %v", err)
+	}
+	if err := store.Migrate(context.Background()); err != nil {
+		t.Fatalf("migrate store: %v", err)
+	}
+	defer store.Close()
+
+	ctx := context.Background()
+	userID, err := store.CreateUser(ctx, "empty-ecommerce@test.dev", "hash")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	site, err := store.CreateSite(ctx, userID, "empty.shop.test")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	now := time.Date(2026, 3, 8, 10, 0, 0, 0, time.UTC)
+	summary, err := store.GetEcommerceSummary(ctx, api.EcommerceParams{
+		SiteID: site.ID,
+		Start:  now.Add(-24 * time.Hour),
+		End:    now,
+	})
+	if err != nil {
+		t.Fatalf("get ecommerce summary: %v", err)
+	}
+
+	if summary.Currency != "" {
+		t.Fatalf("expected empty currency for no ecommerce purchases, got %q", summary.Currency)
+	}
+	if summary.Revenue != 0 || summary.Orders != 0 || summary.CheckoutStarts != 0 {
+		t.Fatalf("expected zeroed summary, got %+v", summary)
+	}
+}
+
 //go:fix inline
 func stringPtr(value string) *string {
 	return new(value)

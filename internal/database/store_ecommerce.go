@@ -91,7 +91,7 @@ func (s *Store) GetEcommerceSummary(ctx context.Context, params api.EcommercePar
 	}
 
 	summary := &api.EcommerceSummary{
-		Currency: "(Unspecified)",
+		Currency: "",
 	}
 
 	currencyCounts := map[string]int{}

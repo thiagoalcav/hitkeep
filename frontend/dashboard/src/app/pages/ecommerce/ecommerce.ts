@@ -87,12 +87,12 @@ export class EcommercePage {
         this.activeLanguage();
         const summary = this.summary();
         const loading = this.isLoading();
-        const currency = summary?.currency || "USD";
+        const currency = this.resolveCurrency(summary?.currency);
 
         return [
             {
                 label: this.transloco.translate("ecommerce.kpis.revenue"),
-                value: summary ? this.formatCurrency(summary.revenue, currency) : this.formatCurrency(0, currency),
+                value: summary ? this.formatMoney(summary.revenue, currency) : this.formatMoney(0, currency),
                 loading,
                 valueClass: "text-2xl xl:text-3xl font-bold"
             },
@@ -104,7 +104,7 @@ export class EcommercePage {
             },
             {
                 label: this.transloco.translate("ecommerce.kpis.averageOrderValue"),
-                value: summary ? this.formatCurrency(summary.average_order_value, currency) : this.formatCurrency(0, currency),
+                value: summary ? this.formatMoney(summary.average_order_value, currency) : this.formatMoney(0, currency),
                 loading,
                 valueClass: "text-2xl xl:text-3xl font-bold"
             },
@@ -239,9 +239,20 @@ export class EcommercePage {
     protected formatCurrency(value: number, currency: string): string {
         return new Intl.NumberFormat(this.activeLanguage(), {
             style: "currency",
-            currency: currency || "USD",
+            currency,
             maximumFractionDigits: 2
         }).format(value);
+    }
+
+    protected formatMoney(value: number, currency: string | null): string {
+        if (currency) {
+            return this.formatCurrency(value, currency);
+        }
+
+        return this.localeService.localizeNumber(value, "decimal", undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
     }
 
     protected formatNumber(value: number): string {
@@ -253,6 +264,14 @@ export class EcommercePage {
             minimumFractionDigits: 1,
             maximumFractionDigits: 1
         });
+    }
+
+    protected resolveCurrency(currency: string | null | undefined): string | null {
+        const normalized = (currency ?? "").trim().toUpperCase();
+        if (/^[A-Z]{3}$/.test(normalized)) {
+            return normalized;
+        }
+        return null;
     }
 
     private loadData(siteId: string, from: string, to: string, filters: MetricFilter[], product: ProductFilter | null) {

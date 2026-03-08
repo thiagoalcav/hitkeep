@@ -12,6 +12,8 @@
 //     device, referrer, and UTM distributions.
 //   - Creates conversion events: newsletter_signup, trial_started,
 //     demo_requested, purchase_completed.
+//   - Creates GA4-inspired ecommerce events: view_item, add_to_cart,
+//     begin_checkout, purchase.
 //   - Sets up Goals and Funnels that reference those events.
 //   - Runs the rollup backfill so all charts are populated immediately.
 package main
@@ -203,6 +205,15 @@ type utmParams struct {
 	term, content            *string
 }
 
+type ecommerceProduct struct {
+	itemID    string
+	itemName  string
+	plan      string
+	category  string
+	price     int
+	priceYear int
+}
+
 var utmCampaigns = []weightedEntry[*utmParams]{
 	{nil, 800}, // no UTM (organic / direct)
 	{&utmParams{
@@ -234,6 +245,14 @@ var utmCampaigns = []weightedEntry[*utmParams]{
 	{&utmParams{
 		source: "devto", medium: "content", campaign: "tutorial-series",
 	}, 15},
+}
+
+var ecommerceProducts = []weightedEntry[ecommerceProduct]{
+	{ecommerceProduct{itemID: "starter-plan", itemName: "Starter Plan", plan: "starter", category: "subscription", price: 29, priceYear: 290}, 34},
+	{ecommerceProduct{itemID: "pro-plan", itemName: "Pro Plan", plan: "pro", category: "subscription", price: 79, priceYear: 790}, 36},
+	{ecommerceProduct{itemID: "business-plan", itemName: "Business Plan", plan: "business", category: "subscription", price: 199, priceYear: 1990}, 20},
+	{ecommerceProduct{itemID: "team-seat-pack", itemName: "Team Seat Pack", plan: "business", category: "add-on", price: 49, priceYear: 490}, 7},
+	{ecommerceProduct{itemID: "annual-upgrade", itemName: "Annual Upgrade", plan: "pro", category: "upgrade", price: 199, priceYear: 199}, 3},
 }
 
 // ─────────────────────────────────────────────
@@ -587,7 +606,7 @@ func seedTraffic(ctx context.Context, store *database.Store, siteID uuid.UUID, g
 			}
 
 			// Maybe fire a conversion event at the end of the session.
-			events := fireConversionEvents(ctx, store, siteID, sessionID, goals, rng, sessionStart.Add(time.Duration(sessionLen*90+30)*time.Second))
+			events := fireConversionEvents(ctx, store, siteID, sessionID, goals, rng, sessionStart.Add(time.Duration(sessionLen*90+30)*time.Second), entryPage, utmEntry)
 			stats.events += events
 		}
 
@@ -600,7 +619,7 @@ func seedTraffic(ctx context.Context, store *database.Store, siteID uuid.UUID, g
 }
 
 // fireConversionEvents randomly fires zero or more conversion events for a session.
-func fireConversionEvents(ctx context.Context, store *database.Store, siteID, sessionID uuid.UUID, goals goalIDs, rng *mrand.Rand, ts time.Time) int {
+func fireConversionEvents(ctx context.Context, store *database.Store, siteID, sessionID uuid.UUID, goals goalIDs, rng *mrand.Rand, ts time.Time, entryPage string, utm *utmParams) int {
 	_ = goals // goalIDs are used for reference, events use the same string values
 	count := 0
 
@@ -624,12 +643,6 @@ func fireConversionEvents(ctx context.Context, store *database.Store, siteID, se
 			"industry":     randomIndustry(rng),
 			"source":       randomDemoSource(rng),
 		}},
-		{0.008, "purchase_completed", map[string]any{
-			"plan":     randomPlan(rng),
-			"billing":  randomBilling(rng),
-			"amount":   randomAmount(rng),
-			"currency": "USD",
-		}},
 	}
 
 	for _, c := range conversions {
@@ -648,7 +661,220 @@ func fireConversionEvents(ctx context.Context, store *database.Store, siteID, se
 			count++
 		}
 	}
+	count += fireEcommerceEvents(ctx, store, siteID, sessionID, rng, ts, entryPage, utm)
 	return count
+}
+
+func fireEcommerceEvents(ctx context.Context, store *database.Store, siteID, sessionID uuid.UUID, rng *mrand.Rand, ts time.Time, entryPage string, utm *utmParams) int {
+	product := pickWeighted(rng, ecommerceProducts)
+	viewProb := 0.16
+	cartProb := 0.42
+	checkoutProb := 0.58
+	purchaseProb := 0.62
+
+	switch entryPage {
+	case "/pricing", "/signup":
+		viewProb = 0.42
+		cartProb = 0.56
+		checkoutProb = 0.66
+		purchaseProb = 0.7
+	case "/features", "/docs/getting-started":
+		viewProb = 0.26
+	}
+
+	if utm != nil {
+		switch strings.ToLower(strings.TrimSpace(utm.source)) {
+		case "google", "newsletter", "producthunt":
+			viewProb += 0.07
+			cartProb += 0.05
+			checkoutProb += 0.04
+			purchaseProb += 0.05
+		case "linkedin":
+			viewProb += 0.04
+			checkoutProb += 0.03
+		}
+	}
+
+	if rng.Float64() >= minFloat(viewProb, 0.88) {
+		return 0
+	}
+
+	count := 0
+	billing := randomBilling(rng)
+	coupon := randomCoupon(rng)
+	items, totalValue, totalQuantity, primary := randomPurchaseItems(rng, product, billing)
+	currency := "USD"
+
+	viewProps := buildCatalogEventProps(items[0], currency)
+	if insertSeedEvent(ctx, store, &api.Event{
+		SiteID:     siteID,
+		SessionID:  sessionID,
+		Name:       "view_item",
+		Properties: viewProps,
+		Timestamp:  ts,
+	}) {
+		count++
+	}
+
+	if rng.Float64() >= minFloat(cartProb, 0.92) {
+		return count
+	}
+
+	cartProps := buildCatalogEventProps(items[0], currency)
+	cartProps["quantity"] = items[0]["quantity"]
+	cartProps["items"] = items
+	if insertSeedEvent(ctx, store, &api.Event{
+		SiteID:     siteID,
+		SessionID:  sessionID,
+		Name:       "add_to_cart",
+		Properties: cartProps,
+		Timestamp:  ts.Add(45 * time.Second),
+	}) {
+		count++
+	}
+
+	if rng.Float64() >= minFloat(checkoutProb, 0.94) {
+		return count
+	}
+
+	checkoutProps := map[string]any{
+		"checkout_id": fmt.Sprintf("chk_%s", uuid.NewString()[:12]),
+		"value":       totalValue,
+		"currency":    currency,
+		"items_count": totalQuantity,
+		"coupon":      coupon,
+		"items":       items,
+	}
+	if insertSeedEvent(ctx, store, &api.Event{
+		SiteID:     siteID,
+		SessionID:  sessionID,
+		Name:       "begin_checkout",
+		Properties: checkoutProps,
+		Timestamp:  ts.Add(90 * time.Second),
+	}) {
+		count++
+	}
+
+	if rng.Float64() >= minFloat(purchaseProb, 0.96) {
+		return count
+	}
+
+	transactionID := fmt.Sprintf("ord_%s", uuid.NewString()[:12])
+	purchaseProps := map[string]any{
+		"transaction_id": transactionID,
+		"order_id":       transactionID,
+		"value":          totalValue,
+		"amount":         totalValue,
+		"currency":       currency,
+		"items_count":    totalQuantity,
+		"billing":        billing,
+		"tax":            0,
+		"shipping":       0,
+		"coupon":         coupon,
+		"items":          items,
+	}
+	if insertSeedEvent(ctx, store, &api.Event{
+		SiteID:     siteID,
+		SessionID:  sessionID,
+		Name:       "purchase",
+		Properties: purchaseProps,
+		Timestamp:  ts.Add(3 * time.Minute),
+	}) {
+		count++
+	}
+
+	legacyPurchaseProps := map[string]any{
+		"plan":     primary.plan,
+		"billing":  billing,
+		"amount":   totalValue,
+		"currency": currency,
+	}
+	if coupon != "" {
+		legacyPurchaseProps["coupon"] = coupon
+	}
+	if insertSeedEvent(ctx, store, &api.Event{
+		SiteID:     siteID,
+		SessionID:  sessionID,
+		Name:       "purchase_completed",
+		Properties: legacyPurchaseProps,
+		Timestamp:  ts.Add(3*time.Minute + 10*time.Second),
+	}) {
+		count++
+	}
+
+	return count
+}
+
+func insertSeedEvent(ctx context.Context, store *database.Store, event *api.Event) bool {
+	if err := store.CreateEvent(ctx, event); err != nil {
+		slog.Error("Failed to insert event", "name", event.Name, "error", err)
+		return false
+	}
+	return true
+}
+
+func buildCatalogEventProps(item map[string]any, currency string) map[string]any {
+	props := map[string]any{
+		"item_id":   item["item_id"],
+		"item_name": item["item_name"],
+		"category":  item["item_category"],
+		"price":     item["price"],
+		"currency":  currency,
+		"items":     []map[string]any{item},
+	}
+	if quantity, ok := item["quantity"]; ok {
+		props["quantity"] = quantity
+	}
+	return props
+}
+
+func randomPurchaseItems(rng *mrand.Rand, product ecommerceProduct, billing string) ([]map[string]any, float64, int, ecommerceProduct) {
+	primaryPrice := productPrice(product, billing)
+	primaryQuantity := 1
+	if product.category == "add-on" {
+		primaryQuantity = 1 + rng.Intn(3)
+	}
+
+	items := []map[string]any{
+		{
+			"item_id":       product.itemID,
+			"item_name":     product.itemName,
+			"item_category": product.category,
+			"price":         primaryPrice,
+			"quantity":      primaryQuantity,
+		},
+	}
+	total := float64(primaryPrice * primaryQuantity)
+	totalQuantity := primaryQuantity
+
+	if product.plan == "business" && rng.Float64() < 0.42 {
+		seatPack := ecommerceProduct{itemID: "team-seat-pack", itemName: "Team Seat Pack", plan: "business", category: "add-on", price: 49, priceYear: 490}
+		quantity := 1 + rng.Intn(3)
+		items = append(items, map[string]any{
+			"item_id":       seatPack.itemID,
+			"item_name":     seatPack.itemName,
+			"item_category": seatPack.category,
+			"price":         seatPack.price,
+			"quantity":      quantity,
+		})
+		total += float64(seatPack.price * quantity)
+		totalQuantity += quantity
+	}
+
+	if billing == "annual" && rng.Float64() < 0.18 {
+		upgrade := ecommerceProduct{itemID: "annual-upgrade", itemName: "Annual Upgrade", plan: product.plan, category: "upgrade", price: 199, priceYear: 199}
+		items = append(items, map[string]any{
+			"item_id":       upgrade.itemID,
+			"item_name":     upgrade.itemName,
+			"item_category": upgrade.category,
+			"price":         upgrade.price,
+			"quantity":      1,
+		})
+		total += float64(upgrade.price)
+		totalQuantity++
+	}
+
+	return items, total, totalQuantity, product
 }
 
 // ─────────────────────────────────────────────
@@ -880,15 +1106,11 @@ func randomCompanySize(rng *mrand.Rand) string {
 	return sizes[rng.Intn(len(sizes))]
 }
 
-func randomPlan(rng *mrand.Rand) string {
-	plans := []string{"starter", "pro", "business", "enterprise"}
-	weights := []int{40, 35, 20, 5}
-	return pickWeighted(rng, []weightedEntry[string]{
-		{plans[0], weights[0]},
-		{plans[1], weights[1]},
-		{plans[2], weights[2]},
-		{plans[3], weights[3]},
-	})
+func minFloat(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func randomBilling(rng *mrand.Rand) string {
@@ -898,14 +1120,19 @@ func randomBilling(rng *mrand.Rand) string {
 	return "monthly"
 }
 
-func randomAmount(rng *mrand.Rand) int {
-	amounts := []int{29, 79, 199, 499}
-	weights := []int{40, 35, 20, 5}
-	return pickWeighted(rng, []weightedEntry[int]{
-		{amounts[0], weights[0]},
-		{amounts[1], weights[1]},
-		{amounts[2], weights[2]},
-		{amounts[3], weights[3]},
+func productPrice(product ecommerceProduct, billing string) int {
+	if billing == "annual" && product.priceYear > 0 {
+		return product.priceYear
+	}
+	return product.price
+}
+
+func randomCoupon(rng *mrand.Rand) string {
+	return pickWeighted(rng, []weightedEntry[string]{
+		{"", 55},
+		{"SPRING25", 18},
+		{"ANNUAL20", 15},
+		{"WELCOME10", 12},
 	})
 }
 

@@ -92,6 +92,14 @@ export class RangeToolbar {
         this.activeLanguage();
         return this.transloco.translate("common.timeRanges.customShort");
     });
+    protected readonly datePickerDateFormat = computed(() => {
+        this.activeLanguage();
+        return this.buildDatePickerDateFormat(this.localeService.getLocale());
+    });
+    protected readonly datePickerHourFormat = computed<"12" | "24">(() => {
+        this.activeLanguage();
+        return this.uses12HourClock(this.localeService.getLocale()) ? "12" : "24";
+    });
     protected readonly canApplyCustomRange = computed(() => {
         const start = this.rangeForm.customStart().value();
         const end = this.rangeForm.customEnd().value();
@@ -193,5 +201,34 @@ export class RangeToolbar {
             default:
                 return value;
         }
+    }
+
+    private buildDatePickerDateFormat(locale: string): string {
+        const parts = new Intl.DateTimeFormat(locale, {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit"
+        }).formatToParts(new Date(Date.UTC(2026, 2, 8, 12, 0, 0)));
+
+        return parts
+            .map((part) => {
+                switch (part.type) {
+                    case "day":
+                        return "dd";
+                    case "month":
+                        return "mm";
+                    case "year":
+                        return "yy";
+                    case "literal":
+                        return part.value;
+                    default:
+                        return "";
+                }
+            })
+            .join("");
+    }
+
+    private uses12HourClock(locale: string): boolean {
+        return new Intl.DateTimeFormat(locale, { hour: "numeric" }).resolvedOptions().hour12 ?? false;
     }
 }

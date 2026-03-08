@@ -45,12 +45,32 @@
                 <div class="range-toolbar__fields">
                     <div class="range-toolbar__field">
                         <label for="range-custom-start" class="range-toolbar__field-label">{{ "common.timeRanges.customStart" | transloco }}</label>
-                        <p-datepicker inputId="range-custom-start" [formControl]="rangeForm.customStart().control()" [showTime]="true" hourFormat="24" [showIcon]="true" iconDisplay="input" appendTo="body" />
+                        <p-datepicker
+                            inputId="range-custom-start"
+                            [formControl]="rangeForm.customStart().control()"
+                            [showTime]="true"
+                            [hourFormat]="datePickerHourFormat()"
+                            [dateFormat]="datePickerDateFormat()"
+                            [hideOnDateTimeSelect]="false"
+                            [showIcon]="true"
+                            iconDisplay="input"
+                            appendTo="body"
+                        />
                     </div>
 
                     <div class="range-toolbar__field">
                         <label for="range-custom-end" class="range-toolbar__field-label">{{ "common.timeRanges.customEnd" | transloco }}</label>
-                        <p-datepicker inputId="range-custom-end" [formControl]="rangeForm.customEnd().control()" [showTime]="true" hourFormat="24" [showIcon]="true" iconDisplay="input" appendTo="body" />
+                        <p-datepicker
+                            inputId="range-custom-end"
+                            [formControl]="rangeForm.customEnd().control()"
+                            [showTime]="true"
+                            [hourFormat]="datePickerHourFormat()"
+                            [dateFormat]="datePickerDateFormat()"
+                            [hideOnDateTimeSelect]="false"
+                            [showIcon]="true"
+                            iconDisplay="input"
+                            appendTo="body"
+                        />
                     </div>
                 </div>
 

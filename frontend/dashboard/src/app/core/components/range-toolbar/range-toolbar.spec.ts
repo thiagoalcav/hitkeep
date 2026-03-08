@@ -84,6 +84,16 @@ describe("RangeToolbar", () => {
         return translatedTimeRanges().map((option) => option.label);
     };
 
+    const datePickerFormat = (toolbar: RangeToolbar) => {
+        const { datePickerDateFormat } = toolbar as unknown as { datePickerDateFormat: Signal<string> };
+        return datePickerDateFormat();
+    };
+
+    const datePickerHourFormat = (toolbar: RangeToolbar) => {
+        const { datePickerHourFormat } = toolbar as unknown as { datePickerHourFormat: Signal<"12" | "24"> };
+        return datePickerHourFormat();
+    };
+
     it("translates default ranges from the active language", () => {
         expect(translatedLabels(component)).toEqual(["Last 24 hours", "Last 7 days", "Last 30 days", "Last year", "Custom range"]);
     });
@@ -94,5 +104,17 @@ describe("RangeToolbar", () => {
         await fixture.whenStable();
 
         expect(translatedLabels(component)).toEqual(["Letzte 24 Stunden", "Letzte 7 Tage", "Letzte 30 Tage", "Letztes Jahr", "Benutzerdefiniert"]);
+    });
+
+    it("uses the active locale for the custom date picker format", async () => {
+        expect(datePickerFormat(component)).toBe("mm/dd/yy");
+        expect(datePickerHourFormat(component)).toBe("12");
+
+        transloco.setActiveLang("de");
+        fixture.detectChanges();
+        await fixture.whenStable();
+
+        expect(datePickerFormat(component)).toBe("dd.mm.yy");
+        expect(datePickerHourFormat(component)).toBe("24");
     });
 });

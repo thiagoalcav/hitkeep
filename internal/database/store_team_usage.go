@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -56,14 +57,15 @@ func (s *Store) CountMonthlyIngestedEventsForSites(ctx context.Context, siteIDs 
 func (s *Store) countMonthlyRowsForSites(ctx context.Context, table string, siteIDs []uuid.UUID, start, end time.Time) (int64, error) {
 	args := make([]any, 0, 2+len(siteIDs))
 	args = append(args, start.UTC(), end.UTC())
-	inClause := "(?"
+	var inClause strings.Builder
+	inClause.WriteString("(?")
 	for idx, siteID := range siteIDs {
 		if idx > 0 {
-			inClause += ", ?"
+			inClause.WriteString(", ?")
 		}
 		args = append(args, siteID)
 	}
-	inClause += ")"
+	inClause.WriteString(")")
 
 	var query string
 	switch table {
@@ -72,13 +74,13 @@ func (s *Store) countMonthlyRowsForSites(ctx context.Context, table string, site
 			SELECT COUNT(*)
 			FROM hits
 			WHERE timestamp >= ? AND timestamp < ?
-				AND site_id IN ` + inClause
+				AND site_id IN ` + inClause.String()
 	case "events":
 		query = `
 			SELECT COUNT(*)
 			FROM events
 			WHERE timestamp >= ? AND timestamp < ?
-				AND site_id IN ` + inClause
+				AND site_id IN ` + inClause.String()
 	default:
 		return 0, fmt.Errorf("unsupported monthly usage table %q", table)
 	}

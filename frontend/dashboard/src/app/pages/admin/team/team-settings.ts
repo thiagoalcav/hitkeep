@@ -13,10 +13,11 @@ import { Router } from "@angular/router";
 import { ConfirmationService } from "primeng/api";
 import { ConfirmPopupModule } from "primeng/confirmpopup";
 import { finalize } from "rxjs";
+import { SettingsAPIClients } from "@features/settings/components/settings-api-clients";
 
 @Component({
     selector: "app-team-settings",
-    imports: [CardModule, TranslocoPipe, ReactiveFormsModule, InputTextModule, ButtonModule, MessageModule, ConfirmPopupModule],
+    imports: [CardModule, TranslocoPipe, ReactiveFormsModule, InputTextModule, ButtonModule, MessageModule, ConfirmPopupModule, SettingsAPIClients],
     templateUrl: "./team-settings.html",
     styleUrl: "./team-settings.css",
     changeDetection: ChangeDetectionStrategy.OnPush,

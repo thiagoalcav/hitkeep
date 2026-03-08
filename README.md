@@ -87,6 +87,9 @@ Unlike other solutions that require you to manage a complex stack (PostgreSQL, R
 ### Teams — Settings
 ![HitKeep team settings](./.github/assets/admin-team-settings.png)
 
+### Teams — API Clients
+![HitKeep team-owned API client management](./.github/assets/admin-team-api-clients.png)
+
 ### Teams — Activity
 ![HitKeep team audit activity log](./.github/assets/admin-team-audit.png)
 
@@ -117,7 +120,7 @@ Visit **[hitkeep.com](https://hitkeep.com)** for the complete documentation, inc
 - **Teams & Multitenancy:** Shared control plane plus isolated per-team analytics databases, team invites, ownership transfer, and cross-team site moves.
 - **Security & Auth:** JWT sessions, remember-me tokens, password reset, TOTP MFA, and WebAuthn passkeys.
 - **RBAC & Team Management:** Instance roles and per-site roles with delegated permissions.
-- **API Clients:** Create scoped API tokens for automation and integrations.
+- **API Clients:** Create personal and team-owned scoped API tokens for automation and integrations.
 - **Share Links:** Read-only dashboard sharing for stakeholders.
 - **Data Lifecycle:** Per-site retention, scheduled archival to Parquet, and on-demand user/site takeout exports.
 - **Ops Endpoints:** Health/readiness probes and versioned OpenAPI endpoint.

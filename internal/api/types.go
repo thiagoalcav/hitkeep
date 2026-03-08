@@ -47,7 +47,9 @@ type ShareLink struct {
 
 type APIClient struct {
 	ID           uuid.UUID           `json:"id"`
-	UserID       uuid.UUID           `json:"user_id"`
+	UserID       *uuid.UUID          `json:"user_id,omitempty"`
+	TenantID     *uuid.UUID          `json:"tenant_id,omitempty"`
+	OwnerType    string              `json:"owner_type"`
 	Name         string              `json:"name"`
 	Description  string              `json:"description"`
 	InstanceRole string              `json:"instance_role"`

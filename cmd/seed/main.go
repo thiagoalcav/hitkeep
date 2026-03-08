@@ -34,6 +34,7 @@ import (
 	"golang.org/x/crypto/argon2"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/auth"
 	"hitkeep/internal/database"
 	"hitkeep/internal/worker"
 )
@@ -301,6 +302,7 @@ func main() {
 		slog.Error("Failed to resolve site tenant", "site_id", siteID, "error", err)
 		os.Exit(1)
 	}
+	seedAPIClients(ctx, store, userID, siteTenantID, siteID)
 	if err := tenantMgr.SyncSite(ctx, siteID); err != nil {
 		slog.Error("Failed to sync tenant site metadata", "site_id", siteID, "tenant_id", siteTenantID, "error", err)
 		os.Exit(1)
@@ -366,6 +368,36 @@ func ensureUser(ctx context.Context, store *database.Store, email, password stri
 		os.Exit(1)
 	}
 	return id
+}
+
+func seedAPIClients(ctx context.Context, store *database.Store, userID, tenantID, siteID uuid.UUID) {
+	personalName := "Personal Export Token"
+	personalClients, err := store.ListAPIClients(ctx, userID)
+	if err != nil {
+		slog.Warn("Failed to list personal API clients", "error", err)
+	} else if !hasAPIClientNamed(personalClients, personalName) {
+		_, _, err := store.CreateAPIClient(ctx, userID, personalName, "Read-only export token for personal automation", auth.InstanceUser, map[uuid.UUID]auth.SiteRole{
+			siteID: auth.SiteViewer,
+		}, nil)
+		if err != nil {
+			slog.Warn("Failed to seed personal API client", "error", err)
+		}
+	}
+
+	teamName := "Shared Team Integration"
+	teamClients, err := store.ListTeamAPIClients(ctx, tenantID)
+	if err != nil {
+		slog.Warn("Failed to list team API clients", "tenant_id", tenantID, "error", err)
+	} else if !hasAPIClientNamed(teamClients, teamName) {
+		_, _, err := store.CreateTeamAPIClient(ctx, tenantID, teamName, "Team-owned token for shared dashboards and CI exports", map[uuid.UUID]auth.SiteRole{
+			siteID: auth.SiteAdmin,
+		}, nil)
+		if err != nil {
+			slog.Warn("Failed to seed team API client", "tenant_id", tenantID, "error", err)
+		}
+	}
+
+	slog.Info("Demo API clients ensured", "user_id", userID, "tenant_id", tenantID)
 }
 
 // ─────────────────────────────────────────────
@@ -788,6 +820,15 @@ func ensureSiteInActiveTeam(ctx context.Context, store *database.Store, userID u
 	}
 
 	return store.CreateSite(ctx, userID, domain)
+}
+
+func hasAPIClientNamed(clients []api.APIClient, name string) bool {
+	for _, client := range clients {
+		if strings.EqualFold(strings.TrimSpace(client.Name), strings.TrimSpace(name)) {
+			return true
+		}
+	}
+	return false
 }
 
 // ─────────────────────────────────────────────

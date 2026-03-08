@@ -814,3 +814,128 @@ func TestHandleGetTeamAuditAllowsAdminAndRejectsMembers(t *testing.T) {
 		t.Fatalf("expected member status %d, got %d: %s", http.StatusForbidden, memberW.Code, memberW.Body.String())
 	}
 }
+
+func TestHandleTeamAPIClientLifecycle(t *testing.T) {
+	h, store, ownerID := setupUserSecurityTestEnv(t)
+	defer store.Close()
+
+	team, err := store.CreateTenant(context.Background(), ownerID, "Team Keys", "")
+	if err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+	if err := store.SetActiveTenantID(context.Background(), ownerID, team.ID); err != nil {
+		t.Fatalf("set active tenant: %v", err)
+	}
+	site, err := store.CreateSite(context.Background(), ownerID, "team-api-handler.example")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	createBody, _ := json.Marshal(map[string]any{
+		"name":        "Shared automation",
+		"description": "Runs team syncs",
+		"site_roles": []map[string]string{
+			{"site_id": site.ID.String(), "role": "admin"},
+		},
+	})
+	createReq := withTestUser(httptest.NewRequest(http.MethodPost, "/api/user/teams/"+team.ID.String()+"/api-clients", bytes.NewReader(createBody)), ownerID)
+	createReq.SetPathValue("id", team.ID.String())
+	createW := httptest.NewRecorder()
+	h.handleCreateTeamAPIClient().ServeHTTP(createW, createReq)
+	if createW.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, createW.Code, createW.Body.String())
+	}
+
+	var createResp struct {
+		Client api.APIClient `json:"client"`
+		Token  string        `json:"token"`
+	}
+	if err := json.NewDecoder(createW.Body).Decode(&createResp); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+	if createResp.Token == "" {
+		t.Fatalf("expected one-time token")
+	}
+	if createResp.Client.OwnerType != database.APIClientOwnerTeam {
+		t.Fatalf("expected team owner type, got %q", createResp.Client.OwnerType)
+	}
+	if createResp.Client.TenantID == nil || *createResp.Client.TenantID != team.ID {
+		t.Fatalf("expected tenant id %s, got %+v", team.ID, createResp.Client.TenantID)
+	}
+
+	listReq := withTestUser(httptest.NewRequest(http.MethodGet, "/api/user/teams/"+team.ID.String()+"/api-clients", nil), ownerID)
+	listReq.SetPathValue("id", team.ID.String())
+	listW := httptest.NewRecorder()
+	h.handleListTeamAPIClients().ServeHTTP(listW, listReq)
+	if listW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, listW.Code, listW.Body.String())
+	}
+
+	var clients []api.APIClient
+	if err := json.NewDecoder(listW.Body).Decode(&clients); err != nil {
+		t.Fatalf("decode list response: %v", err)
+	}
+	if len(clients) != 1 || clients[0].ID != createResp.Client.ID {
+		t.Fatalf("expected one matching team api client, got %+v", clients)
+	}
+
+	updateBody, _ := json.Marshal(map[string]any{
+		"name":        "Shared automation updated",
+		"description": "Runs team syncs safely",
+		"revoked":     true,
+		"site_roles": []map[string]string{
+			{"site_id": site.ID.String(), "role": "viewer"},
+		},
+	})
+	updateReq := withTestUser(httptest.NewRequest(http.MethodPut, "/api/user/teams/"+team.ID.String()+"/api-clients/"+createResp.Client.ID.String(), bytes.NewReader(updateBody)), ownerID)
+	updateReq.SetPathValue("id", team.ID.String())
+	updateReq.SetPathValue("clientId", createResp.Client.ID.String())
+	updateW := httptest.NewRecorder()
+	h.handleUpdateTeamAPIClient().ServeHTTP(updateW, updateReq)
+	if updateW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, updateW.Code, updateW.Body.String())
+	}
+
+	var updated api.APIClient
+	if err := json.NewDecoder(updateW.Body).Decode(&updated); err != nil {
+		t.Fatalf("decode update response: %v", err)
+	}
+	if updated.RevokedAt == nil {
+		t.Fatalf("expected revoked timestamp after update")
+	}
+
+	deleteReq := withTestUser(httptest.NewRequest(http.MethodDelete, "/api/user/teams/"+team.ID.String()+"/api-clients/"+createResp.Client.ID.String(), nil), ownerID)
+	deleteReq.SetPathValue("id", team.ID.String())
+	deleteReq.SetPathValue("clientId", createResp.Client.ID.String())
+	deleteW := httptest.NewRecorder()
+	h.handleDeleteTeamAPIClient().ServeHTTP(deleteW, deleteReq)
+	if deleteW.Code != http.StatusNoContent {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusNoContent, deleteW.Code, deleteW.Body.String())
+	}
+}
+
+func TestHandleTeamAPIClientRequiresTeamAdmin(t *testing.T) {
+	h, store, ownerID := setupUserSecurityTestEnv(t)
+	defer store.Close()
+
+	team, err := store.CreateTenant(context.Background(), ownerID, "Restricted Team Keys", "")
+	if err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+	memberID, err := store.CreateUser(context.Background(), "member-api-client@team.test", "hash")
+	if err != nil {
+		t.Fatalf("create member user: %v", err)
+	}
+	if err := store.AddTeamMember(context.Background(), team.ID, memberID, database.TenantRoleMember, ownerID); err != nil {
+		t.Fatalf("add member: %v", err)
+	}
+
+	body, _ := json.Marshal(map[string]any{"name": "Should fail"})
+	req := withTestUser(httptest.NewRequest(http.MethodPost, "/api/user/teams/"+team.ID.String()+"/api-clients", bytes.NewReader(body)), memberID)
+	req.SetPathValue("id", team.ID.String())
+	w := httptest.NewRecorder()
+	h.handleCreateTeamAPIClient().ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusForbidden, w.Code, w.Body.String())
+	}
+}

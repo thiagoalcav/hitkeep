@@ -1,5 +1,5 @@
 <p-confirmpopup key="api-client-delete" />
-<app-settings-card [title]="'settings.apiClients.title' | transloco" [subtitle]="'settings.apiClients.description' | transloco" icon="pi pi-key">
+<app-settings-card [title]="titleKey() | transloco" [subtitle]="descriptionKey() | transloco" icon="pi pi-key">
     <div settings-card-body class="flex flex-col gap-4">
         @if (error(); as errorKey) {
         <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ errorKey | transloco }}</div>
@@ -17,7 +17,7 @@
         }
 
         <form [formGroup]="form" class="api-client-form" (ngSubmit)="submit()">
-            <div class="grid gap-4 md:grid-cols-2">
+            <div [class]="isTeamScope() ? 'grid gap-4' : 'grid gap-4 md:grid-cols-2'">
                 <div class="flex flex-col gap-2">
                     <div class="api-client-label-row">
                         <label for="api-client-name" class="text-sm font-medium">
@@ -40,6 +40,7 @@
                     }
                 </div>
 
+                @if (!isTeamScope()) {
                 <div class="flex flex-col gap-2">
                     <div class="api-client-label-row">
                         <label for="api-client-instance-role" class="text-sm font-medium">
@@ -60,6 +61,7 @@
                     <small class="api-client-field-error">{{ "settings.apiClients.form.validation.instanceRoleRequired" | transloco }}</small>
                     }
                 </div>
+                }
             </div>
 
             <div class="grid gap-4 md:grid-cols-2">
@@ -94,7 +96,7 @@
 
             <div class="api-client-scope">
                 <div class="font-medium">{{ "settings.apiClients.form.siteScopesLabel" | transloco }}</div>
-                <p class="text-xs text-[var(--p-text-muted-color)]">{{ "settings.apiClients.form.siteScopesHint" | transloco }}</p>
+                <p class="text-xs text-[var(--p-text-muted-color)]">{{ (isTeamScope() ? "settings.apiClients.form.teamSiteScopesHint" : "settings.apiClients.form.siteScopesHint") | transloco }}</p>
 
                 <div class="api-client-scope-row" [formGroup]="siteRoleForm">
                     <p-select

@@ -3,6 +3,7 @@ package user
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -270,6 +271,217 @@ func (h *handler) handleDeleteAPIClient() http.HandlerFunc {
 	}
 }
 
+func (h *handler) handleListTeamAPIClients() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		actorID, teamID, ok := h.resolveTeamAPIClientScope(w, r)
+		if !ok {
+			return
+		}
+
+		clients, err := h.ctx.Store.ListTeamAPIClients(r.Context(), teamID)
+		if err != nil {
+			slog.Error("Failed to list team api clients", "error", err, "team_id", teamID, "actor_id", actorID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(clients); err != nil {
+			slog.Error("Failed to encode team api clients response", "error", err, "team_id", teamID, "actor_id", actorID)
+		}
+	}
+}
+
+func (h *handler) handleCreateTeamAPIClient() http.HandlerFunc {
+	type response struct {
+		Client any    `json:"client"`
+		Token  string `json:"token"`
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		actorID, teamID, ok := h.resolveTeamAPIClientScope(w, r)
+		if !ok {
+			return
+		}
+
+		var req createAPIClientRequest
+		if err := decodeJSON(r, &req); err != nil {
+			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			return
+		}
+
+		name := strings.TrimSpace(req.Name)
+		if name == "" || len(name) > 120 {
+			http.Error(w, "Name is required and must be <= 120 characters", http.StatusBadRequest)
+			return
+		}
+
+		description := strings.TrimSpace(req.Description)
+		if len(description) > 500 {
+			http.Error(w, "Description must be <= 500 characters", http.StatusBadRequest)
+			return
+		}
+
+		siteRoles, err := h.validateTeamDelegatedSiteRoles(r, teamID, req.SiteRoles)
+		if err != nil {
+			slog.Warn("Invalid delegated team site roles", "error", err, "team_id", teamID, "actor_id", actorID)
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+
+		client, token, err := h.ctx.Store.CreateTeamAPIClient(
+			r.Context(),
+			teamID,
+			name,
+			description,
+			siteRoles,
+			req.ExpiresAt,
+		)
+		if err != nil {
+			slog.Error("Failed to create team api client", "error", err, "team_id", teamID, "actor_id", actorID)
+			http.Error(w, "Failed to create api client", http.StatusInternalServerError)
+			return
+		}
+
+		h.appendTeamAudit(r, teamID, actorID, "api_client.created", fmt.Sprintf("Team API client %q created", name), nil)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if err := json.NewEncoder(w).Encode(response{Client: client, Token: token}); err != nil {
+			slog.Error("Failed to encode create team api client response", "error", err, "team_id", teamID, "actor_id", actorID)
+		}
+	}
+}
+
+func (h *handler) handleUpdateTeamAPIClient() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		actorID, teamID, ok := h.resolveTeamAPIClientScope(w, r)
+		if !ok {
+			return
+		}
+
+		clientID, err := uuid.Parse(strings.TrimSpace(r.PathValue("clientId")))
+		if err != nil {
+			http.Error(w, "Invalid client ID", http.StatusBadRequest)
+			return
+		}
+
+		existing, err := h.ctx.Store.GetTeamAPIClient(r.Context(), teamID, clientID)
+		if err != nil {
+			slog.Error("Failed to load team api client before update", "error", err, "team_id", teamID, "actor_id", actorID, "client_id", clientID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if existing == nil {
+			http.Error(w, "API client not found", http.StatusNotFound)
+			return
+		}
+
+		var req updateAPIClientRequest
+		if err := decodeJSON(r, &req); err != nil {
+			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+			return
+		}
+
+		name := strings.TrimSpace(req.Name)
+		if name == "" || len(name) > 120 {
+			http.Error(w, "Name is required and must be <= 120 characters", http.StatusBadRequest)
+			return
+		}
+
+		description := strings.TrimSpace(req.Description)
+		if len(description) > 500 {
+			http.Error(w, "Description must be <= 500 characters", http.StatusBadRequest)
+			return
+		}
+
+		siteRoles, err := h.validateTeamDelegatedSiteRoles(r, teamID, req.SiteRoles)
+		if err != nil {
+			slog.Warn("Invalid delegated team site roles for update", "error", err, "team_id", teamID, "actor_id", actorID, "client_id", clientID)
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+
+		revoked := existing.RevokedAt != nil
+		if req.Revoked != nil {
+			revoked = *req.Revoked
+		}
+
+		updated, err := h.ctx.Store.UpdateTeamAPIClient(
+			r.Context(),
+			teamID,
+			clientID,
+			name,
+			description,
+			siteRoles,
+			req.ExpiresAt,
+			revoked,
+		)
+		if err != nil {
+			slog.Error("Failed to update team api client", "error", err, "team_id", teamID, "actor_id", actorID, "client_id", clientID)
+			http.Error(w, "Failed to update api client", http.StatusInternalServerError)
+			return
+		}
+		if updated == nil {
+			http.Error(w, "API client not found", http.StatusNotFound)
+			return
+		}
+
+		action := "api_client.updated"
+		details := fmt.Sprintf("Team API client %q updated", updated.Name)
+		if updated.RevokedAt != nil {
+			action = "api_client.revoked"
+			details = fmt.Sprintf("Team API client %q revoked", updated.Name)
+		}
+		h.appendTeamAudit(r, teamID, actorID, action, details, nil)
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(updated); err != nil {
+			slog.Error("Failed to encode team api client update response", "error", err, "team_id", teamID, "actor_id", actorID, "client_id", clientID)
+		}
+	}
+}
+
+func (h *handler) handleDeleteTeamAPIClient() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		actorID, teamID, ok := h.resolveTeamAPIClientScope(w, r)
+		if !ok {
+			return
+		}
+
+		clientID, err := uuid.Parse(strings.TrimSpace(r.PathValue("clientId")))
+		if err != nil {
+			http.Error(w, "Invalid client ID", http.StatusBadRequest)
+			return
+		}
+
+		existing, err := h.ctx.Store.GetTeamAPIClient(r.Context(), teamID, clientID)
+		if err != nil {
+			slog.Error("Failed to load team api client before delete", "error", err, "team_id", teamID, "actor_id", actorID, "client_id", clientID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if existing == nil {
+			http.Error(w, "API client not found", http.StatusNotFound)
+			return
+		}
+
+		err = h.ctx.Store.DeleteTeamAPIClient(r.Context(), teamID, clientID)
+		if err != nil {
+			if errors.Is(err, database.ErrAPIClientNotFound) {
+				http.Error(w, "API client not found", http.StatusNotFound)
+				return
+			}
+			slog.Error("Failed to delete team api client", "error", err, "team_id", teamID, "actor_id", actorID, "client_id", clientID)
+			http.Error(w, "Failed to delete api client", http.StatusInternalServerError)
+			return
+		}
+
+		h.appendTeamAudit(r, teamID, actorID, "api_client.deleted", fmt.Sprintf("Team API client %q deleted", existing.Name), nil)
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
 func (h *handler) validateDelegatedSiteRoles(r *http.Request, userID uuid.UUID, actorInstanceRole authcore.InstanceRole, roles []apiClientSiteRoleInput) (map[uuid.UUID]authcore.SiteRole, error) {
 	if len(roles) == 0 {
 		return map[uuid.UUID]authcore.SiteRole{}, nil
@@ -314,6 +526,66 @@ func (h *handler) maxDelegableSiteRole(r *http.Request, userID uuid.UUID, actorI
 		return "", errors.New("cannot delegate site role for site without access")
 	}
 	return role, nil
+}
+
+func (h *handler) validateTeamDelegatedSiteRoles(r *http.Request, teamID uuid.UUID, roles []apiClientSiteRoleInput) (map[uuid.UUID]authcore.SiteRole, error) {
+	if len(roles) == 0 {
+		return map[uuid.UUID]authcore.SiteRole{}, nil
+	}
+	if len(roles) > 100 {
+		return nil, errors.New("too many delegated site roles")
+	}
+
+	teamSites, err := h.ctx.Store.ListSitesForTenant(r.Context(), teamID)
+	if err != nil {
+		return nil, errors.New("cannot load team sites for delegation")
+	}
+	allowedSites := make(map[uuid.UUID]struct{}, len(teamSites))
+	for _, site := range teamSites {
+		allowedSites[site.ID] = struct{}{}
+	}
+
+	result := make(map[uuid.UUID]authcore.SiteRole, len(roles))
+	for _, item := range roles {
+		siteID, err := uuid.Parse(strings.TrimSpace(item.SiteID))
+		if err != nil {
+			return nil, errors.New("invalid delegated site role site_id")
+		}
+		if _, ok := allowedSites[siteID]; !ok {
+			return nil, errors.New("cannot delegate site role outside the selected team")
+		}
+
+		requestedRole := authcore.SiteRole(strings.TrimSpace(item.Role))
+		if !authcore.IsValidSiteRole(requestedRole) {
+			return nil, errors.New("invalid delegated site role")
+		}
+
+		result[siteID] = requestedRole
+	}
+
+	return result, nil
+}
+
+func (h *handler) resolveTeamAPIClientScope(w http.ResponseWriter, r *http.Request) (uuid.UUID, uuid.UUID, bool) {
+	actorID := shared.GetUserIDFromContext(r)
+	if actorID == uuid.Nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return uuid.Nil, uuid.Nil, false
+	}
+
+	teamID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+	if err != nil {
+		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		return uuid.Nil, uuid.Nil, false
+	}
+
+	role, err := h.ctx.Store.GetTenantRole(r.Context(), teamID, actorID)
+	if err != nil || !canManageTeam(role) {
+		http.Error(w, "Access denied", http.StatusForbidden)
+		return uuid.Nil, uuid.Nil, false
+	}
+
+	return actorID, teamID, true
 }
 
 func decodeJSON(r *http.Request, dst any) error {

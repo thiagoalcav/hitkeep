@@ -571,7 +571,8 @@
                     "expiresAtPast": "Expiration must be in the future.",
                     "expiresAtInvalid": "Expiration timestamp is invalid.",
                     "scopeSiteRequired": "Select a site before adding a scope."
-                }
+                },
+                "teamSiteScopesHint": "Restrict this client to specific sites inside the selected team."
             },
             "tokenNotice": {
                 "title": "Copy this token now",
@@ -591,7 +592,9 @@
                 "deleteFailed": "Failed to delete API client.",
                 "invalidExpiration": "Expiration timestamp is invalid.",
                 "notFound": "API client not found."
-            }
+            },
+            "teamTitle": "Team API clients",
+            "teamDescription": "Create team-owned API clients for shared automations without tying them to one user account."
         }
     },
     "setup": {

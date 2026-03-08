@@ -94,7 +94,8 @@ func canManageTenantRole(role string) bool {
 func (h *handler) handleGetSites() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := shared.GetUserIDFromContext(r)
-		if userID == uuid.Nil {
+		apiClientAuth, _ := r.Context().Value(shared.APIClientAuthKey).(*database.APIClientAuth)
+		if userID == uuid.Nil && apiClientAuth == nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -104,14 +105,26 @@ func (h *handler) handleGetSites() http.HandlerFunc {
 			return
 		}
 
-		sites, err := h.ctx.Store.GetSites(r.Context(), userID)
+		var (
+			sites []api.Site
+			err   error
+		)
+		switch {
+		case userID != uuid.Nil:
+			sites, err = h.ctx.Store.GetSites(r.Context(), userID)
+		case apiClientAuth != nil && apiClientAuth.TenantID != uuid.Nil:
+			sites, err = h.ctx.Store.ListSitesForTenant(r.Context(), apiClientAuth.TenantID)
+		default:
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
 		if err != nil {
-			slog.Error("Failed to get sites", "error", err, "user_id", userID)
+			slog.Error("Failed to get sites", "error", err, "user_id", userID, "tenant_id", apiClientAuthTenantID(apiClientAuth))
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
 
-		if apiClientAuth, ok := r.Context().Value(shared.APIClientAuthKey).(*database.APIClientAuth); ok && apiClientAuth != nil {
+		if apiClientAuth != nil {
 			filtered := make([]api.Site, 0, len(sites))
 			for _, site := range sites {
 				if _, allowed := apiClientAuth.SiteRoles[site.ID]; allowed {
@@ -126,6 +139,13 @@ func (h *handler) handleGetSites() http.HandlerFunc {
 			slog.Error("Failed to encode response", "error", err)
 		}
 	}
+}
+
+func apiClientAuthTenantID(authz *database.APIClientAuth) uuid.UUID {
+	if authz == nil {
+		return uuid.Nil
+	}
+	return authz.TenantID
 }
 
 func (h *handler) handleCreateSite() http.HandlerFunc {

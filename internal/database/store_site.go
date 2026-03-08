@@ -195,6 +195,41 @@ func (s *Store) GetSites(ctx context.Context, userID uuid.UUID) ([]api.Site, err
 	return sites, nil
 }
 
+func (s *Store) ListSitesForTenant(ctx context.Context, tenantID uuid.UUID) ([]api.Site, error) {
+	defaultTenantID, err := s.GetDefaultTenantID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not resolve default tenant: %w", err)
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT s.id, s.user_id, s.domain, s.data_retention_days, s.created_at
+		FROM sites s
+		LEFT JOIN site_tenants st ON st.site_id = s.id
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = COALESCE(st.tenant_id, ?)
+		WHERE COALESCE(st.tenant_id, ?) = ?
+			AND ta.tenant_id IS NULL
+		ORDER BY s.created_at DESC
+	`, defaultTenantID, defaultTenantID, tenantID)
+	if err != nil {
+		return nil, fmt.Errorf("could not list tenant sites: %w", err)
+	}
+	defer rows.Close()
+
+	sites := make([]api.Site, 0)
+	for rows.Next() {
+		var site api.Site
+		if err := rows.Scan(&site.ID, &site.UserID, &site.Domain, &site.DataRetentionDays, &site.CreatedAt); err != nil {
+			return nil, fmt.Errorf("could not scan tenant site: %w", err)
+		}
+		sites = append(sites, site)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("could not read tenant sites: %w", err)
+	}
+
+	return sites, nil
+}
+
 func (s *Store) UpdateSiteRetention(ctx context.Context, siteID uuid.UUID, userID uuid.UUID, days int) error {
 	_, err := s.db.ExecContext(ctx,
 		"UPDATE sites SET data_retention_days = ? WHERE id = ? AND user_id = ?",

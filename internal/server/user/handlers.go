@@ -96,6 +96,22 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleDeleteAPIClient()))
+	mux.HandleFunc("GET /api/user/teams/{id}/api-clients", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleListTeamAPIClients()))
+	mux.HandleFunc("POST /api/user/teams/{id}/api-clients", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleCreateTeamAPIClient()))
+	mux.HandleFunc("PUT /api/user/teams/{id}/api-clients/{clientId}", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleUpdateTeamAPIClient()))
+	mux.HandleFunc("DELETE /api/user/teams/{id}/api-clients/{clientId}", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleDeleteTeamAPIClient()))
 	mux.HandleFunc("GET /api/user/report-subscriptions", ctx.Handler(shared.HandlerConfig{
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,

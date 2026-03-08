@@ -20,9 +20,15 @@ import (
 
 var ErrAPIClientNotFound = errors.New("api client not found")
 
+const (
+	APIClientOwnerPersonal = "personal"
+	APIClientOwnerTeam     = "team"
+)
+
 type APIClientAuth struct {
 	ClientID     uuid.UUID
 	UserID       uuid.UUID
+	TenantID     uuid.UUID
 	InstanceRole auth.InstanceRole
 	SiteRoles    map[uuid.UUID]auth.SiteRole
 }
@@ -30,6 +36,30 @@ type APIClientAuth struct {
 func (s *Store) CreateAPIClient(
 	ctx context.Context,
 	userID uuid.UUID,
+	name string,
+	description string,
+	instanceRole auth.InstanceRole,
+	siteRoles map[uuid.UUID]auth.SiteRole,
+	expiresAt *time.Time,
+) (*api.APIClient, string, error) {
+	return s.createAPIClient(ctx, &userID, nil, name, description, instanceRole, siteRoles, expiresAt)
+}
+
+func (s *Store) CreateTeamAPIClient(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	name string,
+	description string,
+	siteRoles map[uuid.UUID]auth.SiteRole,
+	expiresAt *time.Time,
+) (*api.APIClient, string, error) {
+	return s.createAPIClient(ctx, nil, &tenantID, name, description, auth.InstanceUser, siteRoles, expiresAt)
+}
+
+func (s *Store) createAPIClient(
+	ctx context.Context,
+	userID *uuid.UUID,
+	tenantID *uuid.UUID,
 	name string,
 	description string,
 	instanceRole auth.InstanceRole,
@@ -49,9 +79,9 @@ func (s *Store) CreateAPIClient(
 	err = s.Transact(ctx, func(tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx, `
 			INSERT INTO api_clients (
-				id, user_id, name, description, secret_hash, instance_role, expires_at, created_at, updated_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`, id, userID, name, description, tokenHash, instanceRole, exp, now, now)
+				id, user_id, tenant_id, name, description, secret_hash, instance_role, expires_at, created_at, updated_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`, id, nullableUUIDPtr(userID), nullableUUIDPtr(tenantID), name, description, tokenHash, instanceRole, exp, now, now)
 		if err != nil {
 			return fmt.Errorf("failed to create api client: %w", err)
 		}
@@ -66,27 +96,37 @@ func (s *Store) CreateAPIClient(
 		return nil, "", err
 	}
 
-	client := api.APIClient{
-		ID:           id,
-		UserID:       userID,
-		Name:         name,
-		Description:  description,
-		InstanceRole: string(instanceRole),
-		ExpiresAt:    exp,
-		CreatedAt:    now,
-		UpdatedAt:    now,
-		SiteRoles:    flattenSiteRoles(siteRoles),
-	}
+	client := buildAPIClient(id, userID, tenantID, name, description, instanceRole, exp, now, now, flattenSiteRoles(siteRoles))
 	return &client, token, nil
 }
 
 func (s *Store) ListAPIClients(ctx context.Context, userID uuid.UUID) ([]api.APIClient, error) {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, user_id, name, description, instance_role, expires_at, last_used_at, revoked_at, created_at, updated_at
-		FROM api_clients
-		WHERE user_id = ?
-		ORDER BY created_at DESC
-	`, userID)
+	return s.listAPIClients(ctx, "c.user_id = ?", userID)
+}
+
+func (s *Store) ListTeamAPIClients(ctx context.Context, tenantID uuid.UUID) ([]api.APIClient, error) {
+	return s.listAPIClients(ctx, "c.tenant_id = ? AND ta.tenant_id IS NULL", tenantID)
+}
+
+func (s *Store) listAPIClients(ctx context.Context, where string, args ...any) ([]api.APIClient, error) {
+	rows, err := s.db.QueryContext(ctx, fmt.Sprintf(`
+		SELECT
+			c.id,
+			CAST(c.user_id AS VARCHAR),
+			CAST(c.tenant_id AS VARCHAR),
+			c.name,
+			c.description,
+			c.instance_role,
+			c.expires_at,
+			c.last_used_at,
+			c.revoked_at,
+			c.created_at,
+			c.updated_at
+		FROM api_clients c
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = c.tenant_id
+		WHERE %s
+		ORDER BY c.created_at DESC
+	`, where), args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list api clients: %w", err)
 	}
@@ -95,32 +135,10 @@ func (s *Store) ListAPIClients(ctx context.Context, userID uuid.UUID) ([]api.API
 	clients := make([]api.APIClient, 0)
 	indexByID := make(map[uuid.UUID]int)
 	for rows.Next() {
-		var client api.APIClient
-		var description sql.NullString
-		var expiresAt sql.NullTime
-		var lastUsedAt sql.NullTime
-		var revokedAt sql.NullTime
-
-		if err := rows.Scan(
-			&client.ID,
-			&client.UserID,
-			&client.Name,
-			&description,
-			&client.InstanceRole,
-			&expiresAt,
-			&lastUsedAt,
-			&revokedAt,
-			&client.CreatedAt,
-			&client.UpdatedAt,
-		); err != nil {
-			return nil, fmt.Errorf("failed to scan api client: %w", err)
+		client, err := scanAPIClient(rows)
+		if err != nil {
+			return nil, err
 		}
-
-		client.Description = strings.TrimSpace(description.String)
-		client.ExpiresAt = nullTimePtr(expiresAt)
-		client.LastUsedAt = nullTimePtr(lastUsedAt)
-		client.RevokedAt = nullTimePtr(revokedAt)
-		client.SiteRoles = make([]api.APIClientSiteRole, 0)
 		indexByID[client.ID] = len(clients)
 		clients = append(clients, client)
 	}
@@ -132,13 +150,14 @@ func (s *Store) ListAPIClients(ctx context.Context, userID uuid.UUID) ([]api.API
 		return clients, nil
 	}
 
-	roleRows, err := s.db.QueryContext(ctx, `
+	roleRows, err := s.db.QueryContext(ctx, fmt.Sprintf(`
 		SELECT r.api_client_id, r.site_id, r.role
 		FROM api_client_site_roles r
 		JOIN api_clients c ON c.id = r.api_client_id
-		WHERE c.user_id = ?
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = c.tenant_id
+		WHERE %s
 		ORDER BY r.api_client_id, r.site_id
-	`, userID)
+	`, where), args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list api client site roles: %w", err)
 	}
@@ -168,39 +187,40 @@ func (s *Store) ListAPIClients(ctx context.Context, userID uuid.UUID) ([]api.API
 }
 
 func (s *Store) GetAPIClient(ctx context.Context, userID uuid.UUID, clientID uuid.UUID) (*api.APIClient, error) {
-	var client api.APIClient
-	var description sql.NullString
-	var expiresAt sql.NullTime
-	var lastUsedAt sql.NullTime
-	var revokedAt sql.NullTime
-	err := s.db.QueryRowContext(ctx, `
-		SELECT id, user_id, name, description, instance_role, expires_at, last_used_at, revoked_at, created_at, updated_at
-		FROM api_clients
-		WHERE id = ? AND user_id = ?
-	`, clientID, userID).Scan(
-		&client.ID,
-		&client.UserID,
-		&client.Name,
-		&description,
-		&client.InstanceRole,
-		&expiresAt,
-		&lastUsedAt,
-		&revokedAt,
-		&client.CreatedAt,
-		&client.UpdatedAt,
-	)
+	return s.getAPIClient(ctx, clientID, "c.user_id = ?", userID)
+}
+
+func (s *Store) GetTeamAPIClient(ctx context.Context, tenantID, clientID uuid.UUID) (*api.APIClient, error) {
+	return s.getAPIClient(ctx, clientID, "c.tenant_id = ? AND ta.tenant_id IS NULL", tenantID)
+}
+
+func (s *Store) getAPIClient(ctx context.Context, clientID uuid.UUID, where string, args ...any) (*api.APIClient, error) {
+	queryArgs := append([]any{clientID}, args...)
+	row := s.db.QueryRowContext(ctx, fmt.Sprintf(`
+		SELECT
+			c.id,
+			CAST(c.user_id AS VARCHAR),
+			CAST(c.tenant_id AS VARCHAR),
+			c.name,
+			c.description,
+			c.instance_role,
+			c.expires_at,
+			c.last_used_at,
+			c.revoked_at,
+			c.created_at,
+			c.updated_at
+		FROM api_clients c
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = c.tenant_id
+		WHERE c.id = ? AND %s
+	`, where), queryArgs...)
+
+	client, err := scanAPIClientRow(row)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get api client: %w", err)
+		return nil, err
 	}
-
-	client.Description = strings.TrimSpace(description.String)
-	client.ExpiresAt = nullTimePtr(expiresAt)
-	client.LastUsedAt = nullTimePtr(lastUsedAt)
-	client.RevokedAt = nullTimePtr(revokedAt)
-	client.SiteRoles = make([]api.APIClientSiteRole, 0)
 
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT site_id, role
@@ -212,6 +232,7 @@ func (s *Store) GetAPIClient(ctx context.Context, userID uuid.UUID, clientID uui
 		return nil, fmt.Errorf("failed to get api client site roles: %w", err)
 	}
 	defer rows.Close()
+
 	for rows.Next() {
 		var siteID uuid.UUID
 		var role string
@@ -227,7 +248,7 @@ func (s *Store) GetAPIClient(ctx context.Context, userID uuid.UUID, clientID uui
 		return nil, fmt.Errorf("failed iterating api client site roles: %w", err)
 	}
 
-	return &client, nil
+	return client, nil
 }
 
 func (s *Store) UpdateAPIClient(
@@ -241,6 +262,35 @@ func (s *Store) UpdateAPIClient(
 	expiresAt *time.Time,
 	revoked bool,
 ) (*api.APIClient, error) {
+	return s.updateAPIClient(ctx, clientID, "user_id = ?", []any{userID}, name, description, instanceRole, siteRoles, expiresAt, revoked, false)
+}
+
+func (s *Store) UpdateTeamAPIClient(
+	ctx context.Context,
+	tenantID uuid.UUID,
+	clientID uuid.UUID,
+	name string,
+	description string,
+	siteRoles map[uuid.UUID]auth.SiteRole,
+	expiresAt *time.Time,
+	revoked bool,
+) (*api.APIClient, error) {
+	return s.updateAPIClient(ctx, clientID, "tenant_id = ?", []any{tenantID}, name, description, auth.InstanceUser, siteRoles, expiresAt, revoked, true)
+}
+
+func (s *Store) updateAPIClient(
+	ctx context.Context,
+	clientID uuid.UUID,
+	ownerWhere string,
+	ownerArgs []any,
+	name string,
+	description string,
+	instanceRole auth.InstanceRole,
+	siteRoles map[uuid.UUID]auth.SiteRole,
+	expiresAt *time.Time,
+	revoked bool,
+	teamOwned bool,
+) (*api.APIClient, error) {
 	now := time.Now().UTC()
 	exp := toUTCPtr(expiresAt)
 
@@ -250,11 +300,14 @@ func (s *Store) UpdateAPIClient(
 	}
 
 	err := s.Transact(ctx, func(tx *sql.Tx) error {
-		res, err := tx.ExecContext(ctx, `
+		queryArgs := make([]any, 0, 7+len(ownerArgs))
+		queryArgs = append(queryArgs, name, description, instanceRole, exp, revokedAt, now, clientID)
+		queryArgs = append(queryArgs, ownerArgs...)
+		res, err := tx.ExecContext(ctx, fmt.Sprintf(`
 			UPDATE api_clients
 			SET name = ?, description = ?, instance_role = ?, expires_at = ?, revoked_at = ?, updated_at = ?
-			WHERE id = ? AND user_id = ?
-		`, name, description, instanceRole, exp, revokedAt, now, clientID, userID)
+			WHERE id = ? AND %s
+		`, ownerWhere), queryArgs...)
 		if err != nil {
 			return fmt.Errorf("failed to update api client: %w", err)
 		}
@@ -280,15 +333,28 @@ func (s *Store) UpdateAPIClient(
 		return nil, err
 	}
 
+	if teamOwned {
+		tenantID := ownerArgs[0].(uuid.UUID)
+		return s.GetTeamAPIClient(ctx, tenantID, clientID)
+	}
+	userID := ownerArgs[0].(uuid.UUID)
 	return s.GetAPIClient(ctx, userID, clientID)
 }
 
 func (s *Store) DeleteAPIClient(ctx context.Context, userID uuid.UUID, clientID uuid.UUID) error {
+	return s.deleteAPIClient(ctx, clientID, "user_id = ?", userID)
+}
+
+func (s *Store) DeleteTeamAPIClient(ctx context.Context, tenantID, clientID uuid.UUID) error {
+	return s.deleteAPIClient(ctx, clientID, "tenant_id = ?", tenantID)
+}
+
+func (s *Store) deleteAPIClient(ctx context.Context, clientID uuid.UUID, ownerWhere string, ownerArg any) error {
 	if _, err := s.db.ExecContext(ctx, "DELETE FROM api_client_site_roles WHERE api_client_id = CAST(? AS UUID)", clientID.String()); err != nil {
 		return fmt.Errorf("failed to delete api client site roles: %w", err)
 	}
 
-	res, err := s.db.ExecContext(ctx, "DELETE FROM api_clients WHERE id = CAST(? AS UUID) AND user_id = CAST(? AS UUID)", clientID.String(), userID.String())
+	res, err := s.db.ExecContext(ctx, fmt.Sprintf("DELETE FROM api_clients WHERE id = CAST(? AS UUID) AND %s", ownerWhere), append([]any{clientID.String()}, ownerArg)...)
 	if err != nil {
 		return fmt.Errorf("failed to delete api client: %w", err)
 	}
@@ -311,16 +377,21 @@ func (s *Store) GetAPIClientAuth(ctx context.Context, token string) (*APIClientA
 
 	tokenHash := hashAPIClientToken(token)
 	var authz APIClientAuth
+	var userIDRaw sql.NullString
+	var tenantIDRaw sql.NullString
 	var instanceRole string
 	var expiresAt sql.NullTime
 	var revokedAt sql.NullTime
 	err := s.db.QueryRowContext(ctx, `
-		SELECT id, user_id, instance_role, expires_at, revoked_at
-		FROM api_clients
-		WHERE secret_hash = ?
+		SELECT c.id, CAST(c.user_id AS VARCHAR), CAST(c.tenant_id AS VARCHAR), c.instance_role, c.expires_at, c.revoked_at
+		FROM api_clients c
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = c.tenant_id
+		WHERE c.secret_hash = ?
+			AND (c.tenant_id IS NULL OR ta.tenant_id IS NULL)
 	`, tokenHash).Scan(
 		&authz.ClientID,
-		&authz.UserID,
+		&userIDRaw,
+		&tenantIDRaw,
 		&instanceRole,
 		&expiresAt,
 		&revokedAt,
@@ -330,6 +401,12 @@ func (s *Store) GetAPIClientAuth(ctx context.Context, token string) (*APIClientA
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get api client auth: %w", err)
+	}
+
+	authz.UserID = parseNullUUIDValue(userIDRaw)
+	authz.TenantID = parseNullUUIDValue(tenantIDRaw)
+	if authz.UserID == uuid.Nil && authz.TenantID == uuid.Nil {
+		return nil, nil
 	}
 
 	if revokedAt.Valid {
@@ -342,15 +419,32 @@ func (s *Store) GetAPIClientAuth(ctx context.Context, token string) (*APIClientA
 	authz.InstanceRole = auth.InstanceRole(instanceRole)
 	authz.SiteRoles = make(map[uuid.UUID]auth.SiteRole)
 
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT site_id, role
-		FROM api_client_site_roles
-		WHERE api_client_id = ?
-	`, authz.ClientID)
+	defaultTenantID := uuid.Nil
+	if authz.TenantID != uuid.Nil {
+		defaultTenantID, err = s.GetDefaultTenantID(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve default tenant for api client auth: %w", err)
+		}
+	}
+
+	roleQuery := `
+		SELECT r.site_id, r.role
+		FROM api_client_site_roles r
+		JOIN api_clients c ON c.id = r.api_client_id
+		LEFT JOIN site_tenants st ON st.site_id = r.site_id
+		WHERE r.api_client_id = ?
+	`
+	roleArgs := []any{authz.ClientID}
+	if authz.TenantID != uuid.Nil {
+		roleQuery += ` AND COALESCE(st.tenant_id, ?) = ?`
+		roleArgs = append(roleArgs, defaultTenantID, authz.TenantID)
+	}
+	rows, err := s.db.QueryContext(ctx, roleQuery, roleArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query api client site roles: %w", err)
 	}
 	defer rows.Close()
+
 	for rows.Next() {
 		var siteID uuid.UUID
 		var role string
@@ -363,7 +457,8 @@ func (s *Store) GetAPIClientAuth(ctx context.Context, token string) (*APIClientA
 		return nil, fmt.Errorf("failed iterating api client site roles: %w", err)
 	}
 
-	_, _ = s.db.ExecContext(ctx, "UPDATE api_clients SET last_used_at = ?, updated_at = ? WHERE id = ?", time.Now().UTC(), time.Now().UTC(), authz.ClientID)
+	now := time.Now().UTC()
+	_, _ = s.db.ExecContext(ctx, "UPDATE api_clients SET last_used_at = ?, updated_at = ? WHERE id = ?", now, now, authz.ClientID)
 
 	return &authz, nil
 }
@@ -434,6 +529,125 @@ func flattenSiteRoles(siteRoles map[uuid.UUID]auth.SiteRole) []api.APIClientSite
 		})
 	}
 	return roles
+}
+
+func scanAPIClient(scanner interface {
+	Scan(dest ...any) error
+}) (api.APIClient, error) {
+	var client api.APIClient
+	var userIDRaw sql.NullString
+	var tenantIDRaw sql.NullString
+	var description sql.NullString
+	var expiresAt sql.NullTime
+	var lastUsedAt sql.NullTime
+	var revokedAt sql.NullTime
+
+	if err := scanner.Scan(
+		&client.ID,
+		&userIDRaw,
+		&tenantIDRaw,
+		&client.Name,
+		&description,
+		&client.InstanceRole,
+		&expiresAt,
+		&lastUsedAt,
+		&revokedAt,
+		&client.CreatedAt,
+		&client.UpdatedAt,
+	); err != nil {
+		return api.APIClient{}, fmt.Errorf("failed to scan api client: %w", err)
+	}
+
+	client.UserID = parseNullUUIDPointer(userIDRaw)
+	client.TenantID = parseNullUUIDPointer(tenantIDRaw)
+	if client.TenantID != nil {
+		client.OwnerType = APIClientOwnerTeam
+	} else {
+		client.OwnerType = APIClientOwnerPersonal
+	}
+	client.Description = strings.TrimSpace(description.String)
+	client.ExpiresAt = nullTimePtr(expiresAt)
+	client.LastUsedAt = nullTimePtr(lastUsedAt)
+	client.RevokedAt = nullTimePtr(revokedAt)
+	client.SiteRoles = make([]api.APIClientSiteRole, 0)
+
+	return client, nil
+}
+
+func scanAPIClientRow(row interface {
+	Scan(dest ...any) error
+}) (*api.APIClient, error) {
+	client, err := scanAPIClient(row)
+	if err != nil {
+		return nil, err
+	}
+	return &client, nil
+}
+
+func buildAPIClient(
+	id uuid.UUID,
+	userID *uuid.UUID,
+	tenantID *uuid.UUID,
+	name string,
+	description string,
+	instanceRole auth.InstanceRole,
+	expiresAt *time.Time,
+	createdAt time.Time,
+	updatedAt time.Time,
+	siteRoles []api.APIClientSiteRole,
+) api.APIClient {
+	ownerType := APIClientOwnerPersonal
+	if tenantID != nil && *tenantID != uuid.Nil {
+		ownerType = APIClientOwnerTeam
+	}
+
+	return api.APIClient{
+		ID:           id,
+		UserID:       normalizedUUIDPointer(userID),
+		TenantID:     normalizedUUIDPointer(tenantID),
+		OwnerType:    ownerType,
+		Name:         name,
+		Description:  description,
+		InstanceRole: string(instanceRole),
+		ExpiresAt:    expiresAt,
+		CreatedAt:    createdAt,
+		UpdatedAt:    updatedAt,
+		SiteRoles:    siteRoles,
+	}
+}
+
+func normalizedUUIDPointer(value *uuid.UUID) *uuid.UUID {
+	if value == nil || *value == uuid.Nil {
+		return nil
+	}
+	copy := *value
+	return &copy
+}
+
+func parseNullUUIDPointer(value sql.NullString) *uuid.UUID {
+	if !value.Valid || strings.TrimSpace(value.String) == "" {
+		return nil
+	}
+	parsed, err := uuid.Parse(strings.TrimSpace(value.String))
+	if err != nil || parsed == uuid.Nil {
+		return nil
+	}
+	return &parsed
+}
+
+func parseNullUUIDValue(value sql.NullString) uuid.UUID {
+	parsed := parseNullUUIDPointer(value)
+	if parsed == nil {
+		return uuid.Nil
+	}
+	return *parsed
+}
+
+func nullableUUIDPtr(value *uuid.UUID) any {
+	if value == nil || *value == uuid.Nil {
+		return nil
+	}
+	return *value
 }
 
 func nullTimePtr(value sql.NullTime) *time.Time {

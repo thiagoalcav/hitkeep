@@ -47,6 +47,8 @@
     <div class="team-settings__actions">
         <p-button [label]="'admin.team.settings.saveAction' | transloco" [loading]="isSaving()" [disabled]="form.invalid || isSaving()" (onClick)="saveSettings()" />
     </div>
+
+    <app-settings-api-clients scope="team" [teamId]="t.id" />
     }
 
     <p-card>

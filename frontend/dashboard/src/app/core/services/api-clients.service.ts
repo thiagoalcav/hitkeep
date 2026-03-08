@@ -12,7 +12,9 @@ export interface APIClientSiteRole {
 
 export interface APIClient {
     id: string;
-    user_id: string;
+    user_id?: string | null;
+    tenant_id?: string | null;
+    owner_type: "personal" | "team";
     name: string;
     description: string;
     instance_role: InstanceRole;
@@ -55,23 +57,30 @@ export interface SiteSummary {
 export class APIClientsService {
     private http = inject(HttpClient);
 
-    listClients(): Observable<APIClient[]> {
-        return this.http.get<APIClient[]>("/api/user/api-clients");
+    listClients(teamID?: string | null): Observable<APIClient[]> {
+        return this.http.get<APIClient[]>(this.basePath(teamID));
     }
 
-    createClient(payload: CreateAPIClientRequest): Observable<CreateAPIClientResponse> {
-        return this.http.post<CreateAPIClientResponse>("/api/user/api-clients", payload);
+    createClient(payload: CreateAPIClientRequest, teamID?: string | null): Observable<CreateAPIClientResponse> {
+        return this.http.post<CreateAPIClientResponse>(this.basePath(teamID), payload);
     }
 
-    updateClient(clientID: string, payload: UpdateAPIClientRequest): Observable<APIClient> {
-        return this.http.put<APIClient>(`/api/user/api-clients/${clientID}`, payload);
+    updateClient(clientID: string, payload: UpdateAPIClientRequest, teamID?: string | null): Observable<APIClient> {
+        return this.http.put<APIClient>(`${this.basePath(teamID)}/${encodeURIComponent(clientID)}`, payload);
     }
 
-    deleteClient(clientID: string): Observable<void> {
-        return this.http.delete<void>(`/api/user/api-clients/${clientID}`);
+    deleteClient(clientID: string, teamID?: string | null): Observable<void> {
+        return this.http.delete<void>(`${this.basePath(teamID)}/${encodeURIComponent(clientID)}`);
     }
 
     listSites(): Observable<SiteSummary[]> {
         return this.http.get<SiteSummary[]>("/api/sites");
+    }
+
+    private basePath(teamID?: string | null): string {
+        if (teamID) {
+            return `/api/user/teams/${encodeURIComponent(teamID)}/api-clients`;
+        }
+        return "/api/user/api-clients";
     }
 }

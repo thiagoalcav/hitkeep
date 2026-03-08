@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from "@angular/core";
 
 import { toSignal } from "@angular/core/rxjs-interop";
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from "@angular/forms";
@@ -62,6 +62,9 @@ export class SettingsAPIClients {
     private readonly perms = inject(PermissionService);
     private readonly transloco = inject(TranslocoService);
     private readonly activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+
+    readonly scope = input<"personal" | "team">("personal");
+    readonly teamId = input<string | null>(null);
 
     protected readonly isLoading = signal(false);
     protected readonly isSaving = signal(false);
@@ -129,9 +132,16 @@ export class SettingsAPIClients {
     });
 
     protected readonly isEditing = computed(() => this.editingClientID() !== null);
+    protected readonly isTeamScope = computed(() => this.scope() === "team");
+    protected readonly titleKey = computed(() => (this.isTeamScope() ? "settings.apiClients.teamTitle" : "settings.apiClients.title"));
+    protected readonly descriptionKey = computed(() => (this.isTeamScope() ? "settings.apiClients.teamDescription" : "settings.apiClients.description"));
 
     constructor() {
-        this.reload();
+        effect(() => {
+            this.scope();
+            this.teamId();
+            this.reload();
+        });
     }
 
     protected reload(): void {
@@ -139,7 +149,7 @@ export class SettingsAPIClients {
         this.error.set(null);
 
         forkJoin({
-            clients: this.apiClientsService.listClients(),
+            clients: this.apiClientsService.listClients(this.teamIdForRequests()),
             sites: this.apiClientsService.listSites()
         })
             .pipe(finalize(() => this.isLoading.set(false)))
@@ -176,7 +186,7 @@ export class SettingsAPIClients {
 
         if (!editingClientID) {
             this.apiClientsService
-                .createClient(payload)
+                .createClient(payload, this.teamIdForRequests())
                 .pipe(finalize(() => this.isSaving.set(false)))
                 .subscribe({
                     next: (resp) => {
@@ -200,10 +210,14 @@ export class SettingsAPIClients {
         }
 
         this.apiClientsService
-            .updateClient(editingClientID, {
-                ...payload,
-                revoked: Boolean(existing.revoked_at)
-            })
+            .updateClient(
+                editingClientID,
+                {
+                    ...payload,
+                    revoked: Boolean(existing.revoked_at)
+                },
+                this.teamIdForRequests()
+            )
             .pipe(finalize(() => this.isSaving.set(false)))
             .subscribe({
                 next: (updated) => {
@@ -262,7 +276,7 @@ export class SettingsAPIClients {
         this.success.set(null);
         this.isSaving.set(true);
         this.apiClientsService
-            .deleteClient(client.id)
+            .deleteClient(client.id, this.teamIdForRequests())
             .pipe(finalize(() => this.isSaving.set(false)))
             .subscribe({
                 next: () => {
@@ -284,14 +298,18 @@ export class SettingsAPIClients {
         this.isSaving.set(true);
 
         this.apiClientsService
-            .updateClient(client.id, {
-                name: client.name,
-                description: client.description ?? "",
-                instance_role: this.resolveEditableInstanceRole(client.instance_role),
-                expires_at: client.expires_at ?? null,
-                revoked: !client.revoked_at,
-                site_roles: (client.site_roles ?? []).map((entry) => ({ ...entry }))
-            })
+            .updateClient(
+                client.id,
+                {
+                    name: client.name,
+                    description: client.description ?? "",
+                    instance_role: this.resolveEditableInstanceRole(client.instance_role),
+                    expires_at: client.expires_at ?? null,
+                    revoked: !client.revoked_at,
+                    site_roles: (client.site_roles ?? []).map((entry) => ({ ...entry }))
+                },
+                this.teamIdForRequests()
+            )
             .pipe(finalize(() => this.isSaving.set(false)))
             .subscribe({
                 next: (updated) => {
@@ -363,7 +381,7 @@ export class SettingsAPIClients {
         }
 
         const role = this.form.controls.instanceRole.value;
-        const resolvedRole = this.resolveEditableInstanceRole(role);
+        const resolvedRole = this.isTeamScope() ? "user" : this.resolveEditableInstanceRole(role);
 
         return {
             name: (this.form.controls.name.value ?? "").trim(),
@@ -375,6 +393,9 @@ export class SettingsAPIClients {
     }
 
     private resolveEditableInstanceRole(role: string | null | undefined): InstanceRole {
+        if (this.isTeamScope()) {
+            return "user";
+        }
         const options = this.instanceRoleOptions().map((entry) => entry.value);
         const fallback = options[options.length - 1] ?? "user";
         if (role === "owner" || role === "admin" || role === "user") {
@@ -406,5 +427,9 @@ export class SettingsAPIClients {
         const hour = pad(parsed.getHours());
         const minute = pad(parsed.getMinutes());
         return `${year}-${month}-${day}T${hour}:${minute}`;
+    }
+
+    private teamIdForRequests(): string | null {
+        return this.isTeamScope() ? this.teamId() : null;
     }
 }

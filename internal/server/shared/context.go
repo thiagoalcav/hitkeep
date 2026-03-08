@@ -124,20 +124,22 @@ func (c *Context) RequirePermission(perm auth.Permission) func(http.HandlerFunc)
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
 			userID := GetUserIDFromContext(r)
-			if userID == uuid.Nil {
+			apiClientAuth, _ := r.Context().Value(APIClientAuthKey).(*database.APIClientAuth)
+			if userID == uuid.Nil && apiClientAuth == nil {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
 
-			// Get instance role.
-			instanceRole, err := c.Store.GetInstanceRole(r.Context(), userID)
-			if err != nil {
-				slog.Error("Failed to get instance role", "error", err)
-				http.Error(w, "Internal error", http.StatusInternalServerError)
-				return
+			instanceRole := auth.InstanceUser
+			if userID != uuid.Nil {
+				var err error
+				instanceRole, err = c.Store.GetInstanceRole(r.Context(), userID)
+				if err != nil {
+					slog.Error("Failed to get instance role", "error", err)
+					http.Error(w, "Internal error", http.StatusInternalServerError)
+					return
+				}
 			}
-
-			apiClientAuth, _ := r.Context().Value(APIClientAuthKey).(*database.APIClientAuth)
 			if apiClientAuth != nil {
 				instanceRole = auth.MinInstanceRole(instanceRole, apiClientAuth.InstanceRole)
 			}
@@ -166,10 +168,14 @@ func (c *Context) RequirePermission(perm auth.Permission) func(http.HandlerFunc)
 					return
 				}
 
-				siteRole, err := c.Store.GetSiteRole(r.Context(), userID, siteID)
-				if err != nil {
-					http.Error(w, "Access denied", http.StatusForbidden)
-					return
+				var siteRole auth.SiteRole
+				if userID != uuid.Nil {
+					var err error
+					siteRole, err = c.Store.GetSiteRole(r.Context(), userID, siteID)
+					if err != nil {
+						http.Error(w, "Access denied", http.StatusForbidden)
+						return
+					}
 				}
 
 				if apiClientAuth != nil {
@@ -178,7 +184,11 @@ func (c *Context) RequirePermission(perm auth.Permission) func(http.HandlerFunc)
 						http.Error(w, "Forbidden", http.StatusForbidden)
 						return
 					}
-					siteRole = auth.MinSiteRole(siteRole, delegatedRole)
+					if userID == uuid.Nil {
+						siteRole = delegatedRole
+					} else {
+						siteRole = auth.MinSiteRole(siteRole, delegatedRole)
+					}
 				}
 
 				if siteRole.HasPermission(perm) {
@@ -239,7 +249,7 @@ func (c *Context) RequireAuth(allowAPIKey bool, next http.HandlerFunc) http.Hand
 			}
 		}
 
-		if userID == uuid.Nil {
+		if userID == uuid.Nil && apiClientAuth == nil {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}

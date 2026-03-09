@@ -38,8 +38,8 @@
         "teamSectionToggleAria": "Alternar navegación del equipo",
         "teamSettings": "Configuración del equipo",
         "teamSettingsAria": "Ir a configuración del equipo",
-        "ecommerce": "Ecommerce",
-        "ecommerceAria": "Go to ecommerce analytics"
+        "ecommerce": "Comercio electrónico",
+        "ecommerceAria": "Ir a la analítica de comercio electrónico"
     },
     "teams": {
         "switcher": {
@@ -1088,54 +1088,54 @@
     },
     "ecommerce": {
         "kpis": {
-            "revenue": "Revenue",
-            "orders": "Orders",
-            "averageOrderValue": "Avg. order value",
-            "checkoutConversion": "Checkout conversion"
+            "revenue": "Ingresos",
+            "orders": "Pedidos",
+            "averageOrderValue": "Valor medio del pedido",
+            "checkoutConversion": "Conversión de checkout"
         },
         "chart": {
-            "title": "Revenue over time",
-            "description": "Track revenue and completed purchases for the active date range.",
-            "revenue": "Revenue",
-            "orders": "Orders"
+            "title": "Ingresos en el tiempo",
+            "description": "Sigue los ingresos y las compras completadas para el rango de fechas activo.",
+            "revenue": "Ingresos",
+            "orders": "Pedidos"
         },
         "filters": {
-            "product": "Product: {{value}}",
-            "utmSource": "UTM source: {{value}}"
+            "product": "Producto: {{value}}",
+            "utmSource": "Fuente UTM: {{value}}"
         },
         "filtersPanels": {
-            "sources": "Top sources",
-            "referrers": "Top referrers",
-            "devices": "Top devices",
-            "countries": "Top countries"
+            "sources": "Principales fuentes",
+            "referrers": "Principales referentes",
+            "devices": "Principales dispositivos",
+            "countries": "Principales países"
         },
         "products": {
-            "title": "Top products",
-            "description": "See which products drive the most revenue and completed orders.",
-            "empty": "No purchase items matched the current filters."
+            "title": "Productos principales",
+            "description": "Consulta qué productos generan más ingresos y pedidos completados.",
+            "empty": "Ningún artículo comprado coincide con los filtros actuales."
         },
         "sources": {
-            "title": "Revenue sources",
-            "description": "Attribute revenue to source, medium, campaign, and referrer.",
-            "empty": "No revenue sources matched the current filters."
+            "title": "Fuentes de ingresos",
+            "description": "Atribuye los ingresos a la fuente, el medio, la campaña y el referente.",
+            "empty": "Ninguna fuente de ingresos coincide con los filtros actuales."
         },
         "columns": {
-            "product": "Product",
-            "quantity": "Quantity",
-            "orders": "Orders",
-            "revenue": "Revenue",
-            "source": "Source",
-            "campaign": "Campaign",
-            "referrer": "Referrer"
+            "product": "Producto",
+            "quantity": "Cantidad",
+            "orders": "Pedidos",
+            "revenue": "Ingresos",
+            "source": "Fuente",
+            "campaign": "Campaña",
+            "referrer": "Referente"
         },
         "actions": {
-            "filterProduct": "Filter",
-            "clearProductFilter": "Clear"
+            "filterProduct": "Filtrar",
+            "clearProductFilter": "Limpiar"
         },
         "empty": {
-            "title": "No ecommerce data yet",
-            "description": "Track purchase, begin_checkout, add_to_cart, and view_item events to populate ecommerce analytics."
+            "title": "Todavía no hay datos de comercio electrónico",
+            "description": "Registra eventos como purchase, begin_checkout, add_to_cart y view_item para completar la analítica de comercio electrónico."
         },
-        "noSiteDescription": "Select a site to view ecommerce analytics."
+        "noSiteDescription": "Selecciona un sitio para ver la analítica de comercio electrónico."
     }
 }

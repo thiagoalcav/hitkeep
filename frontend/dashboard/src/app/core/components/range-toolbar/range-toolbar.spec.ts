@@ -1,15 +1,17 @@
 import { Signal } from "@angular/core";
 import { ComponentFixture, TestBed } from "@angular/core/testing";
-import { provideNoopAnimations } from "@angular/platform-browser/animations";
 import { TranslocoService, TranslocoTestingModule } from "@jsverse/transloco";
 import { provideTranslocoLocale } from "@jsverse/transloco-locale";
+import { PrimeNG } from "primeng/config";
 
 import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from "./range-toolbar";
+import { PrimeLocaleSyncService } from "@core/i18n/prime-locale-sync.service";
 
 describe("RangeToolbar", () => {
     let fixture: ComponentFixture<RangeToolbar>;
     let component: RangeToolbar;
     let transloco: TranslocoService;
+    let primeNg: PrimeNG;
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
@@ -60,7 +62,7 @@ describe("RangeToolbar", () => {
                 })
             ],
             providers: [
-                provideNoopAnimations(),
+                PrimeLocaleSyncService,
                 provideTranslocoLocale({
                     defaultLocale: "en-US",
                     langToLocaleMapping: {
@@ -72,6 +74,8 @@ describe("RangeToolbar", () => {
         }).compileComponents();
 
         transloco = TestBed.inject(TranslocoService);
+        primeNg = TestBed.inject(PrimeNG);
+        TestBed.inject(PrimeLocaleSyncService);
         fixture = TestBed.createComponent(RangeToolbar);
         component = fixture.componentInstance;
         fixture.componentRef.setInput("timeRanges", DEFAULT_RANGE_OPTIONS);
@@ -116,5 +120,19 @@ describe("RangeToolbar", () => {
 
         expect(datePickerFormat(component)).toBe("dd.mm.yy");
         expect(datePickerHourFormat(component)).toBe("24");
+    });
+
+    it("syncs PrimeNG calendar translations with the active locale", async () => {
+        expect(primeNg.translation.dayNames?.[0]).toBe("Sunday");
+        expect(primeNg.translation.monthNames?.[0]).toBe("January");
+        expect(primeNg.translation.firstDayOfWeek).toBe(0);
+
+        transloco.setActiveLang("de");
+        fixture.detectChanges();
+        await fixture.whenStable();
+
+        expect(primeNg.translation.dayNames?.[0]).toBe("Sonntag");
+        expect(primeNg.translation.monthNames?.[0]).toBe("Januar");
+        expect(primeNg.translation.firstDayOfWeek).toBe(1);
     });
 });

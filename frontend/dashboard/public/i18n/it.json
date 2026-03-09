@@ -38,8 +38,8 @@
         "teamSectionToggleAria": "Attiva/disattiva navigazione del team",
         "teamSettings": "Impostazioni del team",
         "teamSettingsAria": "Vai alle impostazioni del team",
-        "ecommerce": "Ecommerce",
-        "ecommerceAria": "Go to ecommerce analytics"
+        "ecommerce": "E-commerce",
+        "ecommerceAria": "Vai all’analisi e-commerce"
     },
     "teams": {
         "switcher": {
@@ -1088,54 +1088,54 @@
     },
     "ecommerce": {
         "kpis": {
-            "revenue": "Revenue",
-            "orders": "Orders",
-            "averageOrderValue": "Avg. order value",
-            "checkoutConversion": "Checkout conversion"
+            "revenue": "Ricavi",
+            "orders": "Ordini",
+            "averageOrderValue": "Valore medio ordine",
+            "checkoutConversion": "Conversione checkout"
         },
         "chart": {
-            "title": "Revenue over time",
-            "description": "Track revenue and completed purchases for the active date range.",
-            "revenue": "Revenue",
-            "orders": "Orders"
+            "title": "Ricavi nel tempo",
+            "description": "Monitora ricavi e acquisti completati per l’intervallo di date attivo.",
+            "revenue": "Ricavi",
+            "orders": "Ordini"
         },
         "filters": {
-            "product": "Product: {{value}}",
-            "utmSource": "UTM source: {{value}}"
+            "product": "Prodotto: {{value}}",
+            "utmSource": "Sorgente UTM: {{value}}"
         },
         "filtersPanels": {
-            "sources": "Top sources",
-            "referrers": "Top referrers",
-            "devices": "Top devices",
-            "countries": "Top countries"
+            "sources": "Principali sorgenti",
+            "referrers": "Principali referrer",
+            "devices": "Principali dispositivi",
+            "countries": "Principali paesi"
         },
         "products": {
-            "title": "Top products",
-            "description": "See which products drive the most revenue and completed orders.",
-            "empty": "No purchase items matched the current filters."
+            "title": "Prodotti principali",
+            "description": "Scopri quali prodotti generano più ricavi e ordini completati.",
+            "empty": "Nessun articolo acquistato corrisponde ai filtri correnti."
         },
         "sources": {
-            "title": "Revenue sources",
-            "description": "Attribute revenue to source, medium, campaign, and referrer.",
-            "empty": "No revenue sources matched the current filters."
+            "title": "Sorgenti di ricavo",
+            "description": "Attribuisci i ricavi a sorgente, mezzo, campagna e referrer.",
+            "empty": "Nessuna sorgente di ricavo corrisponde ai filtri correnti."
         },
         "columns": {
-            "product": "Product",
-            "quantity": "Quantity",
-            "orders": "Orders",
-            "revenue": "Revenue",
-            "source": "Source",
-            "campaign": "Campaign",
+            "product": "Prodotto",
+            "quantity": "Quantità",
+            "orders": "Ordini",
+            "revenue": "Ricavi",
+            "source": "Sorgente",
+            "campaign": "Campagna",
             "referrer": "Referrer"
         },
         "actions": {
-            "filterProduct": "Filter",
-            "clearProductFilter": "Clear"
+            "filterProduct": "Filtra",
+            "clearProductFilter": "Cancella"
         },
         "empty": {
-            "title": "No ecommerce data yet",
-            "description": "Track purchase, begin_checkout, add_to_cart, and view_item events to populate ecommerce analytics."
+            "title": "Nessun dato e-commerce disponibile",
+            "description": "Traccia gli eventi purchase, begin_checkout, add_to_cart e view_item per popolare l’analisi e-commerce."
         },
-        "noSiteDescription": "Select a site to view ecommerce analytics."
+        "noSiteDescription": "Seleziona un sito per visualizzare l’analisi e-commerce."
     }
 }

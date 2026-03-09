@@ -1,4 +1,4 @@
-import { ApplicationConfig, isDevMode, provideBrowserGlobalErrorListeners, provideZonelessChangeDetection } from "@angular/core";
+import { ApplicationConfig, inject, isDevMode, provideBrowserGlobalErrorListeners, provideEnvironmentInitializer, provideZonelessChangeDetection } from "@angular/core";
 import { provideRouter } from "@angular/router";
 import { providePrimeNG } from "primeng/config";
 import Aura from "@primeuix/themes/aura";
@@ -11,6 +11,7 @@ import { provideTransloco } from "@jsverse/transloco";
 import { provideTranslocoLocale } from "@jsverse/transloco-locale";
 import { TranslocoHttpLoader } from "./transloco-loader";
 import { providePreloadUserLang } from "@core/i18n/preload-user-lang";
+import { PrimeLocaleSyncService } from "@core/i18n/prime-locale-sync.service";
 
 export const appConfig: ApplicationConfig = {
     providers: [
@@ -52,6 +53,7 @@ export const appConfig: ApplicationConfig = {
                 "it-IT": "it-IT"
             }
         }),
+        provideEnvironmentInitializer(() => inject(PrimeLocaleSyncService)),
         providePreloadUserLang()
     ]
 };

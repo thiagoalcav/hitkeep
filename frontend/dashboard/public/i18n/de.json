@@ -38,8 +38,8 @@
         "teamSectionToggleAria": "Team-Navigation umschalten",
         "teamSettings": "Team-Einstellungen",
         "teamSettingsAria": "Zu den Team-Einstellungen",
-        "ecommerce": "Ecommerce",
-        "ecommerceAria": "Go to ecommerce analytics"
+        "ecommerce": "E-Commerce",
+        "ecommerceAria": "Zur E-Commerce-Analyse wechseln"
     },
     "teams": {
         "switcher": {
@@ -1088,54 +1088,54 @@
     },
     "ecommerce": {
         "kpis": {
-            "revenue": "Revenue",
-            "orders": "Orders",
-            "averageOrderValue": "Avg. order value",
-            "checkoutConversion": "Checkout conversion"
+            "revenue": "Umsatz",
+            "orders": "Bestellungen",
+            "averageOrderValue": "Durchschn. Bestellwert",
+            "checkoutConversion": "Checkout-Konversion"
         },
         "chart": {
-            "title": "Revenue over time",
-            "description": "Track revenue and completed purchases for the active date range.",
-            "revenue": "Revenue",
-            "orders": "Orders"
+            "title": "Umsatz im Zeitverlauf",
+            "description": "Verfolge Umsatz und abgeschlossene Käufe für den aktiven Zeitraum.",
+            "revenue": "Umsatz",
+            "orders": "Bestellungen"
         },
         "filters": {
-            "product": "Product: {{value}}",
-            "utmSource": "UTM source: {{value}}"
+            "product": "Produkt: {{value}}",
+            "utmSource": "UTM-Quelle: {{value}}"
         },
         "filtersPanels": {
-            "sources": "Top sources",
-            "referrers": "Top referrers",
-            "devices": "Top devices",
-            "countries": "Top countries"
+            "sources": "Top-Quellen",
+            "referrers": "Top-Referrer",
+            "devices": "Top-Geräte",
+            "countries": "Top-Länder"
         },
         "products": {
-            "title": "Top products",
-            "description": "See which products drive the most revenue and completed orders.",
-            "empty": "No purchase items matched the current filters."
+            "title": "Top-Produkte",
+            "description": "Sieh, welche Produkte den meisten Umsatz und die meisten Bestellungen erzielen.",
+            "empty": "Keine Kaufpositionen entsprechen den aktuellen Filtern."
         },
         "sources": {
-            "title": "Revenue sources",
-            "description": "Attribute revenue to source, medium, campaign, and referrer.",
-            "empty": "No revenue sources matched the current filters."
+            "title": "Umsatzquellen",
+            "description": "Ordne Umsatz Quelle, Medium, Kampagne und Referrer zu.",
+            "empty": "Keine Umsatzquellen entsprechen den aktuellen Filtern."
         },
         "columns": {
-            "product": "Product",
-            "quantity": "Quantity",
-            "orders": "Orders",
-            "revenue": "Revenue",
-            "source": "Source",
-            "campaign": "Campaign",
+            "product": "Produkt",
+            "quantity": "Menge",
+            "orders": "Bestellungen",
+            "revenue": "Umsatz",
+            "source": "Quelle",
+            "campaign": "Kampagne",
             "referrer": "Referrer"
         },
         "actions": {
-            "filterProduct": "Filter",
-            "clearProductFilter": "Clear"
+            "filterProduct": "Filtern",
+            "clearProductFilter": "Zurücksetzen"
         },
         "empty": {
-            "title": "No ecommerce data yet",
-            "description": "Track purchase, begin_checkout, add_to_cart, and view_item events to populate ecommerce analytics."
+            "title": "Noch keine E-Commerce-Daten",
+            "description": "Erfasse Events wie purchase, begin_checkout, add_to_cart und view_item, um die E-Commerce-Analyse zu füllen."
         },
-        "noSiteDescription": "Select a site to view ecommerce analytics."
+        "noSiteDescription": "Wähle eine Website aus, um die E-Commerce-Analyse anzuzeigen."
     }
 }

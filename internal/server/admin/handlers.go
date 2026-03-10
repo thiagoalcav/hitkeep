@@ -29,6 +29,10 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		InstancePerm: authcore.PermInstanceManageUsers,
 		RateLimiter:  ctx.ApiLimiter,
 	}, h.handleListUsers()))
+	mux.HandleFunc("POST /api/admin/users/{id}/disable-2fa", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceManageUsers,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleDisableUser2FA()))
 	mux.HandleFunc("POST /api/admin/users/{id}/role", ctx.Handler(shared.HandlerConfig{
 		InstancePerm: authcore.PermInstanceManageUsers,
 		RateLimiter:  ctx.ApiLimiter,
@@ -202,6 +206,78 @@ func (h *handler) refreshIPFilter(ctx context.Context) {
 	}
 	if err := h.ctx.IPFilter.Refresh(ctx); err != nil {
 		slog.Warn("Failed to refresh IP filter after exclusion write", "error", err)
+	}
+}
+
+func (h *handler) actorInstanceRole(r *http.Request) (authcore.InstanceRole, error) {
+	if permissionCtx, ok := r.Context().Value(shared.PermissionKey).(shared.PermissionContext); ok && permissionCtx.InstanceRole != "" {
+		return permissionCtx.InstanceRole, nil
+	}
+
+	actorID := shared.GetUserIDFromContext(r)
+	if actorID == uuid.Nil {
+		return authcore.InstanceUser, nil
+	}
+
+	return h.ctx.Store.GetInstanceRole(r.Context(), actorID)
+}
+
+func (h *handler) handleDisableUser2FA() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		targetUserID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+		if err != nil {
+			http.Error(w, "Invalid user ID", http.StatusBadRequest)
+			return
+		}
+
+		actorRole, err := h.actorInstanceRole(r)
+		if err != nil {
+			slog.Error("Failed to resolve actor role for disable-2fa", "error", err)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			return
+		}
+		if actorRole != authcore.InstanceOwner {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
+		targetUser, err := h.ctx.Store.GetUserByID(r.Context(), targetUserID)
+		if err != nil {
+			slog.Error("Failed to load target user for disable-2fa", "error", err, "target_user_id", targetUserID)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			return
+		}
+		if targetUser == nil {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
+
+		result, err := h.ctx.Store.DisableUserMFA(r.Context(), targetUserID)
+		if err != nil {
+			slog.Error("Failed to disable user MFA", "error", err, "target_user_id", targetUserID)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			return
+		}
+
+		actorID := shared.GetUserIDFromContext(r)
+		slog.Info("Admin disabled user MFA",
+			"actor_user_id", actorID,
+			"target_user_id", targetUserID,
+			"target_email", targetUser.Email,
+			"totp_disabled", result.TOTPDisabled,
+			"passkeys_deleted", result.PasskeysDeleted,
+			"sessions_invalidated", result.SessionsInvalidated,
+		)
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(api.AdminDisableUserMFAResponse{
+			Status:              "ok",
+			TOTPDisabled:        result.TOTPDisabled,
+			PasskeysDeleted:     result.PasskeysDeleted,
+			SessionsInvalidated: result.SessionsInvalidated,
+		}); err != nil {
+			slog.Error("Failed to encode disable user MFA response", "error", err, "target_user_id", targetUserID)
+		}
 	}
 }
 

@@ -529,6 +529,16 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"name":    map[string]any{"type": "string"},
 					},
 				},
+				"AdminDisableUserMFAResponse": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"status":               map[string]any{"type": "string"},
+						"totp_disabled":        map[string]any{"type": "boolean"},
+						"passkeys_deleted":     map[string]any{"type": "integer"},
+						"sessions_invalidated": map[string]any{"type": "integer"},
+					},
+					"required": []string{"status", "totp_disabled", "passkeys_deleted", "sessions_invalidated"},
+				},
 				"IPExclusion": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
@@ -577,9 +587,18 @@ func openAPISpecV1(publicURL string) map[string]any {
 				"UserSecurityStatus": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
-						"totp_enabled": map[string]any{"type": "boolean"},
-						"totp_pending": map[string]any{"type": "boolean"},
-						"passkeys":     map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/UserPasskey"}},
+						"totp_enabled":             map[string]any{"type": "boolean"},
+						"totp_pending":             map[string]any{"type": "boolean"},
+						"passkeys":                 map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/UserPasskey"}},
+						"recovery_codes_generated": map[string]any{"type": "boolean"},
+						"recovery_codes_remaining": map[string]any{"type": "integer"},
+					},
+				},
+				"UserRecoveryCodesResponse": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"codes":     map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+						"remaining": map[string]any{"type": "integer"},
 					},
 				},
 				"UserTOTPSetup": map[string]any{
@@ -679,7 +698,7 @@ func openAPISpecV1(publicURL string) map[string]any {
 					"properties": map[string]any{
 						"status":          map[string]any{"type": "string"},
 						"challenge_token": map[string]any{"type": "string"},
-						"factors":         map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+						"factors":         map[string]any{"type": "array", "items": map[string]any{"type": "string", "enum": []string{"totp", "passkey", "recovery_code"}}},
 						"passkey":         map[string]any{"type": "object", "additionalProperties": true},
 					},
 				},
@@ -772,6 +791,11 @@ func openAPISpecV1(publicURL string) map[string]any {
 			},
 			"/api/auth/mfa/totp/verify": map[string]any{
 				"post": op([]string{"Auth"}, "Verify MFA TOTP", "Verifies TOTP code for pending MFA challenge.", nil, nil,
+					jsonBody(map[string]any{"type": "object", "properties": map[string]any{"challenge_token": map[string]any{"type": "string", "format": "uuid"}, "code": map[string]any{"type": "string"}}, "required": []string{"challenge_token", "code"}}),
+					map[string]any{"200": jsonRefResp("Status", "#/components/schemas/Status")}),
+			},
+			"/api/auth/mfa/recovery-code/verify": map[string]any{
+				"post": op([]string{"Auth"}, "Verify MFA recovery code", "Consumes a recovery code for a pending MFA challenge.", nil, nil,
 					jsonBody(map[string]any{"type": "object", "properties": map[string]any{"challenge_token": map[string]any{"type": "string", "format": "uuid"}, "code": map[string]any{"type": "string"}}, "required": []string{"challenge_token", "code"}}),
 					map[string]any{"200": jsonRefResp("Status", "#/components/schemas/Status")}),
 			},
@@ -1042,6 +1066,10 @@ func openAPISpecV1(publicURL string) map[string]any {
 				"delete": op([]string{"User"}, "Delete passkey", "Deletes a registered passkey credential.", secCookie(), []any{paramRef("#/components/parameters/passkeyID")}, nil,
 					map[string]any{"200": jsonRefResp("Security status", "#/components/schemas/UserSecurityStatus")}),
 			},
+			"/api/user/security/recovery-codes/regenerate": map[string]any{
+				"post": op([]string{"User"}, "Regenerate recovery codes", "Generates a new one-time set of backup recovery codes for the authenticated user.", secCookie(), nil, nil,
+					map[string]any{"200": jsonRefResp("Recovery codes", "#/components/schemas/UserRecoveryCodesResponse"), "409": errResp("Enable TOTP or register a passkey before generating recovery codes")}),
+			},
 			"/api/user/api-clients": map[string]any{
 				"get": op([]string{"User"}, "List API clients", "Lists API clients for authenticated user.", secCookie(), nil, nil, map[string]any{"200": jsonSchemaResp("API clients", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/APIClient"}})}),
 				"post": op([]string{"User"}, "Create API client", "Creates delegated API client and returns one-time token.", secCookie(), nil,
@@ -1102,6 +1130,13 @@ func openAPISpecV1(publicURL string) map[string]any {
 				"post": op([]string{"Admin"}, "Update user role", "Updates instance role for target user.", secCookie(), []any{paramRef("#/components/parameters/adminUserID")},
 					jsonBody(map[string]any{"type": "object", "properties": map[string]any{"role": map[string]any{"type": "string"}}, "required": []string{"role"}}),
 					map[string]any{"200": jsonRefResp("Status", "#/components/schemas/Status")}),
+			},
+			"/api/admin/users/{id}/disable-2fa": map[string]any{
+				"post": op([]string{"Admin"}, "Disable user MFA", "Owner-only recovery action that clears TOTP, passkeys, pending MFA challenges, and remember-me sessions for the target user.", secCookie(), []any{paramRef("#/components/parameters/adminUserID")}, nil, map[string]any{
+					"200": jsonRefResp("Disable user MFA response", "#/components/schemas/AdminDisableUserMFAResponse"),
+					"403": errResp("Forbidden"),
+					"404": errResp("Not found"),
+				}),
 			},
 			"/api/admin/users/{id}": map[string]any{
 				"delete": op([]string{"Admin"}, "Delete user", "Deletes user account (cannot delete self). Deletion is blocked if the target user is the sole owner of any team.", secCookie(), []any{paramRef("#/components/parameters/adminUserID")}, nil, map[string]any{

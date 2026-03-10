@@ -9,6 +9,7 @@ import { provideHttpClientTesting } from "@angular/common/http/testing";
 import { vi } from "vitest";
 
 import { UserProfileService } from "@services/user-profile.service";
+import { PermissionService } from "@services/permission.service";
 import { AdminSettings } from "./admin-settings";
 
 interface AdminSettingsTestAccess {
@@ -18,10 +19,26 @@ interface AdminSettingsTestAccess {
         teams: string[];
     } | null;
     deleteUserBlockMessage(): string;
+    canDisableUserMfa(): boolean;
+    currentUserId: { set(value: string): void };
+    users: {
+        set(
+            value: {
+                id: string;
+                email: string;
+                instance_role: "owner" | "admin" | "user";
+                created_at: string;
+            }[]
+        ): void;
+    };
 }
 
 describe("AdminSettings", () => {
     let component: AdminSettingsTestAccess;
+    const permissionServiceMock = {
+        isInstanceOwner: signal(false),
+        permissions: signal(null)
+    };
 
     beforeEach(() => {
         TestBed.configureTestingModule({
@@ -54,10 +71,16 @@ describe("AdminSettings", () => {
                         profile: signal({ id: "admin-user", email: "admin@example.com" }),
                         loadProfile: vi.fn()
                     }
+                },
+                {
+                    provide: PermissionService,
+                    useValue: permissionServiceMock
                 }
             ]
         });
 
+        permissionServiceMock.isInstanceOwner.set(false);
+        permissionServiceMock.permissions.set(null);
         component = TestBed.runInInjectionContext(() => new AdminSettings()) as unknown as AdminSettingsTestAccess;
     });
 
@@ -102,5 +125,25 @@ describe("AdminSettings", () => {
 
         expect(handled).toBe(false);
         expect(component.deleteUserBlock()).toBeNull();
+    });
+
+    it("allows MFA recovery actions when the current user is an instance owner", () => {
+        permissionServiceMock.isInstanceOwner.set(true);
+
+        expect(component.canDisableUserMfa()).toBe(true);
+    });
+
+    it("falls back to the loaded current user role for MFA recovery actions", () => {
+        component.currentUserId.set("owner-user");
+        component.users.set([
+            {
+                id: "owner-user",
+                email: "owner@example.com",
+                instance_role: "owner",
+                created_at: "2026-03-10T00:00:00Z"
+            }
+        ]);
+
+        expect(component.canDisableUserMfa()).toBe(true);
     });
 });

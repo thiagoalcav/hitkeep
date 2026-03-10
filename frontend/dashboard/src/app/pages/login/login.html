@@ -94,7 +94,28 @@
                 </div>
 
                 <p-button [label]="'login.verifyTotp' | transloco" type="submit" [loading]="isLoading()" class="w-full" [disabled]="isLoading() || loginForm.mfaCode().invalid()"> </p-button>
-                } @if (isPasskeySupported() && mfaHasPasskey()) { @if (mfaHasTotp()) {
+                } @if (mfaHasRecoveryCode()) { @if (mfaHasTotp()) {
+                <div class="hk-auth-divider">{{ "login.or" | transloco }}</div>
+                }
+
+                <div class="hk-auth-field">
+                    <label for="recoveryCode" class="hk-auth-field-label">{{ "login.recoveryCodeLabel" | transloco }}</label>
+                    <input
+                        pInputText
+                        id="recoveryCode"
+                        type="text"
+                        autocapitalize="characters"
+                        spellcheck="false"
+                        [formControl]="loginForm.recoveryCode().control()"
+                        class="w-full"
+                        [placeholder]="'login.recoveryCodePlaceholder' | transloco"
+                        [class.ng-invalid]="loginForm.recoveryCode().touched() && loginForm.recoveryCode().invalid()"
+                        [class.ng-dirty]="loginForm.recoveryCode().dirty()"
+                    />
+                </div>
+
+                <p-button [label]="'login.verifyRecoveryCode' | transloco" type="button" [loading]="isLoading()" class="w-full" [disabled]="isLoading() || loginForm.recoveryCode().invalid()" (onClick)="verifyRecoveryCodeMfa()"> </p-button>
+                } @if (isPasskeySupported() && mfaHasPasskey()) { @if (mfaHasTotp() || mfaHasRecoveryCode()) {
                 <div class="hk-auth-divider">{{ "login.or" | transloco }}</div>
                 }
 

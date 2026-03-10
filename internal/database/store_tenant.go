@@ -1174,7 +1174,19 @@ func (s *Store) ListNonDefaultTenantIDs(ctx context.Context) ([]uuid.UUID, error
 	return ids, nil
 }
 
-func ensureDefaultTenantTx(ctx context.Context, tx *sql.Tx) error {
+func defaultTenantNameForSetup(givenName string) string {
+	givenName = strings.TrimSpace(givenName)
+	if givenName == "" {
+		return defaultTenantName
+	}
+	return fmt.Sprintf("%s's Team", givenName)
+}
+
+func ensureDefaultTenantTx(ctx context.Context, tx *sql.Tx, tenantName string, renameExisting bool) error {
+	tenantName = strings.TrimSpace(tenantName)
+	if tenantName == "" {
+		tenantName = defaultTenantName
+	}
 	_, err := tx.ExecContext(ctx, `
 		INSERT INTO tenants (name, is_default)
 		SELECT ?, TRUE
@@ -1183,9 +1195,22 @@ func ensureDefaultTenantTx(ctx context.Context, tx *sql.Tx) error {
 			FROM tenants
 			WHERE is_default = TRUE
 		)
-	`, defaultTenantName)
+	`, tenantName)
 	if err != nil {
 		return fmt.Errorf("could not ensure default tenant: %w", err)
+	}
+	if !renameExisting || tenantName == defaultTenantName {
+		return nil
+	}
+
+	_, err = tx.ExecContext(ctx, `
+		UPDATE tenants
+		SET name = ?
+		WHERE is_default = TRUE
+			AND name = ?
+	`, tenantName, defaultTenantName)
+	if err != nil {
+		return fmt.Errorf("could not rename default tenant: %w", err)
 	}
 	return nil
 }

@@ -51,8 +51,7 @@
             "addTeamAria": "Crea un nuovo team",
             "openMenuAria": "Apri il menu del team {{name}}",
             "menuAria": "Menu del team",
-            "currentLabel": "Team attuale",
-            "activeLabel": "Attivo"
+            "currentLabel": "Team attuale"
         },
         "roles": {
             "owner": "Proprietario",
@@ -470,6 +469,29 @@
                     "deleteFailed": "Impossibile rimuovere questa passkey in questo momento."
                 }
             },
+            "recoveryCodes": {
+                "title": "Codici di recupero",
+                "description": "Genera codici di backup monouso per recuperare l'account se perdi l'autenticatore o la passkey.",
+                "remainingLabel": "Codici di backup",
+                "remainingValue": "{{count}} codici rimasti",
+                "generatedBadge": "Generati",
+                "requiresMfa": "Attiva TOTP o registra una passkey prima di generare i codici di recupero.",
+                "codesTitle": "Salva ora questi codici di recupero",
+                "codesHint": "Ogni codice puo essere usato una sola volta. Vengono mostrati solo quando li generi o rigeneri.",
+                "copyAction": "Copia tutto",
+                "downloadAction": "Scarica .txt",
+                "generateAction": "Genera codici",
+                "regenerateAction": "Rigenera codici",
+                "generated": "Codici di recupero rigenerati.",
+                "copied": "Codici di recupero copiati.",
+                "downloaded": "Codici di recupero scaricati.",
+                "errors": {
+                    "copyFailed": "Impossibile copiare i codici di recupero.",
+                    "downloadFailed": "Impossibile scaricare i codici di recupero.",
+                    "generateFailed": "Impossibile generare i codici di recupero. Riprova.",
+                    "mfaRequired": "Attiva TOTP o registra una passkey prima di generare i codici di recupero."
+                }
+            },
             "errors": {
                 "loadFailed": "Impossibile caricare le impostazioni di sicurezza.",
                 "invalidCurrentPassword": "Password attuale non corretta.",
@@ -812,7 +834,8 @@
             "globalFilters": "Filtri globali"
         },
         "users": {
-            "title": "Utenti"
+            "title": "Utenti",
+            "disable2faAction": "Disattiva MFA"
         },
         "sites": {
             "title": "Siti",
@@ -854,8 +877,13 @@
             "user": "Utente"
         },
         "errors": {
-            "deleteUserBlockedOwnership": "Impossibile eliminare {{email}} finché la proprietà non viene trasferita per: {{teams}}."
+            "deleteUserBlockedOwnership": "Impossibile eliminare {{email}} finché la proprietà non viene trasferita per: {{teams}}.",
+            "disable2faFailed": "Impossibile disattivare MFA per {{email}}."
         },
+        "status": {
+            "disable2faSuccess": "MFA è stata disattivata per {{email}}."
+        },
+        "confirmDisable2fa": "Disattivare tutti i metodi MFA per {{email}}? Questa azione invalida anche le sessioni ricordate.",
         "confirmDeleteUser": "Eliminare l'utente {{email}}?",
         "confirmDeleteSite": "Eliminare il sito {{domain}}? Questa azione non puo essere annullata.",
         "team": {
@@ -997,15 +1025,19 @@
         "or": "o",
         "signInWithPasskey": "Accedi con passkey",
         "mfaTitle": "Verifica a due fattori",
-        "mfaSubtitle": "Completa l'accesso con il codice dell'autenticatore o con una passkey.",
+        "mfaSubtitle": "Completa l'accesso con il codice dell'autenticatore, un codice di recupero o una passkey.",
         "totpCodeLabel": "Codice autenticatore",
+        "recoveryCodeLabel": "Codice di recupero",
+        "recoveryCodePlaceholder": "ABCD-EFGH",
         "verifyTotp": "Verifica codice",
+        "verifyRecoveryCode": "Usa codice di recupero",
         "footerRights": "HitKeep. Tutti i diritti riservati.",
         "errors": {
             "invalidCredentials": "Email o password non validi.",
             "passkeyNotSupported": "L'accesso con passkey non e supportato su questo dispositivo.",
             "passkeyFailed": "Accesso con passkey non riuscito. Riprova.",
             "invalidTotp": "Codice autenticatore non valido.",
+            "invalidRecoveryCode": "Codice di recupero non valido.",
             "unexpected": "Si e verificato un errore imprevisto. Riprova."
         }
     },

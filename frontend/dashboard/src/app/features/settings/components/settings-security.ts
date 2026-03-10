@@ -15,7 +15,7 @@ import { RelativeDateTime } from "@components/relative-date-time/relative-date-t
 
 // Core
 import { AuthService } from "@services/auth.service";
-import { PasskeyRegistrationFinishRequest, PasskeyRegistrationStartResponse, UserSecurityService, UserSecurityStatus, UserTotpSetup } from "@services/user-security.service";
+import { PasskeyRegistrationFinishRequest, PasskeyRegistrationStartResponse, UserRecoveryCodesResponse, UserSecurityService, UserSecurityStatus, UserTotpSetup } from "@services/user-security.service";
 
 @Component({
     selector: "app-settings-security",
@@ -42,6 +42,10 @@ export class SettingsSecurity {
     protected readonly passkeySuccess = signal<string | null>(null);
     protected readonly isTotpActionLoading = signal(false);
     protected readonly isPasskeyActionLoading = signal(false);
+    protected readonly isRecoveryCodesLoading = signal(false);
+    protected readonly recoveryCodeError = signal<string | null>(null);
+    protected readonly recoveryCodeSuccess = signal<string | null>(null);
+    protected readonly recoveryCodes = signal<string[]>([]);
 
     private readonly formModel = signal({
         currentPassword: new FormControl("", { nonNullable: true, validators: [Validators.required] }),
@@ -53,6 +57,9 @@ export class SettingsSecurity {
     protected readonly form = compatForm(this.formModel);
     protected readonly totpEnabled = computed(() => this.securityStatus()?.totp_enabled ?? false);
     protected readonly passkeys = computed(() => this.securityStatus()?.passkeys ?? []);
+    protected readonly hasMfaProtection = computed(() => this.totpEnabled() || this.passkeys().length > 0);
+    protected readonly recoveryCodesGenerated = computed(() => this.securityStatus()?.recovery_codes_generated ?? false);
+    protected readonly recoveryCodesRemaining = computed(() => this.securityStatus()?.recovery_codes_remaining ?? 0);
 
     constructor() {
         this.loadSecurityStatus();
@@ -234,6 +241,78 @@ export class SettingsSecurity {
             });
     }
 
+    protected regenerateRecoveryCodes(): void {
+        if (!this.hasMfaProtection()) {
+            this.recoveryCodeError.set("settings.security.recoveryCodes.errors.mfaRequired");
+            return;
+        }
+
+        this.isRecoveryCodesLoading.set(true);
+        this.recoveryCodeError.set(null);
+        this.recoveryCodeSuccess.set(null);
+
+        this.securityService
+            .regenerateRecoveryCodes()
+            .pipe(finalize(() => this.isRecoveryCodesLoading.set(false)))
+            .subscribe({
+                next: (response) => this.handleRecoveryCodeResponse(response),
+                error: (err) => {
+                    const message = err.status === 409 ? "settings.security.recoveryCodes.errors.mfaRequired" : "settings.security.recoveryCodes.errors.generateFailed";
+                    this.recoveryCodeError.set(message);
+                }
+            });
+    }
+
+    protected async copyRecoveryCodes(): Promise<void> {
+        if (this.recoveryCodes().length === 0) {
+            return;
+        }
+        if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
+            this.recoveryCodeError.set("settings.security.recoveryCodes.errors.copyFailed");
+            this.recoveryCodeSuccess.set(null);
+            return;
+        }
+
+        this.recoveryCodeError.set(null);
+        this.recoveryCodeSuccess.set(null);
+
+        try {
+            await navigator.clipboard.writeText(this.buildRecoveryCodesText());
+            this.recoveryCodeSuccess.set("settings.security.recoveryCodes.copied");
+        } catch {
+            this.recoveryCodeError.set("settings.security.recoveryCodes.errors.copyFailed");
+        }
+    }
+
+    protected downloadRecoveryCodes(): void {
+        if (this.recoveryCodes().length === 0) {
+            return;
+        }
+        if (typeof window === "undefined" || typeof document === "undefined" || !window.URL?.createObjectURL) {
+            this.recoveryCodeError.set("settings.security.recoveryCodes.errors.downloadFailed");
+            this.recoveryCodeSuccess.set(null);
+            return;
+        }
+
+        this.recoveryCodeError.set(null);
+        this.recoveryCodeSuccess.set(null);
+
+        const blob = new Blob([this.buildRecoveryCodesText()], { type: "text/plain;charset=utf-8" });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `hitkeep-recovery-codes-${new Date().toISOString().slice(0, 10)}.txt`;
+
+        try {
+            link.click();
+            this.recoveryCodeSuccess.set("settings.security.recoveryCodes.downloaded");
+        } catch {
+            this.recoveryCodeError.set("settings.security.recoveryCodes.errors.downloadFailed");
+        } finally {
+            window.URL.revokeObjectURL(url);
+        }
+    }
+
     private loadSecurityStatus(): void {
         this.isSecurityLoading.set(true);
         this.securityError.set(null);
@@ -244,11 +323,32 @@ export class SettingsSecurity {
             .subscribe({
                 next: (status) => {
                     this.securityStatus.set(status);
+                    this.recoveryCodes.set([]);
                 },
                 error: () => {
                     this.securityError.set("settings.security.errors.loadFailed");
                 }
             });
+    }
+
+    private handleRecoveryCodeResponse(response: UserRecoveryCodesResponse): void {
+        this.recoveryCodes.set(response.codes);
+        this.securityStatus.update((current) => {
+            if (!current) {
+                return current;
+            }
+
+            return {
+                ...current,
+                recovery_codes_generated: true,
+                recovery_codes_remaining: response.remaining
+            };
+        });
+        this.recoveryCodeSuccess.set("settings.security.recoveryCodes.generated");
+    }
+
+    private buildRecoveryCodesText(): string {
+        return this.recoveryCodes().join("\n");
     }
 
     private toPublicKeyOptions(response: PasskeyRegistrationStartResponse): PublicKeyCredentialCreationOptions {

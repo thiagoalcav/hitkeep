@@ -1,31 +1,23 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from "@angular/core";
+import { FormControl, ReactiveFormsModule } from "@angular/forms";
+import { compatForm } from "@angular/forms/signals/compat";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { Menu } from "primeng/menu";
-import { MenuItem } from "primeng/api";
-import { MenuModule } from "primeng/menu";
+import { SelectModule } from "primeng/select";
 import { SkeletonModule } from "primeng/skeleton";
-import { TagModule } from "primeng/tag";
-import { Team, TeamRole } from "@models/analytics.types";
-
-interface TeamSwitcherMenuItem extends MenuItem {
-    team?: Team;
-    active?: boolean;
-    kind?: "team" | "action";
-}
+import { Team } from "@models/analytics.types";
 
 @Component({
     selector: "app-team-switcher",
-    imports: [MenuModule, SkeletonModule, TagModule, TranslocoPipe],
+    imports: [ReactiveFormsModule, SelectModule, SkeletonModule, TranslocoPipe],
     templateUrl: "./team-switcher.html",
     styleUrl: "./team-switcher.css",
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TeamSwitcher {
-    private static nextId = 0;
-
     private readonly transloco = inject(TranslocoService);
-
-    protected readonly triggerId = `team-menu-trigger-${TeamSwitcher.nextId++}`;
+    private readonly teamFormModel = signal({
+        selectedTeam: new FormControl<Team | null>(null)
+    });
 
     teams = input.required<Team[]>();
     currentTeamId = input<string>("");
@@ -39,54 +31,51 @@ export class TeamSwitcher {
     teamSelected = output<Team>();
     addClicked = output<void>();
 
-    protected readonly isMenuOpen = signal(false);
+    protected readonly teamForm = compatForm(this.teamFormModel);
+    protected readonly isCheckingSwitch = signal(false);
     protected readonly activeTeam = computed(() => this.teams().find((team) => team.id === this.currentTeamId()) ?? this.teams()[0] ?? null);
+    protected readonly activeTeamId = computed(() => this.activeTeam()?.id ?? "");
     protected readonly activeTeamName = computed(() => this.activeTeam()?.name ?? this.transloco.translate("teams.switcher.placeholder"));
-    protected readonly menuItems = computed<TeamSwitcherMenuItem[]>(() => {
-        const items: TeamSwitcherMenuItem[] = this.teams().map((team) => ({
-            id: team.id,
-            label: team.name,
-            team,
-            active: team.id === this.activeTeam()?.id,
-            kind: "team"
-        }));
+    protected readonly interactionDisabled = computed(() => this.switching() || this.isCheckingSwitch());
 
-        if (this.showAdd()) {
-            items.push({ separator: true });
-            items.push({
-                id: "create-team",
-                label: "create-team",
-                icon: "pi pi-plus",
-                kind: "action"
-            });
-        }
+    constructor() {
+        effect(() => {
+            this.teamForm.selectedTeam().control().setValue(this.activeTeam(), { emitEvent: false });
+        });
 
-        return items;
-    });
-    protected readonly menuStyle = computed(() => ({
-        width: this.compact() ? "19rem" : "20rem"
-    }));
-
-    protected async onTeamOptionSelected(team: Team | undefined, menu: Menu) {
-        if (!team || this.switching() || team.id === this.currentTeamId()) {
-            return;
-        }
-
-        const proceed = await this.canSwitchTeam(team);
-        if (!proceed) {
-            menu.hide();
-            return;
-        }
-
-        menu.hide();
-        this.teamSelected.emit(team);
+        effect(() => {
+            const control = this.teamForm.selectedTeam().control();
+            if (this.interactionDisabled()) {
+                control.disable({ emitEvent: false });
+                return;
+            }
+            control.enable({ emitEvent: false });
+        });
     }
 
-    protected onCreateTeam(menu: Menu) {
-        if (!this.showAdd()) {
+    protected async onTeamChange(team: Team | null) {
+        if (!team || this.interactionDisabled() || team.id === this.activeTeamId()) {
             return;
         }
-        menu.hide();
+
+        this.isCheckingSwitch.set(true);
+        try {
+            const proceed = await this.canSwitchTeam(team);
+            if (!proceed) {
+                this.teamForm.selectedTeam().control().setValue(this.activeTeam(), { emitEvent: false });
+                return;
+            }
+
+            this.teamSelected.emit(team);
+        } finally {
+            this.isCheckingSwitch.set(false);
+        }
+    }
+
+    protected onCreateTeam() {
+        if (!this.showAdd() || this.interactionDisabled()) {
+            return;
+        }
         this.addClicked.emit();
     }
 
@@ -102,18 +91,6 @@ export class TeamSwitcher {
 
     protected roleLabel(role: string): string {
         return this.transloco.translate(`teams.roles.${role}`);
-    }
-
-    protected roleSeverity(role: TeamRole | string): "danger" | "info" | "secondary" {
-        switch (role) {
-            case "owner":
-                return "danger";
-            case "admin":
-                return "info";
-            case "member":
-            default:
-                return "secondary";
-        }
     }
 
     private async canSwitchTeam(nextTeam: Team): Promise<boolean> {

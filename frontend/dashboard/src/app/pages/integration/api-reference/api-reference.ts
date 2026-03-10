@@ -57,8 +57,9 @@ export class APIReferencePage implements OnInit, OnDestroy {
             theme,
             hideThemeToggle: "1",
             agent: "0",
-            defaultFonts: "0",
-            showClient: "0",
+            withDefaultFonts: "0",
+            hideClientButton: "1",
+            hiddenClients: "1",
             telemetry: "0"
         });
 

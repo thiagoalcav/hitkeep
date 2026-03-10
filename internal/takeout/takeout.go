@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -59,6 +60,27 @@ func (s *TakeoutService) exportTakeout(ctx context.Context, label, filename, duc
 	}
 
 	return filename, nil
+}
+
+func (s *TakeoutService) CleanupExportFile(filename string) {
+	if filename == "" {
+		return
+	}
+
+	cleanedFile := filepath.Clean(filename)
+	base := filepath.Base(cleanedFile)
+	if !strings.HasPrefix(base, "user_takeout_") && !strings.HasPrefix(base, "site_takeout_") {
+		return
+	}
+
+	exportDir := filepath.Clean(s.path)
+	rel, err := filepath.Rel(exportDir, cleanedFile)
+	if err != nil || rel == "." || strings.HasPrefix(rel, "..") {
+		return
+	}
+
+	//nolint:gosec // cleaned path is constrained to a takeout export under the configured export directory.
+	_ = os.Remove(cleanedFile)
 }
 
 func buildTakeoutQuery(whereClause, filename, format string) string {

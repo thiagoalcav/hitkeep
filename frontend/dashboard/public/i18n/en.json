@@ -51,8 +51,7 @@
             "addTeamAria": "Create a new team",
             "openMenuAria": "Open team menu for {{name}}",
             "menuAria": "Team menu",
-            "currentLabel": "Current team",
-            "activeLabel": "Active"
+            "currentLabel": "Current team"
         },
         "roles": {
             "owner": "Owner",
@@ -470,6 +469,29 @@
                     "deleteFailed": "Unable to remove this passkey right now."
                 }
             },
+            "recoveryCodes": {
+                "title": "Recovery codes",
+                "description": "Generate single-use backup codes for account recovery if you lose your authenticator or passkey.",
+                "remainingLabel": "Backup codes",
+                "remainingValue": "{{count}} codes left",
+                "generatedBadge": "Generated",
+                "requiresMfa": "Enable TOTP or register a passkey before generating recovery codes.",
+                "codesTitle": "Store these recovery codes now",
+                "codesHint": "Each code can be used once. They are only shown when you generate or regenerate them.",
+                "copyAction": "Copy all",
+                "downloadAction": "Download .txt",
+                "generateAction": "Generate codes",
+                "regenerateAction": "Regenerate codes",
+                "generated": "Recovery codes regenerated.",
+                "copied": "Recovery codes copied.",
+                "downloaded": "Recovery codes downloaded.",
+                "errors": {
+                    "copyFailed": "Failed to copy recovery codes.",
+                    "downloadFailed": "Failed to download recovery codes.",
+                    "generateFailed": "Failed to generate recovery codes. Please try again.",
+                    "mfaRequired": "Enable TOTP or register a passkey before generating recovery codes."
+                }
+            },
             "errors": {
                 "loadFailed": "Failed to load security settings.",
                 "invalidCurrentPassword": "Incorrect current password.",
@@ -812,7 +834,8 @@
             "globalFilters": "Global filters"
         },
         "users": {
-            "title": "Users"
+            "title": "Users",
+            "disable2faAction": "Disable MFA"
         },
         "sites": {
             "title": "Sites",
@@ -854,8 +877,13 @@
             "user": "User"
         },
         "errors": {
-            "deleteUserBlockedOwnership": "Cannot delete {{email}} until ownership is transferred for: {{teams}}."
+            "deleteUserBlockedOwnership": "Cannot delete {{email}} until ownership is transferred for: {{teams}}.",
+            "disable2faFailed": "Failed to disable MFA for {{email}}."
         },
+        "status": {
+            "disable2faSuccess": "MFA was disabled for {{email}}."
+        },
+        "confirmDisable2fa": "Disable all MFA methods for {{email}}? This also invalidates remembered sessions.",
         "confirmDeleteUser": "Delete user {{email}}?",
         "confirmDeleteSite": "Delete site {{domain}}? This action cannot be undone.",
         "team": {
@@ -997,15 +1025,19 @@
         "or": "or",
         "signInWithPasskey": "Sign in with passkey",
         "mfaTitle": "Two-factor verification",
-        "mfaSubtitle": "Complete sign-in with your authenticator code or a passkey.",
+        "mfaSubtitle": "Complete sign-in with your authenticator code, a recovery code, or a passkey.",
         "totpCodeLabel": "Authenticator code",
+        "recoveryCodeLabel": "Recovery code",
+        "recoveryCodePlaceholder": "ABCD-EFGH",
         "verifyTotp": "Verify code",
+        "verifyRecoveryCode": "Use recovery code",
         "footerRights": "HitKeep. All rights reserved.",
         "errors": {
             "invalidCredentials": "Invalid email or password.",
             "passkeyNotSupported": "Passkey login is not supported on this device.",
             "passkeyFailed": "Passkey login failed. Please try again.",
             "invalidTotp": "Invalid authenticator code.",
+            "invalidRecoveryCode": "Invalid recovery code.",
             "unexpected": "An unexpected error occurred. Please try again."
         }
     },

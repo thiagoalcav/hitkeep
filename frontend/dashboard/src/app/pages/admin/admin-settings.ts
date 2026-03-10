@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, OnInit, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, effect, inject, OnInit, signal } from "@angular/core";
 import { toSignal } from "@angular/core/rxjs-interop";
 
 import { FormControl, ReactiveFormsModule } from "@angular/forms";
@@ -17,8 +17,10 @@ import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 import { PageHeader } from "@components/page-header/page-header";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
 import { RelativeDateTime } from "@components/relative-date-time/relative-date-time";
+import { PermissionService } from "@services/permission.service";
 import { UserProfileService } from "@services/user-profile.service";
 import { AdminGlobalExclusionSettings } from "./components/admin-global-exclusion-settings";
+import { finalize } from "rxjs";
 
 type InstanceRole = "owner" | "admin" | "user";
 
@@ -52,12 +54,25 @@ interface DeleteUserBlockState {
     teams: string[];
 }
 
+interface DisableUserMFAResponse {
+    status: string;
+    totp_disabled: boolean;
+    passkeys_deleted: number;
+    sessions_invalidated: number;
+}
+
+interface StatusState {
+    severity: "success" | "error";
+    key: string;
+    params?: Record<string, string | number>;
+}
+
 @Component({
     selector: "app-admin-settings",
-    standalone: true,
     imports: [ReactiveFormsModule, ConfirmPopupModule, TableModule, ButtonModule, SelectModule, CardModule, TabsModule, InputTextModule, MessageModule, PageHeader, PageBreadcrumb, AdminGlobalExclusionSettings, RelativeDateTime, TranslocoPipe],
     templateUrl: "./admin-settings.html",
     styleUrl: "./admin-settings.css",
+    changeDetection: ChangeDetectionStrategy.OnPush,
     providers: [ConfirmationService]
 })
 export class AdminSettings implements OnInit {
@@ -65,15 +80,18 @@ export class AdminSettings implements OnInit {
     private confirmationService = inject(ConfirmationService);
     private transloco = inject(TranslocoService);
     private profile = inject(UserProfileService);
+    private perms = inject(PermissionService);
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
     protected users = signal<User[]>([]);
     protected sites = signal<Site[]>([]);
     protected isLoading = signal(false);
     protected isLoadingSites = signal(false);
+    protected disablingUserId = signal("");
     protected currentUserId = signal<string>("");
     protected roleControls = signal<Record<string, FormControl<InstanceRole>>>({});
     protected deleteUserBlock = signal<DeleteUserBlockState | null>(null);
+    protected userMfaStatus = signal<StatusState | null>(null);
     protected readonly usersByID = computed(() => new Map(this.users().map((user) => [user.id, user] as const)));
     protected readonly deleteUserBlockMessage = computed(() => {
         const block = this.deleteUserBlock();
@@ -86,10 +104,20 @@ export class AdminSettings implements OnInit {
             teams: block.teams.join(", ")
         });
     });
+    protected readonly userMfaStatusMessage = computed(() => {
+        const state = this.userMfaStatus();
+        this.activeLanguage();
+        if (!state) {
+            return "";
+        }
+
+        return this.transloco.translate(state.key, state.params);
+    });
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         this.activeLanguage();
         return [{ label: this.transloco.translate("nav.administration") }, { label: this.transloco.translate("nav.systemSettings"), isCurrent: true }];
     });
+    protected readonly canDisableUserMfa = computed(() => this.perms.isInstanceOwner() || this.usersByID().get(this.currentUserId())?.instance_role === "owner");
 
     protected roleOptions = computed(() => {
         this.activeLanguage();
@@ -229,6 +257,10 @@ export class AdminSettings implements OnInit {
         return user.instance_role === "owner";
     }
 
+    protected isDisablingUser(user: User): boolean {
+        return this.disablingUserId() === user.id;
+    }
+
     protected siteOwnerEmail(site: Site): string {
         return site.owner_email || this.usersByID().get(site.user_id)?.email || this.transloco.translate("admin.sites.ownerUnknown");
     }
@@ -246,6 +278,52 @@ export class AdminSettings implements OnInit {
             return role;
         }
         return "user";
+    }
+
+    protected confirmDisableUserMfa(event: Event, user: User): void {
+        const target = event.currentTarget;
+        if (!(target instanceof HTMLElement) || !this.canDisableUserMfa() || this.isDisablingUser(user)) {
+            return;
+        }
+
+        this.confirmationService.confirm({
+            key: "admin-disable-mfa",
+            target,
+            message: this.transloco.translate("admin.confirmDisable2fa", { email: user.email }),
+            icon: "pi pi-exclamation-triangle",
+            rejectButtonProps: {
+                label: this.transloco.translate("common.actions.cancel"),
+                severity: "secondary",
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: this.transloco.translate("admin.users.disable2faAction"),
+                severity: "warn"
+            },
+            accept: () => {
+                this.userMfaStatus.set(null);
+                this.disablingUserId.set(user.id);
+                this.http
+                    .post<DisableUserMFAResponse>(`/api/admin/users/${user.id}/disable-2fa`, {})
+                    .pipe(finalize(() => this.disablingUserId.set("")))
+                    .subscribe({
+                        next: () => {
+                            this.userMfaStatus.set({
+                                severity: "success",
+                                key: "admin.status.disable2faSuccess",
+                                params: { email: user.email }
+                            });
+                        },
+                        error: () => {
+                            this.userMfaStatus.set({
+                                severity: "error",
+                                key: "admin.errors.disable2faFailed",
+                                params: { email: user.email }
+                            });
+                        }
+                    });
+            }
+        });
     }
 
     confirmDeleteUser(event: Event, user: User) {

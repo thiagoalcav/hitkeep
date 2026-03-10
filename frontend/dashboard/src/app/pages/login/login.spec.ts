@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from "@angular/core/testing";
 import { ActivatedRoute, convertToParamMap, provideRouter } from "@angular/router";
 import { TranslocoTestingModule } from "@jsverse/transloco";
 import { of } from "rxjs";
+import { vi } from "vitest";
 
 import { Login } from "@pages/login/login";
 import { AuthService } from "@services/auth.service";
@@ -11,25 +12,35 @@ describe("Login", () => {
     let component: Login;
     let fixture: ComponentFixture<Login>;
     let returnUrl: string | null;
+    const authMock: {
+        status: () => string;
+        login: ReturnType<typeof vi.fn>;
+        startPasskeyLogin: ReturnType<typeof vi.fn>;
+        finishPasskeyLogin: ReturnType<typeof vi.fn>;
+        verifyMfaTotp: ReturnType<typeof vi.fn>;
+        verifyMfaRecoveryCode: ReturnType<typeof vi.fn>;
+    } = {
+        status: () => "unknown",
+        login: vi.fn(() => of({ status: "ok" as const })),
+        startPasskeyLogin: vi.fn(() =>
+            of({
+                challenge_token: "",
+                publicKey: {
+                    challenge: "",
+                    rpId: "",
+                    timeout: 0,
+                    userVerification: "preferred" as UserVerificationRequirement
+                }
+            })
+        ),
+        finishPasskeyLogin: vi.fn(() => of(void 0)),
+        verifyMfaTotp: vi.fn(() => of(void 0)),
+        verifyMfaRecoveryCode: vi.fn(() => of(void 0))
+    };
 
     beforeEach(async () => {
         returnUrl = null;
-        const authMock = {
-            status: () => "unknown",
-            login: () => of({ status: "ok" as const }),
-            startPasskeyLogin: () =>
-                of({
-                    challenge_token: "",
-                    publicKey: {
-                        challenge: "",
-                        rpId: "",
-                        timeout: 0,
-                        userVerification: "preferred" as UserVerificationRequirement
-                    }
-                }),
-            finishPasskeyLogin: () => of(void 0),
-            verifyMfaTotp: () => of(void 0)
-        } as unknown as AuthService;
+        vi.clearAllMocks();
 
         const preferencesMock = {
             load: () => of(void 0)
@@ -49,7 +60,7 @@ describe("Login", () => {
             ],
             providers: [
                 provideRouter([]),
-                { provide: AuthService, useValue: authMock },
+                { provide: AuthService, useValue: authMock as unknown as AuthService },
                 { provide: UserPreferencesService, useValue: preferencesMock },
                 {
                     provide: ActivatedRoute,
@@ -81,5 +92,33 @@ describe("Login", () => {
     it("falls back for unsafe returnUrl", () => {
         returnUrl = "https://evil.example/phish";
         expect(component["resolveReturnUrl"]()).toBe("/dashboard");
+    });
+
+    it("stores recovery-code MFA state from the login response", () => {
+        authMock.login.mockReturnValueOnce(
+            of({
+                status: "mfa_required" as const,
+                challenge_token: "challenge-123",
+                factors: ["recovery_code" as const]
+            })
+        );
+
+        component["loginForm"].email().control().setValue("user@example.com");
+        component["loginForm"].password().control().setValue("password123");
+        component.onSubmit();
+
+        expect(component["mfaChallengeToken"]()).toBe("challenge-123");
+        expect(component["mfaHasRecoveryCode"]()).toBe(true);
+        expect(component["mfaHasTotp"]()).toBe(false);
+    });
+
+    it("verifies recovery code MFA with the current challenge token", () => {
+        component["mfaChallengeToken"].set("challenge-456");
+        component["mfaFactors"].set(["recovery_code"]);
+        component["loginForm"].recoveryCode().control().setValue("ABCD-EFGH");
+
+        component["verifyRecoveryCodeMfa"]();
+
+        expect(authMock.verifyMfaRecoveryCode).toHaveBeenCalledWith("challenge-456", "ABCD-EFGH");
     });
 });

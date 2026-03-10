@@ -135,8 +135,13 @@ func recoverDisable2FA(args []string) {
 		fmt.Fprintf(os.Stderr, "Error: could not list passkeys: %v\n", err)
 		os.Exit(1)
 	}
+	recoveryCodesRemaining, err := store.CountActiveRecoveryCodes(ctx, user.ID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: could not count recovery codes: %v\n", err)
+		os.Exit(1)
+	}
 
-	if !hasTOTP && len(passkeys) == 0 {
+	if !hasTOTP && len(passkeys) == 0 && recoveryCodesRemaining == 0 {
 		fmt.Println("No 2FA methods are active for this user. Nothing to do.")
 		os.Exit(0)
 	}
@@ -155,6 +160,11 @@ func recoverDisable2FA(args []string) {
 	} else {
 		fmt.Println("  Passkeys: none")
 	}
+	if recoveryCodesRemaining > 0 {
+		fmt.Printf("  Recovery codes: %d active\n", recoveryCodesRemaining)
+	} else {
+		fmt.Println("  Recovery codes: none")
+	}
 
 	fmt.Println()
 	fmt.Println("This will:")
@@ -163,6 +173,9 @@ func recoverDisable2FA(args []string) {
 	}
 	if len(passkeys) > 0 {
 		fmt.Printf("  • Delete %d passkey(s)\n", len(passkeys))
+	}
+	if recoveryCodesRemaining > 0 {
+		fmt.Printf("  • Invalidate %d recovery code(s)\n", recoveryCodesRemaining)
 	}
 	fmt.Println("  • Invalidate all remember-me sessions")
 	fmt.Println()
@@ -181,39 +194,29 @@ func recoverDisable2FA(args []string) {
 	}
 
 	// ---- Execute -------------------------------------------------------
-	exitCode := 0
-
-	if hasTOTP {
-		if err := store.DisableUserTOTP(ctx, user.ID); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: could not disable TOTP: %v\n", err)
-			exitCode = 1
-		} else {
-			fmt.Println("✓ TOTP disabled")
-		}
+	result, err := store.DisableUserMFA(ctx, user.ID)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: could not disable MFA: %v\n", err)
+		os.Exit(1)
 	}
 
-	for _, pk := range passkeys {
-		if err := store.DeleteUserPasskey(ctx, user.ID, pk.ID); err != nil {
-			fmt.Fprintf(os.Stderr, "Error: could not delete passkey %q: %v\n", pk.Name, err)
-			exitCode = 1
-		} else {
-			fmt.Printf("✓ Passkey %q deleted\n", pk.Name)
-		}
+	if result.TOTPDisabled {
+		fmt.Println("✓ TOTP disabled")
 	}
-
-	if err := store.DeleteAllRememberMeTokensForUser(ctx, user.ID); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: could not invalidate sessions: %v\n", err)
-		exitCode = 1
+	if result.PasskeysDeleted > 0 {
+		fmt.Printf("✓ Deleted %d passkey(s)\n", result.PasskeysDeleted)
+	}
+	if recoveryCodesRemaining > 0 {
+		fmt.Printf("✓ Invalidated %d recovery code(s)\n", recoveryCodesRemaining)
+	}
+	if result.SessionsInvalidated > 0 {
+		fmt.Printf("✓ Invalidated %d remember-me session(s)\n", result.SessionsInvalidated)
 	} else {
 		fmt.Println("✓ Remember-me sessions invalidated")
 	}
 
-	if exitCode == 0 {
-		fmt.Printf("\nDone. %s can now log in with email and password.\n", user.Email)
-	} else {
-		fmt.Fprintln(os.Stderr, "\nRecovery completed with errors (see above).")
-	}
-	os.Exit(exitCode)
+	fmt.Printf("\nDone. %s can now log in with email and password.\n", user.Email)
+	os.Exit(0)
 }
 
 func recoverRestoreBackup(args []string) {

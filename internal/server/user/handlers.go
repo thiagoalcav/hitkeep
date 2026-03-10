@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"crypto/md5" //nolint:gosec // Gravatar requires MD5 hashes for avatar lookups.
 	"encoding/hex"
 	"encoding/json"
@@ -80,6 +81,10 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RequireAuth: true,
 		RateLimiter: ctx.AuthLimiter,
 	}, h.handleDeleteUserPasskey()))
+	mux.HandleFunc("POST /api/user/security/recovery-codes/regenerate", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleRegenerateRecoveryCodes()))
 	mux.HandleFunc("GET /api/user/api-clients", ctx.Handler(shared.HandlerConfig{
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
@@ -186,7 +191,7 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 	}, h.handleLeaveTeam()))
 }
 
-const gravatarBaseURL = "https://www.gravatar.com/avatar/"
+const gravatarBaseURL = "https://www.gravatar.com"
 
 func (h *handler) handleGetUserProfile() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -331,16 +336,13 @@ func (h *handler) handleGetUserAvatar() http.HandlerFunc {
 		}
 
 		size := clampAvatarSize(r.URL.Query().Get("s"))
-		avatarURL := gravatarURL(user.Email, size)
-
-		req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, avatarURL, nil)
+		req, err := newGravatarRequest(r.Context(), user.Email, size)
 		if err != nil {
 			http.Error(w, "Failed to request avatar", http.StatusInternalServerError)
 			return
 		}
 
 		client := &http.Client{Timeout: 5 * time.Second}
-		//nolint:gosec // avatar URL is generated from fixed gravatarBaseURL and a deterministic MD5 hash.
 		resp, err := client.Do(req)
 		if err != nil {
 			slog.Warn("Failed to fetch gravatar", "error", err, "user_id", userID)
@@ -474,13 +476,21 @@ func (h *handler) handleUpdateUserPreferences() http.HandlerFunc {
 	}
 }
 
-func gravatarURL(email string, size int) string {
+func newGravatarRequest(ctx context.Context, email string, size int) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, gravatarBaseURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	hash := gravatarHash(email)
 	params := url.Values{
 		"s": {strconv.Itoa(size)},
 		"d": {"mp"},
 	}
-	return gravatarBaseURL + hash + "?" + params.Encode()
+
+	req.URL.Path = "/avatar/" + hash
+	req.URL.RawQuery = params.Encode()
+	return req, nil
 }
 
 func gravatarHash(email string) string {

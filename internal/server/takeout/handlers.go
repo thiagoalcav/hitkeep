@@ -2,7 +2,6 @@ package takeout
 
 import (
 	"net/http"
-	"os"
 	"path/filepath"
 
 	"github.com/google/uuid"
@@ -57,7 +56,7 @@ func (h *TakeoutHandler) handleUserTakeout() http.HandlerFunc {
 		http.ServeFile(w, r, filename)
 
 		go func() {
-			_ = os.Remove(filename)
+			h.service.CleanupExportFile(filename)
 		}()
 	}
 }
@@ -85,7 +84,7 @@ func (h *TakeoutHandler) handleSiteTakeout() http.HandlerFunc {
 		http.ServeFile(w, r, filename)
 
 		go func() {
-			_ = os.Remove(filename)
+			h.service.CleanupExportFile(filename)
 		}()
 	}
 }

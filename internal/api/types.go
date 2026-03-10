@@ -128,9 +128,11 @@ type UserPasskey struct {
 }
 
 type UserSecurityStatus struct {
-	TOTPEnabled bool          `json:"totp_enabled"`
-	TOTPPending bool          `json:"totp_pending"`
-	Passkeys    []UserPasskey `json:"passkeys"`
+	TOTPEnabled            bool          `json:"totp_enabled"`
+	TOTPPending            bool          `json:"totp_pending"`
+	Passkeys               []UserPasskey `json:"passkeys"`
+	RecoveryCodesGenerated bool          `json:"recovery_codes_generated"`
+	RecoveryCodesRemaining int           `json:"recovery_codes_remaining"`
 }
 
 type UserTOTPSetup struct {
@@ -138,6 +140,11 @@ type UserTOTPSetup struct {
 	Secret     string    `json:"secret"`
 	OTPAuthURL string    `json:"otpauth_url"`
 	ExpiresAt  time.Time `json:"expires_at"`
+}
+
+type UserRecoveryCodesResponse struct {
+	Codes     []string `json:"codes"`
+	Remaining int      `json:"remaining"`
 }
 
 type AnalyticsParams struct {
@@ -442,6 +449,13 @@ type AdminDeleteTeamResponse struct {
 	Status string    `json:"status"`
 	TeamID uuid.UUID `json:"team_id"`
 	Name   string    `json:"name"`
+}
+
+type AdminDisableUserMFAResponse struct {
+	Status              string `json:"status"`
+	TOTPDisabled        bool   `json:"totp_disabled"`
+	PasskeysDeleted     int    `json:"passkeys_deleted"`
+	SessionsInvalidated int    `json:"sessions_invalidated"`
 }
 
 type IPExclusion struct {

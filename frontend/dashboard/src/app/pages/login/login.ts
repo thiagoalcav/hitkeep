@@ -17,6 +17,8 @@ import { Brand } from "@components/brand/brand";
 import { AuthService, LoginResponse, PasskeyLoginFinishRequest, PasskeyLoginStartResponse } from "@services/auth.service";
 import { UserPreferencesService } from "@services/user-preferences.service";
 
+type MfaFactor = "totp" | "passkey" | "recovery_code";
+
 @Component({
     selector: "app-login",
     standalone: true,
@@ -39,17 +41,19 @@ export class Login {
     protected currentYear = new Date().getFullYear();
     protected readonly isPasskeySupported = signal(typeof window !== "undefined" && typeof navigator !== "undefined" && Boolean(window.PublicKeyCredential) && Boolean(navigator.credentials));
     protected readonly mfaChallengeToken = signal<string | null>(null);
-    protected readonly mfaFactors = signal<("totp" | "passkey")[]>([]);
+    protected readonly mfaFactors = signal<MfaFactor[]>([]);
     protected readonly mfaPasskeyOptions = signal<PasskeyLoginStartResponse["publicKey"] | null>(null);
     protected readonly isMfaRequired = computed(() => this.mfaChallengeToken() !== null);
     protected readonly mfaHasTotp = computed(() => this.mfaFactors().includes("totp"));
+    protected readonly mfaHasRecoveryCode = computed(() => this.mfaFactors().includes("recovery_code"));
     protected readonly mfaHasPasskey = computed(() => this.mfaFactors().includes("passkey"));
 
     private readonly loginModel = signal({
         email: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.email] }),
         password: new FormControl("", { nonNullable: true, validators: [Validators.required] }),
         rememberMe: new FormControl(false, { nonNullable: true }),
-        mfaCode: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.pattern(/^[0-9]{6}$/)] })
+        mfaCode: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.pattern(/^[0-9]{6}$/)] }),
+        recoveryCode: new FormControl("", { nonNullable: true, validators: [Validators.required] })
     });
     protected readonly loginForm = compatForm(this.loginModel);
 
@@ -64,6 +68,10 @@ export class Login {
         if (this.isMfaRequired()) {
             if (this.mfaHasTotp()) {
                 this.verifyTotpMfa();
+                return;
+            }
+            if (this.mfaHasRecoveryCode()) {
+                this.verifyRecoveryCodeMfa();
                 return;
             }
             if (this.mfaHasPasskey()) {
@@ -168,6 +176,7 @@ export class Login {
         this.mfaFactors.set([]);
         this.mfaPasskeyOptions.set(null);
         this.loginForm.mfaCode().control().reset("");
+        this.loginForm.recoveryCode().control().reset("");
     }
 
     private redirectAfterLogin() {
@@ -195,11 +204,12 @@ export class Login {
             this.errorMessage.set("login.errors.unexpected");
             return;
         }
-        const factors: ("totp" | "passkey")[] = resp.factors && resp.factors.length > 0 ? resp.factors : resp.passkey ? ["passkey"] : ["totp"];
+        const factors: MfaFactor[] = resp.factors && resp.factors.length > 0 ? resp.factors : resp.passkey ? ["passkey"] : ["totp"];
         this.mfaChallengeToken.set(resp.challenge_token);
         this.mfaFactors.set(factors);
         this.mfaPasskeyOptions.set(resp.passkey ?? null);
         this.loginForm.mfaCode().control().reset("");
+        this.loginForm.recoveryCode().control().reset("");
         this.errorMessage.set(null);
     }
 
@@ -228,6 +238,38 @@ export class Login {
                 error: (err) => {
                     if (err.status === 401 || err.status === 403) {
                         this.errorMessage.set("login.errors.invalidTotp");
+                    } else {
+                        this.errorMessage.set("login.errors.unexpected");
+                    }
+                }
+            });
+    }
+
+    protected verifyRecoveryCodeMfa(): void {
+        this.abortConditionalPasskeyPrompt();
+        const challengeToken = this.mfaChallengeToken();
+        if (!challengeToken) {
+            this.errorMessage.set("login.errors.unexpected");
+            return;
+        }
+        if (this.loginForm.recoveryCode().invalid()) {
+            this.loginForm.recoveryCode().markAsTouched();
+            return;
+        }
+
+        this.isLoading.set(true);
+        this.errorMessage.set(null);
+        this.auth
+            .verifyMfaRecoveryCode(challengeToken, this.loginForm.recoveryCode().value())
+            .pipe(finalize(() => this.isLoading.set(false)))
+            .subscribe({
+                next: () => {
+                    this.clearMfaState();
+                    this.redirectAfterLogin();
+                },
+                error: (err) => {
+                    if (err.status === 401 || err.status === 403) {
+                        this.errorMessage.set("login.errors.invalidRecoveryCode");
                     } else {
                         this.errorMessage.set("login.errors.unexpected");
                     }

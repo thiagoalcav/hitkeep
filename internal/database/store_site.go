@@ -79,7 +79,7 @@ func (s *Store) CreateSite(ctx context.Context, userID uuid.UUID, domain string)
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if err := ensureDefaultTenantTx(ctx, tx); err != nil {
+	if err := ensureDefaultTenantTx(ctx, tx, defaultTenantName, false); err != nil {
 		return nil, err
 	}
 

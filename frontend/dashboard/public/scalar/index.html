@@ -46,10 +46,36 @@
                 const params = new URLSearchParams(window.location.search);
                 const specUrl = params.get('spec') || DEFAULT_SPEC_URL;
                 const theme = (params.get('theme') || 'light').toLowerCase() === 'dark' ? 'dark' : 'light';
-                const hideThemeToggle = params.get('hideThemeToggle') !== '0';
-                const disableAgent = params.get('agent') !== '1';
+                const hideThemeToggle = getBooleanParam(params, ['hideThemeToggle'], true);
+                const disableAgent = !getBooleanParam(params, ['agent'], false);
+                const withDefaultFonts = getBooleanParam(params, ['withDefaultFonts', 'defaultFonts'], true);
+                const hideClientButton = getBooleanParam(params, ['hideClientButton'], false);
+                const hideClients = getBooleanParam(params, ['hiddenClients', 'showClient'], false, true);
+                const telemetry = getBooleanParam(params, ['telemetry'], true);
                 const mountEl = document.getElementById('app');
                 const statusEl = document.getElementById('status');
+
+                function getBooleanParam(searchParams, names, defaultValue, legacyShowFlag = false) {
+                    for (const name of names) {
+                        if (!searchParams.has(name)) {
+                            continue;
+                        }
+
+                        const value = (searchParams.get(name) || '').trim().toLowerCase();
+                        if (legacyShowFlag && name === 'showClient') {
+                            return !(value === '0' || value === 'false' || value === 'no' || value === 'off');
+                        }
+
+                        if (value === '1' || value === 'true' || value === 'yes' || value === 'on') {
+                            return true;
+                        }
+                        if (value === '0' || value === 'false' || value === 'no' || value === 'off') {
+                            return false;
+                        }
+                    }
+
+                    return defaultValue;
+                }
 
                 function notifyParent(type) {
                     if (window.parent && window.parent !== window) {
@@ -102,7 +128,10 @@
                         content: spec,
                         forceDarkModeState: theme,
                         hideDarkModeToggle: hideThemeToggle,
-                        withDefaultFonts: false,
+                        withDefaultFonts,
+                        hideClientButton,
+                        hiddenClients: hideClients ? true : undefined,
+                        telemetry,
                         agent: {
                             disabled: disableAgent
                         }

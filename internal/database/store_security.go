@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/security"
 )
 
 type PasskeyCredential struct {
@@ -39,6 +40,17 @@ type LoginChallenge struct {
 	Flow       string
 	Challenge  string
 	ExpiresAt  time.Time
+}
+
+type DisableUserMFAResult struct {
+	TOTPDisabled        bool
+	PasskeysDeleted     int
+	SessionsInvalidated int
+}
+
+type RecoveryCodeStatus struct {
+	Generated bool
+	Remaining int
 }
 
 func (s *Store) HasEnabledTOTP(ctx context.Context, userID uuid.UUID) (bool, error) {
@@ -145,6 +157,176 @@ func (s *Store) DisableUserTOTP(ctx context.Context, userID uuid.UUID) error {
 		}
 		return nil
 	})
+}
+
+func (s *Store) DisableUserMFA(ctx context.Context, userID uuid.UUID) (DisableUserMFAResult, error) {
+	var result DisableUserMFAResult
+
+	err := s.Transact(ctx, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, "DELETE FROM user_totp_pending_setup WHERE user_id = ?", userID); err != nil {
+			return fmt.Errorf("could not remove pending totp setup: %w", err)
+		}
+
+		totpRes, err := tx.ExecContext(ctx, "DELETE FROM user_totp_factors WHERE user_id = ?", userID)
+		if err != nil {
+			return fmt.Errorf("could not remove enabled totp factor: %w", err)
+		}
+		if rows, rowsErr := totpRes.RowsAffected(); rowsErr == nil {
+			result.TOTPDisabled = rows > 0
+		}
+
+		if _, err := tx.ExecContext(ctx, "DELETE FROM user_passkey_challenges WHERE user_id = ?", userID); err != nil {
+			return fmt.Errorf("could not remove pending passkey challenge: %w", err)
+		}
+
+		passkeyRes, err := tx.ExecContext(ctx, "DELETE FROM user_passkeys WHERE user_id = ?", userID)
+		if err != nil {
+			return fmt.Errorf("could not remove user passkeys: %w", err)
+		}
+		if rows, rowsErr := passkeyRes.RowsAffected(); rowsErr == nil {
+			result.PasskeysDeleted = int(rows)
+		}
+
+		if _, err := tx.ExecContext(ctx, "DELETE FROM passkey_login_challenges WHERE user_id = ?", userID); err != nil {
+			return fmt.Errorf("could not remove passkey login challenges: %w", err)
+		}
+		if _, err := tx.ExecContext(ctx, "DELETE FROM user_recovery_codes WHERE user_id = ?", userID); err != nil {
+			return fmt.Errorf("could not remove recovery codes: %w", err)
+		}
+
+		sessionRes, err := tx.ExecContext(ctx, "DELETE FROM remember_me_tokens WHERE user_id = ?", userID)
+		if err != nil {
+			return fmt.Errorf("could not invalidate remember me tokens: %w", err)
+		}
+		if rows, rowsErr := sessionRes.RowsAffected(); rowsErr == nil {
+			result.SessionsInvalidated = int(rows)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return DisableUserMFAResult{}, err
+	}
+
+	return result, nil
+}
+
+func (s *Store) ReplaceUserRecoveryCodes(ctx context.Context, userID uuid.UUID, codeHashes []string) error {
+	now := time.Now().UTC()
+	return s.Transact(ctx, func(tx *sql.Tx) error {
+		if _, err := tx.ExecContext(ctx, "DELETE FROM user_recovery_codes WHERE user_id = ?", userID); err != nil {
+			return fmt.Errorf("could not delete existing recovery codes: %w", err)
+		}
+		for _, codeHash := range codeHashes {
+			if strings.TrimSpace(codeHash) == "" {
+				return fmt.Errorf("recovery code hash is required")
+			}
+			if _, err := tx.ExecContext(ctx,
+				"INSERT INTO user_recovery_codes (id, user_id, code_hash, created_at) VALUES (?, ?, ?, ?)",
+				uuid.New(), userID, strings.TrimSpace(codeHash), now,
+			); err != nil {
+				return fmt.Errorf("could not insert recovery code: %w", err)
+			}
+		}
+		return nil
+	})
+}
+
+func (s *Store) GetRecoveryCodeStatus(ctx context.Context, userID uuid.UUID) (RecoveryCodeStatus, error) {
+	var (
+		total     int
+		remaining int
+	)
+	if err := s.QueryRowOrNil(ctx,
+		"SELECT COUNT(*), COALESCE(SUM(CASE WHEN used_at IS NULL THEN 1 ELSE 0 END), 0) FROM user_recovery_codes WHERE user_id = ?",
+		[]any{&total, &remaining},
+		userID,
+	); err != nil {
+		return RecoveryCodeStatus{}, fmt.Errorf("could not load recovery code status: %w", err)
+	}
+	return RecoveryCodeStatus{
+		Generated: total > 0,
+		Remaining: remaining,
+	}, nil
+}
+
+func (s *Store) CountActiveRecoveryCodes(ctx context.Context, userID uuid.UUID) (int, error) {
+	status, err := s.GetRecoveryCodeStatus(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+	return status.Remaining, nil
+}
+
+func (s *Store) ConsumeRecoveryCode(ctx context.Context, userID uuid.UUID, code string) (int, bool, error) {
+	var remaining int
+	err := s.Transact(ctx, func(tx *sql.Tx) error {
+		rows, err := tx.QueryContext(ctx,
+			"SELECT id, code_hash FROM user_recovery_codes WHERE user_id = ? AND used_at IS NULL",
+			userID,
+		)
+		if err != nil {
+			return fmt.Errorf("could not load active recovery codes: %w", err)
+		}
+		defer rows.Close()
+
+		var matchedID uuid.UUID
+		for rows.Next() {
+			var (
+				id          uuid.UUID
+				encodedHash string
+			)
+			if err := rows.Scan(&id, &encodedHash); err != nil {
+				return fmt.Errorf("could not scan recovery code: %w", err)
+			}
+			match, err := security.VerifyRecoveryCode(code, encodedHash)
+			if err != nil {
+				return fmt.Errorf("could not verify recovery code: %w", err)
+			}
+			if match {
+				matchedID = id
+				break
+			}
+		}
+		if err := rows.Err(); err != nil {
+			return fmt.Errorf("could not iterate recovery codes: %w", err)
+		}
+		if matchedID == uuid.Nil {
+			remaining = -1
+			return nil
+		}
+
+		result, err := tx.ExecContext(ctx,
+			"UPDATE user_recovery_codes SET used_at = ? WHERE id = ? AND user_id = ? AND used_at IS NULL",
+			time.Now().UTC(), matchedID, userID,
+		)
+		if err != nil {
+			return fmt.Errorf("could not consume recovery code: %w", err)
+		}
+		affected, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("could not determine consumed recovery code rows: %w", err)
+		}
+		if affected == 0 {
+			remaining = -1
+			return nil
+		}
+
+		if err := tx.QueryRowContext(ctx,
+			"SELECT COUNT(*) FROM user_recovery_codes WHERE user_id = ? AND used_at IS NULL",
+			userID,
+		).Scan(&remaining); err != nil {
+			return fmt.Errorf("could not count remaining recovery codes: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, false, err
+	}
+	if remaining < 0 {
+		return 0, false, nil
+	}
+	return remaining, true, nil
 }
 
 func (s *Store) CreatePasskeyChallenge(ctx context.Context, userID uuid.UUID, challenge string, requestedName string, expiresAt time.Time) error {

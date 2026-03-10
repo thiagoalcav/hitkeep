@@ -1,4 +1,5 @@
 <p-confirmpopup key="admin-delete" />
+<p-confirmpopup key="admin-disable-mfa" />
 <div class="flex flex-col w-full">
     <app-page-header>
         <div header-left>
@@ -26,6 +27,8 @@
 
                         @if (deleteUserBlock()) {
                         <p-message severity="warn" styleClass="w-full mb-4" [text]="deleteUserBlockMessage()" />
+                        } @if (userMfaStatus(); as status) {
+                        <p-message [severity]="status.severity" styleClass="w-full mb-4" [text]="userMfaStatusMessage()" />
                         }
 
                         <div class="hk-crud-table-wrap">
@@ -76,7 +79,12 @@
                                         </td>
                                         <td><app-relative-date-time [value]="user.created_at" /></td>
                                         <td>
-                                            <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="confirmDeleteUser($event, user)" [disabled]="user.id === currentUserId()" />
+                                            <div class="flex flex-wrap items-center justify-end gap-2">
+                                                @if (canDisableUserMfa()) {
+                                                <p-button icon="pi pi-shield" severity="warn" [text]="true" [label]="'admin.users.disable2faAction' | transloco" [loading]="isDisablingUser(user)" (onClick)="confirmDisableUserMfa($event, user)" />
+                                                }
+                                                <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="confirmDeleteUser($event, user)" [disabled]="user.id === currentUserId()" />
+                                            </div>
                                         </td>
                                     </tr>
                                 </ng-template>

@@ -51,8 +51,7 @@
             "addTeamAria": "Crear un nuevo equipo",
             "openMenuAria": "Abrir menú del equipo {{name}}",
             "menuAria": "Menú del equipo",
-            "currentLabel": "Equipo actual",
-            "activeLabel": "Activo"
+            "currentLabel": "Equipo actual"
         },
         "roles": {
             "owner": "Propietario",
@@ -470,6 +469,29 @@
                     "deleteFailed": "No se puede eliminar esta passkey en este momento."
                 }
             },
+            "recoveryCodes": {
+                "title": "Códigos de recuperación",
+                "description": "Genera códigos de respaldo de un solo uso para recuperar la cuenta si pierdes tu autenticador o passkey.",
+                "remainingLabel": "Códigos de respaldo",
+                "remainingValue": "Quedan {{count}} códigos",
+                "generatedBadge": "Generados",
+                "requiresMfa": "Activa TOTP o registra una passkey antes de generar códigos de recuperación.",
+                "codesTitle": "Guarda estos códigos de recuperación ahora",
+                "codesHint": "Cada código se puede usar una vez. Solo se muestran al generarlos o regenerarlos.",
+                "copyAction": "Copiar todo",
+                "downloadAction": "Descargar .txt",
+                "generateAction": "Generar códigos",
+                "regenerateAction": "Regenerar códigos",
+                "generated": "Códigos de recuperación regenerados.",
+                "copied": "Códigos de recuperación copiados.",
+                "downloaded": "Códigos de recuperación descargados.",
+                "errors": {
+                    "copyFailed": "No se pudieron copiar los códigos de recuperación.",
+                    "downloadFailed": "No se pudieron descargar los códigos de recuperación.",
+                    "generateFailed": "No se pudieron generar los códigos de recuperación. Inténtalo de nuevo.",
+                    "mfaRequired": "Activa TOTP o registra una passkey antes de generar códigos de recuperación."
+                }
+            },
             "errors": {
                 "loadFailed": "No se pudo cargar la configuración de seguridad.",
                 "invalidCurrentPassword": "Contraseña actual incorrecta.",
@@ -812,7 +834,8 @@
             "globalFilters": "Filtros globales"
         },
         "users": {
-            "title": "Usuarios"
+            "title": "Usuarios",
+            "disable2faAction": "Desactivar MFA"
         },
         "sites": {
             "title": "Sitios",
@@ -854,8 +877,13 @@
             "user": "Usuario"
         },
         "errors": {
-            "deleteUserBlockedOwnership": "No se puede eliminar a {{email}} hasta transferir la propiedad de: {{teams}}."
+            "deleteUserBlockedOwnership": "No se puede eliminar a {{email}} hasta transferir la propiedad de: {{teams}}.",
+            "disable2faFailed": "No se pudo desactivar MFA para {{email}}."
         },
+        "status": {
+            "disable2faSuccess": "Se desactivó MFA para {{email}}."
+        },
+        "confirmDisable2fa": "¿Desactivar todos los métodos MFA para {{email}}? Esto también invalidará las sesiones recordadas.",
         "confirmDeleteUser": "Eliminar usuario {{email}}?",
         "confirmDeleteSite": "Eliminar sitio {{domain}}? Esta accion no se puede deshacer.",
         "team": {
@@ -997,15 +1025,19 @@
         "or": "o",
         "signInWithPasskey": "Iniciar sesión con passkey",
         "mfaTitle": "Verificación en dos pasos",
-        "mfaSubtitle": "Completa el acceso con tu código del autenticador o con una passkey.",
+        "mfaSubtitle": "Completa el acceso con tu código del autenticador, un código de recuperación o una passkey.",
         "totpCodeLabel": "Código del autenticador",
+        "recoveryCodeLabel": "Código de recuperación",
+        "recoveryCodePlaceholder": "ABCD-EFGH",
         "verifyTotp": "Verificar código",
+        "verifyRecoveryCode": "Usar código de recuperación",
         "footerRights": "HitKeep. Todos los derechos reservados.",
         "errors": {
             "invalidCredentials": "Correo o contraseña inválidos.",
             "passkeyNotSupported": "El inicio de sesión con passkey no está disponible en este dispositivo.",
             "passkeyFailed": "Error al iniciar sesión con passkey. Inténtalo de nuevo.",
             "invalidTotp": "Código del autenticador no válido.",
+            "invalidRecoveryCode": "Código de recuperación no válido.",
             "unexpected": "Ocurrió un error inesperado. Inténtalo de nuevo."
         }
     },

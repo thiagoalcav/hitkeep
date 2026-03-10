@@ -51,8 +51,7 @@
             "addTeamAria": "Neues Team erstellen",
             "openMenuAria": "Teammenü für {{name}} öffnen",
             "menuAria": "Teammenü",
-            "currentLabel": "Aktuelles Team",
-            "activeLabel": "Aktiv"
+            "currentLabel": "Aktuelles Team"
         },
         "roles": {
             "owner": "Inhaber",
@@ -470,6 +469,29 @@
                     "deleteFailed": "Dieser Passkey kann derzeit nicht entfernt werden."
                 }
             },
+            "recoveryCodes": {
+                "title": "Wiederherstellungscodes",
+                "description": "Erstellen Sie einmalige Backup-Codes für die Konto-Wiederherstellung, falls Sie Ihren Authenticator oder Passkey verlieren.",
+                "remainingLabel": "Backup-Codes",
+                "remainingValue": "{{count}} Codes übrig",
+                "generatedBadge": "Erstellt",
+                "requiresMfa": "Aktivieren Sie TOTP oder registrieren Sie einen Passkey, bevor Sie Wiederherstellungscodes erstellen.",
+                "codesTitle": "Speichern Sie diese Wiederherstellungscodes jetzt",
+                "codesHint": "Jeder Code kann einmal verwendet werden. Sie werden nur beim Erstellen oder erneuten Generieren angezeigt.",
+                "copyAction": "Alle kopieren",
+                "downloadAction": ".txt herunterladen",
+                "generateAction": "Codes erstellen",
+                "regenerateAction": "Codes neu erstellen",
+                "generated": "Wiederherstellungscodes wurden neu erstellt.",
+                "copied": "Wiederherstellungscodes wurden kopiert.",
+                "downloaded": "Wiederherstellungscodes wurden heruntergeladen.",
+                "errors": {
+                    "copyFailed": "Wiederherstellungscodes konnten nicht kopiert werden.",
+                    "downloadFailed": "Wiederherstellungscodes konnten nicht heruntergeladen werden.",
+                    "generateFailed": "Wiederherstellungscodes konnten nicht erstellt werden. Bitte versuchen Sie es erneut.",
+                    "mfaRequired": "Aktivieren Sie TOTP oder registrieren Sie einen Passkey, bevor Sie Wiederherstellungscodes erstellen."
+                }
+            },
             "errors": {
                 "loadFailed": "Sicherheitseinstellungen konnten nicht geladen werden.",
                 "invalidCurrentPassword": "Aktuelles Passwort ist falsch.",
@@ -812,7 +834,8 @@
             "globalFilters": "Globale Filter"
         },
         "users": {
-            "title": "Benutzer"
+            "title": "Benutzer",
+            "disable2faAction": "MFA deaktivieren"
         },
         "sites": {
             "title": "Seiten",
@@ -854,8 +877,13 @@
             "user": "Benutzer"
         },
         "errors": {
-            "deleteUserBlockedOwnership": "{{email}} kann erst gelöscht werden, wenn die Eigentümerschaft für folgende Teams übertragen wurde: {{teams}}."
+            "deleteUserBlockedOwnership": "{{email}} kann erst gelöscht werden, wenn die Eigentümerschaft für folgende Teams übertragen wurde: {{teams}}.",
+            "disable2faFailed": "MFA konnte für {{email}} nicht deaktiviert werden."
         },
+        "status": {
+            "disable2faSuccess": "MFA wurde für {{email}} deaktiviert."
+        },
+        "confirmDisable2fa": "Alle MFA-Methoden für {{email}} deaktivieren? Dadurch werden auch gespeicherte Sitzungen ungültig.",
         "confirmDeleteUser": "Benutzer {{email}} löschen?",
         "confirmDeleteSite": "Seite {{domain}} löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
         "team": {
@@ -997,15 +1025,19 @@
         "or": "oder",
         "signInWithPasskey": "Mit Passkey anmelden",
         "mfaTitle": "Zwei-Faktor-Verifizierung",
-        "mfaSubtitle": "Schließen Sie die Anmeldung mit Ihrem Authenticator-Code oder einem Passkey ab.",
+        "mfaSubtitle": "Schließen Sie die Anmeldung mit Ihrem Authenticator-Code, einem Wiederherstellungscode oder einem Passkey ab.",
         "totpCodeLabel": "Authenticator-Code",
+        "recoveryCodeLabel": "Wiederherstellungscode",
+        "recoveryCodePlaceholder": "ABCD-EFGH",
         "verifyTotp": "Code verifizieren",
+        "verifyRecoveryCode": "Wiederherstellungscode verwenden",
         "footerRights": "HitKeep. Alle Rechte vorbehalten.",
         "errors": {
             "invalidCredentials": "Ungültige E-Mail-Adresse oder Passwort.",
             "passkeyNotSupported": "Passkey-Anmeldung wird auf diesem Gerät nicht unterstützt.",
             "passkeyFailed": "Passkey-Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.",
             "invalidTotp": "Ungültiger Authenticator-Code.",
+            "invalidRecoveryCode": "Ungültiger Wiederherstellungscode.",
             "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
         }
     },

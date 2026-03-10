@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/auth"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
 	"hitkeep/internal/server/shared"
@@ -116,6 +117,89 @@ func TestHandleDeleteUserDeletesWhenTeamHasAnotherOwner(t *testing.T) {
 	}
 	if user != nil {
 		t.Fatalf("expected user to be deleted, got %+v", user)
+	}
+}
+
+func TestHandleDisableUser2FARequiresOwner(t *testing.T) {
+	h, _, _, _, actorUserID, targetUserID := setupAdminTestEnv(t)
+
+	req := withAdminTestUser(httptest.NewRequest(http.MethodPost, "/api/admin/users/"+targetUserID.String()+"/disable-2fa", nil), actorUserID)
+	req.SetPathValue("id", targetUserID.String())
+	w := httptest.NewRecorder()
+
+	h.handleDisableUser2FA().ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusForbidden, w.Code, w.Body.String())
+	}
+}
+
+func TestHandleDisableUser2FADisablesTargetFactors(t *testing.T) {
+	h, store, _, _, actorUserID, targetUserID := setupAdminTestEnv(t)
+	ctx := context.Background()
+
+	if err := store.UpdateInstanceRole(ctx, actorUserID, auth.InstanceOwner, targetUserID); err != nil {
+		t.Fatalf("promote actor to owner: %v", err)
+	}
+
+	if err := store.EnableUserTOTP(ctx, targetUserID, "totp-secret"); err != nil {
+		t.Fatalf("enable target totp: %v", err)
+	}
+	if _, err := store.CreateUserPasskey(ctx, targetUserID, "Recovery key", "credential-1", "public-key", nil); err != nil {
+		t.Fatalf("create target passkey: %v", err)
+	}
+	token, err := store.CreateRememberMeToken(ctx, targetUserID)
+	if err != nil {
+		t.Fatalf("create remember me token: %v", err)
+	}
+
+	req := withAdminTestUser(httptest.NewRequest(http.MethodPost, "/api/admin/users/"+targetUserID.String()+"/disable-2fa", nil), actorUserID)
+	req.SetPathValue("id", targetUserID.String())
+	w := httptest.NewRecorder()
+
+	h.handleDisableUser2FA().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var resp api.AdminDisableUserMFAResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp.Status != "ok" {
+		t.Fatalf("expected status ok, got %q", resp.Status)
+	}
+	if !resp.TOTPDisabled {
+		t.Fatal("expected TOTP to be disabled")
+	}
+	if resp.PasskeysDeleted != 1 {
+		t.Fatalf("expected 1 deleted passkey, got %d", resp.PasskeysDeleted)
+	}
+	if resp.SessionsInvalidated != 1 {
+		t.Fatalf("expected 1 invalidated session, got %d", resp.SessionsInvalidated)
+	}
+
+	hasTOTP, err := store.HasEnabledTOTP(ctx, targetUserID)
+	if err != nil {
+		t.Fatalf("check target totp: %v", err)
+	}
+	if hasTOTP {
+		t.Fatal("expected target totp to be disabled")
+	}
+
+	passkeys, err := store.ListUserPasskeys(ctx, targetUserID)
+	if err != nil {
+		t.Fatalf("list target passkeys: %v", err)
+	}
+	if len(passkeys) != 0 {
+		t.Fatalf("expected target passkeys to be deleted, got %d", len(passkeys))
+	}
+
+	rememberedUserID, err := store.ValidateRememberMeToken(ctx, token)
+	if err != nil {
+		t.Fatalf("validate remember me token: %v", err)
+	}
+	if rememberedUserID != uuid.Nil {
+		t.Fatalf("expected target remember me token to be invalidated, got %s", rememberedUserID)
 	}
 }
 

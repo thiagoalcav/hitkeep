@@ -121,3 +121,51 @@
         </div>
     </div>
 </app-settings-card>
+
+<app-settings-card [title]="'settings.security.recoveryCodes.title' | transloco" [subtitle]="'settings.security.recoveryCodes.description' | transloco" icon="pi pi-lock">
+    <div settings-card-body class="flex flex-col gap-4">
+        @if (recoveryCodeError()) {
+        <p-message severity="error" styleClass="w-full">{{ recoveryCodeError()! | transloco }}</p-message>
+        } @if (recoveryCodeSuccess()) {
+        <p-message severity="success" styleClass="w-full">{{ recoveryCodeSuccess()! | transloco }}</p-message>
+        }
+
+        <div class="recovery-codes-summary">
+            <div class="recovery-codes-summary-copy">
+                <span class="text-sm font-medium">{{ "settings.security.recoveryCodes.remainingLabel" | transloco }}</span>
+                <span class="text-sm text-muted-color">{{ "settings.security.recoveryCodes.remainingValue" | transloco: { count: recoveryCodesRemaining() } }}</span>
+            </div>
+            @if (recoveryCodesGenerated()) {
+            <span class="recovery-codes-badge">{{ "settings.security.recoveryCodes.generatedBadge" | transloco }}</span>
+            }
+        </div>
+
+        @if (!hasMfaProtection()) {
+        <p-message severity="warn" styleClass="w-full">{{ "settings.security.recoveryCodes.requiresMfa" | transloco }}</p-message>
+        } @if (recoveryCodes().length > 0) {
+        <div class="recovery-codes-panel">
+            <div class="flex flex-col gap-1">
+                <span class="text-sm font-medium">{{ "settings.security.recoveryCodes.codesTitle" | transloco }}</span>
+                <span class="text-xs text-muted-color">{{ "settings.security.recoveryCodes.codesHint" | transloco }}</span>
+            </div>
+
+            <div class="recovery-codes-actions">
+                <button pButton type="button" icon="pi pi-copy" severity="secondary" [outlined]="true" (click)="copyRecoveryCodes()">{{ "settings.security.recoveryCodes.copyAction" | transloco }}</button>
+                <button pButton type="button" icon="pi pi-download" severity="secondary" [outlined]="true" (click)="downloadRecoveryCodes()">{{ "settings.security.recoveryCodes.downloadAction" | transloco }}</button>
+            </div>
+
+            <div class="recovery-codes-grid">
+                @for (code of recoveryCodes(); track code) {
+                <code class="recovery-code">{{ code }}</code>
+                }
+            </div>
+        </div>
+        }
+
+        <div class="flex justify-end">
+            <button pButton type="button" icon="pi pi-refresh" [loading]="isRecoveryCodesLoading()" [disabled]="isRecoveryCodesLoading() || !hasMfaProtection()" class="settings-action-btn" (click)="regenerateRecoveryCodes()">
+                {{ (recoveryCodesGenerated() ? "settings.security.recoveryCodes.regenerateAction" : "settings.security.recoveryCodes.generateAction") | transloco }}
+            </button>
+        </div>
+    </div>
+</app-settings-card>

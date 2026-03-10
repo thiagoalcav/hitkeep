@@ -141,7 +141,7 @@ func (s *Store) CreateUserWithNames(ctx context.Context, email string, hashedPas
 		return uuid.Nil, fmt.Errorf("could not count users: %w", err)
 	}
 
-	if err := ensureDefaultTenantTx(ctx, tx); err != nil {
+	if err := ensureDefaultTenantTx(ctx, tx, defaultTenantNameForSetup(givenName), count == 1); err != nil {
 		return uuid.Nil, err
 	}
 
@@ -461,6 +461,9 @@ func cleanupUserRows(ctx context.Context, tx *sql.Tx, userID uuid.UUID) error {
 	}
 	if _, err := tx.ExecContext(ctx, "DELETE FROM user_totp_factors WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete user totp factors: %w", err)
+	}
+	if _, err := tx.ExecContext(ctx, "DELETE FROM user_recovery_codes WHERE user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not delete user recovery codes: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, "DELETE FROM user_preferences WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete user preferences: %w", err)

@@ -26,7 +26,7 @@ export interface PasskeyLoginFinishRequest {
 export interface LoginResponse {
     status: "ok" | "mfa_required";
     challenge_token?: string;
-    factors?: ("totp" | "passkey")[];
+    factors?: ("totp" | "passkey" | "recovery_code")[];
     passkey?: PasskeyLoginStartResponse["publicKey"];
 }
 
@@ -76,6 +76,15 @@ export class AuthService {
     verifyMfaTotp(challengeToken: string, code: string): Observable<void> {
         return this.http
             .post<void>("/api/auth/mfa/totp/verify", {
+                challenge_token: challengeToken,
+                code
+            })
+            .pipe(tap(() => this.status.set("authenticated")));
+    }
+
+    verifyMfaRecoveryCode(challengeToken: string, code: string): Observable<void> {
+        return this.http
+            .post<void>("/api/auth/mfa/recovery-code/verify", {
                 challenge_token: challengeToken,
                 code
             })

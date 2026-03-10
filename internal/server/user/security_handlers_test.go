@@ -209,6 +209,102 @@ func TestPasskeyRegistrationLifecycle(t *testing.T) {
 	}
 }
 
+func TestGetUserSecurityStatusIncludesRecoveryCodes(t *testing.T) {
+	h, store, userID := setupUserSecurityTestEnv(t)
+	defer store.Close()
+
+	codes, err := security.GenerateRecoveryCodes()
+	if err != nil {
+		t.Fatalf("generate recovery codes: %v", err)
+	}
+	hashes := make([]string, 0, len(codes))
+	for _, code := range codes {
+		hash, err := security.HashRecoveryCode(code)
+		if err != nil {
+			t.Fatalf("hash recovery code: %v", err)
+		}
+		hashes = append(hashes, hash)
+	}
+	if err := store.ReplaceUserRecoveryCodes(context.Background(), userID, hashes); err != nil {
+		t.Fatalf("replace recovery codes: %v", err)
+	}
+
+	statusReq := withTestUser(httptest.NewRequest(http.MethodGet, "/api/user/security", nil), userID)
+	statusW := httptest.NewRecorder()
+	h.handleGetUserSecurityStatus().ServeHTTP(statusW, statusReq)
+	if statusW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, statusW.Code)
+	}
+
+	var status api.UserSecurityStatus
+	if err := json.NewDecoder(statusW.Body).Decode(&status); err != nil {
+		t.Fatalf("decode security status: %v", err)
+	}
+	if !status.RecoveryCodesGenerated {
+		t.Fatal("expected recovery codes to be marked as generated")
+	}
+	if status.RecoveryCodesRemaining != len(codes) {
+		t.Fatalf("expected %d recovery codes remaining, got %d", len(codes), status.RecoveryCodesRemaining)
+	}
+}
+
+func TestRegenerateRecoveryCodesRequiresMFA(t *testing.T) {
+	h, store, userID := setupUserSecurityTestEnv(t)
+	defer store.Close()
+
+	req := withTestUser(httptest.NewRequest(http.MethodPost, "/api/user/security/recovery-codes/regenerate", bytes.NewReader([]byte("{}"))), userID)
+	w := httptest.NewRecorder()
+	h.handleRegenerateRecoveryCodes().ServeHTTP(w, req)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("expected status %d, got %d", http.StatusConflict, w.Code)
+	}
+}
+
+func TestRegenerateRecoveryCodes(t *testing.T) {
+	h, store, userID := setupUserSecurityTestEnv(t)
+	defer store.Close()
+
+	if _, err := store.CreateUserPasskey(context.Background(), userID, "Recovery passkey", "cred-recovery-1", mustGeneratePublicKeyB64(t), nil); err != nil {
+		t.Fatalf("create passkey: %v", err)
+	}
+
+	req := withTestUser(httptest.NewRequest(http.MethodPost, "/api/user/security/recovery-codes/regenerate", bytes.NewReader([]byte("{}"))), userID)
+	w := httptest.NewRecorder()
+	h.handleRegenerateRecoveryCodes().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var resp api.UserRecoveryCodesResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode recovery code response: %v", err)
+	}
+	if len(resp.Codes) != 10 {
+		t.Fatalf("expected 10 recovery codes, got %d", len(resp.Codes))
+	}
+	if resp.Remaining != 10 {
+		t.Fatalf("expected 10 recovery codes remaining, got %d", resp.Remaining)
+	}
+
+	statusReq := withTestUser(httptest.NewRequest(http.MethodGet, "/api/user/security", nil), userID)
+	statusW := httptest.NewRecorder()
+	h.handleGetUserSecurityStatus().ServeHTTP(statusW, statusReq)
+	if statusW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, statusW.Code)
+	}
+
+	var status api.UserSecurityStatus
+	if err := json.NewDecoder(statusW.Body).Decode(&status); err != nil {
+		t.Fatalf("decode security status: %v", err)
+	}
+	if !status.RecoveryCodesGenerated {
+		t.Fatal("expected recovery codes to be marked as generated")
+	}
+	if status.RecoveryCodesRemaining != 10 {
+		t.Fatalf("expected 10 recovery codes remaining, got %d", status.RecoveryCodesRemaining)
+	}
+}
+
 func mustGeneratePublicKeyB64(t *testing.T) string {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)

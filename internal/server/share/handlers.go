@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -434,9 +435,30 @@ func (h *handler) handleExportShareHits() http.HandlerFunc {
 		http.ServeFile(w, r, filename)
 
 		go func() {
-			_ = os.Remove(filename)
+			cleanupShareHitsExportFile(filename)
 		}()
 	}
+}
+
+func cleanupShareHitsExportFile(filename string) {
+	if filename == "" {
+		return
+	}
+
+	cleaned := filepath.Clean(filename)
+	base := filepath.Base(cleaned)
+	if !strings.HasPrefix(base, "hitkeep_hits_") {
+		return
+	}
+
+	tempDir := filepath.Clean(os.TempDir())
+	rel, err := filepath.Rel(tempDir, cleaned)
+	if err != nil || rel == "." || strings.HasPrefix(rel, "..") {
+		return
+	}
+
+	//nolint:gosec // cleaned path is constrained to an app-owned temp export under os.TempDir.
+	_ = os.Remove(cleaned)
 }
 
 func (h *handler) handleGetShareGoals() http.HandlerFunc {

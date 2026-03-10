@@ -3,46 +3,44 @@
     min-width: 0;
 }
 
-.team-switcher__trigger {
+.team-switcher__avatar {
+    border-radius: 9999px;
+    object-fit: cover;
+}
+
+.team-switcher__action:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+:host ::ng-deep .team-switcher__select {
     border: 1px solid color-mix(in srgb, var(--p-content-border-color) 48%, transparent);
+    border-radius: 999px;
     background: color-mix(in srgb, var(--p-surface-card) 88%, transparent);
     box-shadow: none;
 }
 
-.team-switcher__trigger:hover {
+:host ::ng-deep .team-switcher__select:hover {
     border-color: color-mix(in srgb, var(--p-content-border-color) 62%, transparent);
     background: color-mix(in srgb, var(--p-surface-card) 94%, var(--p-surface-100));
 }
 
-.team-switcher__trigger--compact {
+:host ::ng-deep .team-switcher__select.team-switcher__select--compact {
     border-color: transparent;
     background: color-mix(in srgb, var(--p-surface-card) 68%, transparent);
     box-shadow: inset 0 1px 0 color-mix(in srgb, white 44%, transparent);
 }
 
-.team-switcher__trigger--compact:hover {
+:host ::ng-deep .team-switcher__select.team-switcher__select--compact:hover {
     border-color: color-mix(in srgb, var(--p-content-border-color) 44%, transparent);
     background: color-mix(in srgb, var(--p-surface-card) 90%, var(--p-surface-100));
 }
 
-:host ::ng-deep .team-switcher-menu {
-    backdrop-filter: blur(18px);
-    background: color-mix(in srgb, var(--p-surface-card) 92%, white 8%);
+:host ::ng-deep .team-switcher__select .p-select-label {
+    padding: 0.5rem 0.75rem;
 }
 
-:host ::ng-deep .team-switcher-menu .p-menu-list {
-    padding: 0.5rem;
-}
-
-:host ::ng-deep .team-switcher-menu .p-menu-separator {
-    margin: 0.35rem 0;
-}
-
-:host ::ng-deep .team-switcher-menu .p-menu-item-content,
-:host ::ng-deep .team-switcher-menu .p-menu-item-link {
-    padding: 0;
-}
-
-.team-switcher__menu-item:hover {
-    background: color-mix(in srgb, var(--p-surface-100) 72%, var(--p-surface-card));
+:host ::ng-deep .team-switcher__select .p-select-dropdown {
+    width: 2.5rem;
+    color: var(--p-text-muted-color);
 }

@@ -104,9 +104,81 @@
     gap: 0.125rem;
 }
 
+.recovery-codes-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--settings-field-border);
+    border-radius: 0.625rem;
+    background: var(--settings-field-bg);
+}
+
+.recovery-codes-summary-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.recovery-codes-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem 0.625rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--p-primary-color) 12%, transparent);
+    color: var(--p-primary-color);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1rem;
+}
+
+.recovery-codes-panel {
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--settings-field-border);
+    border-radius: 0.75rem;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--p-primary-color) 8%, transparent), transparent 55%), var(--settings-field-bg-readonly);
+}
+
+.recovery-codes-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.recovery-codes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    gap: 0.75rem;
+}
+
+.recovery-code {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--settings-field-border);
+    border-radius: 0.625rem;
+    background: var(--settings-field-bg);
+    color: var(--settings-field-text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+}
+
 @media (max-width: 640px) {
     .passkey-item {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .recovery-codes-summary {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }

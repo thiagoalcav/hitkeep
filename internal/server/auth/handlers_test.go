@@ -100,6 +100,21 @@ func TestHandleCreateInitialUser(t *testing.T) {
 		t.Fatalf("expected given/last name to be persisted, got %+v", user)
 	}
 
+	defaultTenantID, err := store.GetDefaultTenantID(context.Background())
+	if err != nil {
+		t.Fatalf("failed to get default tenant: %v", err)
+	}
+	defaultTenant, err := store.GetTenant(context.Background(), defaultTenantID)
+	if err != nil {
+		t.Fatalf("failed to fetch default tenant: %v", err)
+	}
+	if defaultTenant == nil {
+		t.Fatalf("expected default tenant to exist")
+	}
+	if defaultTenant.Name != "Ada's Team" {
+		t.Fatalf("expected default tenant name %q, got %q", "Ada's Team", defaultTenant.Name)
+	}
+
 	// Second call should be blocked once setup is complete.
 	req2 := httptest.NewRequest(http.MethodPost, "/api/initial-user", bytes.NewReader(body))
 	w2 := httptest.NewRecorder()
@@ -914,6 +929,199 @@ func TestHandleAcceptInviteActivatesPendingTeamInvite(t *testing.T) {
 	if len(invites) != 0 {
 		t.Fatalf("expected no pending invites after acceptance, got %d", len(invites))
 	}
+}
+
+func TestHandleLoginIncludesRecoveryCodeFactor(t *testing.T) {
+	h, store := setupAuthTestEnv(t)
+	defer store.Close()
+
+	hashed, err := HashPassword("password123")
+	if err != nil {
+		t.Fatalf("failed to hash password: %v", err)
+	}
+	userID, err := store.CreateUser(context.Background(), "recovery-factor@example.com", hashed)
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	secret, err := security.GenerateTOTPSecret()
+	if err != nil {
+		t.Fatalf("generate totp secret: %v", err)
+	}
+	if err := store.EnableUserTOTP(context.Background(), userID, secret); err != nil {
+		t.Fatalf("enable totp: %v", err)
+	}
+
+	codes, err := security.GenerateRecoveryCodes()
+	if err != nil {
+		t.Fatalf("generate recovery codes: %v", err)
+	}
+	hashes := make([]string, 0, len(codes))
+	for _, code := range codes {
+		hash, err := security.HashRecoveryCode(code)
+		if err != nil {
+			t.Fatalf("hash recovery code: %v", err)
+		}
+		hashes = append(hashes, hash)
+	}
+	if err := store.ReplaceUserRecoveryCodes(context.Background(), userID, hashes); err != nil {
+		t.Fatalf("replace recovery codes: %v", err)
+	}
+
+	body, _ := json.Marshal(map[string]any{
+		"email":    "recovery-factor@example.com",
+		"password": "password123",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/login", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	h.handleLogin().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+
+	var resp loginResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode login response: %v", err)
+	}
+	if resp.Status != "mfa_required" {
+		t.Fatalf("expected mfa_required status, got %q", resp.Status)
+	}
+	if !containsFactor(resp.Factors, "totp") {
+		t.Fatalf("expected totp factor, got %v", resp.Factors)
+	}
+	if !containsFactor(resp.Factors, "recovery_code") {
+		t.Fatalf("expected recovery code factor, got %v", resp.Factors)
+	}
+}
+
+func TestHandleMFARecoveryCodeVerify(t *testing.T) {
+	h, store := setupAuthTestEnv(t)
+	defer store.Close()
+
+	hashed, err := HashPassword("password123")
+	if err != nil {
+		t.Fatalf("failed to hash password: %v", err)
+	}
+	userID, err := store.CreateUser(context.Background(), "recovery-verify@example.com", hashed)
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	secret, err := security.GenerateTOTPSecret()
+	if err != nil {
+		t.Fatalf("generate totp secret: %v", err)
+	}
+	if err := store.EnableUserTOTP(context.Background(), userID, secret); err != nil {
+		t.Fatalf("enable totp: %v", err)
+	}
+
+	codes, err := security.GenerateRecoveryCodes()
+	if err != nil {
+		t.Fatalf("generate recovery codes: %v", err)
+	}
+	hashes := make([]string, 0, len(codes))
+	for _, code := range codes {
+		hash, err := security.HashRecoveryCode(code)
+		if err != nil {
+			t.Fatalf("hash recovery code: %v", err)
+		}
+		hashes = append(hashes, hash)
+	}
+	if err := store.ReplaceUserRecoveryCodes(context.Background(), userID, hashes); err != nil {
+		t.Fatalf("replace recovery codes: %v", err)
+	}
+
+	loginBody, _ := json.Marshal(map[string]any{
+		"email":       "recovery-verify@example.com",
+		"password":    "password123",
+		"remember_me": true,
+	})
+	loginReq := httptest.NewRequest(http.MethodPost, "/api/login", bytes.NewReader(loginBody))
+	loginW := httptest.NewRecorder()
+	h.handleLogin().ServeHTTP(loginW, loginReq)
+	if loginW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, loginW.Code)
+	}
+
+	var loginResp loginResponse
+	if err := json.NewDecoder(loginW.Body).Decode(&loginResp); err != nil {
+		t.Fatalf("decode login response: %v", err)
+	}
+	if loginResp.ChallengeToken == "" {
+		t.Fatal("expected challenge token")
+	}
+
+	t.Run("invalid code", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]string{
+			"challenge_token": loginResp.ChallengeToken,
+			"code":            "BAD-CODE",
+		})
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/mfa/recovery-code/verify", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		h.handleMFARecoveryCodeVerify().ServeHTTP(w, req)
+		if w.Code != http.StatusUnauthorized {
+			t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, w.Code)
+		}
+
+		challengeID, err := uuid.Parse(loginResp.ChallengeToken)
+		if err != nil {
+			t.Fatalf("parse challenge token: %v", err)
+		}
+		if _, found, err := store.GetPasskeyLoginChallenge(context.Background(), challengeID); err != nil {
+			t.Fatalf("load mfa challenge: %v", err)
+		} else if !found {
+			t.Fatal("expected mfa challenge to remain after invalid recovery code")
+		}
+	})
+
+	t.Run("success", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]string{
+			"challenge_token": loginResp.ChallengeToken,
+			"code":            codes[0],
+		})
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/mfa/recovery-code/verify", bytes.NewReader(body))
+		w := httptest.NewRecorder()
+		h.handleMFARecoveryCodeVerify().ServeHTTP(w, req)
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+		}
+
+		remaining, err := store.CountActiveRecoveryCodes(context.Background(), userID)
+		if err != nil {
+			t.Fatalf("count active recovery codes: %v", err)
+		}
+		if remaining != len(codes)-1 {
+			t.Fatalf("expected %d remaining recovery codes, got %d", len(codes)-1, remaining)
+		}
+
+		challengeID, err := uuid.Parse(loginResp.ChallengeToken)
+		if err != nil {
+			t.Fatalf("parse challenge token: %v", err)
+		}
+		if _, found, err := store.GetPasskeyLoginChallenge(context.Background(), challengeID); err != nil {
+			t.Fatalf("load mfa challenge: %v", err)
+		} else if found {
+			t.Fatal("expected mfa challenge to be deleted after recovery code verification")
+		}
+
+		cookies := w.Header().Values("Set-Cookie")
+		foundAuth := false
+		foundRemember := false
+		for _, cookie := range cookies {
+			if bytes.Contains([]byte(cookie), []byte(auth.CookieName+"=")) {
+				foundAuth = true
+			}
+			if bytes.Contains([]byte(cookie), []byte(auth.RememberMeCookieName+"=")) {
+				foundRemember = true
+			}
+		}
+		if !foundAuth {
+			t.Fatalf("expected auth cookie after recovery code verification")
+		}
+		if !foundRemember {
+			t.Fatalf("expected remember me cookie after recovery code verification")
+		}
+	})
 }
 
 func containsFactor(factors []string, factor string) bool {

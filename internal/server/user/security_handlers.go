@@ -149,6 +149,7 @@ func (h *handler) handleStartTOTPSetup() http.HandlerFunc {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
+		//nolint:gosec // TOTP bootstrap secret is intentionally returned to the authenticated user during setup.
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
 			slog.Error("Failed to encode pending totp setup", "error", err, "user_id", userID)
 		}
@@ -454,6 +455,63 @@ func (h *handler) handleDeleteUserPasskey() http.HandlerFunc {
 	}
 }
 
+func (h *handler) handleRegenerateRecoveryCodes() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := shared.GetUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		status, err := h.getUserSecurityStatus(r.Context(), userID)
+		if err != nil {
+			slog.Error("Failed to load user security status before regenerating recovery codes", "error", err, "user_id", userID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if !status.TOTPEnabled && len(status.Passkeys) == 0 {
+			http.Error(w, "Enable TOTP or register a passkey before generating recovery codes", http.StatusConflict)
+			return
+		}
+
+		codes, err := security.GenerateRecoveryCodes()
+		if err != nil {
+			slog.Error("Failed to generate recovery codes", "error", err, "user_id", userID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		hashes := make([]string, 0, len(codes))
+		for _, code := range codes {
+			hash, err := security.HashRecoveryCode(code)
+			if err != nil {
+				slog.Error("Failed to hash recovery code", "error", err, "user_id", userID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			if hash == "" {
+				slog.Error("Failed to hash recovery code", "user_id", userID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			hashes = append(hashes, hash)
+		}
+		if err := h.ctx.Store.ReplaceUserRecoveryCodes(r.Context(), userID, hashes); err != nil {
+			slog.Error("Failed to persist recovery codes", "error", err, "user_id", userID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(api.UserRecoveryCodesResponse{
+			Codes:     codes,
+			Remaining: len(codes),
+		}); err != nil {
+			slog.Error("Failed to encode recovery code response", "error", err, "user_id", userID)
+		}
+	}
+}
+
 func (h *handler) getUserSecurityStatus(ctx context.Context, userID uuid.UUID) (api.UserSecurityStatus, error) {
 	totpEnabled, err := h.ctx.Store.HasEnabledTOTP(ctx, userID)
 	if err != nil {
@@ -467,10 +525,16 @@ func (h *handler) getUserSecurityStatus(ctx context.Context, userID uuid.UUID) (
 	if err != nil {
 		return api.UserSecurityStatus{}, err
 	}
+	recoveryStatus, err := h.ctx.Store.GetRecoveryCodeStatus(ctx, userID)
+	if err != nil {
+		return api.UserSecurityStatus{}, err
+	}
 	return api.UserSecurityStatus{
-		TOTPEnabled: totpEnabled,
-		TOTPPending: totpPending,
-		Passkeys:    passkeys,
+		TOTPEnabled:            totpEnabled,
+		TOTPPending:            totpPending,
+		Passkeys:               passkeys,
+		RecoveryCodesGenerated: recoveryStatus.Generated,
+		RecoveryCodesRemaining: recoveryStatus.Remaining,
 	}, nil
 }
 

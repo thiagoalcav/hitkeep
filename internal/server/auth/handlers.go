@@ -57,6 +57,9 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 	mux.HandleFunc("POST /api/auth/mfa/totp/verify", ctx.Handler(shared.HandlerConfig{
 		RateLimiter: ctx.AuthLimiter,
 	}, h.handleMFATOTPVerify()))
+	mux.HandleFunc("POST /api/auth/mfa/recovery-code/verify", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleMFARecoveryCodeVerify()))
 	mux.HandleFunc("POST /api/user/password", ctx.Handler(shared.HandlerConfig{
 		RequireAuth: true,
 		RateLimiter: ctx.AuthLimiter,
@@ -196,6 +199,13 @@ func (h *handler) handleLogin() http.HandlerFunc {
 			return
 		}
 		hasPasskey := len(passkeys) > 0
+		recoveryCodesRemaining, err := h.ctx.Store.CountActiveRecoveryCodes(r.Context(), user.ID)
+		if err != nil {
+			slog.Error("Failed to count user recovery codes during login", "error", err, "user_id", user.ID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		hasRecoveryCode := recoveryCodesRemaining > 0
 
 		if totpEnabled || hasPasskey {
 			challenge, err := security.GenerateRandomChallenge(32)
@@ -220,6 +230,9 @@ func (h *handler) handleLogin() http.HandlerFunc {
 			factors := make([]string, 0, 2)
 			if totpEnabled {
 				factors = append(factors, "totp")
+			}
+			if hasRecoveryCode {
+				factors = append(factors, "recovery_code")
 			}
 			resp := loginResponse{
 				Status:         "mfa_required",

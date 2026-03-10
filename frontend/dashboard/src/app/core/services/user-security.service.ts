@@ -13,6 +13,8 @@ export interface UserSecurityStatus {
     totp_enabled: boolean;
     totp_pending: boolean;
     passkeys: UserPasskey[];
+    recovery_codes_generated: boolean;
+    recovery_codes_remaining: number;
 }
 
 export interface UserTotpSetup {
@@ -54,6 +56,11 @@ export interface PasskeyRegistrationFinishRequest {
     transports?: string[];
 }
 
+export interface UserRecoveryCodesResponse {
+    codes: string[];
+    remaining: number;
+}
+
 @Injectable({ providedIn: "root" })
 export class UserSecurityService {
     private http = inject(HttpClient);
@@ -84,5 +91,9 @@ export class UserSecurityService {
 
     deletePasskey(passkeyID: string): Observable<void> {
         return this.http.delete<void>(`/api/user/security/passkeys/${passkeyID}`);
+    }
+
+    regenerateRecoveryCodes(): Observable<UserRecoveryCodesResponse> {
+        return this.http.post<UserRecoveryCodesResponse>("/api/user/security/recovery-codes/regenerate", {});
     }
 }

@@ -51,8 +51,7 @@
             "addTeamAria": "Créer une nouvelle équipe",
             "openMenuAria": "Ouvrir le menu de l'équipe {{name}}",
             "menuAria": "Menu de l'équipe",
-            "currentLabel": "Équipe actuelle",
-            "activeLabel": "Active"
+            "currentLabel": "Équipe actuelle"
         },
         "roles": {
             "owner": "Propriétaire",
@@ -470,6 +469,29 @@
                     "deleteFailed": "Impossible de supprimer cette passkey pour le moment."
                 }
             },
+            "recoveryCodes": {
+                "title": "Codes de recuperation",
+                "description": "Generez des codes de secours a usage unique pour recuperer votre compte si vous perdez votre application d'authentification ou votre passkey.",
+                "remainingLabel": "Codes de secours",
+                "remainingValue": "{{count}} codes restants",
+                "generatedBadge": "Generes",
+                "requiresMfa": "Activez le TOTP ou enregistrez une passkey avant de generer des codes de recuperation.",
+                "codesTitle": "Enregistrez ces codes de recuperation maintenant",
+                "codesHint": "Chaque code ne peut etre utilise qu'une fois. Ils ne sont affiches qu'au moment de leur generation ou regeneration.",
+                "copyAction": "Tout copier",
+                "downloadAction": "Telecharger .txt",
+                "generateAction": "Generer les codes",
+                "regenerateAction": "Regenerer les codes",
+                "generated": "Codes de recuperation regeneres.",
+                "copied": "Codes de recuperation copies.",
+                "downloaded": "Codes de recuperation telecharges.",
+                "errors": {
+                    "copyFailed": "Impossible de copier les codes de recuperation.",
+                    "downloadFailed": "Impossible de telecharger les codes de recuperation.",
+                    "generateFailed": "Impossible de generer les codes de recuperation. Veuillez reessayer.",
+                    "mfaRequired": "Activez le TOTP ou enregistrez une passkey avant de generer des codes de recuperation."
+                }
+            },
             "errors": {
                 "loadFailed": "Impossible de charger les parametres de securite.",
                 "invalidCurrentPassword": "Mot de passe actuel incorrect.",
@@ -812,7 +834,8 @@
             "globalFilters": "Filtres globaux"
         },
         "users": {
-            "title": "Utilisateurs"
+            "title": "Utilisateurs",
+            "disable2faAction": "Désactiver la MFA"
         },
         "sites": {
             "title": "Sites",
@@ -854,8 +877,13 @@
             "user": "Utilisateur"
         },
         "errors": {
-            "deleteUserBlockedOwnership": "Impossible de supprimer {{email}} tant que la propriété n'a pas été transférée pour : {{teams}}."
+            "deleteUserBlockedOwnership": "Impossible de supprimer {{email}} tant que la propriété n'a pas été transférée pour : {{teams}}.",
+            "disable2faFailed": "Impossible de désactiver la MFA pour {{email}}."
         },
+        "status": {
+            "disable2faSuccess": "La MFA a été désactivée pour {{email}}."
+        },
+        "confirmDisable2fa": "Désactiver toutes les méthodes MFA pour {{email}} ? Cela invalidera aussi les sessions mémorisées.",
         "confirmDeleteUser": "Supprimer l'utilisateur {{email}}?",
         "confirmDeleteSite": "Supprimer le site {{domain}}? Cette action est irreversible.",
         "team": {
@@ -997,15 +1025,19 @@
         "or": "ou",
         "signInWithPasskey": "Se connecter avec une passkey",
         "mfaTitle": "Verification a deux facteurs",
-        "mfaSubtitle": "Terminez la connexion avec votre code d'authentification ou une passkey.",
+        "mfaSubtitle": "Terminez la connexion avec votre code d'authentification, un code de recuperation ou une passkey.",
         "totpCodeLabel": "Code d'authentification",
+        "recoveryCodeLabel": "Code de recuperation",
+        "recoveryCodePlaceholder": "ABCD-EFGH",
         "verifyTotp": "Verifier le code",
+        "verifyRecoveryCode": "Utiliser un code de recuperation",
         "footerRights": "HitKeep. Tous droits reserves.",
         "errors": {
             "invalidCredentials": "E-mail ou mot de passe invalide.",
             "passkeyNotSupported": "La connexion par passkey n'est pas prise en charge sur cet appareil.",
             "passkeyFailed": "Echec de la connexion par passkey. Veuillez reessayer.",
             "invalidTotp": "Code d'authentification invalide.",
+            "invalidRecoveryCode": "Code de recuperation invalide.",
             "unexpected": "Une erreur inattendue est survenue. Veuillez reessayer."
         }
     },

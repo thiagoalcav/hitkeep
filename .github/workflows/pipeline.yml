@@ -87,7 +87,7 @@ jobs:
       - name: Build Linux Binaries
         env:
           GO_VERSION: ${{ steps.setup-go.outputs.go-version }}
-          BUILD_IMAGE: debian:bullseye-slim
+          BUILD_IMAGE: amazonlinux:2023
           HITKEEP_VERSION: ${{ inputs.version }}
           CLOUD_GO_BUILD_TAGS: ${{ inputs.cloud_go_build_tags }}
         run: |
@@ -117,9 +117,7 @@ jobs:
               bash -lc '
                 set -euo pipefail
 
-                export DEBIAN_FRONTEND=noninteractive
-                apt-get update
-                apt-get install -y --no-install-recommends build-essential ca-certificates curl git xz-utils
+                dnf install -y gcc gcc-c++ tar gzip xz git
 
                 curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${GO_TARBALL_ARCH}.tar.gz" -o /tmp/go.tgz
                 rm -rf /usr/local/go

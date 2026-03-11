@@ -5,6 +5,7 @@ import { of } from "rxjs";
 import { vi } from "vitest";
 
 import { Login } from "@pages/login/login";
+import { AnalyticsService } from "@services/analytics.service";
 import { AuthService } from "@services/auth.service";
 import { UserPreferencesService } from "@services/user-preferences.service";
 
@@ -45,6 +46,18 @@ describe("Login", () => {
         const preferencesMock = {
             load: () => of(void 0)
         } as unknown as UserPreferencesService;
+        const analyticsMock = {
+            getSystemStatus: () =>
+                of({
+                    needs_setup: false,
+                    version: "v2.0.0",
+                    cloud: {
+                        hosted: true,
+                        signup_enabled: true,
+                        jurisdiction: "EU"
+                    }
+                })
+        } as unknown as AnalyticsService;
 
         await TestBed.configureTestingModule({
             imports: [
@@ -61,6 +74,7 @@ describe("Login", () => {
             providers: [
                 provideRouter([]),
                 { provide: AuthService, useValue: authMock as unknown as AuthService },
+                { provide: AnalyticsService, useValue: analyticsMock },
                 { provide: UserPreferencesService, useValue: preferencesMock },
                 {
                     provide: ActivatedRoute,

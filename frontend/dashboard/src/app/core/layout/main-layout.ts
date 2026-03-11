@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from "@angular/core";
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from "@angular/router";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 import { DrawerModule } from "primeng/drawer";
@@ -17,9 +17,11 @@ import { UserPreferencesService } from "@services/user-preferences.service";
 import { UserProfileService } from "@services/user-profile.service";
 import { CreateTeamDialog } from "@components/create-team-dialog/create-team-dialog";
 import { SiteService } from "@features/sites/services/site.service";
+import { AnalyticsService } from "@services/analytics.service";
 
 @Component({
     selector: "app-main-layout",
+    changeDetection: ChangeDetectionStrategy.OnPush,
     host: {
         "(document:keydown)": "handleKeyboard($event)"
     },
@@ -28,6 +30,8 @@ import { SiteService } from "@features/sites/services/site.service";
     styleUrl: "./main-layout.css"
 })
 export class MainLayout {
+    private static readonly docsURL = "https://hitkeep.com/guides/introduction/";
+    private static readonly supportFallbackURL = "https://hitkeep.com/support/help/";
     private readonly router = inject(Router);
     protected readonly siteService = inject(SiteService);
     protected readonly shareService = inject(ShareService);
@@ -36,7 +40,19 @@ export class MainLayout {
     protected readonly perms = inject(PermissionService);
     protected readonly profile = inject(UserProfileService);
     protected readonly preferences = inject(UserPreferencesService);
+    private readonly analytics = inject(AnalyticsService);
     private readonly transloco = inject(TranslocoService);
+    protected readonly cloudHosted = signal(false);
+    protected readonly cloudSupportUrl = signal("");
+    protected readonly canCreateTeams = computed(() => !this.cloudHosted());
+    protected readonly docsUrl = MainLayout.docsURL;
+    protected readonly supportUrl = computed(() => {
+        if (!this.cloudHosted()) {
+            return "";
+        }
+
+        return this.cloudSupportUrl() || MainLayout.supportFallbackURL;
+    });
 
     protected readonly isTeamAdmin = computed(() => {
         const role = this.teamService.activeTeam()?.role;
@@ -112,6 +128,16 @@ export class MainLayout {
             return;
         }
         this.teamService.loadTeams().subscribe({ error: () => undefined });
+        this.analytics.getSystemStatus().subscribe({
+            next: (status) => {
+                this.cloudHosted.set(Boolean(status.cloud?.hosted));
+                this.cloudSupportUrl.set(status.cloud?.support_url?.trim() ?? "");
+            },
+            error: () => {
+                this.cloudHosted.set(false);
+                this.cloudSupportUrl.set("");
+            }
+        });
         this.siteService.loadSites();
         this.perms.loadPermissions().subscribe({ error: () => undefined });
         this.profile.loadProfile().subscribe({ error: () => undefined });

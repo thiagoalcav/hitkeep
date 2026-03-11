@@ -136,6 +136,12 @@
         </div>
 
         <footer class="hk-auth-footer">
+            @if (showSignupLink()) {
+            <p class="hk-auth-footer-text">
+                <span>{{ "login.cloudSignupPrompt" | transloco }}</span>
+                <a routerLink="/signup" class="hk-auth-link">{{ "login.cloudSignupAction" | transloco }}</a>
+            </p>
+            }
             <p class="hk-auth-footer-text">
                 <span aria-hidden="true">&copy;</span>
                 <span>{{ currentYear }} </span>

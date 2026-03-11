@@ -1,27 +1,34 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
+import { ButtonModule } from "primeng/button";
 import { CardModule } from "primeng/card";
 import { ProgressBarModule } from "primeng/progressbar";
 import { TagModule } from "primeng/tag";
 import { TeamService } from "@services/team.service";
+import { injectActiveLang } from "@core/i18n/active-lang";
 import { AnalyticsService } from "@services/analytics.service";
+import { CloudService } from "@services/cloud.service";
 import { SystemStatus, TeamRole } from "@models/analytics.types";
 
 @Component({
     selector: "app-team-overview",
-    imports: [CardModule, ProgressBarModule, TagModule, TranslocoPipe],
+    imports: [ButtonModule, CardModule, ProgressBarModule, TagModule, TranslocoPipe],
     templateUrl: "./team-overview.html",
     styleUrl: "./team-overview.css",
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TeamOverviewPage {
+    private readonly destroyRef = inject(DestroyRef);
     private readonly transloco = inject(TranslocoService);
+    private readonly activeLanguage = injectActiveLang();
     private readonly analyticsService = inject(AnalyticsService);
+    private readonly cloudService = inject(CloudService);
     protected readonly teamService = inject(TeamService);
 
     protected readonly team = this.teamService.activeTeam;
     protected readonly systemStatus = signal<SystemStatus | null>(null);
+    protected readonly portalPending = signal(false);
     protected readonly usageCards = computed(() => {
         const team = this.team();
         const cloud = this.systemStatus()?.cloud;
@@ -49,11 +56,12 @@ export class TeamOverviewPage {
         };
     });
     protected readonly showUsageSection = computed(() => this.usageCards().length > 0);
+    protected readonly canManageBilling = computed(() => this.cloudPlan() !== null && !this.portalPending());
 
     constructor() {
         this.analyticsService
             .getSystemStatus()
-            .pipe(takeUntilDestroyed())
+            .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe((status) => this.systemStatus.set(status));
     }
 
@@ -111,6 +119,26 @@ export class TeamOverviewPage {
         return this.transloco.translate("admin.team.overview.cloud.retentionDays", { count: days });
     }
 
+    protected openBillingPortal(): void {
+        if (this.portalPending()) {
+            return;
+        }
+
+        this.portalPending.set(true);
+        this.cloudService
+            .createBillingPortalSession({ locale: this.activeLanguage() })
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+                next: ({ url }) => {
+                    this.portalPending.set(false);
+                    this.redirectTo(url);
+                },
+                error: () => {
+                    this.portalPending.set(false);
+                }
+            });
+    }
+
     private buildUsageCard(key: string, current: number, limit: number) {
         const percentage = limit > 0 ? Math.min(100, Math.round((current / limit) * 100)) : 0;
 
@@ -125,5 +153,9 @@ export class TeamOverviewPage {
             limitLabel: this.usageLimitLabel(limit),
             description: this.usageDescription(current)
         };
+    }
+
+    protected redirectTo(url: string): void {
+        window.location.assign(url);
     }
 }

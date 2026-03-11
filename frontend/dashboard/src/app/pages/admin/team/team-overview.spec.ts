@@ -5,11 +5,17 @@ import { TranslocoTestingModule } from "@jsverse/transloco";
 import { TeamOverviewPage } from "./team-overview";
 import { TeamService } from "@services/team.service";
 import { AnalyticsService } from "@services/analytics.service";
+import { CloudService } from "@services/cloud.service";
 import { Team } from "@models/analytics.types";
 import { of } from "rxjs";
+import { vi } from "vitest";
 
 describe("TeamOverviewPage", () => {
     let fixture: ComponentFixture<TeamOverviewPage>;
+    type TeamOverviewTestAccess = TeamOverviewPage & {
+        openBillingPortal(): void;
+        redirectTo(url: string): void;
+    };
     let systemStatusResponse: {
         needs_setup: boolean;
         version: string;
@@ -97,6 +103,7 @@ describe("TeamOverviewPage", () => {
                                             title: "Cloud plan",
                                             managed: "Managed cloud",
                                             description: "Run this team in the hosted EU or US cell with hard limits, backups, and upgrade paths.",
+                                            manageBillingAction: "Manage billing",
                                             jurisdiction: "Jurisdiction",
                                             region: "Region",
                                             retention: "Retention",
@@ -130,6 +137,12 @@ describe("TeamOverviewPage", () => {
                     useValue: {
                         getSystemStatus: () => of(systemStatusResponse)
                     }
+                },
+                {
+                    provide: CloudService,
+                    useValue: {
+                        createBillingPortalSession: vi.fn().mockReturnValue(of({ url: "https://billing.stripe.test/session" }))
+                    }
                 }
             ]
         }).compileComponents();
@@ -152,10 +165,22 @@ describe("TeamOverviewPage", () => {
         const text = fixture.nativeElement.textContent;
         expect(text).toContain("Cloud plan");
         expect(text).toContain("Managed cloud");
+        expect(text).toContain("Manage billing");
         expect(text).toContain("EU");
         expect(text).toContain("365 days");
         expect(text).toContain("Upgrade plan");
         expect(text).toContain("Contact support");
+    });
+
+    it("creates a billing portal session from the cloud card", () => {
+        const component = fixture.componentInstance as TeamOverviewTestAccess;
+        const cloudService = TestBed.inject(CloudService);
+        const redirectSpy = vi.spyOn(component, "redirectTo");
+
+        component.openBillingPortal();
+
+        expect(cloudService.createBillingPortalSession).toHaveBeenCalledWith({ locale: "en" });
+        expect(redirectSpy).toHaveBeenCalledWith("https://billing.stripe.test/session");
     });
 
     it("hides usage limits and cloud plan details for OSS instances", () => {

@@ -14,6 +14,14 @@ interface MainLayoutTestAccess {
         (): boolean;
         set(value: boolean): void;
     };
+    cloudHosted: {
+        (): boolean;
+        set(value: boolean): void;
+    };
+    cloudSupportUrl: {
+        (): string;
+        set(value: string): void;
+    };
 }
 
 describe("MainLayout", () => {
@@ -102,6 +110,40 @@ describe("MainLayout", () => {
         expect(hasTeamLink).toBeFalsy();
     });
 
+    it("should hide create team actions in hosted cloud", () => {
+        const access = component as unknown as MainLayoutTestAccess;
+        access.cloudHosted.set(true);
+        fixture.detectChanges();
+
+        const switchers = fixture.debugElement.queryAll(By.css("app-team-switcher"));
+        expect(switchers.length).toBeGreaterThan(0);
+        for (const switcher of switchers) {
+            expect(switcher.componentInstance.showAdd()).toBe(false);
+        }
+    });
+
+    it("should show docs link in oss mode and hide support link", () => {
+        const links = Array.from(fixture.nativeElement.querySelectorAll("a[href]")) as HTMLAnchorElement[];
+
+        const docsLink = links.find((link) => link.href === "https://hitkeep.com/guides/introduction/");
+        const supportLink = links.find((link) => link.href === "https://hitkeep.com/support/help/");
+
+        expect(docsLink).toBeTruthy();
+        expect(supportLink).toBeFalsy();
+    });
+
+    it("should show support link in hosted cloud mode", () => {
+        const access = component as unknown as MainLayoutTestAccess;
+        access.cloudHosted.set(true);
+        access.cloudSupportUrl.set("https://hitkeep.com/support/help/");
+        fixture.detectChanges();
+
+        const links = Array.from(fixture.nativeElement.querySelectorAll("a[href]")) as HTMLAnchorElement[];
+        const supportLink = links.find((link) => link.href === "https://hitkeep.com/support/help/");
+
+        expect(supportLink).toBeTruthy();
+    });
+
     it("should allow team switch without confirmation when settings drawer is closed", () => {
         const confirmSpy = vi.spyOn(window, "confirm");
         const access = component as unknown as MainLayoutTestAccess;
@@ -152,6 +194,14 @@ describe("MainLayout", () => {
             ]
         });
 
+        httpMock.expectOne("/api/status").flush({
+            needs_setup: false,
+            version: "v2.0.0",
+            cloud: {
+                hosted: false,
+                signup_enabled: false
+            }
+        });
         httpMock.expectOne("/api/sites").flush([]);
         httpMock.expectOne("/api/user/permissions").flush({
             instance_role: "owner",

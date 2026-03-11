@@ -22,6 +22,11 @@
         "apiClients": "API-Clients",
         "apiReference": "API-Referenz",
         "account": "Konto",
+        "resources": "Ressourcen",
+        "docs": "Docs",
+        "docsAria": "HitKeep-Dokumentation in neuem Tab öffnen",
+        "support": "Support",
+        "supportAria": "HitKeep-Support in neuem Tab öffnen",
         "settings": "Benutzereinstellungen",
         "settingsAria": "Zu den Benutzereinstellungen",
         "emailReports": "E-Mail-Berichte",
@@ -925,6 +930,7 @@
                     "retention": "Aufbewahrung",
                     "retentionDays": "{{count}} Tage",
                     "unlimitedRetention": "Unbegrenzte Aufbewahrung",
+                    "manageBillingAction": "Abrechnung verwalten",
                     "upgradeAction": "Tarif upgraden",
                     "supportAction": "Support kontaktieren"
                 }
@@ -1025,6 +1031,8 @@
     },
     "login": {
         "subtitle": "Melden Sie sich an, um Ihr Dashboard zu öffnen.",
+        "cloudSignupPrompt": "Neu bei HitKeep Cloud?",
+        "cloudSignupAction": "Konto erstellen",
         "emailLabel": "E-Mail-Adresse",
         "emailPlaceholder": "you@example.com",
         "emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
@@ -1050,6 +1058,45 @@
             "passkeyFailed": "Passkey-Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.",
             "invalidTotp": "Ungültiger Authenticator-Code.",
             "invalidRecoveryCode": "Ungültiger Wiederherstellungscode.",
+            "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
+        }
+    },
+    "signup": {
+        "title": "Erstellen Sie Ihren Cloud-Workspace",
+        "subtitle": "Legen Sie zuerst Ihr Team-Konto an und fahren Sie dann bei einem bezahlten Plan mit Stripe fort.",
+        "jurisdictionLabel": "Jurisdiktion",
+        "jurisdictionDescription": "Dieser Workspace bleibt an die ausgewählte rechtliche Grenze und AWS-Region gebunden.",
+        "givenNameLabel": "Vorname",
+        "givenNamePlaceholder": "Ada",
+        "lastNameLabel": "Nachname",
+        "lastNamePlaceholder": "Lovelace",
+        "teamNameLabel": "Teamname",
+        "teamNamePlaceholder": "Acme Analytics",
+        "teamNameRequired": "Ein Teamname ist erforderlich.",
+        "emailPlaceholder": "you@example.com",
+        "submit": "Workspace erstellen",
+        "haveAccount": "Sie haben bereits ein Konto?",
+        "signInAction": "Anmelden",
+        "plans": {
+            "free": {
+                "name": "Free",
+                "price": "€0",
+                "description": "60 Tage Aufbewahrung, um Ihre Websites zu validieren, bevor Sie upgraden."
+            },
+            "pro": {
+                "name": "Pro",
+                "price": "€24/Monat",
+                "description": "Längere Aufbewahrung und mehr Spielraum für kleine Teams."
+            },
+            "business": {
+                "name": "Business",
+                "price": "€89/Monat",
+                "description": "Mehr Skalierung für Agenturen, Produktteams und höheres Event-Volumen."
+            }
+        },
+        "errors": {
+            "emailExists": "Für diese E-Mail-Adresse existiert bereits ein Konto.",
+            "planUnavailable": "Diese Registrierungsoption ist derzeit nicht verfügbar.",
             "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
         }
     },

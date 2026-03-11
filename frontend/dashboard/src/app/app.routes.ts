@@ -2,6 +2,7 @@ import { Routes } from "@angular/router";
 import { setupGuard } from "@guards/setup-guard";
 import { adminGuard } from "@guards/admin-guard";
 import { teamAdminGuard } from "@guards/team-admin-guard";
+import { cloudSignupGuard } from "@guards/cloud-signup-guard";
 
 export const routes: Routes = [
     {
@@ -13,6 +14,11 @@ export const routes: Routes = [
         path: "login",
         loadComponent: () => import("@pages/login/login").then((m) => m.Login),
         canActivate: [setupGuard]
+    },
+    {
+        path: "signup",
+        loadComponent: () => import("@pages/signup/signup").then((m) => m.Signup),
+        canActivate: [cloudSignupGuard]
     },
     {
         path: "forgot-password",

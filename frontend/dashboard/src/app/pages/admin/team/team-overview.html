@@ -48,15 +48,14 @@
                 </div>
             </div>
 
-            @if (cloudPlan.plan.upgrade_url || cloudPlan.plan.support_url || cloudPlan.cloud.upgrade_url || cloudPlan.cloud.support_url) {
             <div class="team-overview__cloud-actions">
+                <p-button [label]="'admin.team.overview.cloud.manageBillingAction' | transloco" [loading]="portalPending()" [disabled]="!canManageBilling()" severity="secondary" (onClick)="openBillingPortal()" />
                 @if (cloudPlan.plan.upgrade_url || cloudPlan.cloud.upgrade_url; as upgradeUrl) {
                 <a [href]="upgradeUrl" class="team-overview__cloud-link team-overview__cloud-link--primary" target="_blank" rel="noreferrer"> {{ "admin.team.overview.cloud.upgradeAction" | transloco }} </a>
                 } @if (cloudPlan.plan.support_url || cloudPlan.cloud.support_url; as supportUrl) {
                 <a [href]="supportUrl" class="team-overview__cloud-link" target="_blank" rel="noreferrer"> {{ "admin.team.overview.cloud.supportAction" | transloco }} </a>
                 }
             </div>
-            }
         </p-card>
     </section>
     } @if (showUsageSection()) {

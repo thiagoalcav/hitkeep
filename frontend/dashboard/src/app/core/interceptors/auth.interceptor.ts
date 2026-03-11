@@ -30,7 +30,8 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     const router = inject(Router);
     const auth = inject(AuthService);
     const share = inject(ShareService);
-    const isAuthRequest = req.url.startsWith("/api/login") || req.url.startsWith("/api/logout") || req.url.startsWith("/api/initial-user") || req.url.startsWith("/api/auth/") || req.url.startsWith("/api/user/password");
+    const isAuthRequest =
+        req.url.startsWith("/api/login") || req.url.startsWith("/api/logout") || req.url.startsWith("/api/initial-user") || req.url.startsWith("/api/auth/") || req.url.startsWith("/api/cloud/") || req.url.startsWith("/api/user/password");
 
     // We clone the request to ensure credentials (cookies) are included.
     // This ensures the http-only cookie is sent to the backend.

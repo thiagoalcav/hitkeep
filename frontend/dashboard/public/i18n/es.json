@@ -22,6 +22,11 @@
         "apiClients": "Clientes API",
         "apiReference": "Referencia API",
         "account": "Cuenta",
+        "resources": "Recursos",
+        "docs": "Docs",
+        "docsAria": "Abrir la documentación de HitKeep en una pestaña nueva",
+        "support": "Soporte",
+        "supportAria": "Abrir el soporte de HitKeep en una pestaña nueva",
         "settings": "Configuración de usuario",
         "settingsAria": "Ir a configuración de usuario",
         "emailReports": "Informes por email",
@@ -925,6 +930,7 @@
                     "retention": "Retención",
                     "retentionDays": "{{count}} días",
                     "unlimitedRetention": "Retención ilimitada",
+                    "manageBillingAction": "Gestionar facturación",
                     "upgradeAction": "Mejorar plan",
                     "supportAction": "Contactar soporte"
                 }
@@ -1025,6 +1031,8 @@
     },
     "login": {
         "subtitle": "Inicia sesión en tu panel",
+        "cloudSignupPrompt": "¿Nuevo en HitKeep Cloud?",
+        "cloudSignupAction": "Crear cuenta",
         "emailLabel": "Correo electrónico",
         "emailPlaceholder": "you@example.com",
         "emailInvalid": "Ingresa una dirección de correo válida.",
@@ -1051,6 +1059,45 @@
             "invalidTotp": "Código del autenticador no válido.",
             "invalidRecoveryCode": "Código de recuperación no válido.",
             "unexpected": "Ocurrió un error inesperado. Inténtalo de nuevo."
+        }
+    },
+    "signup": {
+        "title": "Crea tu espacio de trabajo en la nube",
+        "subtitle": "Primero crea tu cuenta de equipo y luego continúa con Stripe si eliges un plan de pago.",
+        "jurisdictionLabel": "Jurisdicción",
+        "jurisdictionDescription": "Este espacio de trabajo permanecerá fijado al límite legal y a la región de AWS seleccionados.",
+        "givenNameLabel": "Nombre",
+        "givenNamePlaceholder": "Ada",
+        "lastNameLabel": "Apellido",
+        "lastNamePlaceholder": "Lovelace",
+        "teamNameLabel": "Nombre del equipo",
+        "teamNamePlaceholder": "Acme Analytics",
+        "teamNameRequired": "El nombre del equipo es obligatorio.",
+        "emailPlaceholder": "you@example.com",
+        "submit": "Crear espacio de trabajo",
+        "haveAccount": "¿Ya tienes una cuenta?",
+        "signInAction": "Iniciar sesión",
+        "plans": {
+            "free": {
+                "name": "Free",
+                "price": "€0",
+                "description": "Retención de 60 días para validar tus sitios antes de ampliar el plan."
+            },
+            "pro": {
+                "name": "Pro",
+                "price": "€24/mes",
+                "description": "Más retención y más margen para un equipo pequeño."
+            },
+            "business": {
+                "name": "Business",
+                "price": "€89/mes",
+                "description": "Más escala para agencias, equipos de producto y mayor volumen de eventos."
+            }
+        },
+        "errors": {
+            "emailExists": "Ya existe una cuenta con este correo electrónico.",
+            "planUnavailable": "Esta opción de registro no está disponible ahora mismo.",
+            "unexpected": "Se produjo un error inesperado. Inténtalo de nuevo."
         }
     },
     "preferences": {

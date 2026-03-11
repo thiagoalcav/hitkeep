@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from "@angular/core";
 
 import { ActivatedRoute, Router, RouterLink } from "@angular/router";
 import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
 import { compatForm } from "@angular/forms/signals/compat";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { firstValueFrom } from "rxjs";
 import { finalize } from "rxjs/operators";
 import { TranslocoPipe } from "@jsverse/transloco";
@@ -14,7 +15,9 @@ import { CheckboxModule } from "primeng/checkbox";
 import { InputOtpModule } from "primeng/inputotp";
 
 import { Brand } from "@components/brand/brand";
+import { CloudStatus } from "@models/analytics.types";
 import { AuthService, LoginResponse, PasskeyLoginFinishRequest, PasskeyLoginStartResponse } from "@services/auth.service";
+import { AnalyticsService } from "@services/analytics.service";
 import { UserPreferencesService } from "@services/user-preferences.service";
 
 type MfaFactor = "totp" | "passkey" | "recovery_code";
@@ -29,9 +32,11 @@ type MfaFactor = "totp" | "passkey" | "recovery_code";
 })
 export class Login {
     private static readonly PASSKEY_DEVICE_HISTORY_KEY = "hitkeep.passkey.used_on_device";
+    private destroyRef = inject(DestroyRef);
     private router = inject(Router);
     private route = inject(ActivatedRoute);
     private auth = inject(AuthService);
+    private analytics = inject(AnalyticsService);
     private preferences = inject(UserPreferencesService);
     private conditionalPasskeyAbortController: AbortController | null = null;
     private hasAttemptedConditionalPasskey = false;
@@ -43,10 +48,12 @@ export class Login {
     protected readonly mfaChallengeToken = signal<string | null>(null);
     protected readonly mfaFactors = signal<MfaFactor[]>([]);
     protected readonly mfaPasskeyOptions = signal<PasskeyLoginStartResponse["publicKey"] | null>(null);
+    protected readonly cloudStatus = signal<CloudStatus | null>(null);
     protected readonly isMfaRequired = computed(() => this.mfaChallengeToken() !== null);
     protected readonly mfaHasTotp = computed(() => this.mfaFactors().includes("totp"));
     protected readonly mfaHasRecoveryCode = computed(() => this.mfaFactors().includes("recovery_code"));
     protected readonly mfaHasPasskey = computed(() => this.mfaFactors().includes("passkey"));
+    protected readonly showSignupLink = computed(() => Boolean(this.cloudStatus()?.hosted && this.cloudStatus()?.signup_enabled));
 
     private readonly loginModel = signal({
         email: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.email] }),
@@ -58,6 +65,16 @@ export class Login {
     protected readonly loginForm = compatForm(this.loginModel);
 
     constructor() {
+        this.analytics
+            .getSystemStatus()
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+                next: (status) => this.cloudStatus.set(status.cloud ?? null),
+                error: (err) => {
+                    console.error("Failed to load cloud status for login", err);
+                }
+            });
+
         if (this.shouldAttemptConditionalPasskey()) {
             void this.startConditionalPasskeyLogin();
         }

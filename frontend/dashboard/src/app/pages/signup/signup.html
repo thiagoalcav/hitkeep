@@ -1,0 +1,130 @@
+<main class="hk-auth-page">
+    <section class="hk-auth-shell" aria-labelledby="signup-title">
+        <div class="hk-auth-card">
+            <header class="hk-auth-header">
+                <app-brand size="large"></app-brand>
+                <h1 id="signup-title" class="hk-auth-title">{{ "signup.title" | transloco }}</h1>
+                <p class="hk-auth-subtitle">{{ "signup.subtitle" | transloco }}</p>
+            </header>
+
+            <form (submit)="onSubmit($event)" class="hk-auth-form" novalidate>
+                @if (errorMessage(); as errorMessageKey) {
+                <div class="hk-auth-alert hk-auth-alert-error" role="alert" aria-live="assertive">
+                    <i class="pi pi-exclamation-circle mt-0.5" aria-hidden="true"></i>
+                    <span class="text-sm font-medium">{{ errorMessageKey | transloco }}</span>
+                </div>
+                }
+
+                <div class="hk-signup-jurisdiction">
+                    <div>
+                        <p class="hk-signup-section-eyebrow">{{ "signup.jurisdictionLabel" | transloco }}</p>
+                        <p class="hk-signup-section-copy">{{ "signup.jurisdictionDescription" | transloco }}</p>
+                    </div>
+                    <p-tag [value]="jurisdictionLabel()" severity="contrast"></p-tag>
+                </div>
+
+                <div class="hk-signup-plan-grid" role="radiogroup" [attr.aria-label]="'signup.planLabel' | transloco">
+                    @for (plan of planOptions; track plan.value) {
+                    <button type="button" class="hk-signup-plan" [class.hk-signup-plan-selected]="selectedPlan() === plan.value" [attr.aria-checked]="selectedPlan() === plan.value" role="radio" (click)="selectPlan(plan.value)">
+                        <span class="hk-signup-plan-title">{{ ("signup.plans." + plan.value + ".name") | transloco }}</span>
+                        <span class="hk-signup-plan-price">{{ ("signup.plans." + plan.value + ".price") | transloco }}</span>
+                        <span class="hk-signup-plan-copy">{{ ("signup.plans." + plan.value + ".description") | transloco }}</span>
+                    </button>
+                    }
+                </div>
+
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div class="hk-auth-field">
+                        <label for="givenName" class="hk-auth-field-label">{{ "signup.givenNameLabel" | transloco }}</label>
+                        <input pInputText id="givenName" [formControl]="signupForm.givenName().control()" class="w-full" autocomplete="given-name" [placeholder]="'signup.givenNamePlaceholder' | transloco" />
+                    </div>
+
+                    <div class="hk-auth-field">
+                        <label for="lastName" class="hk-auth-field-label">{{ "signup.lastNameLabel" | transloco }}</label>
+                        <input pInputText id="lastName" [formControl]="signupForm.lastName().control()" class="w-full" autocomplete="family-name" [placeholder]="'signup.lastNamePlaceholder' | transloco" />
+                    </div>
+                </div>
+
+                <div class="hk-auth-field">
+                    <label for="teamName" class="hk-auth-field-label">
+                        {{ "signup.teamNameLabel" | transloco }}
+                        <span class="api-client-required-asterisk" aria-hidden="true">*</span>
+                    </label>
+                    <input
+                        pInputText
+                        id="teamName"
+                        [formControl]="signupForm.teamName().control()"
+                        class="w-full"
+                        autocomplete="organization"
+                        [attr.aria-invalid]="signupForm.teamName().touched() && signupForm.teamName().invalid() ? true : null"
+                        [attr.aria-describedby]="signupForm.teamName().touched() && signupForm.teamName().invalid() ? 'signup-team-error' : null"
+                        [placeholder]="'signup.teamNamePlaceholder' | transloco"
+                    />
+                    @if (signupForm.teamName().touched() && signupForm.teamName().invalid()) {
+                    <small id="signup-team-error" class="hk-auth-field-error" role="status">{{ "signup.teamNameRequired" | transloco }}</small>
+                    }
+                </div>
+
+                <div class="hk-auth-field">
+                    <label for="email" class="hk-auth-field-label">
+                        {{ "common.emailAddress" | transloco }}
+                        <span class="api-client-required-asterisk" aria-hidden="true">*</span>
+                    </label>
+                    <input
+                        pInputText
+                        id="email"
+                        type="email"
+                        inputmode="email"
+                        autocapitalize="none"
+                        spellcheck="false"
+                        [formControl]="signupForm.email().control()"
+                        class="w-full"
+                        autocomplete="email"
+                        [attr.aria-invalid]="signupForm.email().touched() && signupForm.email().invalid() ? true : null"
+                        [attr.aria-describedby]="signupForm.email().touched() && signupForm.email().invalid() ? 'signup-email-error' : null"
+                        [placeholder]="'signup.emailPlaceholder' | transloco"
+                    />
+                    @if (signupForm.email().touched() && signupForm.email().invalid()) {
+                    <small id="signup-email-error" class="hk-auth-field-error" role="status">{{ "login.emailInvalid" | transloco }}</small>
+                    }
+                </div>
+
+                <div class="hk-auth-field">
+                    <label for="password" class="hk-auth-field-label">
+                        {{ "common.password" | transloco }}
+                        <span class="api-client-required-asterisk" aria-hidden="true">*</span>
+                    </label>
+                    <p-password
+                        id="password"
+                        [formControl]="signupForm.password().control()"
+                        [toggleMask]="true"
+                        class="w-full"
+                        inputclass="w-full"
+                        [feedback]="true"
+                        [placeholder]="'common.passwordPlaceholder' | transloco"
+                        [attr.aria-invalid]="signupForm.password().touched() && signupForm.password().invalid() ? true : null"
+                        [attr.aria-describedby]="'signup-password-help'"
+                    ></p-password>
+                    <p id="signup-password-help" class="hk-auth-field-help">{{ "password.reset.minimumLength" | transloco }}</p>
+                    @if (signupForm.password().touched() && signupForm.password().invalid()) {
+                    <small class="hk-auth-field-error" role="status">{{ "password.reset.minimumLength" | transloco }}</small>
+                    }
+                </div>
+
+                <p-button [label]="'signup.submit' | transloco" type="submit" [loading]="isLoading()" [disabled]="isLoading() || signupForm().invalid()" class="w-full"> </p-button>
+            </form>
+        </div>
+
+        <footer class="hk-auth-footer">
+            <p class="hk-auth-footer-text">
+                <span>{{ "signup.haveAccount" | transloco }}</span>
+                <a routerLink="/login" class="hk-auth-link">{{ "signup.signInAction" | transloco }}</a>
+            </p>
+            <p class="hk-auth-footer-text">
+                <span aria-hidden="true">&copy;</span>
+                <span>{{ currentYear }} </span>
+                <span>{{ "login.footerRights" | transloco }}</span>
+            </p>
+        </footer>
+    </section>
+</main>

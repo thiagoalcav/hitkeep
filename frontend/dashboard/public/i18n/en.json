@@ -22,6 +22,11 @@
         "apiClients": "API Clients",
         "apiReference": "API Reference",
         "account": "Account",
+        "resources": "Resources",
+        "docs": "Docs",
+        "docsAria": "Open HitKeep docs in a new tab",
+        "support": "Support",
+        "supportAria": "Open HitKeep support in a new tab",
         "settings": "User Settings",
         "settingsAria": "Go to user settings",
         "emailReports": "Email Reports",
@@ -925,6 +930,7 @@
                     "retention": "Retention",
                     "retentionDays": "{{count}} days",
                     "unlimitedRetention": "Unlimited retention",
+                    "manageBillingAction": "Manage billing",
                     "upgradeAction": "Upgrade plan",
                     "supportAction": "Contact support"
                 }
@@ -1025,6 +1031,8 @@
     },
     "login": {
         "subtitle": "Sign in to your dashboard",
+        "cloudSignupPrompt": "New to HitKeep Cloud?",
+        "cloudSignupAction": "Create account",
         "emailLabel": "Email address",
         "emailPlaceholder": "you@example.com",
         "emailInvalid": "Please enter a valid email address.",
@@ -1050,6 +1058,45 @@
             "passkeyFailed": "Passkey login failed. Please try again.",
             "invalidTotp": "Invalid authenticator code.",
             "invalidRecoveryCode": "Invalid recovery code.",
+            "unexpected": "An unexpected error occurred. Please try again."
+        }
+    },
+    "signup": {
+        "title": "Create your cloud workspace",
+        "subtitle": "Set up your team account first, then continue to Stripe if you choose a paid plan.",
+        "jurisdictionLabel": "Jurisdiction",
+        "jurisdictionDescription": "This workspace will stay pinned to the selected legal and AWS region boundary.",
+        "givenNameLabel": "Given name",
+        "givenNamePlaceholder": "Ada",
+        "lastNameLabel": "Last name",
+        "lastNamePlaceholder": "Lovelace",
+        "teamNameLabel": "Team name",
+        "teamNamePlaceholder": "Acme Analytics",
+        "teamNameRequired": "Team name is required.",
+        "emailPlaceholder": "you@example.com",
+        "submit": "Create workspace",
+        "haveAccount": "Already have an account?",
+        "signInAction": "Sign in",
+        "plans": {
+            "free": {
+                "name": "Free",
+                "price": "€0",
+                "description": "60-day retention to validate your sites before you upgrade."
+            },
+            "pro": {
+                "name": "Pro",
+                "price": "€24/mo",
+                "description": "Longer retention and more room for a small team."
+            },
+            "business": {
+                "name": "Business",
+                "price": "€89/mo",
+                "description": "More scale for agencies, product teams, and higher event volume."
+            }
+        },
+        "errors": {
+            "emailExists": "An account with this email already exists.",
+            "planUnavailable": "This signup option is not available right now.",
             "unexpected": "An unexpected error occurred. Please try again."
         }
     },

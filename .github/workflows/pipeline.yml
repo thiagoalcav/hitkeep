@@ -11,6 +11,11 @@ on:
         required: true
         type: string
         description: "Configuration for docker/metadata-action tags"
+      cloud_go_build_tags:
+        required: false
+        type: string
+        default: "s3 billing tenancy"
+        description: "Build tags for the cloud binary artifacts"
       upload_to_release:
         required: false
         type: boolean
@@ -98,12 +103,31 @@ jobs:
             -o hitkeep-linux-arm64 \
             ./cmd/hitkeep/main.go
 
+      - name: Build Cloud Linux AMD64
+        run: |
+          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
+            -tags "${{ inputs.cloud_go_build_tags }}" \
+            -ldflags="-w -s -X 'hitkeep/cmd.Version=${{ inputs.version }}'" \
+            -o hitkeep-cloud-linux-amd64 \
+            ./cmd/hitkeep/main.go
+
+      - name: Build Cloud Linux ARM64
+        run: |
+          CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ \
+          CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build \
+            -tags "${{ inputs.cloud_go_build_tags }}" \
+            -ldflags="-w -s -X 'hitkeep/cmd.Version=${{ inputs.version }}'" \
+            -o hitkeep-cloud-linux-arm64 \
+            ./cmd/hitkeep/main.go
+
       - uses: actions/upload-artifact@v7
         with:
           name: hitkeep-binaries-${{ inputs.version }}
           path: |
             hitkeep-linux-amd64
             hitkeep-linux-arm64
+            hitkeep-cloud-linux-amd64
+            hitkeep-cloud-linux-arm64
           retention-days: 5
 
       - name: Attest Binaries
@@ -112,6 +136,8 @@ jobs:
           subject-path: |
             hitkeep-linux-amd64
             hitkeep-linux-arm64
+            hitkeep-cloud-linux-amd64
+            hitkeep-cloud-linux-arm64
 
       - name: Upload Release Binaries
         if: ${{ inputs.upload_to_release && inputs.release_tag_name != '' }}
@@ -120,7 +146,9 @@ jobs:
         run: |
           gh release upload ${{ inputs.release_tag_name }} \
             hitkeep-linux-amd64 \
-            hitkeep-linux-arm64
+            hitkeep-linux-arm64 \
+            hitkeep-cloud-linux-amd64 \
+            hitkeep-cloud-linux-arm64
 
       - name: Extract Docker metadata
         id: meta

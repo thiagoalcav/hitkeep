@@ -41,18 +41,19 @@ type HandlerConfig struct {
 }
 
 type Context struct {
-	Store         *database.Store
-	TenantStores  *database.TenantStoreManager
-	Cluster       *cluster.Manager
-	Producer      *nsq.Producer
-	Mailer        *mailer.Mailer
-	Config        *config.Config
-	Takeout       *takeout.TakeoutService
-	Entitlements  entitlements.Provider
-	IngestLimiter *IPRateLimiter
-	ApiLimiter    *IPRateLimiter
-	AuthLimiter   *IPRateLimiter
-	IPFilter      *blocking.IPFilter
+	Store          *database.Store
+	TenantStores   *database.TenantStoreManager
+	Cluster        *cluster.Manager
+	Producer       *nsq.Producer
+	Mailer         *mailer.Mailer
+	Config         *config.Config
+	Takeout        *takeout.TakeoutService
+	Entitlements   entitlements.Provider
+	IngestLimiter  *IPRateLimiter
+	ApiLimiter     *IPRateLimiter
+	AuthLimiter    *IPRateLimiter
+	WebhookLimiter *IPRateLimiter
+	IPFilter       *blocking.IPFilter
 }
 
 // AnalyticsStore resolves the tenant-specific store that holds analytics data for the given site.

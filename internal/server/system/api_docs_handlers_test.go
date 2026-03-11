@@ -116,6 +116,36 @@ func TestOpenAPISpecV1TeamSchemasExposeUsageAndEntitlements(t *testing.T) {
 	}
 }
 
+func TestOpenAPISpecV1IncludesCloudSignupPaths(t *testing.T) {
+	spec := openAPISpecV1("http://localhost:8080")
+	tags, ok := spec["tags"].([]map[string]string)
+	if !ok {
+		t.Fatalf("expected tags to be []map[string]string, got %T", spec["tags"])
+	}
+	if !hasTag(tags, "Cloud") {
+		t.Fatalf("expected top-level Cloud tag to exist")
+	}
+
+	paths := requireMap(t, spec, "paths")
+
+	signupPath, ok := paths["/api/cloud/signup"]
+	if !ok {
+		t.Fatalf("expected /api/cloud/signup path to exist")
+	}
+	portalPath, ok := paths["/api/cloud/billing/portal"]
+	if !ok {
+		t.Fatalf("expected /api/cloud/billing/portal path to exist")
+	}
+	webhookPath, ok := paths["/api/cloud/webhooks/stripe"]
+	if !ok {
+		t.Fatalf("expected /api/cloud/webhooks/stripe path to exist")
+	}
+
+	assertCloudOperation(t, requireMap(t, signupPath.(map[string]any), "post"))
+	assertCloudOperation(t, requireMap(t, portalPath.(map[string]any), "post"))
+	assertCloudOperation(t, requireMap(t, webhookPath.(map[string]any), "post"))
+}
+
 func hasFormatParamRef(params []any) bool {
 	for _, p := range params {
 		pm, ok := p.(map[string]any)
@@ -166,5 +196,28 @@ func asStringSlice(t *testing.T, v any) []string {
 	default:
 		t.Fatalf("expected []string or []any, got %T", v)
 		return nil
+	}
+}
+
+func hasTag(tags []map[string]string, name string) bool {
+	for _, tag := range tags {
+		if tag["name"] == name {
+			return true
+		}
+	}
+	return false
+}
+
+func assertCloudOperation(t *testing.T, op map[string]any) {
+	t.Helper()
+
+	gotAvailability, ok := op["x-hitkeep-availability"].(string)
+	if !ok || gotAvailability != "cloud" {
+		t.Fatalf("expected x-hitkeep-availability=cloud, got %#v", op["x-hitkeep-availability"])
+	}
+
+	buildTags := asStringSlice(t, op["x-hitkeep-build-tags"])
+	if !reflect.DeepEqual(buildTags, []string{"billing"}) {
+		t.Fatalf("unexpected cloud build tags, got %v", buildTags)
 	}
 }

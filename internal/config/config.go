@@ -14,64 +14,74 @@ import (
 )
 
 type Config struct {
-	ApiBurst        int
-	ApiRateLimit    float64
-	AuthBurst       int
-	AuthRateLimit   float64
-	ArchivePath     string
-	BindAddr        string
-	DataPath        string
-	DBPath          string
-	Healthcheck     bool
-	HTTPAddr        string
-	IngestBurst     int
-	IngestRateLimit float64
-	JoinAddr        string
+	ApiBurst         int
+	ApiRateLimit     float64
+	AuthBurst        int
+	AuthRateLimit    float64
+	WebhookBurst     int
+	WebhookRateLimit float64
+	ArchivePath      string
+	BindAddr         string
+	DataPath         string
+	DBPath           string
+	Healthcheck      bool
+	HTTPAddr         string
+	IngestBurst      int
+	IngestRateLimit  float64
+	JoinAddr         string
 	//nolint:gosec // runtime configuration intentionally carries the JWT signing secret.
-	JWTSecret                string
-	LogLevel                 string
-	MailDriver               string
-	MailEncryption           string
-	MailInsecureSkipVerify   bool
-	MailFromAddress          string
-	MailFromName             string
-	MailHost                 string
-	MailPassword             string
-	MailPort                 int
-	MailUsername             string
-	NodeName                 string
-	NSQHTTPAddress           string
-	NSQTCPAddress            string
-	PublicURL                string
-	Version                  string
-	DataRetentionDays        int
-	BackupPath               string
-	BackupIntervalMinutes    int
-	BackupRetentionCount     int
-	S3AccessKeyID            string
-	S3SecretAccessKey        string
-	S3SessionToken           string
-	S3Region                 string
-	S3Endpoint               string
-	S3URLStyle               string
-	S3UseSSL                 bool
-	CloudHosted              bool
-	CloudSignupEnabled       bool
-	CloudJurisdiction        string
-	CloudRegion              string
-	CloudUpgradeURL          string
-	CloudSupportURL          string
-	CloudPlanCode            string
-	CloudPlanName            string
-	CloudMaxTeams            int
-	CloudMaxSitesPerTeam     int
-	CloudMaxMonthlyEvents    int64
-	CloudMaxRetentionDays    int
-	CloudMaxTeamMembers      int
-	CloudAllowSSO            bool
-	CloudAllowCustomBranding bool
-	TrustedProxies           string
-	trustedProxyNets         []*net.IPNet
+	JWTSecret                   string
+	LogLevel                    string
+	MailDriver                  string
+	MailEncryption              string
+	MailInsecureSkipVerify      bool
+	MailFromAddress             string
+	MailFromName                string
+	MailHost                    string
+	MailPassword                string
+	MailPort                    int
+	MailUsername                string
+	NodeName                    string
+	NSQHTTPAddress              string
+	NSQTCPAddress               string
+	PublicURL                   string
+	Version                     string
+	DataRetentionDays           int
+	BackupPath                  string
+	BackupIntervalMinutes       int
+	BackupRetentionCount        int
+	S3AccessKeyID               string
+	S3SecretAccessKey           string
+	S3SessionToken              string
+	S3Region                    string
+	S3Endpoint                  string
+	S3URLStyle                  string
+	S3UseSSL                    bool
+	CloudHosted                 bool
+	CloudSignupEnabled          bool
+	CloudJurisdiction           string
+	CloudRegion                 string
+	CloudUpgradeURL             string
+	CloudSupportURL             string
+	CloudPlanCode               string
+	CloudPlanName               string
+	CloudMaxTeams               int
+	CloudMaxSitesPerTeam        int
+	CloudMaxMonthlyEvents       int64
+	CloudMaxRetentionDays       int
+	CloudMaxTeamMembers         int
+	CloudAllowSSO               bool
+	CloudAllowCustomBranding    bool
+	StripeSecretKey             string
+	StripePublishableKey        string
+	StripeWebhookSecret         string
+	StripePortalConfigurationID string
+	StripePriceProMonthly       string
+	StripePriceBusinessMonthly  string
+	CloudCheckoutSuccessURL     string
+	CloudCheckoutCancelURL      string
+	TrustedProxies              string
+	trustedProxyNets            []*net.IPNet
 }
 
 // GetTrustedProxyNetworks returns the parsed trusted proxy networks.
@@ -172,6 +182,8 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	defApiBurst := getInt("HITKEEP_API_BURST", 20)
 	defAuthRate := getFloat("HITKEEP_AUTH_RATE_LIMIT", 2.0)
 	defAuthBurst := getInt("HITKEEP_AUTH_BURST", 5)
+	defWebhookRate := getFloat("HITKEEP_WEBHOOK_RATE_LIMIT", 30.0)
+	defWebhookBurst := getInt("HITKEEP_WEBHOOK_BURST", 60)
 
 	defMailDriver := getEnv("HITKEEP_MAIL_DRIVER", "smtp")
 	defMailEnc := getEnv("HITKEEP_MAIL_ENCRYPTION", "tls")
@@ -224,6 +236,8 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	fs.IntVar(&conf.ApiBurst, "api-burst", defApiBurst, "API burst")
 	fs.Float64Var(&conf.AuthRateLimit, "auth-rate", defAuthRate, "Auth rate limit")
 	fs.IntVar(&conf.AuthBurst, "auth-burst", defAuthBurst, "Auth burst")
+	fs.Float64Var(&conf.WebhookRateLimit, "webhook-rate", defWebhookRate, "Webhook rate limit")
+	fs.IntVar(&conf.WebhookBurst, "webhook-burst", defWebhookBurst, "Webhook burst")
 
 	fs.StringVar(&conf.MailDriver, "mail-driver", defMailDriver, "Mail driver")
 	fs.StringVar(&conf.MailEncryption, "mail-encryption", defMailEnc, "Mail encryption")

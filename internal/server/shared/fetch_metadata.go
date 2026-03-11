@@ -13,11 +13,12 @@ func FetchMetadataMiddleware(publicURL string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		secFetchSite := strings.ToLower(strings.TrimSpace(r.Header.Get("Sec-Fetch-Site")))
 		path := r.URL.Path
+		isStripeWebhook := path == "/api/cloud/webhooks/stripe"
 
 		if secFetchSite == "" {
 			// Older/limited browsers fallback: for state-changing API requests, enforce
 			// same-origin via Origin or Referer validation.
-			if strings.HasPrefix(path, "/api/") && isStateChangingMethod(r.Method) {
+			if strings.HasPrefix(path, "/api/") && isStateChangingMethod(r.Method) && !isStripeWebhook {
 				expectedOrigin := configuredOrigin
 				if expectedOrigin == "" {
 					expectedOrigin = requestOrigin(r)
@@ -32,7 +33,7 @@ func FetchMetadataMiddleware(publicURL string, next http.Handler) http.Handler {
 			return
 		}
 
-		if strings.HasPrefix(path, "/api/") && secFetchSite != "same-origin" {
+		if strings.HasPrefix(path, "/api/") && secFetchSite != "same-origin" && !isStripeWebhook {
 			http.Error(w, "Not found", http.StatusNotFound)
 			return
 		}

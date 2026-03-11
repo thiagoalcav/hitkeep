@@ -58,6 +58,9 @@ func TestHandleGetStatusIncludesCloudMetadata(t *testing.T) {
 	if resp.Cloud == nil {
 		t.Fatalf("expected cloud metadata in status response")
 	}
+	if resp.NeedsSetup {
+		t.Fatalf("expected managed cloud status to suppress setup bootstrap")
+	}
 	if got := (*resp.Cloud)["jurisdiction"]; got != "EU" {
 		t.Fatalf("expected jurisdiction EU, got %#v", got)
 	}

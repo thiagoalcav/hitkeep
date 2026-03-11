@@ -19,6 +19,7 @@ import (
 	"hitkeep/internal/mailer"
 	"hitkeep/internal/server/admin"
 	serverauth "hitkeep/internal/server/auth"
+	cloudhandlers "hitkeep/internal/server/cloud"
 	"hitkeep/internal/server/events"
 	"hitkeep/internal/server/goals"
 	"hitkeep/internal/server/ingest"
@@ -38,19 +39,20 @@ const (
 )
 
 type Server struct {
-	httpServer    *http.Server
-	store         *database.Store
-	cluster       *cluster.Manager
-	producer      *nsq.Producer
-	mailer        *mailer.Mailer
-	conf          *config.Config
-	ingestLimiter *shared.IPRateLimiter
-	apiLimiter    *shared.IPRateLimiter
-	authLimiter   *shared.IPRateLimiter
-	ipFilter      *blocking.IPFilter
-	ipFilterStop  context.CancelFunc
-	takeout       *takeout.TakeoutService
-	ctx           *shared.Context
+	httpServer     *http.Server
+	store          *database.Store
+	cluster        *cluster.Manager
+	producer       *nsq.Producer
+	mailer         *mailer.Mailer
+	conf           *config.Config
+	ingestLimiter  *shared.IPRateLimiter
+	apiLimiter     *shared.IPRateLimiter
+	authLimiter    *shared.IPRateLimiter
+	webhookLimiter *shared.IPRateLimiter
+	ipFilter       *blocking.IPFilter
+	ipFilterStop   context.CancelFunc
+	takeout        *takeout.TakeoutService
+	ctx            *shared.Context
 
 	indexHTML   []byte
 	scalarIndex []byte
@@ -60,6 +62,7 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStore
 	ingestLim := shared.NewIPRateLimiter(rate.Limit(conf.IngestRateLimit), conf.IngestBurst)
 	apiLim := shared.NewIPRateLimiter(rate.Limit(conf.ApiRateLimit), conf.ApiBurst)
 	authLim := shared.NewIPRateLimiter(rate.Limit(conf.AuthRateLimit), conf.AuthBurst)
+	webhookLim := shared.NewIPRateLimiter(rate.Limit(conf.WebhookRateLimit), conf.WebhookBurst)
 
 	takeoutService := takeout.NewTakeoutService(store, "archive/takeout")
 
@@ -73,32 +76,34 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStore
 	}
 
 	s := &Server{
-		store:         store,
-		cluster:       cluster,
-		producer:      producer,
-		mailer:        mailService,
-		conf:          conf,
-		ingestLimiter: ingestLim,
-		apiLimiter:    apiLim,
-		authLimiter:   authLim,
-		ipFilter:      ipFilter,
-		ipFilterStop:  ipFilterStop,
-		takeout:       takeoutService,
+		store:          store,
+		cluster:        cluster,
+		producer:       producer,
+		mailer:         mailService,
+		conf:           conf,
+		ingestLimiter:  ingestLim,
+		apiLimiter:     apiLim,
+		authLimiter:    authLim,
+		webhookLimiter: webhookLim,
+		ipFilter:       ipFilter,
+		ipFilterStop:   ipFilterStop,
+		takeout:        takeoutService,
 	}
 
 	s.ctx = &shared.Context{
-		Store:         store,
-		TenantStores:  tenantStores,
-		Cluster:       cluster,
-		Producer:      producer,
-		Mailer:        mailService,
-		Config:        conf,
-		Takeout:       takeoutService,
-		Entitlements:  ent,
-		IngestLimiter: ingestLim,
-		ApiLimiter:    apiLim,
-		AuthLimiter:   authLim,
-		IPFilter:      ipFilter,
+		Store:          store,
+		TenantStores:   tenantStores,
+		Cluster:        cluster,
+		Producer:       producer,
+		Mailer:         mailService,
+		Config:         conf,
+		Takeout:        takeoutService,
+		Entitlements:   ent,
+		IngestLimiter:  ingestLim,
+		ApiLimiter:     apiLim,
+		AuthLimiter:    authLim,
+		WebhookLimiter: webhookLim,
+		IPFilter:       ipFilter,
 	}
 
 	// Load static HTML into memory
@@ -130,6 +135,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	s.ingestLimiter.Stop()
 	s.apiLimiter.Stop()
 	s.authLimiter.Stop()
+	s.webhookLimiter.Stop()
 
 	return s.httpServer.Shutdown(ctx)
 }
@@ -158,6 +164,7 @@ func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 	system.Register(mux, ctx)
 	ingest.Register(mux, ctx)
 	serverauth.Register(mux, ctx)
+	cloudhandlers.Register(mux, ctx)
 	user.Register(mux, ctx)
 	permissions.Register(mux, ctx)
 	admin.Register(mux, ctx)

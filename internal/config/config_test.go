@@ -21,6 +21,8 @@ func TestLoadConfig(t *testing.T) {
 				return c.HTTPAddr == ":8080" &&
 					c.MailDriver == "smtp" &&
 					c.IngestBurst == 40 &&
+					c.WebhookRateLimit == 30.0 &&
+					c.WebhookBurst == 60 &&
 					len(c.JWTSecret) >= 32
 			},
 			errMessage: "Defaults failed",
@@ -29,16 +31,20 @@ func TestLoadConfig(t *testing.T) {
 			name: "Environment Variables Override Defaults",
 			args: []string{},
 			env: map[string]string{
-				"HITKEEP_HTTP_ADDR":         ":9000",
-				"HITKEEP_MAIL_PORT":         "25",
-				"HITKEEP_INGEST_RATE_LIMIT": "100.5",
-				"HITKEEP_MAIL_DRIVER":       "log",
+				"HITKEEP_HTTP_ADDR":          ":9000",
+				"HITKEEP_MAIL_PORT":          "25",
+				"HITKEEP_INGEST_RATE_LIMIT":  "100.5",
+				"HITKEEP_MAIL_DRIVER":        "log",
+				"HITKEEP_WEBHOOK_RATE_LIMIT": "55.5",
+				"HITKEEP_WEBHOOK_BURST":      "80",
 			},
 			check: func(c *Config) bool {
 				return c.HTTPAddr == ":9000" &&
 					c.MailPort == 25 &&
 					c.IngestRateLimit == 100.5 &&
-					c.MailDriver == "log"
+					c.MailDriver == "log" &&
+					c.WebhookRateLimit == 55.5 &&
+					c.WebhookBurst == 80
 			},
 			errMessage: "Environment variables did not override defaults",
 		},

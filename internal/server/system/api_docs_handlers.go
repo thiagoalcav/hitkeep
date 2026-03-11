@@ -43,11 +43,17 @@ func (h *handler) handleGetAPIDocV1() http.HandlerFunc {
 			publicURL = "http://localhost:8080"
 		}
 
-		spec := openAPISpecV1(publicURL)
+		spec := OpenAPISpecV1(publicURL)
 
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(spec)
 	}
+}
+
+// OpenAPISpecV1 exposes the generated v1 API specification so docs tooling can
+// export the same source of truth used by the runtime endpoint.
+func OpenAPISpecV1(publicURL string) map[string]any {
+	return openAPISpecV1(publicURL)
 }
 
 func openAPISpecV1(publicURL string) map[string]any {
@@ -64,6 +70,7 @@ func openAPISpecV1(publicURL string) map[string]any {
 			{"name": "System", "description": "Service health and API documentation endpoints."},
 			{"name": "Ingest", "description": "Public tracking and event ingestion endpoints."},
 			{"name": "Auth", "description": "Authentication, password, and sign-in flows."},
+			{"name": "Cloud", "description": "Managed HitKeep Cloud endpoints. Available only in hosted cloud builds with billing enabled."},
 			{"name": "User", "description": "Authenticated user profile, preferences, and security endpoints."},
 			{"name": "Permissions", "description": "Authenticated permission context endpoints."},
 			{"name": "Admin", "description": "Instance-level admin and membership management endpoints."},
@@ -827,6 +834,67 @@ func openAPISpecV1(publicURL string) map[string]any {
 					jsonBody(map[string]any{"type": "object", "properties": map[string]any{"challenge_token": map[string]any{"type": "string", "format": "uuid"}, "code": map[string]any{"type": "string"}}, "required": []string{"challenge_token", "code"}}),
 					map[string]any{"200": jsonRefResp("Status", "#/components/schemas/Status")}),
 			},
+			"/api/cloud/signup": map[string]any{
+				"post": cloudOp("Create managed cloud account", "Creates a hosted cloud user and team, then optionally returns a Stripe Checkout URL for paid plans.", nil, nil,
+					jsonBody(map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"email":        map[string]any{"type": "string", "format": "email"},
+							"password":     map[string]any{"type": "string", "minLength": 8},
+							"given_name":   map[string]any{"type": "string"},
+							"last_name":    map[string]any{"type": "string"},
+							"team_name":    map[string]any{"type": "string"},
+							"plan_code":    map[string]any{"type": "string", "enum": []string{"free", "pro", "business"}},
+							"jurisdiction": map[string]any{"type": "string"},
+							"locale":       map[string]any{"type": "string"},
+						},
+						"required": []string{"email", "password", "team_name", "plan_code"},
+					}),
+					map[string]any{
+						"201": jsonSchemaResp("Cloud signup response", map[string]any{
+							"type": "object",
+							"properties": map[string]any{
+								"status":       map[string]any{"type": "string"},
+								"plan_code":    map[string]any{"type": "string"},
+								"redirect_url": map[string]any{"type": "string"},
+								"checkout_url": map[string]any{"type": "string"},
+							},
+							"required": []string{"status", "plan_code"},
+						}),
+						"400": errResp("Invalid request"),
+						"404": errResp("Cloud signup disabled"),
+						"409": errResp("Email already exists"),
+						"502": errResp("Unable to start checkout"),
+					}),
+			},
+			"/api/cloud/billing/portal": map[string]any{
+				"post": cloudOp("Create billing portal session", "Creates a Stripe Customer Portal session for the authenticated hosted cloud team.", secCookie(), nil,
+					jsonBody(map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"locale": map[string]any{"type": "string"},
+						},
+					}),
+					map[string]any{
+						"200": jsonSchemaResp("Billing portal session", map[string]any{
+							"type": "object",
+							"properties": map[string]any{
+								"url": map[string]any{"type": "string"},
+							},
+							"required": []string{"url"},
+						}),
+						"401": errResp("Unauthorized"),
+						"404": errResp("Cloud billing account not found"),
+						"409": errResp("Stripe customer is not configured"),
+						"502": errResp("Unable to start billing portal"),
+					}),
+			},
+			"/api/cloud/webhooks/stripe": map[string]any{
+				"post": cloudOp("Stripe webhook", "Processes Stripe billing lifecycle events for managed cloud subscriptions.", nil, nil, nil, map[string]any{
+					"200": desc("Webhook processed"),
+					"400": errResp("Invalid webhook"),
+				}),
+			},
 			"/api/user/password": map[string]any{
 				"post": op([]string{"Auth"}, "Change password", "Changes password for authenticated user.", secCookie(), nil,
 					jsonBody(map[string]any{"type": "object", "properties": map[string]any{"current_password": map[string]any{"type": "string"}, "new_password": map[string]any{"type": "string", "minLength": 8}}, "required": []string{"current_password", "new_password"}}),
@@ -1407,6 +1475,13 @@ func op(tags []string, summary string, description string, security []any, param
 	if requestBody != nil {
 		out["requestBody"] = requestBody
 	}
+	return out
+}
+
+func cloudOp(summary string, description string, security []any, parameters []any, requestBody any, responses map[string]any) map[string]any {
+	out := op([]string{"Cloud"}, summary, description, security, parameters, requestBody, responses)
+	out["x-hitkeep-availability"] = "cloud"
+	out["x-hitkeep-build-tags"] = []string{"billing"}
 	return out
 }
 

@@ -79,8 +79,9 @@ func (h *handler) handleGetStatus() http.HandlerFunc {
 			return
 		}
 
+		needsSetup := userCount == 0 && !h.ctx.Config.CloudHosted
 		response := map[string]any{
-			"needs_setup": userCount == 0,
+			"needs_setup": needsSetup,
 			"version":     h.ctx.Config.Version,
 		}
 		if cloud := h.cloudStatus(); cloud != nil {

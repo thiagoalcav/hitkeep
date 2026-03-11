@@ -111,6 +111,20 @@ func TestFetchMetadataMiddleware_AllowsStateChangingAPIWithMatchingOriginFallbac
 	}
 }
 
+func TestFetchMetadataMiddleware_AllowsStripeWebhookWithoutBrowserHeaders(t *testing.T) {
+	handler := FetchMetadataMiddleware("https://hitkeep.example", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/cloud/webhooks/stripe", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected status %d, got %d", http.StatusNoContent, rec.Code)
+	}
+}
+
 func TestFetchMetadataMiddleware_AllowsStateChangingAPIWithMatchingRefererFallback(t *testing.T) {
 	handler := FetchMetadataMiddleware("https://hitkeep.example", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)

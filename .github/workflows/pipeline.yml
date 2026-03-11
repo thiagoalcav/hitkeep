@@ -84,6 +84,17 @@ jobs:
           mkdir -p public
           cp -r frontend/dashboard/dist/dashboard/browser/* public/
 
+      - name: Restore Go Build Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/hitkeep-go-build
+            ~/.cache/hitkeep-go-mod
+          key: ${{ runner.os }}-hitkeep-linux-binaries-${{ steps.setup-go.outputs.go-version }}-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-hitkeep-linux-binaries-${{ steps.setup-go.outputs.go-version }}-
+            ${{ runner.os }}-hitkeep-linux-binaries-
+
       - name: Build Linux Binaries
         env:
           GO_VERSION: ${{ steps.setup-go.outputs.go-version }}
@@ -93,11 +104,11 @@ jobs:
         run: |
           set -euo pipefail
 
-          build_binary() {
+          mkdir -p "$HOME/.cache/hitkeep-go-build" "$HOME/.cache/hitkeep-go-mod"
+
+          build_arch() {
             local platform="$1"
             local goarch="$2"
-            local output="$3"
-            local build_tags="${4:-}"
 
             docker run --rm \
               --platform "$platform" \
@@ -107,11 +118,14 @@ jobs:
               -e GOARCH="$goarch" \
               -e GO_TARBALL_ARCH="$goarch" \
               -e HITKEEP_VERSION="$HITKEEP_VERSION" \
-              -e BUILD_TAGS="$build_tags" \
-              -e OUTPUT_NAME="$output" \
               -e HOST_UID="$(id -u)" \
               -e HOST_GID="$(id -g)" \
+              -e CLOUD_GO_BUILD_TAGS="$CLOUD_GO_BUILD_TAGS" \
+              -e GOCACHE=/cache/go-build \
+              -e GOMODCACHE=/cache/go-mod \
               -v "$PWD:/src" \
+              -v "$HOME/.cache/hitkeep-go-build:/cache/go-build" \
+              -v "$HOME/.cache/hitkeep-go-mod:/cache/go-mod" \
               -w /src \
               "$BUILD_IMAGE" \
               bash -lc '
@@ -127,25 +141,24 @@ jobs:
                 export CC=gcc
                 export CXX=g++
 
-                tag_args=()
-                if [ -n "$BUILD_TAGS" ]; then
-                  tag_args=(-tags "$BUILD_TAGS")
-                fi
-
                 go build \
-                  "${tag_args[@]}" \
                   -ldflags="-w -s -X '\''hitkeep/cmd.Version=$HITKEEP_VERSION'\''" \
-                  -o "$OUTPUT_NAME" \
+                  -o "hitkeep-linux-$GOARCH" \
                   ./cmd/hitkeep/main.go
 
-                chown "$HOST_UID:$HOST_GID" "$OUTPUT_NAME"
+                go build \
+                  -tags "$CLOUD_GO_BUILD_TAGS" \
+                  -ldflags="-w -s -X '\''hitkeep/cmd.Version=$HITKEEP_VERSION'\''" \
+                  -o "hitkeep-cloud-linux-$GOARCH" \
+                  ./cmd/hitkeep/main.go
+
+                chown "$HOST_UID:$HOST_GID" "hitkeep-linux-$GOARCH"
+                chown "$HOST_UID:$HOST_GID" "hitkeep-cloud-linux-$GOARCH"
               '
           }
 
-          build_binary linux/amd64 amd64 hitkeep-linux-amd64
-          build_binary linux/arm64 arm64 hitkeep-linux-arm64
-          build_binary linux/amd64 amd64 hitkeep-cloud-linux-amd64 "$CLOUD_GO_BUILD_TAGS"
-          build_binary linux/arm64 arm64 hitkeep-cloud-linux-arm64 "$CLOUD_GO_BUILD_TAGS"
+          build_arch linux/amd64 amd64
+          build_arch linux/arm64 arm64
 
       - uses: actions/upload-artifact@v7
         with:

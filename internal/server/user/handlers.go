@@ -343,7 +343,7 @@ func (h *handler) handleGetUserAvatar() http.HandlerFunc {
 		}
 
 		client := &http.Client{Timeout: 5 * time.Second}
-		resp, err := client.Do(req)
+		resp, err := client.Do(req) //nolint:gosec // Request target is pinned to the Gravatar origin by newGravatarRequest; see avatar_test.go.
 		if err != nil {
 			slog.Warn("Failed to fetch gravatar", "error", err, "user_id", userID)
 			http.Error(w, "Avatar unavailable", http.StatusBadGateway)

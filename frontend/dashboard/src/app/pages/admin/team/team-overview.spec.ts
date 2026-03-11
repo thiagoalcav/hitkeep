@@ -175,7 +175,7 @@ describe("TeamOverviewPage", () => {
     it("creates a billing portal session from the cloud card", () => {
         const component = fixture.componentInstance as TeamOverviewTestAccess;
         const cloudService = TestBed.inject(CloudService);
-        const redirectSpy = vi.spyOn(component, "redirectTo");
+        const redirectSpy = vi.spyOn(component, "redirectTo").mockImplementation(() => undefined);
 
         component.openBillingPortal();
 

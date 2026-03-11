@@ -53,13 +53,9 @@ jobs:
           cache-dependency-path: "**/package-lock.json"
 
       - uses: actions/setup-go@v6
+        id: setup-go
         with:
           go-version-file: go.mod
-
-      - name: Install ARM64 Cross Compiler
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
       - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
@@ -88,37 +84,70 @@ jobs:
           mkdir -p public
           cp -r frontend/dashboard/dist/dashboard/browser/* public/
 
-      - name: Build Linux AMD64
+      - name: Build Linux Binaries
+        env:
+          GO_VERSION: ${{ steps.setup-go.outputs.go-version }}
+          BUILD_IMAGE: debian:bullseye-slim
+          HITKEEP_VERSION: ${{ inputs.version }}
+          CLOUD_GO_BUILD_TAGS: ${{ inputs.cloud_go_build_tags }}
         run: |
-          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
-            -ldflags="-w -s -X 'hitkeep/cmd.Version=${{ inputs.version }}'" \
-            -o hitkeep-linux-amd64 \
-            ./cmd/hitkeep/main.go
+          set -euo pipefail
 
-      - name: Build Linux ARM64
-        run: |
-          CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ \
-          CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build \
-            -ldflags="-w -s -X 'hitkeep/cmd.Version=${{ inputs.version }}'" \
-            -o hitkeep-linux-arm64 \
-            ./cmd/hitkeep/main.go
+          build_binary() {
+            local platform="$1"
+            local goarch="$2"
+            local output="$3"
+            local build_tags="${4:-}"
 
-      - name: Build Cloud Linux AMD64
-        run: |
-          CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build \
-            -tags "${{ inputs.cloud_go_build_tags }}" \
-            -ldflags="-w -s -X 'hitkeep/cmd.Version=${{ inputs.version }}'" \
-            -o hitkeep-cloud-linux-amd64 \
-            ./cmd/hitkeep/main.go
+            docker run --rm \
+              --platform "$platform" \
+              -e GO_VERSION="$GO_VERSION" \
+              -e CGO_ENABLED=1 \
+              -e GOOS=linux \
+              -e GOARCH="$goarch" \
+              -e GO_TARBALL_ARCH="$goarch" \
+              -e HITKEEP_VERSION="$HITKEEP_VERSION" \
+              -e BUILD_TAGS="$build_tags" \
+              -e OUTPUT_NAME="$output" \
+              -e HOST_UID="$(id -u)" \
+              -e HOST_GID="$(id -g)" \
+              -v "$PWD:/src" \
+              -w /src \
+              "$BUILD_IMAGE" \
+              bash -lc '
+                set -euo pipefail
 
-      - name: Build Cloud Linux ARM64
-        run: |
-          CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ \
-          CGO_ENABLED=1 GOOS=linux GOARCH=arm64 go build \
-            -tags "${{ inputs.cloud_go_build_tags }}" \
-            -ldflags="-w -s -X 'hitkeep/cmd.Version=${{ inputs.version }}'" \
-            -o hitkeep-cloud-linux-arm64 \
-            ./cmd/hitkeep/main.go
+                export DEBIAN_FRONTEND=noninteractive
+                apt-get update
+                apt-get install -y --no-install-recommends build-essential ca-certificates curl git xz-utils
+
+                curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${GO_TARBALL_ARCH}.tar.gz" -o /tmp/go.tgz
+                rm -rf /usr/local/go
+                tar -C /usr/local -xzf /tmp/go.tgz
+                export PATH=/usr/local/go/bin:$PATH
+
+                export CC=gcc
+                export CXX=g++
+
+                tag_args=()
+                if [ -n "$BUILD_TAGS" ]; then
+                  tag_args=(-tags "$BUILD_TAGS")
+                fi
+
+                go build \
+                  "${tag_args[@]}" \
+                  -ldflags="-w -s -X '\''hitkeep/cmd.Version=$HITKEEP_VERSION'\''" \
+                  -o "$OUTPUT_NAME" \
+                  ./cmd/hitkeep/main.go
+
+                chown "$HOST_UID:$HOST_GID" "$OUTPUT_NAME"
+              '
+          }
+
+          build_binary linux/amd64 amd64 hitkeep-linux-amd64
+          build_binary linux/arm64 arm64 hitkeep-linux-arm64
+          build_binary linux/amd64 amd64 hitkeep-cloud-linux-amd64 "$CLOUD_GO_BUILD_TAGS"
+          build_binary linux/arm64 arm64 hitkeep-cloud-linux-arm64 "$CLOUD_GO_BUILD_TAGS"
 
       - uses: actions/upload-artifact@v7
         with:

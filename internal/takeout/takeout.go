@@ -2,6 +2,7 @@ package takeout
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -36,7 +37,7 @@ func (s *TakeoutService) ExportUserData(ctx context.Context, userID uuid.UUID, f
 	filename := filepath.Join(s.path, fmt.Sprintf("user_takeout_%s_%d.%s", userID, time.Now().Unix(), normalizedFormat))
 	whereClause := fmt.Sprintf("site_id IN (SELECT site_id FROM site_members WHERE user_id = '%s')", userID)
 
-	return s.exportTakeout(ctx, "user", filename, exportfmt.DuckDBCopyOptions(normalizedFormat), whereClause)
+	return s.exportTakeout(ctx, "user", filename, normalizedFormat, exportfmt.DuckDBCopyOptions(normalizedFormat), whereClause)
 }
 
 // ExportSiteData exports active data to the specified format.
@@ -50,12 +51,20 @@ func (s *TakeoutService) ExportSiteData(ctx context.Context, siteID uuid.UUID, f
 	filename := filepath.Join(s.path, fmt.Sprintf("site_takeout_%s_%d.%s", siteID, time.Now().Unix(), normalizedFormat))
 	whereClause := fmt.Sprintf("site_id = '%s'", siteID)
 
-	return s.exportTakeout(ctx, "site", filename, exportfmt.DuckDBCopyOptions(normalizedFormat), whereClause)
+	return s.exportTakeout(ctx, "site", filename, normalizedFormat, exportfmt.DuckDBCopyOptions(normalizedFormat), whereClause)
 }
 
-func (s *TakeoutService) exportTakeout(ctx context.Context, label, filename, duckFormat string, whereClause string) (string, error) {
+func (s *TakeoutService) exportTakeout(ctx context.Context, label, filename, normalizedFormat, duckFormat string, whereClause string) (string, error) {
 	query := buildTakeoutQuery(whereClause, filename, duckFormat)
-	if _, err := s.store.DB().ExecContext(ctx, query); err != nil {
+	err := s.store.WithDuckDBSession(ctx, database.DuckDBSessionOptions{
+		Excel: normalizedFormat == exportfmt.FormatXLSX,
+	}, func(conn *sql.Conn) error {
+		if _, err := conn.ExecContext(ctx, query); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		return "", fmt.Errorf("failed to export %s data: %w", label, err)
 	}
 

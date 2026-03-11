@@ -254,7 +254,15 @@ func (s *Store) ExportHitsFile(ctx context.Context, params api.HitQueryParams, f
 	selectQuery, args := buildHitExportQuery(params)
 	//nolint:gosec // filename is generated locally; selectQuery uses parameter placeholders
 	copyQuery := fmt.Sprintf("COPY (%s) TO '%s' (FORMAT %s);", selectQuery, filename, duckFormat)
-	if _, err := s.db.ExecContext(ctx, copyQuery, args...); err != nil {
+	err = s.WithDuckDBSession(ctx, DuckDBSessionOptions{
+		Excel: normalizedFormat == exportfmt.FormatXLSX,
+	}, func(conn *sql.Conn) error {
+		if _, err := conn.ExecContext(ctx, copyQuery, args...); err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
 		cleanupExportTempFile(filename)
 		return "", fmt.Errorf("failed to export hits: %w", err)
 	}

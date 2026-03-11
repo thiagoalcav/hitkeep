@@ -459,7 +459,7 @@ func TestArchiveFilenameS3AlwaysIsolatesTenants(t *testing.T) {
 }
 
 func TestBuildS3SecretQueryNilConfig(t *testing.T) {
-	query := BuildS3SecretQuery(nil)
+	query := database.BuildS3SecretQuery(nil)
 	if query != "" {
 		t.Fatalf("expected empty string for nil config, got %q", query)
 	}
@@ -472,7 +472,7 @@ func TestBuildS3SecretQueryStaticCredentials(t *testing.T) {
 		Region:          "eu-west-1",
 		UseSSL:          true,
 	}
-	query := BuildS3SecretQuery(cfg)
+	query := database.BuildS3SecretQuery(cfg)
 
 	if !strings.Contains(query, "PROVIDER config") {
 		t.Fatalf("expected PROVIDER config, got %q", query)
@@ -499,7 +499,7 @@ func TestBuildS3SecretQueryCredentialChain(t *testing.T) {
 		Region: "us-east-1",
 		UseSSL: true,
 	}
-	query := BuildS3SecretQuery(cfg)
+	query := database.BuildS3SecretQuery(cfg)
 
 	if !strings.Contains(query, "PROVIDER credential_chain") {
 		t.Fatalf("expected PROVIDER credential_chain, got %q", query)
@@ -524,7 +524,7 @@ func TestBuildS3SecretQueryWithEndpoint(t *testing.T) {
 		URLStyle:        "path",
 		UseSSL:          false,
 	}
-	query := BuildS3SecretQuery(cfg)
+	query := database.BuildS3SecretQuery(cfg)
 
 	if !strings.Contains(query, "ENDPOINT 'localhost:9000'") {
 		t.Fatalf("expected ENDPOINT in query, got %q", query)
@@ -545,7 +545,7 @@ func TestBuildS3SecretQueryWithSessionToken(t *testing.T) {
 		Region:          "us-east-1",
 		UseSSL:          true,
 	}
-	query := BuildS3SecretQuery(cfg)
+	query := database.BuildS3SecretQuery(cfg)
 
 	if !strings.Contains(query, "SESSION_TOKEN 'FwoGZXIvYXdzEBYaDH...'") {
 		t.Fatalf("expected SESSION_TOKEN in query, got %q", query)
@@ -559,7 +559,7 @@ func TestBuildS3SecretQueryEscapesSingleQuotes(t *testing.T) {
 		Region:          "us-east-1",
 		UseSSL:          true,
 	}
-	query := BuildS3SecretQuery(cfg)
+	query := database.BuildS3SecretQuery(cfg)
 
 	if !strings.Contains(query, "KEY_ID 'key''with''quotes'") {
 		t.Fatalf("expected escaped KEY_ID, got %q", query)

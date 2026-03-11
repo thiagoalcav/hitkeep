@@ -409,25 +409,23 @@ func restoreDatabase(ctx context.Context, targetPath, sourcePath string, isS3 bo
 	}
 
 	db := store.DB()
-
-	// Configure S3 if source is S3.
-	if isS3 && s3Conf != nil {
-		if err := worker.LoadHTTPFS(ctx, db); err != nil {
-			return fmt.Errorf("load httpfs: %w", err)
+	if err := database.WithDuckDBSession(ctx, db, database.DuckDBSessionOptions{
+		S3: s3ConfigForRestore(isS3, s3Conf),
+	}, func(conn *sql.Conn) error {
+		safePath := strings.ReplaceAll(sourcePath, "'", "''")
+		query := fmt.Sprintf("IMPORT DATABASE '%s';", safePath)
+		if _, err := conn.ExecContext(ctx, query); err != nil {
+			return fmt.Errorf("import database from %s: %w", sourcePath, err)
 		}
-		if err := worker.ConfigureS3Secret(ctx, db, s3Conf); err != nil {
-			return fmt.Errorf("configure s3: %w", err)
+		if _, err := conn.ExecContext(ctx, "CHECKPOINT;"); err != nil {
+			return fmt.Errorf("checkpoint restored database: %w", err)
 		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
-	// Import the backup.
-	safePath := strings.ReplaceAll(sourcePath, "'", "''")
-	query := fmt.Sprintf("IMPORT DATABASE '%s';", safePath)
-	if _, err := db.ExecContext(ctx, query); err != nil {
-		return fmt.Errorf("import database from %s: %w", sourcePath, err)
-	}
-
-	if err := finalizeRestoredDatabase(ctx, db, tempPath, store); err != nil {
+	if err := finalizeRestoredDatabase(tempPath, store); err != nil {
 		return err
 	}
 
@@ -438,10 +436,14 @@ func restoreDatabase(ctx context.Context, targetPath, sourcePath string, isS3 bo
 	return nil
 }
 
-func finalizeRestoredDatabase(ctx context.Context, db *sql.DB, dbPath string, store *database.Store) error {
-	if _, err := db.ExecContext(ctx, "CHECKPOINT;"); err != nil {
-		return fmt.Errorf("checkpoint restored database: %w", err)
+func s3ConfigForRestore(enabled bool, cfg *worker.S3Config) *database.S3SecretConfig {
+	if !enabled {
+		return nil
 	}
+	return cfg
+}
+
+func finalizeRestoredDatabase(dbPath string, store *database.Store) error {
 	if err := store.Close(); err != nil {
 		return fmt.Errorf("close restored database: %w", err)
 	}

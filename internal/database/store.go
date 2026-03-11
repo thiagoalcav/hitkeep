@@ -3,13 +3,14 @@ package database
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
 	"time"
 
-	_ "github.com/duckdb/duckdb-go/v2"
+	duckdb "github.com/duckdb/duckdb-go/v2"
 )
 
 const (
@@ -32,42 +33,57 @@ func NewStore(path string) *Store {
 
 func (s *Store) Connect() error {
 	slog.Info("Connecting to database...", "path", s.path)
-	db, err := sql.Open("duckdb", s.path)
+	connector, err := duckdb.NewConnector(s.path, s.initConnection)
 	if err != nil {
-		return fmt.Errorf("could not open database: %w", err)
+		return fmt.Errorf("could not create database connector: %w", err)
 	}
+	db := sql.OpenDB(connector)
 
 	if err := db.Ping(); err != nil {
+		_ = db.Close()
 		return fmt.Errorf("could not connect to database: %w", err)
 	}
 
 	s.db = db
-	if _, err := s.db.Exec("SET TimeZone = 'UTC';"); err != nil {
-		return fmt.Errorf("could not set database timezone: %w", err)
-	}
-	if err := s.loadExcelExtension(); err != nil {
-		slog.Warn("DuckDB excel extension unavailable; XLSX exports may fail", "error", err)
-	}
-	if _, err := s.db.Exec(fmt.Sprintf("PRAGMA wal_autocheckpoint='%s';", walAutoCheckpointSize)); err != nil {
-		slog.Warn("Failed to set wal_autocheckpoint", "size", walAutoCheckpointSize, "error", err)
+	if err := s.bootstrapCoreExtensions(); err != nil {
+		slog.Warn("DuckDB core extension bootstrap incomplete; XLSX exports and S3-backed flows may fail", "error", err)
 	}
 	slog.Debug("Database connection established successfully.")
 	return nil
 }
 
-func (s *Store) loadExcelExtension() error {
-	if _, err := s.db.Exec("LOAD excel;"); err == nil {
-		return nil
-	} else {
-		loadErr := err
-		if _, err := s.db.Exec("INSTALL excel;"); err != nil {
-			return fmt.Errorf("load excel extension: %w; install excel extension: %v", loadErr, err)
-		}
-		if _, err := s.db.Exec("LOAD excel;"); err != nil {
-			return fmt.Errorf("load excel extension after install: %w", err)
-		}
+func (s *Store) initConnection(execer driver.ExecerContext) error {
+	if _, err := execer.ExecContext(context.Background(), "SET TimeZone = 'UTC';", nil); err != nil {
+		return fmt.Errorf("set database timezone: %w", err)
 	}
+	if _, err := execer.ExecContext(context.Background(), fmt.Sprintf("PRAGMA wal_autocheckpoint='%s';", walAutoCheckpointSize), nil); err != nil {
+		slog.Warn("Failed to set wal_autocheckpoint", "size", walAutoCheckpointSize, "error", err)
+	}
+	s.loadInstalledExtension(context.Background(), execer, "httpfs")
+	s.loadInstalledExtension(context.Background(), execer, "excel")
 	return nil
+}
+
+func (s *Store) bootstrapCoreExtensions() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	return s.WithDuckDBSession(ctx, DuckDBSessionOptions{}, func(conn *sql.Conn) error {
+		if err := EnsureCoreExtension(ctx, conn, "httpfs"); err != nil {
+			return fmt.Errorf("bootstrap httpfs extension: %w", err)
+		}
+		if err := EnsureCoreExtension(ctx, conn, "excel"); err != nil {
+			return fmt.Errorf("bootstrap excel extension: %w", err)
+		}
+		return nil
+	})
+}
+
+func (s *Store) loadInstalledExtension(ctx context.Context, execer driver.ExecerContext, name string) {
+	query := fmt.Sprintf("LOAD %s;", name)
+	if _, err := execer.ExecContext(ctx, query, nil); err != nil {
+		slog.Debug("DuckDB core extension not yet available on new connection", "extension", name, "error", err)
+	}
 }
 
 func (s *Store) StartMaintenance(ctx context.Context) {

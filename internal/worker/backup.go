@@ -88,16 +88,6 @@ func (w *BackupWorker) Run(ctx context.Context) error {
 
 	isS3 := IsS3ArchivePath(w.backupPath)
 
-	// Configure S3 on shared DB if needed.
-	if isS3 {
-		if err := LoadHTTPFS(ctx, w.tenantMgr.Shared().DB()); err != nil {
-			return fmt.Errorf("backup: load httpfs on shared db: %w", err)
-		}
-		if err := ConfigureS3Secret(ctx, w.tenantMgr.Shared().DB(), w.s3Config); err != nil {
-			return fmt.Errorf("backup: configure s3 on shared db: %w", err)
-		}
-	}
-
 	// Backup shared DB.
 	sharedDest := joinArchivePath(w.backupPath, "shared", timestamp)
 	if err := w.exportDatabase(ctx, w.tenantMgr.Shared().DB(), sharedDest, isS3); err != nil {
@@ -126,17 +116,6 @@ func (w *BackupWorker) Run(ctx context.Context) error {
 			continue
 		}
 
-		if isS3 {
-			if err := LoadHTTPFS(ctx, tenantStore.DB()); err != nil {
-				slog.Error("Failed to load httpfs on tenant DB", "tenant_id", tenantID, "error", err)
-				continue
-			}
-			if err := ConfigureS3Secret(ctx, tenantStore.DB(), w.s3Config); err != nil {
-				slog.Error("Failed to configure S3 on tenant DB", "tenant_id", tenantID, "error", err)
-				continue
-			}
-		}
-
 		tenantDest := joinArchivePath(w.backupPath, "tenants", tenantID.String(), timestamp)
 		if err := w.exportDatabase(ctx, tenantStore.DB(), tenantDest, isS3); err != nil {
 			slog.Error("Failed to backup tenant database", "tenant_id", tenantID, "error", err)
@@ -161,11 +140,6 @@ func (w *BackupWorker) Run(ctx context.Context) error {
 
 // exportDatabase checkpoints and exports a DuckDB database to the given destination.
 func (w *BackupWorker) exportDatabase(ctx context.Context, db *sql.DB, dest string, isS3 bool) error {
-	// Flush WAL to disk.
-	if _, err := db.ExecContext(ctx, "CHECKPOINT;"); err != nil {
-		slog.Warn("Checkpoint before export failed (continuing)", "error", err)
-	}
-
 	// Ensure local directory exists.
 	if !isS3 {
 		if err := os.MkdirAll(dest, 0755); err != nil {
@@ -175,11 +149,17 @@ func (w *BackupWorker) exportDatabase(ctx context.Context, db *sql.DB, dest stri
 
 	safeDest := strings.ReplaceAll(dest, "'", "''")
 	query := fmt.Sprintf("EXPORT DATABASE '%s' (FORMAT PARQUET);", safeDest)
-	if _, err := db.ExecContext(ctx, query); err != nil {
-		return fmt.Errorf("export database to %s: %w", dest, err)
-	}
-
-	return nil
+	return database.WithDuckDBSession(ctx, db, database.DuckDBSessionOptions{
+		S3: s3ConfigForSession(isS3, w.s3Config),
+	}, func(conn *sql.Conn) error {
+		if _, err := conn.ExecContext(ctx, "CHECKPOINT;"); err != nil {
+			slog.Warn("Checkpoint before export failed (continuing)", "error", err)
+		}
+		if _, err := conn.ExecContext(ctx, query); err != nil {
+			return fmt.Errorf("export database to %s: %w", dest, err)
+		}
+		return nil
+	})
 }
 
 // pruneLocalSnapshots removes the oldest snapshot directories in dir,

@@ -15,16 +15,7 @@ import (
 	"hitkeep/internal/database"
 )
 
-//nolint:gosec // Runtime configuration struct — no hardcoded secrets.
-type S3Config struct {
-	AccessKeyID     string
-	SecretAccessKey string
-	SessionToken    string
-	Region          string
-	Endpoint        string
-	URLStyle        string // "path" or "vhost"
-	UseSSL          bool
-}
+type S3Config = database.S3SecretConfig
 
 type RetentionWorker struct {
 	tenantMgr   *database.TenantStoreManager
@@ -161,17 +152,6 @@ func (w *RetentionWorker) Run(ctx context.Context) error {
 			}
 		}
 
-		if IsS3ArchivePath(w.path) {
-			if err := LoadHTTPFS(ctx, db); err != nil {
-				slog.Error("Failed to load httpfs on tenant DB for retention", "error", err, "tenant_id", p.TenantID)
-				continue
-			}
-			if err := ConfigureS3Secret(ctx, db, w.s3Config); err != nil {
-				slog.Error("Failed to configure S3 on tenant DB for retention", "error", err, "tenant_id", p.TenantID)
-				continue
-			}
-		}
-
 		safeFilename := strings.ReplaceAll(filename, "'", "''")
 
 		//nolint:gosec // DuckDB COPY doesn't support parameterized queries; values are internally generated (UUID, time, escaped filepath)
@@ -183,7 +163,15 @@ func (w *RetentionWorker) Run(ctx context.Context) error {
 				) TO '%s' (FORMAT PARQUET, COMPRESSION 'SNAPPY');
 			`, p.ID, cutoff.Format(time.RFC3339), p.ID, cutoff.Format(time.RFC3339), safeFilename)
 
-		if _, err := db.ExecContext(ctx, exportQuery); err != nil {
+		err = database.WithDuckDBSession(ctx, db, database.DuckDBSessionOptions{
+			S3: s3ConfigForSession(IsS3ArchivePath(w.path), w.s3Config),
+		}, func(conn *sql.Conn) error {
+			if _, err := conn.ExecContext(ctx, exportQuery); err != nil {
+				return err
+			}
+			return nil
+		})
+		if err != nil {
 			slog.Error("Failed to export data to parquet", "error", err, "site_id", p.ID)
 			continue
 		}
@@ -293,78 +281,18 @@ func (w *RetentionWorker) Run(ctx context.Context) error {
 }
 
 func (w *RetentionWorker) ensureS3Support(ctx context.Context) error {
-	if err := LoadHTTPFS(ctx, w.tenantMgr.Shared().DB()); err != nil {
-		return err
-	}
-	return ConfigureS3Secret(ctx, w.tenantMgr.Shared().DB(), w.s3Config)
-}
-
-// LoadHTTPFS loads the DuckDB httpfs extension, installing it first if necessary.
-func LoadHTTPFS(ctx context.Context, db *sql.DB) error {
-	if _, err := db.ExecContext(ctx, "LOAD httpfs;"); err == nil {
+	return database.WithDuckDBSession(ctx, w.tenantMgr.Shared().DB(), database.DuckDBSessionOptions{
+		S3: s3ConfigForSession(true, w.s3Config),
+	}, func(conn *sql.Conn) error {
 		return nil
-	} else {
-		loadErr := err
-		if _, err := db.ExecContext(ctx, "INSTALL httpfs;"); err != nil {
-			return fmt.Errorf("load httpfs extension: %w; install httpfs extension: %v", loadErr, err)
-		}
-		if _, err := db.ExecContext(ctx, "LOAD httpfs;"); err != nil {
-			return fmt.Errorf("load httpfs extension after install: %w", err)
-		}
-	}
-	return nil
+	})
 }
 
-// ConfigureS3Secret creates a DuckDB S3 secret from the given config.
-func ConfigureS3Secret(ctx context.Context, db *sql.DB, cfg *S3Config) error {
-	query := BuildS3SecretQuery(cfg)
-	if query == "" {
+func s3ConfigForSession(enabled bool, cfg *S3Config) *database.S3SecretConfig {
+	if !enabled {
 		return nil
 	}
-	if _, err := db.ExecContext(ctx, query); err != nil {
-		return fmt.Errorf("configure S3 secret: %w", err)
-	}
-	return nil
-}
-
-// BuildS3SecretQuery generates a DuckDB CREATE SECRET statement for S3 authentication.
-// Returns an empty string if cfg is nil.
-func BuildS3SecretQuery(cfg *S3Config) string {
-	if cfg == nil {
-		return ""
-	}
-
-	var parts []string
-	parts = append(parts, "TYPE s3")
-
-	if cfg.AccessKeyID != "" && cfg.SecretAccessKey != "" {
-		parts = append(parts, "PROVIDER config")
-		parts = append(parts, fmt.Sprintf("KEY_ID '%s'", escapeSQLString(cfg.AccessKeyID)))
-		parts = append(parts, fmt.Sprintf("SECRET '%s'", escapeSQLString(cfg.SecretAccessKey)))
-		if cfg.SessionToken != "" {
-			parts = append(parts, fmt.Sprintf("SESSION_TOKEN '%s'", escapeSQLString(cfg.SessionToken)))
-		}
-	} else {
-		parts = append(parts, "PROVIDER credential_chain")
-	}
-
-	parts = append(parts, fmt.Sprintf("REGION '%s'", escapeSQLString(cfg.Region)))
-
-	if cfg.Endpoint != "" {
-		parts = append(parts, fmt.Sprintf("ENDPOINT '%s'", escapeSQLString(cfg.Endpoint)))
-	}
-	if cfg.URLStyle != "" {
-		parts = append(parts, fmt.Sprintf("URL_STYLE '%s'", escapeSQLString(cfg.URLStyle)))
-	}
-	if !cfg.UseSSL {
-		parts = append(parts, "USE_SSL false")
-	}
-
-	return fmt.Sprintf("CREATE OR REPLACE SECRET hitkeep_s3 (%s);", strings.Join(parts, ", "))
-}
-
-func escapeSQLString(s string) string {
-	return strings.ReplaceAll(s, "'", "''")
+	return cfg
 }
 
 func (w *RetentionWorker) loadRetentionPolicies(ctx context.Context, defaultTenantID uuid.UUID) ([]retentionSitePolicy, error) {

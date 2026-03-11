@@ -80,6 +80,10 @@ func (h *handler) handleCreateInitialUser() http.HandlerFunc {
 			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
 			return
 		}
+		if h.ctx.Config.CloudHosted {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
 
 		userCount, err := h.ctx.Store.GetUserCount(r.Context())
 		if err != nil {
@@ -539,6 +543,39 @@ func (h *handler) handleAcceptInvite() http.HandlerFunc {
 		if user == nil {
 			http.Error(w, "Invalid or expired link", http.StatusBadRequest)
 			return
+		}
+
+		if h.ctx.Config.CloudHosted {
+			pendingInvites, err := h.ctx.Store.ListPendingTeamInvitesByEmail(r.Context(), email)
+			if err != nil {
+				slog.Error("Failed to list pending cloud invites", "error", err, "email", email, "user_id", user.ID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+
+			targetTeams := make(map[uuid.UUID]struct{})
+			for _, invite := range pendingInvites {
+				isMember, err := h.ctx.Store.IsTenantMember(r.Context(), invite.TeamID, user.ID)
+				if err != nil {
+					slog.Error("Failed to check cloud invite membership", "error", err, "email", email, "user_id", user.ID, "team_id", invite.TeamID)
+					http.Error(w, "Internal server error", http.StatusInternalServerError)
+					return
+				}
+				if !isMember {
+					targetTeams[invite.TeamID] = struct{}{}
+				}
+			}
+
+			teamCount, err := h.ctx.Store.CountUserNonDefaultTeams(r.Context(), user.ID)
+			if err != nil {
+				slog.Error("Failed to count cloud invite teams", "error", err, "email", email, "user_id", user.ID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			if len(targetTeams) > 1 || (teamCount > 0 && len(targetTeams) > 0) {
+				http.Error(w, "Managed cloud accounts are limited to one team", http.StatusForbidden)
+				return
+			}
 		}
 
 		acceptedInvites, err := h.ctx.Store.AcceptTeamInvitesByEmail(r.Context(), email, user.ID)

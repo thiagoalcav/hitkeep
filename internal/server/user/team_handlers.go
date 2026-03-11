@@ -50,7 +50,11 @@ func writeTeamActionError(w http.ResponseWriter, statusCode int, code string, me
 	}
 }
 
-func resolveTeamEntitlements(ctx context.Context, provider entitlements.Provider, teamID uuid.UUID) *api.TeamEntitlements {
+func resolveTeamEntitlements(ctx context.Context, store *database.Store, provider entitlements.Provider, teamID uuid.UUID) *api.TeamEntitlements {
+	if override := resolveCloudBillingTeamEntitlements(ctx, store, teamID); override != nil {
+		return override
+	}
+
 	defaults := &entitlements.Entitlements{
 		AllowSSO:            true,
 		AllowCustomBranding: true,
@@ -73,7 +77,11 @@ func resolveTeamEntitlements(ctx context.Context, provider entitlements.Provider
 	}
 }
 
-func resolveTeamPlan(ctx context.Context, provider entitlements.Provider, teamID uuid.UUID) *api.TeamPlan {
+func resolveTeamPlan(ctx context.Context, store *database.Store, provider entitlements.Provider, teamID uuid.UUID) *api.TeamPlan {
+	if override := resolveCloudBillingTeamPlan(ctx, store, teamID); override != nil {
+		return override
+	}
+
 	describer, ok := provider.(entitlements.Describer)
 	if !ok || describer == nil {
 		return nil
@@ -103,8 +111,8 @@ func (h *handler) hydrateTeamSummaries(r *http.Request, teams []api.Team) []api.
 	enriched := make([]api.Team, len(teams))
 	copy(enriched, teams)
 	for idx, team := range enriched {
-		enriched[idx].Entitlements = resolveTeamEntitlements(r.Context(), h.ctx.Entitlements, team.ID)
-		enriched[idx].Plan = resolveTeamPlan(r.Context(), h.ctx.Entitlements, team.ID)
+		enriched[idx].Entitlements = resolveTeamEntitlements(r.Context(), h.ctx.Store, h.ctx.Entitlements, team.ID)
+		enriched[idx].Plan = resolveTeamPlan(r.Context(), h.ctx.Store, h.ctx.Entitlements, team.ID)
 
 		analyticsStore := h.ctx.Store
 		if h.ctx.TenantStores != nil {
@@ -198,6 +206,11 @@ func (h *handler) handleCreateTeam() http.HandlerFunc {
 				http.Error(w, "Invalid logo URL", http.StatusBadRequest)
 				return
 			}
+		}
+
+		if h.ctx.Config.CloudHosted {
+			http.Error(w, "Managed cloud accounts are limited to one team", http.StatusForbidden)
+			return
 		}
 
 		if h.ctx.Entitlements != nil {
@@ -556,11 +569,41 @@ func (h *handler) handleAddTeamMember() http.HandlerFunc {
 				return
 			}
 
-			targetUserID, err = h.ctx.Store.CreateUser(r.Context(), email, hashedPassword)
+			if h.ctx.Config.CloudHosted {
+				targetUserID, err = h.ctx.Store.CreateUserWithoutDefaultTenant(r.Context(), email, hashedPassword)
+			} else {
+				targetUserID, err = h.ctx.Store.CreateUser(r.Context(), email, hashedPassword)
+			}
 			if err != nil {
 				slog.Error("Failed to create invitee user", "error", err, "email", email, "team_id", teamID)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
+			}
+		}
+
+		if h.ctx.Config.CloudHosted && !wasMember {
+			teamCount, err := h.ctx.Store.CountUserNonDefaultTeams(r.Context(), targetUserID)
+			if err != nil {
+				slog.Error("Failed to count cloud invitee teams", "error", err, "email", email, "team_id", teamID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			if teamCount > 0 {
+				http.Error(w, "Managed cloud accounts are limited to one team", http.StatusConflict)
+				return
+			}
+
+			pendingInvites, err := h.ctx.Store.ListPendingTeamInvitesByEmail(r.Context(), email)
+			if err != nil {
+				slog.Error("Failed to load pending cloud invites", "error", err, "email", email, "team_id", teamID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			for _, pendingInvite := range pendingInvites {
+				if pendingInvite.TeamID != teamID {
+					http.Error(w, "Managed cloud accounts are limited to one team", http.StatusConflict)
+					return
+				}
 			}
 		}
 

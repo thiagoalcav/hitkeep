@@ -30,6 +30,21 @@ func TestHandleGetTeamsIncludesPlanMetadata(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create user: %v", err)
 	}
+	teams, _, err := store.ListUserTeams(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("list user teams: %v", err)
+	}
+	if len(teams) == 0 {
+		t.Fatal("expected at least one team after user creation")
+	}
+	if err := store.UpsertCloudBillingAccount(context.Background(), database.CloudBillingAccount{
+		TenantID:           teams[0].ID,
+		PlanCode:           database.CloudPlanPro,
+		PlanName:           "Pro",
+		SubscriptionStatus: "active",
+	}); err != nil {
+		t.Fatalf("seed cloud billing account: %v", err)
+	}
 
 	h := &handler{
 		ctx: &shared.Context{
@@ -73,10 +88,10 @@ func TestHandleGetTeamsIncludesPlanMetadata(t *testing.T) {
 	if resp.Teams[0].Plan == nil {
 		t.Fatalf("expected plan metadata on team payload")
 	}
-	if resp.Teams[0].Plan.Code != "free" || resp.Teams[0].Plan.Name != "Free" {
+	if resp.Teams[0].Plan.Code != "pro" || resp.Teams[0].Plan.Name != "Pro" {
 		t.Fatalf("unexpected plan metadata: %+v", resp.Teams[0].Plan)
 	}
-	if resp.Teams[0].Entitlements == nil || resp.Teams[0].Entitlements.MaxRetentionDays != 60 {
+	if resp.Teams[0].Entitlements == nil || resp.Teams[0].Entitlements.MaxRetentionDays != 365 {
 		t.Fatalf("expected cloud entitlements on team payload")
 	}
 }

@@ -124,6 +124,28 @@ func TestHandleCreateInitialUser(t *testing.T) {
 	}
 }
 
+func TestHandleCreateInitialUserRejectsManagedCloudBootstrap(t *testing.T) {
+	h, store := setupAuthTestEnv(t)
+	defer store.Close()
+	h.ctx.Config.CloudHosted = true
+
+	body, err := json.Marshal(map[string]string{
+		"email":    "admin@example.com",
+		"password": "password123",
+	})
+	if err != nil {
+		t.Fatalf("failed to marshal request: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/initial-user", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	h.handleCreateInitialUser().ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d", http.StatusNotFound, w.Code)
+	}
+}
+
 func TestHandleLogin(t *testing.T) {
 	h, store := setupAuthTestEnv(t)
 	defer store.Close()

@@ -114,6 +114,19 @@ func (s *Store) CreateUser(ctx context.Context, email string, hashedPassword str
 	return s.CreateUserWithNames(ctx, email, hashedPassword, "", "")
 }
 
+func (s *Store) CreateUserWithoutDefaultTenant(ctx context.Context, email string, hashedPassword string) (uuid.UUID, error) {
+	id := uuid.New()
+
+	if err := s.Exec(ctx,
+		"INSERT INTO users (id, email, password, created_at) VALUES (?, ?, ?, ?)",
+		id, email, hashedPassword, time.Now(),
+	); err != nil {
+		return uuid.Nil, fmt.Errorf("could not create user: %w", err)
+	}
+
+	return id, nil
+}
+
 // CreateUserWithNames creates a new user and optionally persists profile names.
 func (s *Store) CreateUserWithNames(ctx context.Context, email string, hashedPassword string, givenName string, lastName string) (uuid.UUID, error) {
 	id := uuid.New()

@@ -27,6 +27,7 @@ var ErrTeamLastOwner = errors.New("team must retain at least one owner")
 var ErrUserOnlyTeam = errors.New("user cannot leave their only team")
 var ErrTeamInviteAlreadyPending = errors.New("team invite already pending")
 var ErrTeamInviteNotFound = errors.New("team invite not found")
+var ErrManagedCloudSingleTeamLimit = errors.New("managed cloud accounts are limited to one team")
 var ErrTeamTransferRequiresOwner = errors.New("team ownership transfer requires owner")
 var ErrTeamTransferSelf = errors.New("cannot transfer ownership to self")
 var ErrTeamTransferTargetNotMember = errors.New("ownership transfer target must be a team member")
@@ -226,6 +227,71 @@ func (s *Store) ListUserTeams(ctx context.Context, userID uuid.UUID) ([]api.Team
 	}
 
 	return teams, activeTenantID, nil
+}
+
+func (s *Store) CountUserNonDefaultTeams(ctx context.Context, userID uuid.UUID) (int, error) {
+	defaultTenantID, err := s.GetDefaultTenantID(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	var count int
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM tenant_members tm
+		JOIN tenants t ON t.id = tm.tenant_id
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = t.id
+		WHERE tm.user_id = ?
+		  AND tm.tenant_id <> ?
+		  AND ta.tenant_id IS NULL
+	`, userID, defaultTenantID).Scan(&count); err != nil {
+		return 0, fmt.Errorf("could not count user teams: %w", err)
+	}
+
+	return count, nil
+}
+
+func (s *Store) ListPendingTeamInvitesByEmail(ctx context.Context, email string) ([]api.TeamInvite, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" {
+		return nil, fmt.Errorf("invite email is required")
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT
+			id,
+			tenant_id,
+			email,
+			role,
+			CAST(invited_user_id AS VARCHAR),
+			status,
+			CAST(created_by AS VARCHAR),
+			created_at,
+			expires_at,
+			accepted_at,
+			revoked_at
+		FROM team_invites
+		WHERE lower(email) = lower(?) AND status = ?
+		ORDER BY created_at ASC
+	`, email, TeamInviteStatusPending)
+	if err != nil {
+		return nil, fmt.Errorf("could not query pending invites: %w", err)
+	}
+	defer rows.Close()
+
+	invites := make([]api.TeamInvite, 0)
+	for rows.Next() {
+		invite, err := scanTeamInvite(rows)
+		if err != nil {
+			return nil, err
+		}
+		invites = append(invites, invite)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("could not read pending invites: %w", err)
+	}
+
+	return invites, nil
 }
 
 func (s *Store) ListSoleOwnerTeams(ctx context.Context, userID uuid.UUID) ([]api.Team, error) {

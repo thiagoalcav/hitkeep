@@ -1,7 +1,7 @@
 import { Injectable, inject } from "@angular/core";
 import { HttpClient, HttpParams } from "@angular/common/http";
 import { Observable } from "rxjs";
-import { GoalSeriesPoint, FunnelSeriesPoint, EventSeriesPoint, EventAudience, EcommerceSummary, EcommerceSeriesPoint, EcommerceProductStat, EcommerceSourceStat, SiteStats as SiteStatsModel } from "@models/analytics.types";
+import { GoalSeriesPoint, FunnelSeriesPoint, EventSeriesPoint, EventAudience, EcommerceSummary, EcommerceSeriesPoint, EcommerceProductStat, EcommerceSourceStat, SiteStats as SiteStatsModel, SystemStatus } from "@models/analytics.types";
 
 export interface Site {
     id: string;
@@ -110,11 +110,6 @@ export interface FunnelStats {
     total_entries: number;
     total_completions: number;
     overall_conversion_rate: number;
-}
-
-export interface SystemStatus {
-    needs_setup: boolean;
-    version: string;
 }
 
 @Injectable({

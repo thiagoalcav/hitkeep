@@ -83,6 +83,9 @@ func (h *handler) handleGetStatus() http.HandlerFunc {
 			"needs_setup": userCount == 0,
 			"version":     h.ctx.Config.Version,
 		}
+		if cloud := h.cloudStatus(); cloud != nil {
+			response["cloud"] = cloud
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(response); err != nil {

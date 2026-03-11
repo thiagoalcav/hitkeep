@@ -92,7 +92,7 @@ func Run() {
 	var store *database.Store
 	var tenantMgr *database.TenantStoreManager
 	var producer *nsq.Producer
-	ent := entitlements.Provider(entitlements.NewDefaultProvider())
+	ent := entitlements.NewProvider(conf)
 
 	if clusterManager.IsLeader() {
 		var leaderShutdown func()

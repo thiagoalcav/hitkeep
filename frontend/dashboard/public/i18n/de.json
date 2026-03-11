@@ -915,6 +915,18 @@
                         "sites": "Websites",
                         "members": "Mitglieder"
                     }
+                },
+                "cloud": {
+                    "title": "Cloud-Tarif",
+                    "managed": "Managed Cloud",
+                    "description": "Dieses Team läuft auf der gehosteten HitKeep-Cloud. Du kannst beim Free-Tarif zum Validieren bleiben oder upgraden, wenn du mehr Aufbewahrung, Mitglieder oder Volumen brauchst.",
+                    "jurisdiction": "Jurisdiktion",
+                    "region": "Region",
+                    "retention": "Aufbewahrung",
+                    "retentionDays": "{{count}} Tage",
+                    "unlimitedRetention": "Unbegrenzte Aufbewahrung",
+                    "upgradeAction": "Tarif upgraden",
+                    "supportAction": "Support kontaktieren"
                 }
             },
             "members": {

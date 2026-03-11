@@ -26,14 +26,47 @@
         </p-card>
     </div>
 
-    @if (t.usage && t.entitlements) {
+    @if (cloudPlan(); as cloudPlan) {
+    <section class="team-overview__cloud">
+        <p-card styleClass="team-overview__cloud-card">
+            <div class="team-overview__cloud-header">
+                <div class="team-overview__cloud-copy">
+                    <span class="team-overview__card-label">{{ "admin.team.overview.cloud.title" | transloco }}</span>
+                    <div class="team-overview__cloud-title-row">
+                        <span class="team-overview__card-value">{{ cloudPlan.plan.name }}</span>
+                        <p-tag [value]="'admin.team.overview.cloud.managed' | transloco" severity="info" [rounded]="true" />
+                    </div>
+                    <p>{{ "admin.team.overview.cloud.description" | transloco }}</p>
+                </div>
+                <div class="team-overview__cloud-meta">
+                    @if (cloudPlan.cloud.jurisdiction) {
+                    <span>{{ "admin.team.overview.cloud.jurisdiction" | transloco }}: {{ cloudPlan.cloud.jurisdiction }}</span>
+                    } @if (cloudPlan.cloud.region) {
+                    <span>{{ "admin.team.overview.cloud.region" | transloco }}: {{ cloudPlan.cloud.region }}</span>
+                    }
+                    <span>{{ "admin.team.overview.cloud.retention" | transloco }}: {{ retentionLabel(cloudPlan.retentionDays) }}</span>
+                </div>
+            </div>
+
+            @if (cloudPlan.plan.upgrade_url || cloudPlan.plan.support_url || cloudPlan.cloud.upgrade_url || cloudPlan.cloud.support_url) {
+            <div class="team-overview__cloud-actions">
+                @if (cloudPlan.plan.upgrade_url || cloudPlan.cloud.upgrade_url; as upgradeUrl) {
+                <a [href]="upgradeUrl" class="team-overview__cloud-link team-overview__cloud-link--primary" target="_blank" rel="noreferrer"> {{ "admin.team.overview.cloud.upgradeAction" | transloco }} </a>
+                } @if (cloudPlan.plan.support_url || cloudPlan.cloud.support_url; as supportUrl) {
+                <a [href]="supportUrl" class="team-overview__cloud-link" target="_blank" rel="noreferrer"> {{ "admin.team.overview.cloud.supportAction" | transloco }} </a>
+                }
+            </div>
+            }
+        </p-card>
+    </section>
+    } @if (showUsageSection()) {
     <section class="team-overview__usage">
         <div class="team-overview__usage-header">
             <div>
                 <h3>{{ "admin.team.overview.usage.title" | transloco }}</h3>
                 <p>{{ "admin.team.overview.usage.description" | transloco }}</p>
             </div>
-            <span class="team-overview__usage-pending">{{ pendingInviteLabel(t.usage.current_pending_invites) }}</span>
+            <span class="team-overview__usage-pending">{{ pendingInviteLabel(t.usage?.current_pending_invites ?? 0) }}</span>
         </div>
 
         <div class="team-overview__usage-grid">

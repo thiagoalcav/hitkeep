@@ -915,6 +915,18 @@
                         "sites": "Siti",
                         "members": "Membri"
                     }
+                },
+                "cloud": {
+                    "title": "Piano cloud",
+                    "managed": "Cloud gestito",
+                    "description": "Questo team è eseguito sull'infrastruttura gestita di HitKeep Cloud. Mantieni il piano gratuito per validare oppure passa a un piano superiore quando ti servono più retention, membri o volume.",
+                    "jurisdiction": "Giurisdizione",
+                    "region": "Regione",
+                    "retention": "Retention",
+                    "retentionDays": "{{count}} giorni",
+                    "unlimitedRetention": "Retention illimitata",
+                    "upgradeAction": "Aggiorna piano",
+                    "supportAction": "Contatta il supporto"
                 }
             },
             "members": {

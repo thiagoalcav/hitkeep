@@ -73,6 +73,28 @@ func resolveTeamEntitlements(ctx context.Context, provider entitlements.Provider
 	}
 }
 
+func resolveTeamPlan(ctx context.Context, provider entitlements.Provider, teamID uuid.UUID) *api.TeamPlan {
+	describer, ok := provider.(entitlements.Describer)
+	if !ok || describer == nil {
+		return nil
+	}
+
+	plan, err := describer.DescribeTenant(ctx, teamID)
+	if err != nil || plan == nil {
+		return nil
+	}
+	if strings.TrimSpace(plan.Name) == "" && strings.TrimSpace(plan.Code) == "" {
+		return nil
+	}
+
+	return &api.TeamPlan{
+		Code:       strings.TrimSpace(plan.Code),
+		Name:       strings.TrimSpace(plan.Name),
+		UpgradeURL: strings.TrimSpace(plan.UpgradeURL),
+		SupportURL: strings.TrimSpace(plan.SupportURL),
+	}
+}
+
 func (h *handler) hydrateTeamSummaries(r *http.Request, teams []api.Team) []api.Team {
 	if len(teams) == 0 {
 		return teams
@@ -82,6 +104,7 @@ func (h *handler) hydrateTeamSummaries(r *http.Request, teams []api.Team) []api.
 	copy(enriched, teams)
 	for idx, team := range enriched {
 		enriched[idx].Entitlements = resolveTeamEntitlements(r.Context(), h.ctx.Entitlements, team.ID)
+		enriched[idx].Plan = resolveTeamPlan(r.Context(), h.ctx.Entitlements, team.ID)
 
 		analyticsStore := h.ctx.Store
 		if h.ctx.TenantStores != nil {

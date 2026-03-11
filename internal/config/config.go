@@ -28,35 +28,50 @@ type Config struct {
 	IngestRateLimit float64
 	JoinAddr        string
 	//nolint:gosec // runtime configuration intentionally carries the JWT signing secret.
-	JWTSecret              string
-	LogLevel               string
-	MailDriver             string
-	MailEncryption         string
-	MailInsecureSkipVerify bool
-	MailFromAddress        string
-	MailFromName           string
-	MailHost               string
-	MailPassword           string
-	MailPort               int
-	MailUsername           string
-	NodeName               string
-	NSQHTTPAddress         string
-	NSQTCPAddress          string
-	PublicURL              string
-	Version                string
-	DataRetentionDays      int
-	BackupPath             string
-	BackupIntervalMinutes  int
-	BackupRetentionCount   int
-	S3AccessKeyID          string
-	S3SecretAccessKey      string
-	S3SessionToken         string
-	S3Region               string
-	S3Endpoint             string
-	S3URLStyle             string
-	S3UseSSL               bool
-	TrustedProxies         string
-	trustedProxyNets       []*net.IPNet
+	JWTSecret                string
+	LogLevel                 string
+	MailDriver               string
+	MailEncryption           string
+	MailInsecureSkipVerify   bool
+	MailFromAddress          string
+	MailFromName             string
+	MailHost                 string
+	MailPassword             string
+	MailPort                 int
+	MailUsername             string
+	NodeName                 string
+	NSQHTTPAddress           string
+	NSQTCPAddress            string
+	PublicURL                string
+	Version                  string
+	DataRetentionDays        int
+	BackupPath               string
+	BackupIntervalMinutes    int
+	BackupRetentionCount     int
+	S3AccessKeyID            string
+	S3SecretAccessKey        string
+	S3SessionToken           string
+	S3Region                 string
+	S3Endpoint               string
+	S3URLStyle               string
+	S3UseSSL                 bool
+	CloudHosted              bool
+	CloudSignupEnabled       bool
+	CloudJurisdiction        string
+	CloudRegion              string
+	CloudUpgradeURL          string
+	CloudSupportURL          string
+	CloudPlanCode            string
+	CloudPlanName            string
+	CloudMaxTeams            int
+	CloudMaxSitesPerTeam     int
+	CloudMaxMonthlyEvents    int64
+	CloudMaxRetentionDays    int
+	CloudMaxTeamMembers      int
+	CloudAllowSSO            bool
+	CloudAllowCustomBranding bool
+	TrustedProxies           string
+	trustedProxyNets         []*net.IPNet
 }
 
 // GetTrustedProxyNetworks returns the parsed trusted proxy networks.
@@ -123,6 +138,17 @@ func load(args []string, getEnv func(string, string) string) *Config {
 				return b
 			}
 			slog.Warn("Invalid boolean in env var, using default", "key", key, "val", val, "default", fallback)
+		}
+		return fallback
+	}
+
+	getInt64 := func(key string, fallback int64) int64 {
+		val := getEnv(key, "")
+		if val != "" {
+			if i, err := strconv.ParseInt(val, 10, 64); err == nil {
+				return i
+			}
+			slog.Warn("Invalid int64 in env var, using default", "key", key, "val", val, "default", fallback)
 		}
 		return fallback
 	}
@@ -222,6 +248,8 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	fs.StringVar(&conf.S3Endpoint, "s3-endpoint", defS3Endpoint, "S3 custom endpoint (MinIO, R2, Spaces)")
 	fs.StringVar(&conf.S3URLStyle, "s3-url-style", defS3URLStyle, "S3 URL style: path or vhost")
 	fs.BoolVar(&conf.S3UseSSL, "s3-use-ssl", defS3UseSSL, "S3 use SSL (set false for local MinIO over HTTP)")
+
+	registerCloudFlags(fs, &conf, getEnv, getInt, getInt64, getBool)
 
 	fs.StringVar(&conf.TrustedProxies, "trusted-proxies", defTrustedProxies, "Trusted proxy CIDRs (comma-separated) or '*' to trust all")
 

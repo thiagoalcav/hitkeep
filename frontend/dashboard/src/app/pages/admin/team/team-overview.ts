@@ -1,10 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 import { CardModule } from "primeng/card";
 import { ProgressBarModule } from "primeng/progressbar";
 import { TagModule } from "primeng/tag";
 import { TeamService } from "@services/team.service";
-import { TeamRole } from "@models/analytics.types";
+import { AnalyticsService } from "@services/analytics.service";
+import { SystemStatus, TeamRole } from "@models/analytics.types";
 
 @Component({
     selector: "app-team-overview",
@@ -15,12 +17,15 @@ import { TeamRole } from "@models/analytics.types";
 })
 export class TeamOverviewPage {
     private readonly transloco = inject(TranslocoService);
+    private readonly analyticsService = inject(AnalyticsService);
     protected readonly teamService = inject(TeamService);
 
     protected readonly team = this.teamService.activeTeam;
+    protected readonly systemStatus = signal<SystemStatus | null>(null);
     protected readonly usageCards = computed(() => {
         const team = this.team();
-        if (!team?.usage || !team.entitlements) {
+        const cloud = this.systemStatus()?.cloud;
+        if (!cloud?.hosted || !team?.usage || !team.entitlements) {
             return [];
         }
 
@@ -30,6 +35,27 @@ export class TeamOverviewPage {
             this.buildUsageCard("members", team.usage.current_members, team.entitlements.max_team_members)
         ];
     });
+    protected readonly cloudPlan = computed(() => {
+        const team = this.team();
+        const cloud = this.systemStatus()?.cloud;
+        if (!cloud?.hosted || !team?.plan || !team.entitlements) {
+            return null;
+        }
+
+        return {
+            plan: team.plan,
+            cloud,
+            retentionDays: team.entitlements.max_retention_days
+        };
+    });
+    protected readonly showUsageSection = computed(() => this.usageCards().length > 0);
+
+    constructor() {
+        this.analyticsService
+            .getSystemStatus()
+            .pipe(takeUntilDestroyed())
+            .subscribe((status) => this.systemStatus.set(status));
+    }
 
     protected roleSeverity(role: TeamRole): "danger" | "info" | "secondary" {
         switch (role) {
@@ -76,6 +102,13 @@ export class TeamOverviewPage {
             return this.transloco.translate("admin.team.overview.usage.pendingInviteOne");
         }
         return this.transloco.translate("admin.team.overview.usage.pendingInviteMany", { count });
+    }
+
+    protected retentionLabel(days: number): string {
+        if (days <= 0) {
+            return this.transloco.translate("admin.team.overview.cloud.unlimitedRetention");
+        }
+        return this.transloco.translate("admin.team.overview.cloud.retentionDays", { count: days });
     }
 
     private buildUsageCard(key: string, current: number, limit: number) {

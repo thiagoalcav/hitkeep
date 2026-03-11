@@ -18,9 +18,20 @@ type Entitlements struct {
 	AllowCustomBranding bool
 }
 
+type PlanInfo struct {
+	Code       string
+	Name       string
+	UpgradeURL string
+	SupportURL string
+}
+
 // Provider resolves entitlements for a given tenant.
 // The OSS build uses DefaultProvider (unlimited). A cloud build tag can
 // swap in a provider that reads from a billing/subscription backend.
 type Provider interface {
 	ForTenant(ctx context.Context, tenantID uuid.UUID) (*Entitlements, error)
+}
+
+type Describer interface {
+	DescribeTenant(ctx context.Context, tenantID uuid.UUID) (*PlanInfo, error)
 }

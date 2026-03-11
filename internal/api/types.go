@@ -377,6 +377,7 @@ type Team struct {
 	CreatedAt    time.Time         `json:"created_at"`
 	Usage        *TeamUsageSummary `json:"usage,omitempty"`
 	Entitlements *TeamEntitlements `json:"entitlements,omitempty"`
+	Plan         *TeamPlan         `json:"plan,omitempty"`
 }
 
 type TeamUsageSummary struct {
@@ -393,6 +394,22 @@ type TeamEntitlements struct {
 	MaxRetentionDays    int   `json:"max_retention_days"`
 	AllowSSO            bool  `json:"allow_sso"`
 	AllowCustomBranding bool  `json:"allow_custom_branding"`
+}
+
+type TeamPlan struct {
+	Code       string `json:"code"`
+	Name       string `json:"name"`
+	UpgradeURL string `json:"upgrade_url,omitempty"`
+	SupportURL string `json:"support_url,omitempty"`
+}
+
+type CloudStatus struct {
+	Hosted        bool   `json:"hosted"`
+	SignupEnabled bool   `json:"signup_enabled"`
+	Jurisdiction  string `json:"jurisdiction,omitempty"`
+	Region        string `json:"region,omitempty"`
+	UpgradeURL    string `json:"upgrade_url,omitempty"`
+	SupportURL    string `json:"support_url,omitempty"`
 }
 
 type TeamMember struct {

@@ -98,12 +98,21 @@ func TestOpenAPISpecV1TeamSchemasExposeUsageAndEntitlements(t *testing.T) {
 	if _, ok := teamProperties["entitlements"]; !ok {
 		t.Fatalf("expected Team schema to include entitlements")
 	}
+	if _, ok := teamProperties["plan"]; !ok {
+		t.Fatalf("expected Team schema to include plan")
+	}
 
 	if _, ok := schemas["TeamUsageSummary"]; !ok {
 		t.Fatalf("expected TeamUsageSummary schema to exist")
 	}
 	if _, ok := schemas["TeamEntitlements"]; !ok {
 		t.Fatalf("expected TeamEntitlements schema to exist")
+	}
+	if _, ok := schemas["TeamPlan"]; !ok {
+		t.Fatalf("expected TeamPlan schema to exist")
+	}
+	if _, ok := schemas["CloudStatus"]; !ok {
+		t.Fatalf("expected CloudStatus schema to exist")
 	}
 }
 

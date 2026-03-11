@@ -915,6 +915,18 @@
                         "sites": "Sites",
                         "members": "Members"
                     }
+                },
+                "cloud": {
+                    "title": "Cloud plan",
+                    "managed": "Managed cloud",
+                    "description": "This team is running on the hosted HitKeep cloud footprint. Keep the free plan for validation or upgrade when you need more retention, members, or volume.",
+                    "jurisdiction": "Jurisdiction",
+                    "region": "Region",
+                    "retention": "Retention",
+                    "retentionDays": "{{count}} days",
+                    "unlimitedRetention": "Unlimited retention",
+                    "upgradeAction": "Upgrade plan",
+                    "supportAction": "Contact support"
                 }
             },
             "members": {

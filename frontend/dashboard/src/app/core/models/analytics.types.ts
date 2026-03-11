@@ -16,6 +16,7 @@ export interface Team {
     created_at: string;
     usage?: TeamUsageSummary;
     entitlements?: TeamEntitlements;
+    plan?: TeamPlan;
 }
 
 export interface TeamUsageSummary {
@@ -32,6 +33,13 @@ export interface TeamEntitlements {
     max_retention_days: number;
     allow_sso: boolean;
     allow_custom_branding: boolean;
+}
+
+export interface TeamPlan {
+    code: string;
+    name: string;
+    upgrade_url?: string;
+    support_url?: string;
 }
 
 export interface UserTeamsResponse {
@@ -280,6 +288,16 @@ export interface FunnelStats {
 export interface SystemStatus {
     needs_setup: boolean;
     version: string;
+    cloud?: CloudStatus;
+}
+
+export interface CloudStatus {
+    hosted: boolean;
+    signup_enabled: boolean;
+    jurisdiction?: string;
+    region?: string;
+    upgrade_url?: string;
+    support_url?: string;
 }
 
 export type ReportFrequency = "daily" | "weekly" | "monthly";

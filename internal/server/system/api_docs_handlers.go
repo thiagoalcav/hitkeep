@@ -392,6 +392,7 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"created_at":   map[string]any{"type": "string", "format": "date-time"},
 						"usage":        map[string]any{"$ref": "#/components/schemas/TeamUsageSummary"},
 						"entitlements": map[string]any{"$ref": "#/components/schemas/TeamEntitlements"},
+						"plan":         map[string]any{"$ref": "#/components/schemas/TeamPlan"},
 					},
 				},
 				"TeamUsageSummary": map[string]any{
@@ -412,6 +413,26 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"max_retention_days":    map[string]any{"type": "integer"},
 						"allow_sso":             map[string]any{"type": "boolean"},
 						"allow_custom_branding": map[string]any{"type": "boolean"},
+					},
+				},
+				"TeamPlan": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"code":        map[string]any{"type": "string"},
+						"name":        map[string]any{"type": "string"},
+						"upgrade_url": map[string]any{"type": "string"},
+						"support_url": map[string]any{"type": "string"},
+					},
+				},
+				"CloudStatus": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"hosted":         map[string]any{"type": "boolean"},
+						"signup_enabled": map[string]any{"type": "boolean"},
+						"jurisdiction":   map[string]any{"type": "string"},
+						"region":         map[string]any{"type": "string"},
+						"upgrade_url":    map[string]any{"type": "string"},
+						"support_url":    map[string]any{"type": "string"},
 					},
 				},
 				"TeamMember": map[string]any{
@@ -712,8 +733,15 @@ func openAPISpecV1(publicURL string) map[string]any {
 				"get": op([]string{"System"}, "Readiness check", "Readiness endpoint (leader and DB readiness).", nil, nil, nil, map[string]any{"200": desc("Ready"), "503": errResp("Not ready")}),
 			},
 			"/api/status": map[string]any{
-				"get": op([]string{"System"}, "Instance status", "Setup and version status.", nil, nil, nil, map[string]any{
-					"200": jsonSchemaResp("Status payload", map[string]any{"type": "object", "properties": map[string]any{"needs_setup": map[string]any{"type": "boolean"}, "version": map[string]any{"type": "string"}}}),
+				"get": op([]string{"System"}, "Instance status", "Setup and version status, plus optional managed-cloud metadata.", nil, nil, nil, map[string]any{
+					"200": jsonSchemaResp("Status payload", map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"needs_setup": map[string]any{"type": "boolean"},
+							"version":     map[string]any{"type": "string"},
+							"cloud":       map[string]any{"$ref": "#/components/schemas/CloudStatus"},
+						},
+					}),
 				}),
 			},
 			"/api/docs/versions": map[string]any{

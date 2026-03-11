@@ -915,6 +915,18 @@
                         "sites": "Sites",
                         "members": "Membres"
                     }
+                },
+                "cloud": {
+                    "title": "Plan cloud",
+                    "managed": "Cloud managé",
+                    "description": "Cette équipe tourne sur l'infrastructure HitKeep Cloud managée. Gardez le plan gratuit pour valider, ou passez au niveau supérieur si vous avez besoin de plus de rétention, de membres ou de volume.",
+                    "jurisdiction": "Juridiction",
+                    "region": "Région",
+                    "retention": "Rétention",
+                    "retentionDays": "{{count}} jours",
+                    "unlimitedRetention": "Rétention illimitée",
+                    "upgradeAction": "Changer de plan",
+                    "supportAction": "Contacter le support"
                 }
             },
             "members": {

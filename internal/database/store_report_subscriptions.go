@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -9,6 +10,8 @@ import (
 
 	"hitkeep/internal/api"
 )
+
+var ErrSiteAccessRequired = errors.New("site access required")
 
 // PendingSiteReport holds the data needed to send a per-site report email.
 type PendingSiteReport struct {
@@ -31,37 +34,74 @@ type PendingDigest struct {
 	Sites     []DigestSite
 }
 
-// GetReportSubscriptions returns the full subscription state for a user across all their accessible sites.
-func (s *Store) GetReportSubscriptions(ctx context.Context, userID uuid.UUID) (*api.ReportSubscriptions, error) {
-	// Fetch all sites the user owns or is a member of.
-	siteRows, err := s.db.QueryContext(ctx, `
-		SELECT DISTINCT s.id, s.domain
-		FROM sites s
-		LEFT JOIN site_members sm ON sm.site_id = s.id AND sm.user_id = ?
-		WHERE s.user_id = ? OR sm.user_id IS NOT NULL
-		ORDER BY s.domain ASC
-	`, userID, userID)
+func (s *Store) listReportAccessibleSites(ctx context.Context, userID uuid.UUID) ([]DigestSite, error) {
+	defaultTenantID, err := s.GetDefaultTenantID(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer siteRows.Close()
 
-	type siteRow struct {
-		id     uuid.UUID
-		domain string
-	}
-	var sites []siteRow
-	for siteRows.Next() {
-		var sr siteRow
-		if err := siteRows.Scan(&sr.id, &sr.domain); err != nil {
-			return nil, err
-		}
-		sites = append(sites, sr)
-	}
-	if err := siteRows.Err(); err != nil {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT DISTINCT s.id, s.domain
+		FROM sites s
+		LEFT JOIN site_tenants st ON st.site_id = s.id
+		JOIN tenant_members tm ON tm.tenant_id = COALESCE(st.tenant_id, ?) AND tm.user_id = ?
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = tm.tenant_id
+		LEFT JOIN site_members sm ON sm.site_id = s.id AND sm.user_id = ?
+		WHERE ta.tenant_id IS NULL
+		  AND (s.user_id = ? OR sm.user_id IS NOT NULL)
+		ORDER BY s.domain ASC
+	`, defaultTenantID, userID, userID, userID)
+	if err != nil {
 		return nil, err
 	}
-	siteRows.Close()
+	defer rows.Close()
+
+	sites := make([]DigestSite, 0)
+	for rows.Next() {
+		var site DigestSite
+		if err := rows.Scan(&site.SiteID, &site.Domain); err != nil {
+			return nil, err
+		}
+		sites = append(sites, site)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return sites, nil
+}
+
+func (s *Store) CanAccessSiteForReports(ctx context.Context, userID, siteID uuid.UUID) (bool, error) {
+	defaultTenantID, err := s.GetDefaultTenantID(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	var count int
+	err = s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM sites s
+		LEFT JOIN site_tenants st ON st.site_id = s.id
+		JOIN tenant_members tm ON tm.tenant_id = COALESCE(st.tenant_id, ?) AND tm.user_id = ?
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = tm.tenant_id
+		LEFT JOIN site_members sm ON sm.site_id = s.id AND sm.user_id = ?
+		WHERE s.id = ?
+		  AND ta.tenant_id IS NULL
+		  AND (s.user_id = ? OR sm.user_id IS NOT NULL)
+	`, defaultTenantID, userID, userID, siteID, userID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}
+
+// GetReportSubscriptions returns the full subscription state for a user across all their accessible sites.
+func (s *Store) GetReportSubscriptions(ctx context.Context, userID uuid.UUID) (*api.ReportSubscriptions, error) {
+	sites, err := s.listReportAccessibleSites(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
 
 	// Fetch all site_report_subscriptions for this user in one query.
 	subRows, err := s.db.QueryContext(ctx, `
@@ -96,11 +136,11 @@ func (s *Store) GetReportSubscriptions(ctx context.Context, userID uuid.UUID) (*
 	siteSubscriptions := make([]api.SiteReportSubscription, 0, len(sites))
 	for _, site := range sites {
 		siteSubscriptions = append(siteSubscriptions, api.SiteReportSubscription{
-			SiteID:  site.id,
-			Domain:  site.domain,
-			Daily:   subMap[subKey{siteID: site.id, freq: "daily"}],
-			Weekly:  subMap[subKey{siteID: site.id, freq: "weekly"}],
-			Monthly: subMap[subKey{siteID: site.id, freq: "monthly"}],
+			SiteID:  site.SiteID,
+			Domain:  site.Domain,
+			Daily:   subMap[subKey{siteID: site.SiteID, freq: "daily"}],
+			Weekly:  subMap[subKey{siteID: site.SiteID, freq: "weekly"}],
+			Monthly: subMap[subKey{siteID: site.SiteID, freq: "monthly"}],
 		})
 	}
 
@@ -140,6 +180,14 @@ func (s *Store) GetReportSubscriptions(ctx context.Context, userID uuid.UUID) (*
 
 // UpsertSiteReportSubscription inserts or updates a per-site subscription for the given frequency.
 func (s *Store) UpsertSiteReportSubscription(ctx context.Context, userID, siteID uuid.UUID, freq api.ReportFrequency, enabled bool) error {
+	hasAccess, err := s.CanAccessSiteForReports(ctx, userID, siteID)
+	if err != nil {
+		return err
+	}
+	if !hasAccess {
+		return ErrSiteAccessRequired
+	}
+
 	now := time.Now().UTC()
 	return s.Exec(ctx, `
 		INSERT INTO site_report_subscriptions (id, user_id, site_id, frequency, enabled, created_at, updated_at)
@@ -165,21 +213,25 @@ func (s *Store) UpsertDigestSubscription(ctx context.Context, userID uuid.UUID, 
 // GetPendingSiteReports returns all active per-site report subscriptions for the given frequency,
 // verifying that the user still has access to each site.
 func (s *Store) GetPendingSiteReports(ctx context.Context, freq api.ReportFrequency) ([]PendingSiteReport, error) {
+	defaultTenantID, err := s.GetDefaultTenantID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT srs.user_id, u.email, srs.site_id, si.domain
 		FROM site_report_subscriptions srs
 		JOIN users u ON u.id = srs.user_id
 		JOIN sites si ON si.id = srs.site_id
+		LEFT JOIN site_tenants st ON st.site_id = si.id
+		JOIN tenant_members tm ON tm.tenant_id = COALESCE(st.tenant_id, ?) AND tm.user_id = srs.user_id
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = tm.tenant_id
+		LEFT JOIN site_members sm ON sm.site_id = srs.site_id AND sm.user_id = srs.user_id
 		WHERE srs.frequency = ?
 		  AND srs.enabled = true
-		  AND (
-		      si.user_id = srs.user_id
-		      OR EXISTS (
-		          SELECT 1 FROM site_members sm
-		          WHERE sm.site_id = srs.site_id AND sm.user_id = srs.user_id
-		      )
-		  )
-	`, string(freq))
+		  AND ta.tenant_id IS NULL
+		  AND (si.user_id = srs.user_id OR sm.user_id IS NOT NULL)
+	`, defaultTenantID, string(freq))
 	if err != nil {
 		return nil, err
 	}
@@ -256,28 +308,8 @@ func (s *Store) GetPendingDigests(ctx context.Context, freq api.ReportFrequency)
 
 	result := make([]PendingDigest, 0, len(users))
 	for _, u := range users {
-		siteRows, err := s.db.QueryContext(ctx, `
-			SELECT DISTINCT s.id, s.domain
-			FROM sites s
-			LEFT JOIN site_members sm ON sm.site_id = s.id AND sm.user_id = ?
-			WHERE s.user_id = ? OR sm.user_id IS NOT NULL
-			ORDER BY s.domain ASC
-		`, u.userID, u.userID)
+		sites, err := s.listReportAccessibleSites(ctx, u.userID)
 		if err != nil {
-			return nil, err
-		}
-
-		var sites []DigestSite
-		for siteRows.Next() {
-			var ds DigestSite
-			if err := siteRows.Scan(&ds.SiteID, &ds.Domain); err != nil {
-				siteRows.Close()
-				return nil, err
-			}
-			sites = append(sites, ds)
-		}
-		siteRows.Close()
-		if err := siteRows.Err(); err != nil {
 			return nil, err
 		}
 

@@ -2,6 +2,7 @@ package user
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/database"
 	"hitkeep/internal/server/shared"
 )
 
@@ -78,6 +80,10 @@ func (h *handler) handleUpdateSiteReportSubscription() http.HandlerFunc {
 
 		for _, f := range freqs {
 			if err := h.ctx.Store.UpsertSiteReportSubscription(r.Context(), userID, siteID, f.freq, f.enabled); err != nil {
+				if errors.Is(err, database.ErrSiteAccessRequired) {
+					http.Error(w, "Forbidden", http.StatusForbidden)
+					return
+				}
 				slog.Error("Failed to upsert site report subscription", "error", err, "user_id", userID, "site_id", siteID, "freq", f.freq)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return

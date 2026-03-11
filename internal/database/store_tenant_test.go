@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"hitkeep/internal/api"
 	"hitkeep/internal/auth"
 )
 
@@ -414,6 +415,14 @@ func TestLeaveTeamReassignsActiveTenant(t *testing.T) {
 		t.Fatalf("set active custom tenant: %v", err)
 	}
 
+	site, err := store.CreateSite(ctx, userID, "leave-team-site.test")
+	if err != nil {
+		t.Fatalf("create custom tenant site: %v", err)
+	}
+	if err := store.UpsertSiteReportSubscription(ctx, userID, site.ID, api.ReportFrequencyDaily, true); err != nil {
+		t.Fatalf("upsert site report subscription: %v", err)
+	}
+
 	defaultTenantID, err := store.GetDefaultTenantID(ctx)
 	if err != nil {
 		t.Fatalf("get default tenant: %v", err)
@@ -433,6 +442,90 @@ func TestLeaveTeamReassignsActiveTenant(t *testing.T) {
 	}
 	if isMember {
 		t.Fatalf("expected user to be removed from custom tenant")
+	}
+
+	var siteMemberCount int
+	if err := store.DB().QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM site_members WHERE site_id = ? AND user_id = ?",
+		site.ID, userID,
+	).Scan(&siteMemberCount); err != nil {
+		t.Fatalf("count remaining site memberships: %v", err)
+	}
+	if siteMemberCount != 0 {
+		t.Fatalf("expected tenant-scoped site memberships to be removed, got %d", siteMemberCount)
+	}
+
+	var siteSubCount int
+	if err := store.DB().QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM site_report_subscriptions WHERE site_id = ? AND user_id = ?",
+		site.ID, userID,
+	).Scan(&siteSubCount); err != nil {
+		t.Fatalf("count remaining site report subscriptions: %v", err)
+	}
+	if siteSubCount != 0 {
+		t.Fatalf("expected tenant-scoped report subscriptions to be removed, got %d", siteSubCount)
+	}
+}
+
+func TestRemoveTeamMemberRemovesTenantScopedSiteAccessAndSubscriptions(t *testing.T) {
+	store := setupTenantStore(t)
+	ctx := context.Background()
+
+	ownerID, err := store.CreateUser(ctx, "remove-team-owner@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create owner user: %v", err)
+	}
+	memberID, err := store.CreateUser(ctx, "remove-team-member@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create member user: %v", err)
+	}
+
+	team, err := store.CreateTenant(ctx, ownerID, "Cleanup Team", "")
+	if err != nil {
+		t.Fatalf("create team: %v", err)
+	}
+	if err := store.AddTeamMember(ctx, team.ID, memberID, TenantRoleMember, ownerID); err != nil {
+		t.Fatalf("add member to team: %v", err)
+	}
+	if err := store.SetActiveTenantID(ctx, ownerID, team.ID); err != nil {
+		t.Fatalf("set active team: %v", err)
+	}
+
+	site, err := store.CreateSite(ctx, ownerID, "cleanup-team-site.test")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+	if err := store.AddSiteMember(ctx, site.ID, memberID, auth.SiteViewer, ownerID); err != nil {
+		t.Fatalf("add site member: %v", err)
+	}
+	if err := store.UpsertSiteReportSubscription(ctx, memberID, site.ID, api.ReportFrequencyWeekly, true); err != nil {
+		t.Fatalf("upsert site report subscription: %v", err)
+	}
+
+	if err := store.RemoveTeamMember(ctx, team.ID, memberID); err != nil {
+		t.Fatalf("remove team member: %v", err)
+	}
+
+	var siteMemberCount int
+	if err := store.DB().QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM site_members WHERE site_id = ? AND user_id = ?",
+		site.ID, memberID,
+	).Scan(&siteMemberCount); err != nil {
+		t.Fatalf("count remaining site memberships: %v", err)
+	}
+	if siteMemberCount != 0 {
+		t.Fatalf("expected tenant-scoped site memberships to be removed, got %d", siteMemberCount)
+	}
+
+	var siteSubCount int
+	if err := store.DB().QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM site_report_subscriptions WHERE site_id = ? AND user_id = ?",
+		site.ID, memberID,
+	).Scan(&siteSubCount); err != nil {
+		t.Fatalf("count remaining site report subscriptions: %v", err)
+	}
+	if siteSubCount != 0 {
+		t.Fatalf("expected tenant-scoped report subscriptions to be removed, got %d", siteSubCount)
 	}
 }
 

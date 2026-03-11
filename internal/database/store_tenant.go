@@ -48,6 +48,41 @@ type tenantRowQueryer interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
+func removeUserTenantScopedSiteAccessTx(ctx context.Context, tx *sql.Tx, tenantID, userID uuid.UUID) error {
+	defaultTenantID, err := getDefaultTenantID(ctx, tx)
+	if err != nil {
+		return fmt.Errorf("could not resolve default tenant: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM site_members
+		WHERE user_id = ?
+		  AND site_id IN (
+			SELECT s.id
+			FROM sites s
+			LEFT JOIN site_tenants st ON st.site_id = s.id
+			WHERE COALESCE(st.tenant_id, ?) = ?
+		  )
+	`, userID, defaultTenantID, tenantID); err != nil {
+		return fmt.Errorf("could not remove tenant-scoped site memberships: %w", err)
+	}
+
+	if _, err := tx.ExecContext(ctx, `
+		DELETE FROM site_report_subscriptions
+		WHERE user_id = ?
+		  AND site_id IN (
+			SELECT s.id
+			FROM sites s
+			LEFT JOIN site_tenants st ON st.site_id = s.id
+			WHERE COALESCE(st.tenant_id, ?) = ?
+		  )
+	`, userID, defaultTenantID, tenantID); err != nil {
+		return fmt.Errorf("could not remove tenant-scoped report subscriptions: %w", err)
+	}
+
+	return nil
+}
+
 func (s *Store) GetPrimaryTenantID(ctx context.Context, userID uuid.UUID) (uuid.UUID, error) {
 	return getPrimaryTenantID(ctx, s.db, userID)
 }
@@ -567,18 +602,25 @@ func (s *Store) AcceptTeamInvitesByEmail(ctx context.Context, email string, user
 }
 
 func (s *Store) RemoveTeamMember(ctx context.Context, tenantID, userID uuid.UUID) error {
-	result, err := s.db.ExecContext(ctx, "DELETE FROM tenant_members WHERE tenant_id = ? AND user_id = ?", tenantID, userID)
-	if err != nil {
-		return fmt.Errorf("could not remove tenant member: %w", err)
-	}
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("could not remove tenant member: %w", err)
-	}
-	if rowsAffected == 0 {
-		return fmt.Errorf("tenant member not found")
-	}
-	return nil
+	return s.Transact(ctx, func(tx *sql.Tx) error {
+		result, err := tx.ExecContext(ctx, "DELETE FROM tenant_members WHERE tenant_id = ? AND user_id = ?", tenantID, userID)
+		if err != nil {
+			return fmt.Errorf("could not remove tenant member: %w", err)
+		}
+		rowsAffected, err := result.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("could not remove tenant member: %w", err)
+		}
+		if rowsAffected == 0 {
+			return fmt.Errorf("tenant member not found")
+		}
+
+		if err := removeUserTenantScopedSiteAccessTx(ctx, tx, tenantID, userID); err != nil {
+			return err
+		}
+
+		return nil
+	})
 }
 
 func (s *Store) LeaveTeam(ctx context.Context, tenantID, userID uuid.UUID) (uuid.UUID, error) {
@@ -622,6 +664,10 @@ func (s *Store) LeaveTeam(ctx context.Context, tenantID, userID uuid.UUID) (uuid
 			tenantID, userID,
 		); err != nil {
 			return fmt.Errorf("could not remove tenant member: %w", err)
+		}
+
+		if err := removeUserTenantScopedSiteAccessTx(ctx, tx, tenantID, userID); err != nil {
+			return err
 		}
 
 		currentActiveTenantID, err := getActiveTenantID(ctx, tx, userID)

@@ -1032,7 +1032,9 @@
     "login": {
         "subtitle": "Connectez-vous a votre tableau de bord",
         "cloudSignupPrompt": "Nouveau sur HitKeep Cloud ?",
-        "cloudSignupAction": "Créer un compte",
+        "cloudSignupAction": "Créer un espace {{jurisdiction}}",
+        "cloudSignupAlternatePrompt": "Besoin d’une autre juridiction ?",
+        "cloudSignupAlternateAction": "Utiliser le cloud {{jurisdiction}}",
         "emailLabel": "Adresse e-mail",
         "emailPlaceholder": "you@example.com",
         "emailInvalid": "Veuillez entrer une adresse e-mail valide.",
@@ -1063,9 +1065,14 @@
     },
     "signup": {
         "title": "Créez votre espace cloud",
-        "subtitle": "Créez d'abord votre compte d'équipe, puis continuez vers Stripe si vous choisissez une offre payante.",
+        "subtitle": "Choisissez votre juridiction, créez votre espace de travail, puis continuez vers Stripe uniquement si vous sélectionnez une offre payante.",
         "jurisdictionLabel": "Juridiction",
         "jurisdictionDescription": "Cet espace restera rattaché à la frontière légale et à la région AWS sélectionnées.",
+        "jurisdictionRedirectHint": "Vous avez sélectionné {{jurisdiction}}. En continuant, nous vous redirigerons vers l’inscription régionale appropriée.",
+        "jurisdictions": {
+            "eu": "EU",
+            "us": "US"
+        },
         "givenNameLabel": "Prénom",
         "givenNamePlaceholder": "Ada",
         "lastNameLabel": "Nom",
@@ -1077,6 +1084,8 @@
         "submit": "Créer l'espace",
         "haveAccount": "Vous avez déjà un compte ?",
         "signInAction": "Se connecter",
+        "otherJurisdictionPrompt": "Besoin d’une autre juridiction ?",
+        "otherJurisdictionAction": "Utiliser l’inscription {{jurisdiction}}",
         "plans": {
             "free": {
                 "name": "Free",
@@ -1085,12 +1094,12 @@
             },
             "pro": {
                 "name": "Pro",
-                "price": "€24/mois",
+                "price": "€15/mois",
                 "description": "Plus de rétention et plus de marge pour une petite équipe."
             },
             "business": {
                 "name": "Business",
-                "price": "€89/mois",
+                "price": "€39/mois",
                 "description": "Plus d'échelle pour les agences, les équipes produit et un volume d'événements plus élevé."
             }
         },

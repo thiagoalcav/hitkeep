@@ -1032,7 +1032,9 @@
     "login": {
         "subtitle": "Sign in to your dashboard",
         "cloudSignupPrompt": "New to HitKeep Cloud?",
-        "cloudSignupAction": "Create account",
+        "cloudSignupAction": "Create {{jurisdiction}} workspace",
+        "cloudSignupAlternatePrompt": "Need a different legal boundary?",
+        "cloudSignupAlternateAction": "Use the {{jurisdiction}} cloud",
         "emailLabel": "Email address",
         "emailPlaceholder": "you@example.com",
         "emailInvalid": "Please enter a valid email address.",
@@ -1063,9 +1065,14 @@
     },
     "signup": {
         "title": "Create your cloud workspace",
-        "subtitle": "Set up your team account first, then continue to Stripe if you choose a paid plan.",
+        "subtitle": "Choose your jurisdiction, create your workspace, and only continue to Stripe if you pick a paid plan.",
         "jurisdictionLabel": "Jurisdiction",
         "jurisdictionDescription": "This workspace will stay pinned to the selected legal and AWS region boundary.",
+        "jurisdictionRedirectHint": "You selected {{jurisdiction}}. Continue and we will forward you to the correct regional signup.",
+        "jurisdictions": {
+            "eu": "EU",
+            "us": "US"
+        },
         "givenNameLabel": "Given name",
         "givenNamePlaceholder": "Ada",
         "lastNameLabel": "Last name",
@@ -1077,6 +1084,8 @@
         "submit": "Create workspace",
         "haveAccount": "Already have an account?",
         "signInAction": "Sign in",
+        "otherJurisdictionPrompt": "Need a different legal boundary?",
+        "otherJurisdictionAction": "Use the {{jurisdiction}} signup",
         "plans": {
             "free": {
                 "name": "Free",
@@ -1085,12 +1094,12 @@
             },
             "pro": {
                 "name": "Pro",
-                "price": "€24/mo",
+                "price": "€15/mo",
                 "description": "Longer retention and more room for a small team."
             },
             "business": {
                 "name": "Business",
-                "price": "€89/mo",
+                "price": "€39/mo",
                 "description": "More scale for agencies, product teams, and higher event volume."
             }
         },

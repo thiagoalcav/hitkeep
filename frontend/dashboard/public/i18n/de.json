@@ -1032,7 +1032,9 @@
     "login": {
         "subtitle": "Melden Sie sich an, um Ihr Dashboard zu öffnen.",
         "cloudSignupPrompt": "Neu bei HitKeep Cloud?",
-        "cloudSignupAction": "Konto erstellen",
+        "cloudSignupAction": "{{jurisdiction}}-Workspace erstellen",
+        "cloudSignupAlternatePrompt": "Andere rechtliche Grenze benötigt?",
+        "cloudSignupAlternateAction": "{{jurisdiction}}-Cloud verwenden",
         "emailLabel": "E-Mail-Adresse",
         "emailPlaceholder": "you@example.com",
         "emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
@@ -1063,9 +1065,14 @@
     },
     "signup": {
         "title": "Erstellen Sie Ihren Cloud-Workspace",
-        "subtitle": "Legen Sie zuerst Ihr Team-Konto an und fahren Sie dann bei einem bezahlten Plan mit Stripe fort.",
+        "subtitle": "Wählen Sie Ihre Jurisdiktion, erstellen Sie Ihren Workspace und fahren Sie nur bei einem bezahlten Plan mit Stripe fort.",
         "jurisdictionLabel": "Jurisdiktion",
         "jurisdictionDescription": "Dieser Workspace bleibt an die ausgewählte rechtliche Grenze und AWS-Region gebunden.",
+        "jurisdictionRedirectHint": "Sie haben {{jurisdiction}} gewählt. Beim Fortfahren leiten wir Sie zur passenden regionalen Registrierung weiter.",
+        "jurisdictions": {
+            "eu": "EU",
+            "us": "US"
+        },
         "givenNameLabel": "Vorname",
         "givenNamePlaceholder": "Ada",
         "lastNameLabel": "Nachname",
@@ -1077,6 +1084,8 @@
         "submit": "Workspace erstellen",
         "haveAccount": "Sie haben bereits ein Konto?",
         "signInAction": "Anmelden",
+        "otherJurisdictionPrompt": "Andere rechtliche Grenze benötigt?",
+        "otherJurisdictionAction": "{{jurisdiction}}-Registrierung verwenden",
         "plans": {
             "free": {
                 "name": "Free",
@@ -1085,12 +1094,12 @@
             },
             "pro": {
                 "name": "Pro",
-                "price": "€24/Monat",
+                "price": "€15/Monat",
                 "description": "Längere Aufbewahrung und mehr Spielraum für kleine Teams."
             },
             "business": {
                 "name": "Business",
-                "price": "€89/Monat",
+                "price": "€39/Monat",
                 "description": "Mehr Skalierung für Agenturen, Produktteams und höheres Event-Volumen."
             }
         },

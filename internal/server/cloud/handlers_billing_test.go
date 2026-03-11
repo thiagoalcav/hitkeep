@@ -358,7 +358,10 @@ func TestHandleSignupStartsStripeCheckoutForPaidPlan(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get billing account: %v", err)
 	}
-	if billingAccount.StripeCustomerID != "cus_test" || billingAccount.PlanCode != database.CloudPlanPro {
+	if billingAccount.StripeCustomerID != "cus_test" {
+		t.Fatalf("unexpected stripe customer id: %+v", billingAccount)
+	}
+	if billingAccount.PlanCode != database.CloudPlanFree || billingAccount.PlanName != "Free" || billingAccount.SubscriptionStatus != subscriptionStatusPending {
 		t.Fatalf("unexpected billing account: %+v", billingAccount)
 	}
 

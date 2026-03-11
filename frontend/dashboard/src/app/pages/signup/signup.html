@@ -20,8 +20,28 @@
                         <p class="hk-signup-section-eyebrow">{{ "signup.jurisdictionLabel" | transloco }}</p>
                         <p class="hk-signup-section-copy">{{ "signup.jurisdictionDescription" | transloco }}</p>
                     </div>
-                    <p-tag [value]="jurisdictionLabel()" severity="contrast"></p-tag>
+                    <div class="hk-signup-jurisdiction-actions" role="radiogroup" [attr.aria-label]="'signup.jurisdictionLabel' | transloco">
+                        @for (jurisdiction of jurisdictionOptions; track jurisdiction) {
+                        <button
+                            type="button"
+                            class="hk-signup-jurisdiction-option"
+                            [class.hk-signup-jurisdiction-option-selected]="selectedJurisdiction() === jurisdiction"
+                            [attr.aria-checked]="selectedJurisdiction() === jurisdiction"
+                            role="radio"
+                            (click)="selectJurisdiction(jurisdiction)"
+                        >
+                            {{ ("signup.jurisdictions." + jurisdiction.toLowerCase()) | transloco }}
+                        </button>
+                        }
+                    </div>
                 </div>
+
+                @if (selectedJurisdiction() !== currentJurisdiction()) {
+                <div class="hk-auth-alert" role="status" aria-live="polite">
+                    <i class="pi pi-arrow-right-arrow-left mt-0.5" aria-hidden="true"></i>
+                    <span class="text-sm font-medium"> {{ "signup.jurisdictionRedirectHint" | transloco : { jurisdiction: ("signup.jurisdictions." + selectedJurisdiction().toLowerCase()) | transloco } }} </span>
+                </div>
+                }
 
                 <div class="hk-signup-plan-grid" role="radiogroup" [attr.aria-label]="'signup.planLabel' | transloco">
                     @for (plan of planOptions; track plan.value) {
@@ -100,8 +120,7 @@
                         [toggleMask]="true"
                         class="w-full"
                         inputclass="w-full"
-                        [feedback]="true"
-                        [placeholder]="'common.passwordPlaceholder' | transloco"
+                        [feedback]="false"
                         [attr.aria-invalid]="signupForm.password().touched() && signupForm.password().invalid() ? true : null"
                         [attr.aria-describedby]="'signup-password-help'"
                     ></p-password>
@@ -119,6 +138,10 @@
             <p class="hk-auth-footer-text">
                 <span>{{ "signup.haveAccount" | transloco }}</span>
                 <a routerLink="/login" class="hk-auth-link">{{ "signup.signInAction" | transloco }}</a>
+            </p>
+            <p class="hk-auth-footer-text">
+                <span>{{ "signup.otherJurisdictionPrompt" | transloco }}</span>
+                <a [href]="jurisdictionHref(alternateJurisdiction())" class="hk-auth-link"> {{ "signup.otherJurisdictionAction" | transloco : { jurisdiction: ("signup.jurisdictions." + alternateJurisdiction().toLowerCase()) | transloco } }} </a>
             </p>
             <p class="hk-auth-footer-text">
                 <span aria-hidden="true">&copy;</span>

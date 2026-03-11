@@ -62,8 +62,7 @@
                         [toggleMask]="true"
                         class="w-full"
                         inputclass="w-full"
-                        [feedback]="true"
-                        [placeholder]="'common.passwordPlaceholder' | transloco"
+                        [feedback]="false"
                         [attr.aria-invalid]="setupForm.password().touched() && setupForm.password().invalid() ? true : null"
                         [attr.aria-describedby]="'setup-password-help'"
                     ></p-password>

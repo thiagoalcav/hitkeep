@@ -1032,7 +1032,9 @@
     "login": {
         "subtitle": "Accedi alla tua dashboard",
         "cloudSignupPrompt": "Nuovo su HitKeep Cloud?",
-        "cloudSignupAction": "Crea account",
+        "cloudSignupAction": "Crea workspace {{jurisdiction}}",
+        "cloudSignupAlternatePrompt": "Ti serve un’altra giurisdizione?",
+        "cloudSignupAlternateAction": "Usa il cloud {{jurisdiction}}",
         "emailLabel": "Indirizzo email",
         "emailPlaceholder": "you@example.com",
         "emailInvalid": "Inserisci un indirizzo email valido.",
@@ -1063,9 +1065,14 @@
     },
     "signup": {
         "title": "Crea il tuo workspace cloud",
-        "subtitle": "Crea prima l'account del team e poi continua con Stripe se scegli un piano a pagamento.",
+        "subtitle": "Scegli la tua giurisdizione, crea il workspace e continua con Stripe solo se selezioni un piano a pagamento.",
         "jurisdictionLabel": "Giurisdizione",
         "jurisdictionDescription": "Questo workspace resterà vincolato al confine legale e alla regione AWS selezionati.",
+        "jurisdictionRedirectHint": "Hai selezionato {{jurisdiction}}. Continuando ti inoltreremo alla registrazione regionale corretta.",
+        "jurisdictions": {
+            "eu": "EU",
+            "us": "US"
+        },
         "givenNameLabel": "Nome",
         "givenNamePlaceholder": "Ada",
         "lastNameLabel": "Cognome",
@@ -1077,6 +1084,8 @@
         "submit": "Crea workspace",
         "haveAccount": "Hai già un account?",
         "signInAction": "Accedi",
+        "otherJurisdictionPrompt": "Ti serve un’altra giurisdizione?",
+        "otherJurisdictionAction": "Usa la registrazione {{jurisdiction}}",
         "plans": {
             "free": {
                 "name": "Free",
@@ -1085,12 +1094,12 @@
             },
             "pro": {
                 "name": "Pro",
-                "price": "€24/mese",
+                "price": "€15/mese",
                 "description": "Più retention e più margine per un piccolo team."
             },
             "business": {
                 "name": "Business",
-                "price": "€89/mese",
+                "price": "€39/mese",
                 "description": "Più scala per agenzie, team di prodotto e volumi di eventi più alti."
             }
         },

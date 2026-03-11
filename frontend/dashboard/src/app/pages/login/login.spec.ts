@@ -135,4 +135,11 @@ describe("Login", () => {
 
         expect(authMock.verifyMfaRecoveryCode).toHaveBeenCalledWith("challenge-456", "ABCD-EFGH");
     });
+
+    it("builds region-aware signup URLs for hosted cloud", () => {
+        expect(component["currentJurisdiction"]()).toBe("EU");
+        expect(component["primarySignupUrl"]()).toBe("/signup");
+        expect(component["alternateJurisdiction"]()).toBe("US");
+        expect(component["alternateSignupUrl"]()).toBe("https://cloud.hitkeep.com/signup");
+    });
 });

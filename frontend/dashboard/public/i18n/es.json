@@ -1032,7 +1032,9 @@
     "login": {
         "subtitle": "Inicia sesión en tu panel",
         "cloudSignupPrompt": "¿Nuevo en HitKeep Cloud?",
-        "cloudSignupAction": "Crear cuenta",
+        "cloudSignupAction": "Crear espacio de trabajo en {{jurisdiction}}",
+        "cloudSignupAlternatePrompt": "¿Necesitas otra jurisdicción?",
+        "cloudSignupAlternateAction": "Usar la nube de {{jurisdiction}}",
         "emailLabel": "Correo electrónico",
         "emailPlaceholder": "you@example.com",
         "emailInvalid": "Ingresa una dirección de correo válida.",
@@ -1063,9 +1065,14 @@
     },
     "signup": {
         "title": "Crea tu espacio de trabajo en la nube",
-        "subtitle": "Primero crea tu cuenta de equipo y luego continúa con Stripe si eliges un plan de pago.",
+        "subtitle": "Elige tu jurisdicción, crea tu espacio de trabajo y continúa con Stripe solo si seleccionas un plan de pago.",
         "jurisdictionLabel": "Jurisdicción",
         "jurisdictionDescription": "Este espacio de trabajo permanecerá fijado al límite legal y a la región de AWS seleccionados.",
+        "jurisdictionRedirectHint": "Has seleccionado {{jurisdiction}}. Al continuar te enviaremos al registro regional correcto.",
+        "jurisdictions": {
+            "eu": "EU",
+            "us": "US"
+        },
         "givenNameLabel": "Nombre",
         "givenNamePlaceholder": "Ada",
         "lastNameLabel": "Apellido",
@@ -1077,6 +1084,8 @@
         "submit": "Crear espacio de trabajo",
         "haveAccount": "¿Ya tienes una cuenta?",
         "signInAction": "Iniciar sesión",
+        "otherJurisdictionPrompt": "¿Necesitas otra jurisdicción?",
+        "otherJurisdictionAction": "Usar el registro de {{jurisdiction}}",
         "plans": {
             "free": {
                 "name": "Free",
@@ -1085,12 +1094,12 @@
             },
             "pro": {
                 "name": "Pro",
-                "price": "€24/mes",
+                "price": "€15/mes",
                 "description": "Más retención y más margen para un equipo pequeño."
             },
             "business": {
                 "name": "Business",
-                "price": "€89/mes",
+                "price": "€39/mes",
                 "description": "Más escala para agencias, equipos de producto y mayor volumen de eventos."
             }
         },

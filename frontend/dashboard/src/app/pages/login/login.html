@@ -50,7 +50,6 @@
                         [feedback]="false"
                         class="w-full"
                         inputclass="w-full"
-                        [placeholder]="'login.passwordPlaceholder' | transloco"
                         [class.ng-invalid]="loginForm.password().touched() && loginForm.password().invalid()"
                         [class.ng-dirty]="loginForm.password().dirty()"
                     ></p-password>
@@ -139,7 +138,11 @@
             @if (showSignupLink()) {
             <p class="hk-auth-footer-text">
                 <span>{{ "login.cloudSignupPrompt" | transloco }}</span>
-                <a routerLink="/signup" class="hk-auth-link">{{ "login.cloudSignupAction" | transloco }}</a>
+                <a [href]="primarySignupUrl()" class="hk-auth-link"> {{ "login.cloudSignupAction" | transloco : { jurisdiction: ("signup.jurisdictions." + currentJurisdiction().toLowerCase()) | transloco } }} </a>
+            </p>
+            <p class="hk-auth-footer-text">
+                <span>{{ "login.cloudSignupAlternatePrompt" | transloco }}</span>
+                <a [href]="alternateSignupUrl()" class="hk-auth-link"> {{ "login.cloudSignupAlternateAction" | transloco : { jurisdiction: ("signup.jurisdictions." + alternateJurisdiction().toLowerCase()) | transloco } }} </a>
             </p>
             }
             <p class="hk-auth-footer-text">

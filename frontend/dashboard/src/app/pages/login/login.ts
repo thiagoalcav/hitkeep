@@ -32,6 +32,8 @@ type MfaFactor = "totp" | "passkey" | "recovery_code";
 })
 export class Login {
     private static readonly PASSKEY_DEVICE_HISTORY_KEY = "hitkeep.passkey.used_on_device";
+    private static readonly EU_SIGNUP_URL = "https://cloud.hitkeep.eu/signup";
+    private static readonly US_SIGNUP_URL = "https://cloud.hitkeep.com/signup";
     private destroyRef = inject(DestroyRef);
     private router = inject(Router);
     private route = inject(ActivatedRoute);
@@ -54,6 +56,10 @@ export class Login {
     protected readonly mfaHasRecoveryCode = computed(() => this.mfaFactors().includes("recovery_code"));
     protected readonly mfaHasPasskey = computed(() => this.mfaFactors().includes("passkey"));
     protected readonly showSignupLink = computed(() => Boolean(this.cloudStatus()?.hosted && this.cloudStatus()?.signup_enabled));
+    protected readonly currentJurisdiction = computed(() => this.normalizeJurisdiction(this.cloudStatus()?.jurisdiction) ?? this.inferJurisdictionFromHost());
+    protected readonly alternateJurisdiction = computed(() => (this.currentJurisdiction() === "EU" ? "US" : "EU"));
+    protected readonly primarySignupUrl = computed(() => this.signupUrlForJurisdiction(this.currentJurisdiction()));
+    protected readonly alternateSignupUrl = computed(() => this.signupUrlForJurisdiction(this.alternateJurisdiction()));
 
     private readonly loginModel = signal({
         email: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.email] }),
@@ -421,5 +427,29 @@ export class Login {
             binary += String.fromCharCode(byte);
         }
         return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    }
+
+    private signupUrlForJurisdiction(jurisdiction: "EU" | "US"): string {
+        if (typeof window !== "undefined" && this.inferJurisdictionFromHost(window.location.hostname) === jurisdiction) {
+            return "/signup";
+        }
+
+        return jurisdiction === "US" ? Login.US_SIGNUP_URL : Login.EU_SIGNUP_URL;
+    }
+
+    private inferJurisdictionFromHost(hostname?: string): "EU" | "US" {
+        const value = (hostname ?? (typeof window !== "undefined" ? window.location.hostname : "")).trim().toLowerCase();
+        if (value === "cloud.hitkeep.com" || value.endsWith(".hitkeep.com")) {
+            return "US";
+        }
+        return "EU";
+    }
+
+    private normalizeJurisdiction(value: string | null | undefined): "EU" | "US" | null {
+        const normalized = value?.trim().toUpperCase();
+        if (normalized === "EU" || normalized === "US") {
+            return normalized;
+        }
+        return null;
     }
 }

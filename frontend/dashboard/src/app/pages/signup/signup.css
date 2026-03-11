@@ -17,6 +17,40 @@
     background: radial-gradient(circle at top left, color-mix(in srgb, var(--p-primary-color) 10%, transparent), transparent 60%), color-mix(in srgb, var(--p-surface-card) 94%, white);
 }
 
+.hk-signup-jurisdiction-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.hk-signup-jurisdiction-option {
+    min-width: 4rem;
+    padding: 0.7rem 0.95rem;
+    border-radius: 999px;
+    border: 1px solid var(--p-surface-border);
+    background: color-mix(in srgb, var(--p-surface-card) 96%, white);
+    color: var(--p-text-color);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    transition:
+        border-color 0.18s ease,
+        background-color 0.18s ease,
+        color 0.18s ease,
+        box-shadow 0.18s ease;
+}
+
+.hk-signup-jurisdiction-option:hover {
+    border-color: color-mix(in srgb, var(--p-primary-color) 45%, var(--p-surface-border));
+}
+
+.hk-signup-jurisdiction-option-selected {
+    border-color: var(--p-primary-color);
+    background: color-mix(in srgb, var(--p-primary-color) 12%, var(--p-surface-card));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--p-primary-color) 30%, transparent);
+}
+
 .hk-signup-section-eyebrow {
     margin: 0 0 0.25rem;
     font-size: 0.75rem;

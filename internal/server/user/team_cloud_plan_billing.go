@@ -26,9 +26,11 @@ func resolveCloudBillingTeamPlan(ctx context.Context, store *database.Store, tea
 		return nil
 	}
 
+	code, name := effectiveCloudBillingPlan(account)
+
 	return &api.TeamPlan{
-		Code: strings.TrimSpace(account.PlanCode),
-		Name: strings.TrimSpace(account.PlanName),
+		Code: code,
+		Name: name,
 	}
 }
 
@@ -45,7 +47,9 @@ func resolveCloudBillingTeamEntitlements(ctx context.Context, store *database.St
 		return nil
 	}
 
-	switch strings.TrimSpace(account.PlanCode) {
+	code, _ := effectiveCloudBillingPlan(account)
+
+	switch code {
 	case database.CloudPlanBusiness:
 		return &api.TeamEntitlements{
 			MaxSitesPerTeam:     50,
@@ -75,5 +79,18 @@ func resolveCloudBillingTeamEntitlements(ctx context.Context, store *database.St
 		}
 	default:
 		return nil
+	}
+}
+
+func effectiveCloudBillingPlan(account *database.CloudBillingAccount) (string, string) {
+	if account == nil {
+		return "", ""
+	}
+
+	switch strings.TrimSpace(account.SubscriptionStatus) {
+	case "", database.CloudSubscriptionStatusFree, "pending_checkout", "canceled", database.CloudSubscriptionStatusChargebackLost:
+		return database.CloudPlanFree, "Free"
+	default:
+		return strings.TrimSpace(account.PlanCode), strings.TrimSpace(account.PlanName)
 	}
 }

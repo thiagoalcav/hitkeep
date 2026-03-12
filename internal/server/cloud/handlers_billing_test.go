@@ -979,6 +979,130 @@ func TestHandleCreateBillingPortalSession(t *testing.T) {
 	}
 }
 
+func TestHandleCreateBillingCheckoutSession(t *testing.T) {
+	h, store := setupCloudTestHandler(t)
+	defer store.Close()
+
+	account, err := store.CreateManagedCloudAccount(context.Background(), database.CreateManagedCloudAccountInput{
+		Email:          "upgrade@example.com",
+		HashedPassword: "hashed",
+		GivenName:      "Ada",
+		LastName:       "Lovelace",
+		TeamName:       "Upgrade Team",
+	})
+	if err != nil {
+		t.Fatalf("create managed account: %v", err)
+	}
+
+	if err := store.UpsertCloudBillingAccount(context.Background(), database.CloudBillingAccount{
+		TenantID:           account.TenantID,
+		PlanCode:           database.CloudPlanFree,
+		PlanName:           "Free",
+		SubscriptionStatus: database.CloudSubscriptionStatusFree,
+	}); err != nil {
+		t.Fatalf("upsert cloud billing account: %v", err)
+	}
+
+	body, err := json.Marshal(billingCheckoutSessionRequest{PlanCode: database.CloudPlanPro, Locale: "de-DE"})
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/cloud/billing/checkout", bytes.NewReader(body))
+	req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, account.UserID))
+	w := httptest.NewRecorder()
+
+	h.handleCreateBillingCheckoutSession().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var resp billingCheckoutSessionResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if resp.URL != "https://checkout.stripe.test/session" {
+		t.Fatalf("unexpected billing checkout url %q", resp.URL)
+	}
+
+	stripeClient, ok := h.stripe.(*fakeStripeClient)
+	if !ok {
+		t.Fatal("expected fake stripe client")
+	}
+	if stripeClient.lastCustomerInput == nil {
+		t.Fatal("expected stripe customer create input to be captured")
+	}
+	if stripeClient.lastCustomerInput.Email != "upgrade@example.com" {
+		t.Fatalf("expected customer email upgrade@example.com, got %q", stripeClient.lastCustomerInput.Email)
+	}
+	if stripeClient.lastCheckoutInput == nil {
+		t.Fatal("expected stripe checkout input to be captured")
+	}
+	if stripeClient.lastCheckoutInput.Locale != "de" {
+		t.Fatalf("expected checkout locale de, got %q", stripeClient.lastCheckoutInput.Locale)
+	}
+	if stripeClient.lastCheckoutInput.PlanCode != database.CloudPlanPro {
+		t.Fatalf("expected checkout plan %q, got %q", database.CloudPlanPro, stripeClient.lastCheckoutInput.PlanCode)
+	}
+
+	storedAccount, err := store.GetCloudBillingAccount(context.Background(), account.TenantID)
+	if err != nil {
+		t.Fatalf("get cloud billing account: %v", err)
+	}
+	if storedAccount.SubscriptionStatus != subscriptionStatusPending {
+		t.Fatalf("expected subscription status %q, got %q", subscriptionStatusPending, storedAccount.SubscriptionStatus)
+	}
+	if storedAccount.PlanCode != database.CloudPlanFree {
+		t.Fatalf("expected persisted plan code %q, got %q", database.CloudPlanFree, storedAccount.PlanCode)
+	}
+	if storedAccount.StripeCustomerID != "cus_test" {
+		t.Fatalf("expected persisted customer id cus_test, got %q", storedAccount.StripeCustomerID)
+	}
+	if storedAccount.StripePriceID != "price_pro" {
+		t.Fatalf("expected persisted price id price_pro, got %q", storedAccount.StripePriceID)
+	}
+}
+
+func TestHandleCreateBillingCheckoutSessionRejectsPaidTeams(t *testing.T) {
+	h, store := setupCloudTestHandler(t)
+	defer store.Close()
+
+	account, err := store.CreateManagedCloudAccount(context.Background(), database.CreateManagedCloudAccountInput{
+		Email:          "paid@example.com",
+		HashedPassword: "hashed",
+		TeamName:       "Paid Team",
+	})
+	if err != nil {
+		t.Fatalf("create managed account: %v", err)
+	}
+
+	if err := store.UpsertCloudBillingAccount(context.Background(), database.CloudBillingAccount{
+		TenantID:           account.TenantID,
+		PlanCode:           database.CloudPlanPro,
+		PlanName:           "Pro",
+		SubscriptionStatus: subscriptionStatusActive,
+		StripeCustomerID:   "cus_existing",
+	}); err != nil {
+		t.Fatalf("upsert cloud billing account: %v", err)
+	}
+
+	body, err := json.Marshal(billingCheckoutSessionRequest{PlanCode: database.CloudPlanBusiness})
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/cloud/billing/checkout", bytes.NewReader(body))
+	req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, account.UserID))
+	w := httptest.NewRecorder()
+
+	h.handleCreateBillingCheckoutSession().ServeHTTP(w, req)
+
+	if w.Code != http.StatusConflict {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusConflict, w.Code, w.Body.String())
+	}
+}
+
 func TestNormalizeStripeLocale(t *testing.T) {
 	tests := []struct {
 		name string

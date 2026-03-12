@@ -28,6 +28,11 @@ export interface BillingPortalSessionRequest {
     locale?: string;
 }
 
+export interface BillingCheckoutSessionRequest {
+    plan_code: "pro" | "business";
+    locale?: string;
+}
+
 @Injectable({ providedIn: "root" })
 export class CloudService {
     private readonly http = inject(HttpClient);
@@ -38,5 +43,9 @@ export class CloudService {
 
     createBillingPortalSession(payload: BillingPortalSessionRequest = {}): Observable<BillingPortalSessionResponse> {
         return this.http.post<BillingPortalSessionResponse>("/api/cloud/billing/portal", payload);
+    }
+
+    createBillingCheckoutSession(payload: BillingCheckoutSessionRequest): Observable<BillingPortalSessionResponse> {
+        return this.http.post<BillingPortalSessionResponse>("/api/cloud/billing/checkout", payload);
     }
 }

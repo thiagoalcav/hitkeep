@@ -29,6 +29,7 @@ export class TeamOverviewPage {
     protected readonly team = this.teamService.activeTeam;
     protected readonly systemStatus = signal<SystemStatus | null>(null);
     protected readonly portalPending = signal(false);
+    protected readonly checkoutPending = signal(false);
     protected readonly usageCards = computed(() => {
         const team = this.team();
         const cloud = this.systemStatus()?.cloud;
@@ -56,7 +57,8 @@ export class TeamOverviewPage {
         };
     });
     protected readonly showUsageSection = computed(() => this.usageCards().length > 0);
-    protected readonly canManageBilling = computed(() => this.cloudPlan() !== null && !this.portalPending());
+    protected readonly canManageBilling = computed(() => this.cloudPlan()?.plan.code !== "free" && !this.portalPending());
+    protected readonly canStartUpgrade = computed(() => this.cloudPlan()?.plan.code === "free" && !this.checkoutPending());
 
     constructor() {
         this.analyticsService
@@ -135,6 +137,26 @@ export class TeamOverviewPage {
                 },
                 error: () => {
                     this.portalPending.set(false);
+                }
+            });
+    }
+
+    protected startUpgradeCheckout(): void {
+        if (this.checkoutPending()) {
+            return;
+        }
+
+        this.checkoutPending.set(true);
+        this.cloudService
+            .createBillingCheckoutSession({ plan_code: "pro", locale: this.activeLanguage() })
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+                next: ({ url }) => {
+                    this.checkoutPending.set(false);
+                    this.redirectTo(url);
+                },
+                error: () => {
+                    this.checkoutPending.set(false);
                 }
             });
     }

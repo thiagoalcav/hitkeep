@@ -14,6 +14,7 @@ describe("TeamOverviewPage", () => {
     let fixture: ComponentFixture<TeamOverviewPage>;
     type TeamOverviewTestAccess = TeamOverviewPage & {
         openBillingPortal(): void;
+        startUpgradeCheckout(): void;
         redirectTo(url: string): void;
     };
     let systemStatusResponse: {
@@ -141,7 +142,8 @@ describe("TeamOverviewPage", () => {
                 {
                     provide: CloudService,
                     useValue: {
-                        createBillingPortalSession: vi.fn().mockReturnValue(of({ url: "https://billing.stripe.test/session" }))
+                        createBillingPortalSession: vi.fn().mockReturnValue(of({ url: "https://billing.stripe.test/session" })),
+                        createBillingCheckoutSession: vi.fn().mockReturnValue(of({ url: "https://checkout.stripe.test/session" }))
                     }
                 }
             ]
@@ -165,7 +167,6 @@ describe("TeamOverviewPage", () => {
         const text = fixture.nativeElement.textContent;
         expect(text).toContain("Cloud plan");
         expect(text).toContain("Managed cloud");
-        expect(text).toContain("Manage billing");
         expect(text).toContain("EU");
         expect(text).toContain("365 days");
         expect(text).toContain("Upgrade plan");
@@ -181,6 +182,17 @@ describe("TeamOverviewPage", () => {
 
         expect(cloudService.createBillingPortalSession).toHaveBeenCalledWith({ locale: "en" });
         expect(redirectSpy).toHaveBeenCalledWith("https://billing.stripe.test/session");
+    });
+
+    it("starts a checkout session when upgrading a free cloud team", () => {
+        const component = fixture.componentInstance as TeamOverviewTestAccess;
+        const cloudService = TestBed.inject(CloudService);
+        const redirectSpy = vi.spyOn(component, "redirectTo").mockImplementation(() => undefined);
+
+        component.startUpgradeCheckout();
+
+        expect(cloudService.createBillingCheckoutSession).toHaveBeenCalledWith({ plan_code: "pro", locale: "en" });
+        expect(redirectSpy).toHaveBeenCalledWith("https://checkout.stripe.test/session");
     });
 
     it("hides usage limits and cloud plan details for OSS instances", () => {

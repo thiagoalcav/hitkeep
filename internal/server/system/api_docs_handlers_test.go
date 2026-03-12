@@ -136,6 +136,10 @@ func TestOpenAPISpecV1IncludesCloudSignupPaths(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected /api/cloud/billing/portal path to exist")
 	}
+	checkoutPath, ok := paths["/api/cloud/billing/checkout"]
+	if !ok {
+		t.Fatalf("expected /api/cloud/billing/checkout path to exist")
+	}
 	webhookPath, ok := paths["/api/cloud/webhooks/stripe"]
 	if !ok {
 		t.Fatalf("expected /api/cloud/webhooks/stripe path to exist")
@@ -143,6 +147,7 @@ func TestOpenAPISpecV1IncludesCloudSignupPaths(t *testing.T) {
 
 	assertCloudOperation(t, requireMap(t, signupPath.(map[string]any), "post"))
 	assertCloudOperation(t, requireMap(t, portalPath.(map[string]any), "post"))
+	assertCloudOperation(t, requireMap(t, checkoutPath.(map[string]any), "post"))
 	assertCloudOperation(t, requireMap(t, webhookPath.(map[string]any), "post"))
 }
 

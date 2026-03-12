@@ -889,6 +889,31 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"502": errResp("Unable to start billing portal"),
 					}),
 			},
+			"/api/cloud/billing/checkout": map[string]any{
+				"post": cloudOp("Create billing checkout session", "Creates a Stripe Checkout session to upgrade the authenticated hosted cloud team to a paid plan.", secCookie(), nil,
+					jsonBody(map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"plan_code": map[string]any{"type": "string", "enum": []string{"pro", "business"}},
+							"locale":    map[string]any{"type": "string"},
+						},
+						"required": []string{"plan_code"},
+					}),
+					map[string]any{
+						"200": jsonSchemaResp("Billing checkout session", map[string]any{
+							"type": "object",
+							"properties": map[string]any{
+								"url": map[string]any{"type": "string"},
+							},
+							"required": []string{"url"},
+						}),
+						"400": errResp("Invalid request"),
+						"401": errResp("Unauthorized"),
+						"404": errResp("Cloud billing account not found"),
+						"409": errResp("Use billing portal to manage an existing paid plan"),
+						"502": errResp("Unable to start checkout"),
+					}),
+			},
 			"/api/cloud/webhooks/stripe": map[string]any{
 				"post": cloudOp("Stripe webhook", "Processes Stripe billing lifecycle events for managed cloud subscriptions.", nil, nil, nil, map[string]any{
 					"200": desc("Webhook processed"),

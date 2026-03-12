@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -136,7 +137,12 @@ func (h *handler) handlePasskeyLoginFinish() http.HandlerFunc {
 				return
 			}
 
-			user, err := h.loadPasskeyUser(r.Context(), challenge.UserID)
+			user, err := h.loadPasskeyUserForAssertion(
+				r.Context(),
+				challenge.UserID,
+				parsedCredential.RawID,
+				parsedCredential.Response.AuthenticatorData.Flags,
+			)
 			if err != nil {
 				slog.Error("Failed to load passkey user for MFA login", "error", err, "user_id", challenge.UserID)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -155,7 +161,11 @@ func (h *handler) handlePasskeyLoginFinish() http.HandlerFunc {
 			var validatedUser webauthnlib.User
 			validatedUser, validatedCredential, err = webAuthn.ValidatePasskeyLogin(
 				func(rawID, userHandle []byte) (webauthnlib.User, error) {
-					return h.loadPasskeyUserByHandle(r.Context(), userHandle)
+					userID, err := appsecurity.ParseUserHandle(userHandle)
+					if err != nil {
+						return nil, err
+					}
+					return h.loadPasskeyUserForAssertion(r.Context(), userID, rawID, parsedCredential.Response.AuthenticatorData.Flags)
 				},
 				*challenge.Session,
 				parsedCredential,
@@ -215,12 +225,43 @@ func (h *handler) loadPasskeyUser(ctx context.Context, userID uuid.UUID) (*appse
 	return appsecurity.NewWebAuthnUser(user, credentials), nil
 }
 
-func (h *handler) loadPasskeyUserByHandle(ctx context.Context, userHandle []byte) (webauthnlib.User, error) {
-	userID, err := appsecurity.ParseUserHandle(userHandle)
+func (h *handler) loadPasskeyUserForAssertion(
+	ctx context.Context,
+	userID uuid.UUID,
+	rawCredentialID []byte,
+	flags protocol.AuthenticatorFlags,
+) (*appsecurity.WebAuthnUser, error) {
+	user, err := h.loadPasskeyUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	return h.loadPasskeyUser(ctx, userID)
+
+	user.Credentials = normalizeLegacyCredentialFlags(user.Credentials, rawCredentialID, flags)
+
+	return user, nil
+}
+
+func normalizeLegacyCredentialFlags(
+	credentials []webauthnlib.Credential,
+	rawCredentialID []byte,
+	flags protocol.AuthenticatorFlags,
+) []webauthnlib.Credential {
+	if len(credentials) == 0 {
+		return credentials
+	}
+
+	normalized := append([]webauthnlib.Credential(nil), credentials...)
+	for i, credential := range normalized {
+		if !bytes.Equal(credential.ID, rawCredentialID) || strings.TrimSpace(credential.AttestationType) != "" {
+			continue
+		}
+
+		normalized[i].Flags = webauthnlib.NewCredentialFlags(flags)
+		normalized[i].AttestationType = "none"
+		break
+	}
+
+	return normalized
 }
 
 func (h *handler) persistValidatedPasskey(ctx context.Context, credential webauthnlib.Credential) error {

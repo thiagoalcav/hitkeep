@@ -131,12 +131,25 @@ func (f *PasskeyFixture) RegistrationResponse(challenge protocol.URLEncodedBase6
 }
 
 func (f *PasskeyFixture) AssertionResponse(challenge protocol.URLEncodedBase64, origin, rpID string, userHandle []byte, signCount uint32, userVerified bool) (protocol.CredentialAssertionResponse, error) {
+	return f.AssertionResponseWithFlags(challenge, origin, rpID, userHandle, signCount, userVerified, false, false)
+}
+
+func (f *PasskeyFixture) AssertionResponseWithFlags(
+	challenge protocol.URLEncodedBase64,
+	origin string,
+	rpID string,
+	userHandle []byte,
+	signCount uint32,
+	userVerified bool,
+	backupEligible bool,
+	backupState bool,
+) (protocol.CredentialAssertionResponse, error) {
 	clientDataJSON, err := marshalClientData("webauthn.get", challenge.String(), origin)
 	if err != nil {
 		return protocol.CredentialAssertionResponse{}, err
 	}
 
-	authData := makeAssertionAuthData(rpID, signCount, userVerified)
+	authData := makeAssertionAuthData(rpID, signCount, userVerified, backupEligible, backupState)
 	clientDataHash := sha256.Sum256(clientDataJSON)
 	sigData := append(append([]byte{}, authData...), clientDataHash[:]...)
 	digest := sha256.Sum256(sigData)
@@ -205,12 +218,18 @@ func makeCredentialAuthData(rpID string, credentialID, credentialPublicKey []byt
 	return authData, nil
 }
 
-func makeAssertionAuthData(rpID string, signCount uint32, userVerified bool) []byte {
+func makeAssertionAuthData(rpID string, signCount uint32, userVerified bool, backupEligible bool, backupState bool) []byte {
 	rpIDHash := sha256.Sum256([]byte(rpID))
 
 	flags := byte(protocol.FlagUserPresent)
 	if userVerified {
 		flags |= byte(protocol.FlagUserVerified)
+	}
+	if backupEligible {
+		flags |= byte(protocol.FlagBackupEligible)
+	}
+	if backupState {
+		flags |= byte(protocol.FlagBackupState)
 	}
 
 	authData := make([]byte, 0, 37)

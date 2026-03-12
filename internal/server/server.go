@@ -222,7 +222,7 @@ func (s *Server) spaHandler(publicFS fs.FS) http.HandlerFunc {
 		// 4. Intelligent Caching for Static Assets
 		// Angular/Webpack build artifacts contain hashes (e.g., main.7a2b9c.js).
 		// We can tell browsers to cache these forever.
-		if isHashedFile(path) {
+		if isImmutableAsset(path) {
 			w.Header().Set("Cache-Control", cacheControlImmutable)
 		} else {
 			// Mutable assets (favicon.ico, manifest.json) must check ETag/Last-Modified
@@ -256,8 +256,12 @@ func (s *Server) serveScalarIndex(w http.ResponseWriter) {
 	_, _ = w.Write(s.scalarIndex)
 }
 
-// isHashedFile uses heuristics to determine if a file is an immutable build artifact.
-func isHashedFile(path string) bool {
+// isImmutableAsset uses heuristics to determine if a file is an immutable build artifact.
+func isImmutableAsset(path string) bool {
+	if strings.HasPrefix(path, "flags/") && strings.HasSuffix(path, ".svg") {
+		return true
+	}
+
 	return strings.HasSuffix(path, ".js") ||
 		strings.HasSuffix(path, ".css") ||
 		strings.HasSuffix(path, ".woff2") ||

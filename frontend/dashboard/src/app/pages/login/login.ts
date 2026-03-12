@@ -42,6 +42,8 @@ export class Login {
     private analytics = inject(AnalyticsService);
     private preferences = inject(UserPreferencesService);
     private conditionalPasskeyAbortController: AbortController | null = null;
+    private standalonePasskeyStartRequest: Promise<PasskeyLoginStartResponse> | null = null;
+    private standalonePasskeyStartResponse: PasskeyLoginStartResponse | null = null;
     private hasAttemptedConditionalPasskey = false;
     protected isLoading = signal(false);
     protected isPasskeyLoading = signal(false);
@@ -151,7 +153,7 @@ export class Login {
             return;
         }
 
-        this.abortConditionalPasskeyPrompt();
+        this.abortConditionalPasskeyPrompt(false);
         this.isPasskeyLoading.set(true);
         this.errorMessage.set(null);
 
@@ -161,7 +163,7 @@ export class Login {
             let options: PasskeyLoginStartResponse["publicKey"] | null = this.mfaPasskeyOptions();
 
             if (!isMfaPasskey) {
-                const start = await firstValueFrom(this.auth.startPasskeyLogin());
+                const start = await this.getStandalonePasskeyStart();
                 challengeToken = start.challenge_token;
                 options = start.publicKey;
             }
@@ -181,10 +183,16 @@ export class Login {
 
             const payload = this.toPasskeyFinishPayload(credential, challengeToken, this.loginForm.rememberMe().value());
             await firstValueFrom(this.auth.finishPasskeyLogin(payload));
+            if (!isMfaPasskey) {
+                this.clearStandalonePasskeyStart(challengeToken);
+            }
             this.markPasskeyUsedOnDevice();
             this.clearMfaState();
             this.redirectAfterLogin();
         } catch (err) {
+            if (!this.isMfaRequired()) {
+                this.clearStandalonePasskeyStart();
+            }
             if ((err as { status?: number })?.status === 401 || (err as { status?: number })?.status === 403) {
                 this.errorMessage.set("login.errors.passkeyFailed");
             } else {
@@ -307,7 +315,7 @@ export class Login {
         const abortSignal = this.conditionalPasskeyAbortController.signal;
 
         try {
-            const start = await firstValueFrom(this.auth.startPasskeyLogin());
+            const start = await this.getStandalonePasskeyStart();
             if (abortSignal.aborted) {
                 return;
             }
@@ -328,6 +336,7 @@ export class Login {
 
             const payload = this.toPasskeyFinishPayload(credential, start.challenge_token, this.loginForm.rememberMe().value());
             await firstValueFrom(this.auth.finishPasskeyLogin(payload));
+            this.clearStandalonePasskeyStart(start.challenge_token);
             this.markPasskeyUsedOnDevice();
             this.clearMfaState();
             this.redirectAfterLogin();
@@ -335,6 +344,7 @@ export class Login {
             if (this.isAbortError(err) || this.isNotAllowedError(err)) {
                 return;
             }
+            this.clearStandalonePasskeyStart();
             // Keep conditional mediation silent on unexpected failures.
             console.warn("Conditional passkey mediation failed", err);
         } finally {
@@ -374,10 +384,13 @@ export class Login {
         }
     }
 
-    private abortConditionalPasskeyPrompt(): void {
+    private abortConditionalPasskeyPrompt(clearStandaloneStart = true): void {
         if (this.conditionalPasskeyAbortController) {
             this.conditionalPasskeyAbortController.abort();
             this.conditionalPasskeyAbortController = null;
+        }
+        if (clearStandaloneStart) {
+            this.clearStandalonePasskeyStart();
         }
     }
 
@@ -404,6 +417,33 @@ export class Login {
             credential: serialized,
             remember_me: rememberMe
         };
+    }
+
+    private getStandalonePasskeyStart(): Promise<PasskeyLoginStartResponse> {
+        if (this.standalonePasskeyStartResponse) {
+            return Promise.resolve(this.standalonePasskeyStartResponse);
+        }
+
+        if (this.standalonePasskeyStartRequest) {
+            return this.standalonePasskeyStartRequest;
+        }
+
+        this.standalonePasskeyStartRequest = firstValueFrom(this.auth.startPasskeyLogin())
+            .then((start) => {
+                this.standalonePasskeyStartResponse = start;
+                return start;
+            })
+            .finally(() => {
+                this.standalonePasskeyStartRequest = null;
+            });
+
+        return this.standalonePasskeyStartRequest;
+    }
+
+    private clearStandalonePasskeyStart(challengeToken?: string): void {
+        if (!challengeToken || this.standalonePasskeyStartResponse?.challenge_token === challengeToken) {
+            this.standalonePasskeyStartResponse = null;
+        }
     }
 
     private signupUrlForJurisdiction(jurisdiction: "EU" | "US"): string {

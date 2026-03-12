@@ -371,6 +371,63 @@ func TestHandlePasskeyLogin(t *testing.T) {
 	}
 }
 
+func TestHandlePasskeyLoginWithLegacyStoredCredential(t *testing.T) {
+	h, store := setupAuthTestEnv(t)
+	defer store.Close()
+
+	hashed, err := HashPassword("password123")
+	if err != nil {
+		t.Fatalf("failed to hash password: %v", err)
+	}
+	userID, err := store.CreateUser(context.Background(), "legacy-passkey@example.com", hashed)
+	if err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	fixture, err := testutil.NewPasskeyFixture()
+	if err != nil {
+		t.Fatalf("failed to create passkey fixture: %v", err)
+	}
+
+	legacyPublicKey, err := fixture.LegacyPublicKey()
+	if err != nil {
+		t.Fatalf("failed to encode legacy public key: %v", err)
+	}
+
+	if _, err := store.CreateUserPasskey(context.Background(), userID, "Legacy Passkey", fixture.CredentialID(), legacyPublicKey, nil); err != nil {
+		t.Fatalf("failed to create legacy user passkey: %v", err)
+	}
+
+	startReq := httptest.NewRequest(http.MethodPost, "/api/auth/passkey/login/start", bytes.NewReader([]byte("{}")))
+	startW := httptest.NewRecorder()
+	h.handlePasskeyLoginStart().ServeHTTP(startW, startReq)
+	if startW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, startW.Code)
+	}
+
+	var startResp passkeyLoginStartResponse
+	if err := json.NewDecoder(startW.Body).Decode(&startResp); err != nil {
+		t.Fatalf("failed to decode passkey start response: %v", err)
+	}
+
+	credential, err := fixture.AssertionResponse(startResp.PublicKey.Challenge, "http://localhost:8080", "localhost", userID[:], 1, true)
+	if err != nil {
+		t.Fatalf("failed to create passkey assertion: %v", err)
+	}
+
+	finishBody, _ := json.Marshal(map[string]any{
+		"challenge_token": startResp.ChallengeToken,
+		"credential":      credential,
+		"remember_me":     false,
+	})
+	finishReq := httptest.NewRequest(http.MethodPost, "/api/auth/passkey/login/finish", bytes.NewReader(finishBody))
+	finishW := httptest.NewRecorder()
+	h.handlePasskeyLoginFinish().ServeHTTP(finishW, finishReq)
+	if finishW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, finishW.Code, finishW.Body.String())
+	}
+}
+
 func TestHandlePasskeyLoginRejectsMissingUserVerification(t *testing.T) {
 	h, store := setupAuthTestEnv(t)
 	defer store.Close()

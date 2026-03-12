@@ -26,8 +26,7 @@ func (h *handler) loadMFAChallenge(w http.ResponseWriter, r *http.Request, chall
 	}
 
 	if h.ctx.AuthState == nil {
-		slog.Error("MFA auth state cache is not configured", "challenge_id", challengeID)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
 		return database.LoginChallenge{}, false
 	}
 	challenge, found := h.ctx.AuthState.GetPasskeyLoginChallenge(challengeID)

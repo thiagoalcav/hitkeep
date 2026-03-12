@@ -5,6 +5,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -82,6 +83,14 @@ func (f *PasskeyFixture) Credential() webauthnlib.Credential {
 
 func (f *PasskeyFixture) CredentialID() string {
 	return base64.RawURLEncoding.EncodeToString(f.credential.ID)
+}
+
+func (f *PasskeyFixture) LegacyPublicKey() (string, error) {
+	publicKeyDER, err := x509.MarshalPKIXPublicKey(&f.privateKey.PublicKey)
+	if err != nil {
+		return "", fmt.Errorf("marshal legacy passkey public key: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(publicKeyDER), nil
 }
 
 func (f *PasskeyFixture) RegistrationResponse(challenge protocol.URLEncodedBase64, origin, rpID string) (protocol.CredentialCreationResponse, error) {

@@ -2,8 +2,12 @@ package database
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/rsa"
+	"crypto/x509"
 	"database/sql"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -11,6 +15,8 @@ import (
 	"time"
 
 	"github.com/go-webauthn/webauthn/protocol"
+	"github.com/go-webauthn/webauthn/protocol/webauthncbor"
+	"github.com/go-webauthn/webauthn/protocol/webauthncose"
 	webauthnlib "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 
@@ -492,6 +498,12 @@ func parseStoredPasskeyCredential(credentialID string, publicKey string, credent
 		return webauthnlib.Credential{}, fmt.Errorf("could not decode legacy passkey public key: %w", err)
 	}
 
+	// Legacy passkeys stored a PKIX/DER public key instead of the WebAuthn COSE key.
+	// Convert those records on read so existing credentials continue to validate.
+	if cosePublicKey, err := convertLegacyPublicKeyToCOSE(rawPublicKey); err == nil {
+		rawPublicKey = cosePublicKey
+	}
+
 	return webauthnlib.Credential{
 		ID:        rawCredentialID,
 		PublicKey: rawPublicKey,
@@ -506,4 +518,55 @@ func parseStoredPasskeyCredential(credentialID string, publicKey string, credent
 		},
 		Transport: []protocol.AuthenticatorTransport{},
 	}, nil
+}
+
+func convertLegacyPublicKeyToCOSE(rawPublicKey []byte) ([]byte, error) {
+	publicKey, err := x509.ParsePKIXPublicKey(rawPublicKey)
+	if err != nil {
+		return nil, err
+	}
+
+	switch key := publicKey.(type) {
+	case *ecdsa.PublicKey:
+		publicKeyBytes, err := key.Bytes()
+		if err != nil {
+			return nil, fmt.Errorf("encode ecdsa public key: %w", err)
+		}
+		if len(publicKeyBytes) != 65 || publicKeyBytes[0] != 0x04 {
+			return nil, fmt.Errorf("unexpected ecdsa public key encoding length: %d", len(publicKeyBytes))
+		}
+		return webauthncbor.Marshal(webauthncose.EC2PublicKeyData{
+			PublicKeyData: webauthncose.PublicKeyData{
+				KeyType:   int64(webauthncose.EllipticKey),
+				Algorithm: int64(webauthncose.AlgES256),
+			},
+			Curve:  int64(webauthncose.P256),
+			XCoord: append([]byte(nil), publicKeyBytes[1:33]...),
+			YCoord: append([]byte(nil), publicKeyBytes[33:65]...),
+		})
+	case *rsa.PublicKey:
+		return webauthncbor.Marshal(webauthncose.RSAPublicKeyData{
+			PublicKeyData: webauthncose.PublicKeyData{
+				KeyType:   int64(webauthncose.RSAKey),
+				Algorithm: int64(webauthncose.AlgRS256),
+			},
+			Modulus:  append([]byte(nil), key.N.Bytes()...),
+			Exponent: encodeRSAPublicExponent(key.E),
+		})
+	default:
+		return nil, fmt.Errorf("unsupported legacy passkey public key type %T", publicKey)
+	}
+}
+
+func encodeRSAPublicExponent(exponent int) []byte {
+	if exponent <= 0 {
+		return nil
+	}
+
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, uint64(exponent))
+	for len(buf) > 1 && buf[0] == 0 {
+		buf = buf[1:]
+	}
+	return append([]byte(nil), buf...)
 }

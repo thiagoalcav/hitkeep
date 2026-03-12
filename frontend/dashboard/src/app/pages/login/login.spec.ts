@@ -152,4 +152,24 @@ describe("Login", () => {
         expect(component["alternateJurisdiction"]()).toBe("US");
         expect(component["alternateSignupUrl"]()).toBe("https://cloud.hitkeep.com/signup");
     });
+
+    it("reuses a single passkey start request for concurrent standalone login attempts", async () => {
+        authMock.startPasskeyLogin.mockReturnValueOnce(
+            of({
+                challenge_token: "challenge-789",
+                publicKey: {
+                    challenge: "challenge-bytes",
+                    rpId: "analytics.example.com",
+                    timeout: 300000,
+                    userVerification: "required" as UserVerificationRequirement
+                }
+            })
+        );
+
+        const [first, second] = await Promise.all([component["getStandalonePasskeyStart"](), component["getStandalonePasskeyStart"]()]);
+
+        expect(authMock.startPasskeyLogin).toHaveBeenCalledTimes(1);
+        expect(first.challenge_token).toBe("challenge-789");
+        expect(second.challenge_token).toBe("challenge-789");
+    });
 });

@@ -262,8 +262,7 @@ func (h *handler) handleLogin() http.HandlerFunc {
 			}
 
 			if h.ctx.AuthState == nil {
-				slog.Error("MFA auth state cache is not configured", "user_id", user.ID)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
 				return
 			}
 			challengeID := h.ctx.AuthState.CreatePasskeyLoginChallenge(challenge, database.CreateLoginChallengeInput{

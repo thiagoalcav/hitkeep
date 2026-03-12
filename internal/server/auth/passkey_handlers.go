@@ -60,8 +60,7 @@ func (h *handler) handlePasskeyLoginStart() http.HandlerFunc {
 		}
 
 		if h.ctx.AuthState == nil {
-			slog.Error("Passkey auth state cache is not configured")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
 			return
 		}
 		challengeID := h.ctx.AuthState.CreatePasskeyLoginChallenge(session.Challenge, database.CreateLoginChallengeInput{
@@ -100,8 +99,7 @@ func (h *handler) handlePasskeyLoginFinish() http.HandlerFunc {
 		}
 
 		if h.ctx.AuthState == nil {
-			slog.Error("Passkey auth state cache is not configured")
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
 			return
 		}
 		challenge, found := h.ctx.AuthState.GetPasskeyLoginChallenge(challengeID)

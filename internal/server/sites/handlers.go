@@ -1041,7 +1041,9 @@ func (h *handler) handleGetFavicon() http.HandlerFunc {
 
 		proxy := &httputil.ReverseProxy{
 			Rewrite: func(proxyReq *httputil.ProxyRequest) {
-				proxyReq.SetURL(target)
+				rewrittenURL := *target
+				proxyReq.Out.URL = &rewrittenURL
+				proxyReq.Out.Host = ""
 				proxyReq.Out.Method = http.MethodGet
 				proxyReq.Out.Body = nil
 				proxyReq.Out.ContentLength = 0

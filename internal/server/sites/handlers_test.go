@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -72,6 +73,50 @@ func setupFileBackedTransferEnv(t *testing.T) (*handler, *database.Store, *datab
 	}
 
 	return &handler{ctx: ctx}, store, tenantStores, userID
+}
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (fn roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return fn(req)
+}
+
+func TestHandleGetFaviconUsesDuckDuckGoIconPath(t *testing.T) {
+	h, store, _ := setupTestEnv(t)
+	defer store.Close()
+
+	originalTransport := faviconProxyTransport
+	defer func() {
+		faviconProxyTransport = originalTransport
+	}()
+
+	var capturedPath string
+	var capturedHost string
+	faviconProxyTransport = roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		capturedPath = req.URL.Path
+		capturedHost = req.URL.Host
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader("ok")),
+		}, nil
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/api/favicon/example.com", nil)
+	req.SetPathValue("domain", "example.com")
+	w := httptest.NewRecorder()
+
+	h.handleGetFavicon().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d", http.StatusOK, w.Code)
+	}
+	if capturedHost != "icons.duckduckgo.com" {
+		t.Fatalf("expected upstream host %q, got %q", "icons.duckduckgo.com", capturedHost)
+	}
+	if capturedPath != "/ip3/example.com.ico" {
+		t.Fatalf("expected upstream path %q, got %q", "/ip3/example.com.ico", capturedPath)
+	}
 }
 
 func TestHandleCreateSite(t *testing.T) {

@@ -48,17 +48,17 @@
         "@jsverse/transloco": "^8.2.1",
         "@jsverse/transloco-optimize": "^8.2.1",
         "@types/jasmine": "~6.0.0",
-        "@vitest/browser-playwright": "^4.0.18",
+        "@vitest/browser-playwright": "^4.1.0",
         "angular-eslint": "21.3.0",
-        "baseline-browser-mapping": "^2.10.0",
+        "baseline-browser-mapping": "^2.10.7",
         "eslint": "^10.0.3",
         "jasmine-core": "~6.1.0",
         "jsdom": "^28.1.0",
-        "oxfmt": "^0.38.0",
+        "oxfmt": "^0.40.0",
         "postcss": "^8.5.8",
         "typescript": "~5.9.3",
         "typescript-eslint": "8.57.0",
-        "vitest": "^4.0.18"
+        "vitest": "^4.1.0"
     },
     "engines": {
         "node": "24"

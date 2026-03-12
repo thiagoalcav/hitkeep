@@ -1,7 +1,7 @@
 package config
 
 import (
-	"net"
+	"net/netip"
 	"testing"
 )
 
@@ -124,7 +124,7 @@ func TestTrustedProxiesDefaultIsWildcard(t *testing.T) {
 	if len(conf.GetTrustedProxyNetworks()) == 0 {
 		t.Fatalf("expected trust-all proxy networks to be loaded by default")
 	}
-	if !conf.IsTrustedProxy(net.ParseIP("203.0.113.10")) {
+	if !conf.IsTrustedProxy(netip.MustParseAddr("203.0.113.10")) {
 		t.Fatalf("expected default trusted proxies to trust public ipv4")
 	}
 }
@@ -135,10 +135,10 @@ func TestParseTrustedProxiesWildcard(t *testing.T) {
 		t.Fatalf("expected wildcard to parse into trust-all proxy networks")
 	}
 
-	if !isIPInNetworksForTest(net.ParseIP("198.51.100.20"), networks) {
+	if !isIPInNetworksForTest(netip.MustParseAddr("198.51.100.20"), networks) {
 		t.Fatalf("expected wildcard trusted proxies to include public ipv4")
 	}
-	if !isIPInNetworksForTest(net.ParseIP("2001:db8::1"), networks) {
+	if !isIPInNetworksForTest(netip.MustParseAddr("2001:db8::1"), networks) {
 		t.Fatalf("expected wildcard trusted proxies to include ipv6")
 	}
 }
@@ -250,9 +250,9 @@ func TestLoadBackupConfigFromEnv(t *testing.T) {
 	}
 }
 
-func isIPInNetworksForTest(ip net.IP, networks []*net.IPNet) bool {
+func isIPInNetworksForTest(ip netip.Addr, networks []netip.Prefix) bool {
 	for _, network := range networks {
-		if network.Contains(ip) {
+		if network.Contains(ip.Unmap()) {
 			return true
 		}
 	}

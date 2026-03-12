@@ -6,7 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
-	"net"
+	"net/netip"
 	"os"
 	"strconv"
 	"strings"
@@ -81,22 +81,22 @@ type Config struct {
 	CloudCheckoutSuccessURL     string
 	CloudCheckoutCancelURL      string
 	TrustedProxies              string
-	trustedProxyNets            []*net.IPNet
+	trustedProxyNets            []netip.Prefix
 }
 
 // GetTrustedProxyNetworks returns the parsed trusted proxy networks.
-func (c *Config) GetTrustedProxyNetworks() []*net.IPNet {
+func (c *Config) GetTrustedProxyNetworks() []netip.Prefix {
 	return c.trustedProxyNets
 }
 
 // IsTrustedProxy checks if an IP is in the trusted proxy list.
-func (c *Config) IsTrustedProxy(ip net.IP) bool {
+func (c *Config) IsTrustedProxy(ip netip.Addr) bool {
 	if len(c.trustedProxyNets) == 0 {
 		return false
 	}
 
 	for _, network := range c.trustedProxyNets {
-		if network.Contains(ip) {
+		if network.Contains(ip.Unmap()) {
 			return true
 		}
 	}
@@ -293,13 +293,13 @@ func load(args []string, getEnv func(string, string) string) *Config {
 
 // parseTrustedProxies parses a comma-separated list of CIDR ranges.
 // The wildcard "*" expands to both IPv4 and IPv6 all-network CIDRs.
-func parseTrustedProxies(cidrs string) []*net.IPNet {
+func parseTrustedProxies(cidrs string) []netip.Prefix {
 	if cidrs == "" {
 		return nil
 	}
 
 	parts := strings.Split(cidrs, ",")
-	networks := make([]*net.IPNet, 0, len(parts))
+	networks := make([]netip.Prefix, 0, len(parts))
 
 	for _, cidr := range parts {
 		cidr = strings.TrimSpace(cidr)
@@ -310,24 +310,24 @@ func parseTrustedProxies(cidrs string) []*net.IPNet {
 			return trustAllProxyNetworks()
 		}
 
-		_, network, err := net.ParseCIDR(cidr)
+		network, err := netip.ParsePrefix(cidr)
 		if err != nil {
 			slog.Warn("Invalid trusted proxy CIDR, skipping", "cidr", cidr, "error", err)
 			continue
 		}
 
-		networks = append(networks, network)
+		networks = append(networks, network.Masked())
 	}
 
 	return networks
 }
 
-func trustAllProxyNetworks() []*net.IPNet {
-	_, allV4, errV4 := net.ParseCIDR("0.0.0.0/0")
-	_, allV6, errV6 := net.ParseCIDR("::/0")
+func trustAllProxyNetworks() []netip.Prefix {
+	allV4, errV4 := netip.ParsePrefix("0.0.0.0/0")
+	allV6, errV6 := netip.ParsePrefix("::/0")
 	if errV4 != nil || errV6 != nil {
 		slog.Warn("Failed to parse trust-all proxy CIDRs", "ipv4_error", errV4, "ipv6_error", errV6)
 		return nil
 	}
-	return []*net.IPNet{allV4, allV6}
+	return []netip.Prefix{allV4.Masked(), allV6.Masked()}
 }

@@ -16,6 +16,7 @@ import { RelativeDateTime } from "@components/relative-date-time/relative-date-t
 // Core
 import { AuthService } from "@services/auth.service";
 import { PasskeyRegistrationFinishRequest, PasskeyRegistrationStartResponse, UserRecoveryCodesResponse, UserSecurityService, UserSecurityStatus, UserTotpSetup } from "@services/user-security.service";
+import { toCreationResponseJson, toPublicKeyCreationOptions } from "@core/utils/webauthn";
 
 @Component({
     selector: "app-settings-security",
@@ -200,7 +201,7 @@ export class SettingsSecurity {
                 return;
             }
 
-            const payload = this.toPasskeyFinishPayload(credential, requestedName || undefined);
+            const payload = this.toPasskeyFinishPayload(credential);
             if (!payload) {
                 this.passkeyError.set("settings.security.passkeys.errors.notSupported");
                 return;
@@ -352,62 +353,10 @@ export class SettingsSecurity {
     }
 
     private toPublicKeyOptions(response: PasskeyRegistrationStartResponse): PublicKeyCredentialCreationOptions {
-        const { publicKey } = response;
-        return {
-            challenge: this.base64UrlToArrayBuffer(publicKey.challenge),
-            rp: {
-                name: publicKey.rp.name,
-                id: publicKey.rp.id
-            },
-            user: {
-                id: this.base64UrlToArrayBuffer(publicKey.user.id),
-                name: publicKey.user.name,
-                displayName: publicKey.user.displayName
-            },
-            pubKeyCredParams: publicKey.pubKeyCredParams,
-            timeout: publicKey.timeout,
-            attestation: publicKey.attestation,
-            authenticatorSelection: {
-                residentKey: publicKey.authenticatorSelection.residentKey,
-                userVerification: publicKey.authenticatorSelection.userVerification
-            }
-        };
+        return toPublicKeyCreationOptions(response.publicKey);
     }
 
-    private toPasskeyFinishPayload(credential: PublicKeyCredential, name?: string): PasskeyRegistrationFinishRequest | null {
-        const response = credential.response as AuthenticatorAttestationResponse;
-        const publicKey = response.getPublicKey ? response.getPublicKey() : null;
-        if (!publicKey) {
-            return null;
-        }
-        const transports = response.getTransports ? response.getTransports() : [];
-
-        return {
-            name: name?.trim() || undefined,
-            credential_id: credential.id,
-            client_data_json: this.arrayBufferToBase64Url(response.clientDataJSON),
-            public_key: this.arrayBufferToBase64Url(publicKey),
-            transports: transports.length > 0 ? transports : undefined
-        };
-    }
-
-    private base64UrlToArrayBuffer(value: string): ArrayBuffer {
-        const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-        const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
-        const binary = atob(padded);
-        const out = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i += 1) {
-            out[i] = binary.charCodeAt(i);
-        }
-        return out.buffer.slice(0);
-    }
-
-    private arrayBufferToBase64Url(value: ArrayBuffer): string {
-        const bytes = new Uint8Array(value);
-        let binary = "";
-        for (const byte of bytes) {
-            binary += String.fromCharCode(byte);
-        }
-        return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+    private toPasskeyFinishPayload(credential: PublicKeyCredential): PasskeyRegistrationFinishRequest | null {
+        return toCreationResponseJson(credential);
     }
 }

@@ -8,9 +8,9 @@ import (
 	"errors"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/mail"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -410,18 +410,19 @@ func (h *handler) handleGetCurrentIP() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		ipValue := strings.TrimSpace(shared.GetRealIP(r, h.ctx.Config.GetTrustedProxyNetworks()))
-		if parsed := net.ParseIP(ipValue); parsed == nil {
+		if _, err := netip.ParseAddr(ipValue); err != nil {
 			ipValue = strings.TrimSpace(shared.RemoteIPFromAddr(ipValue))
 		}
 
-		parsedIP := net.ParseIP(ipValue)
-		if parsedIP == nil {
+		parsedIP, err := netip.ParseAddr(ipValue)
+		if err != nil {
 			http.Error(w, "Unable to resolve client IP", http.StatusBadRequest)
 			return
 		}
+		parsedIP = parsedIP.Unmap()
 
 		cidrSuffix := "/128"
-		if parsedIP.To4() != nil {
+		if parsedIP.Is4() {
 			cidrSuffix = "/32"
 		}
 

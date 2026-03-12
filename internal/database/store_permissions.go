@@ -13,6 +13,10 @@ import (
 
 // GetInstanceRole returns the user's instance-level role
 func (s *Store) GetInstanceRole(ctx context.Context, userID uuid.UUID) (auth.InstanceRole, error) {
+	if cached, ok := s.getCachedInstanceRole(userID); ok {
+		return cached, nil
+	}
+
 	var role string
 	err := s.db.QueryRowContext(ctx,
 		"SELECT role FROM instance_roles WHERE user_id = ?",
@@ -20,13 +24,16 @@ func (s *Store) GetInstanceRole(ctx context.Context, userID uuid.UUID) (auth.Ins
 	).Scan(&role)
 
 	if err == sql.ErrNoRows {
+		s.cacheInstanceRole(userID, auth.InstanceUser)
 		return auth.InstanceUser, nil // Default role
 	}
 	if err != nil {
 		return "", fmt.Errorf("failed to get instance role: %w", err)
 	}
 
-	return auth.InstanceRole(role), nil
+	resolved := auth.InstanceRole(role)
+	s.cacheInstanceRole(userID, resolved)
+	return resolved, nil
 }
 
 // UpdateInstanceRole updates a user's instance-level role
@@ -46,6 +53,7 @@ func (s *Store) UpdateInstanceRole(ctx context.Context, targetUserID uuid.UUID, 
 	if err != nil {
 		return fmt.Errorf("failed to update instance role: %w", err)
 	}
+	s.invalidateInstanceRole(targetUserID)
 
 	// Audit log
 	_, _ = s.db.ExecContext(ctx,
@@ -59,6 +67,10 @@ func (s *Store) UpdateInstanceRole(ctx context.Context, targetUserID uuid.UUID, 
 
 // GetSiteRole returns the user's role for a specific site
 func (s *Store) GetSiteRole(ctx context.Context, userID uuid.UUID, siteID uuid.UUID) (auth.SiteRole, error) {
+	if cached, ok := s.getCachedSiteRole(userID, siteID); ok {
+		return cached, nil
+	}
+
 	activeTenantID, err := s.GetActiveTenantID(ctx, userID)
 	if err != nil {
 		return "", fmt.Errorf("failed to resolve active tenant: %w", err)
@@ -95,6 +107,7 @@ func (s *Store) GetSiteRole(ctx context.Context, userID uuid.UUID, siteID uuid.U
 		).Scan(&ownerID)
 
 		if err2 == nil && ownerID == userID {
+			s.cacheSiteRole(userID, siteID, auth.SiteOwner)
 			return auth.SiteOwner, nil
 		}
 
@@ -104,7 +117,9 @@ func (s *Store) GetSiteRole(ctx context.Context, userID uuid.UUID, siteID uuid.U
 		return "", fmt.Errorf("failed to get site role: %w", err)
 	}
 
-	return auth.SiteRole(role), nil
+	resolved := auth.SiteRole(role)
+	s.cacheSiteRole(userID, siteID, resolved)
+	return resolved, nil
 }
 
 // AddSiteMember grants a user access to a site
@@ -132,6 +147,7 @@ func (s *Store) AddSiteMember(ctx context.Context, siteID uuid.UUID, userID uuid
 	if err != nil {
 		return fmt.Errorf("failed to add site member: %w", err)
 	}
+	s.invalidateSiteRole(userID, siteID)
 
 	// Audit log
 	_, _ = s.db.ExecContext(ctx,
@@ -163,6 +179,7 @@ func (s *Store) RemoveSiteMember(ctx context.Context, siteID uuid.UUID, userID u
 	if err != nil {
 		return fmt.Errorf("failed to remove member: %w", err)
 	}
+	s.invalidateSiteRole(userID, siteID)
 
 	// Audit log
 	_, _ = s.db.ExecContext(ctx,

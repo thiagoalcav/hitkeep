@@ -53,6 +53,7 @@ type Context struct {
 	ApiLimiter     *IPRateLimiter
 	AuthLimiter    *IPRateLimiter
 	WebhookLimiter *IPRateLimiter
+	AuthState      *AuthStateStore
 	IPFilter       *blocking.IPFilter
 }
 

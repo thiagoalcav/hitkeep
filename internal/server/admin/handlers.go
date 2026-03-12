@@ -258,6 +258,9 @@ func (h *handler) handleDisableUser2FA() http.HandlerFunc {
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}
+		if h.ctx.AuthState != nil {
+			h.ctx.AuthState.ClearUser(targetUserID)
+		}
 
 		actorID := shared.GetUserIDFromContext(r)
 		slog.Info("Admin disabled user MFA",

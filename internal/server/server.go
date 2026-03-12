@@ -63,6 +63,7 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStore
 	apiLim := shared.NewIPRateLimiter(rate.Limit(conf.ApiRateLimit), conf.ApiBurst)
 	authLim := shared.NewIPRateLimiter(rate.Limit(conf.AuthRateLimit), conf.AuthBurst)
 	webhookLim := shared.NewIPRateLimiter(rate.Limit(conf.WebhookRateLimit), conf.WebhookBurst)
+	authState := shared.NewAuthStateStore()
 
 	takeoutService := takeout.NewTakeoutService(store, "archive/takeout")
 
@@ -103,6 +104,7 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStore
 		ApiLimiter:     apiLim,
 		AuthLimiter:    authLim,
 		WebhookLimiter: webhookLim,
+		AuthState:      authState,
 		IPFilter:       ipFilter,
 	}
 

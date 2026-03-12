@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -27,12 +26,6 @@ func TestDisableUserMFAClearsSecurityFactorsAndSessions(t *testing.T) {
 	if err := store.EnableUserTOTP(ctx, userID, "totp-secret"); err != nil {
 		t.Fatalf("enable user totp: %v", err)
 	}
-	if err := store.CreatePendingTOTPSetup(ctx, userID, "pending-secret", time.Now().UTC().Add(time.Hour)); err != nil {
-		t.Fatalf("create pending totp setup: %v", err)
-	}
-	if err := store.CreatePasskeyChallenge(ctx, userID, "challenge", "Recovery key", time.Now().UTC().Add(time.Hour)); err != nil {
-		t.Fatalf("create passkey challenge: %v", err)
-	}
 	if _, err := store.CreateUserPasskey(ctx, userID, "Recovery key", "cred-1", "public-key", nil); err != nil {
 		t.Fatalf("create user passkey: %v", err)
 	}
@@ -54,15 +47,6 @@ func TestDisableUserMFAClearsSecurityFactorsAndSessions(t *testing.T) {
 	rememberToken, err := store.CreateRememberMeToken(ctx, userID)
 	if err != nil {
 		t.Fatalf("create remember me token: %v", err)
-	}
-	userIDCopy := userID
-	loginChallengeID, err := store.CreatePasskeyLoginChallenge(ctx, "mfa-login", CreateLoginChallengeInput{
-		UserID:     &userIDCopy,
-		RememberMe: true,
-		Flow:       "mfa",
-	}, time.Now().UTC().Add(time.Hour))
-	if err != nil {
-		t.Fatalf("create passkey login challenge: %v", err)
 	}
 
 	if _, err := store.CreateUserPasskey(ctx, otherUserID, "Other key", "cred-2", "public-key", nil); err != nil {
@@ -95,28 +79,12 @@ func TestDisableUserMFAClearsSecurityFactorsAndSessions(t *testing.T) {
 		t.Fatal("expected totp to be removed")
 	}
 
-	hasPendingTOTP, err := store.HasPendingTOTPSetup(ctx, userID)
-	if err != nil {
-		t.Fatalf("check pending totp status: %v", err)
-	}
-	if hasPendingTOTP {
-		t.Fatal("expected pending totp setup to be removed")
-	}
-
 	passkeys, err := store.ListUserPasskeys(ctx, userID)
 	if err != nil {
 		t.Fatalf("list passkeys: %v", err)
 	}
 	if len(passkeys) != 0 {
 		t.Fatalf("expected passkeys to be removed, got %d", len(passkeys))
-	}
-
-	_, _, _, foundPasskeyChallenge, err := store.GetPasskeyChallenge(ctx, userID)
-	if err != nil {
-		t.Fatalf("get passkey challenge: %v", err)
-	}
-	if foundPasskeyChallenge {
-		t.Fatal("expected passkey challenge to be removed")
 	}
 
 	recoveryStatus, err := store.GetRecoveryCodeStatus(ctx, userID)
@@ -133,12 +101,6 @@ func TestDisableUserMFAClearsSecurityFactorsAndSessions(t *testing.T) {
 	}
 	if rememberedUserID != uuid.Nil {
 		t.Fatalf("expected token to be invalidated, got %s", rememberedUserID)
-	}
-
-	if _, found, err := store.GetPasskeyLoginChallenge(ctx, loginChallengeID); err != nil {
-		t.Fatalf("get passkey login challenge: %v", err)
-	} else if found {
-		t.Fatal("expected passkey login challenge to be removed")
 	}
 
 	unaffectedPasskeys, err := store.ListUserPasskeys(ctx, otherUserID)

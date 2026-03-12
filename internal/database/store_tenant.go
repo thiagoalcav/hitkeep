@@ -185,6 +185,7 @@ func (s *Store) SetActiveTenantID(ctx context.Context, userID, tenantID uuid.UUI
 	if err != nil {
 		return fmt.Errorf("could not set active tenant: %w", err)
 	}
+	s.invalidateAllSiteRolesForUser(userID)
 	return nil
 }
 

@@ -217,11 +217,9 @@ var userFKReferences = []userFKReference{
 	{table: "team_invites", column: "invited_user_id", query: "UPDATE team_invites SET invited_user_id = ? WHERE invited_user_id = ?"},
 	{table: "tenant_members", column: "added_by", query: "UPDATE tenant_members SET added_by = ? WHERE added_by = ?"},
 	{table: "tenant_members", column: "user_id", query: "UPDATE tenant_members SET user_id = ? WHERE user_id = ?"},
-	{table: "user_passkey_challenges", column: "user_id", query: "UPDATE user_passkey_challenges SET user_id = ? WHERE user_id = ?"},
 	{table: "user_passkeys", column: "user_id", query: "UPDATE user_passkeys SET user_id = ? WHERE user_id = ?"},
 	{table: "user_preferences", column: "user_id", query: "UPDATE user_preferences SET user_id = ? WHERE user_id = ?"},
 	{table: "user_totp_factors", column: "user_id", query: "UPDATE user_totp_factors SET user_id = ? WHERE user_id = ?"},
-	{table: "user_totp_pending_setup", column: "user_id", query: "UPDATE user_totp_pending_setup SET user_id = ? WHERE user_id = ?"},
 }
 
 func moveUserForeignKeys(ctx context.Context, tx *sql.Tx, fromUserID uuid.UUID, toUserID uuid.UUID) error {
@@ -463,14 +461,8 @@ func cleanupUserRows(ctx context.Context, tx *sql.Tx, userID uuid.UUID) error {
 	if _, err := tx.ExecContext(ctx, "DELETE FROM remember_me_tokens WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete remember tokens: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM user_passkey_challenges WHERE user_id = ?", userID); err != nil {
-		return fmt.Errorf("could not delete user passkey challenges: %w", err)
-	}
 	if _, err := tx.ExecContext(ctx, "DELETE FROM user_passkeys WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete user passkeys: %w", err)
-	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM user_totp_pending_setup WHERE user_id = ?", userID); err != nil {
-		return fmt.Errorf("could not delete pending totp setup: %w", err)
 	}
 	if _, err := tx.ExecContext(ctx, "DELETE FROM user_totp_factors WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete user totp factors: %w", err)

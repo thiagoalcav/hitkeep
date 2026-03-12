@@ -332,6 +332,7 @@ func (s *Store) updateAPIClient(
 		}
 		return nil, err
 	}
+	s.invalidateAPIClientAuthCache(clientID)
 
 	if teamOwned {
 		tenantID := ownerArgs[0].(uuid.UUID)
@@ -366,6 +367,7 @@ func (s *Store) deleteAPIClient(ctx context.Context, clientID uuid.UUID, ownerWh
 	if rows == 0 {
 		return ErrAPIClientNotFound
 	}
+	s.invalidateAPIClientAuthCache(clientID)
 	return nil
 }
 
@@ -376,6 +378,10 @@ func (s *Store) GetAPIClientAuth(ctx context.Context, token string) (*APIClientA
 	}
 
 	tokenHash := hashAPIClientToken(token)
+	if cached, ok := s.getCachedAPIClientAuth(tokenHash); ok {
+		return cached, nil
+	}
+
 	var authz APIClientAuth
 	var userIDRaw sql.NullString
 	var tenantIDRaw sql.NullString
@@ -459,6 +465,7 @@ func (s *Store) GetAPIClientAuth(ctx context.Context, token string) (*APIClientA
 
 	now := time.Now().UTC()
 	_, _ = s.db.ExecContext(ctx, "UPDATE api_clients SET last_used_at = ?, updated_at = ? WHERE id = ?", now, now, authz.ClientID)
+	s.cacheAPIClientAuth(tokenHash, authz, expiresAt.Time)
 
 	return &authz, nil
 }

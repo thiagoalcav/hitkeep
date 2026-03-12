@@ -1,3 +1,4 @@
+import { Component } from "@angular/core";
 import { ComponentFixture, TestBed } from "@angular/core/testing";
 import { ActivatedRoute, convertToParamMap, provideRouter } from "@angular/router";
 import { TranslocoTestingModule } from "@jsverse/transloco";
@@ -8,6 +9,12 @@ import { Login } from "@pages/login/login";
 import { AnalyticsService } from "@services/analytics.service";
 import { AuthService } from "@services/auth.service";
 import { UserPreferencesService } from "@services/user-preferences.service";
+
+@Component({
+    standalone: true,
+    template: ""
+})
+class DummyRouteComponent {}
 
 describe("Login", () => {
     let component: Login;
@@ -72,7 +79,10 @@ describe("Login", () => {
                 })
             ],
             providers: [
-                provideRouter([]),
+                provideRouter([
+                    { path: "dashboard", component: DummyRouteComponent },
+                    { path: "events", component: DummyRouteComponent }
+                ]),
                 { provide: AuthService, useValue: authMock as unknown as AuthService },
                 { provide: AnalyticsService, useValue: analyticsMock },
                 { provide: UserPreferencesService, useValue: preferencesMock },

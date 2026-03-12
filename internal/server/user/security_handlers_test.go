@@ -3,11 +3,6 @@ package user
 import (
 	"bytes"
 	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -23,6 +18,7 @@ import (
 	"hitkeep/internal/security"
 	serverauth "hitkeep/internal/server/auth"
 	"hitkeep/internal/server/shared"
+	"hitkeep/internal/testutil"
 )
 
 func setupUserSecurityTestEnv(t *testing.T) (*handler, *database.Store, uuid.UUID) {
@@ -55,6 +51,7 @@ func setupUserSecurityTestEnv(t *testing.T) (*handler, *database.Store, uuid.UUI
 		TenantStores: database.NewTenantStoreManager(store, t.TempDir()),
 		Config:       conf,
 		Entitlements: entitlements.NewDefaultProvider(),
+		AuthState:    shared.NewAuthStateStore(),
 	}
 
 	return &handler{ctx: ctx}, store, userID
@@ -148,27 +145,24 @@ func TestPasskeyRegistrationLifecycle(t *testing.T) {
 	if err := json.NewDecoder(startW.Body).Decode(&begin); err != nil {
 		t.Fatalf("failed to decode passkey registration start response: %v", err)
 	}
-	if begin.PublicKey.Challenge == "" {
+	if len(begin.PublicKey.Challenge) == 0 {
 		t.Fatalf("expected non-empty challenge")
 	}
 	if begin.PublicKey.AuthenticatorSelection.UserVerification != "required" {
 		t.Fatalf("expected required user verification, got %q", begin.PublicKey.AuthenticatorSelection.UserVerification)
 	}
 
-	clientData, _ := json.Marshal(map[string]string{
-		"type":      "webauthn.create",
-		"challenge": begin.PublicKey.Challenge,
-		"origin":    "http://localhost:8080",
-	})
-	clientDataB64 := base64.RawURLEncoding.EncodeToString(clientData)
-	publicKeyB64 := mustGeneratePublicKeyB64(t)
+	fixture, err := testutil.NewPasskeyFixture()
+	if err != nil {
+		t.Fatalf("failed to create passkey fixture: %v", err)
+	}
 
-	finishBody, _ := json.Marshal(map[string]any{
-		"credential_id":    "cred-test-1",
-		"client_data_json": clientDataB64,
-		"public_key":       publicKeyB64,
-		"transports":       []string{"internal"},
-	})
+	registration, err := fixture.RegistrationResponse(begin.PublicKey.Challenge, "http://localhost:8080", "localhost")
+	if err != nil {
+		t.Fatalf("failed to build registration response: %v", err)
+	}
+
+	finishBody, _ := json.Marshal(registration)
 	finishReq := withTestUser(httptest.NewRequest(http.MethodPost, "/api/user/security/passkeys/register/finish", bytes.NewReader(finishBody)), userID)
 	finishW := httptest.NewRecorder()
 	h.handleFinishPasskeyRegistration().ServeHTTP(finishW, finishReq)
@@ -264,7 +258,12 @@ func TestRegenerateRecoveryCodes(t *testing.T) {
 	h, store, userID := setupUserSecurityTestEnv(t)
 	defer store.Close()
 
-	if _, err := store.CreateUserPasskey(context.Background(), userID, "Recovery passkey", "cred-recovery-1", mustGeneratePublicKeyB64(t), nil); err != nil {
+	fixture, err := testutil.NewPasskeyFixture()
+	if err != nil {
+		t.Fatalf("create passkey fixture: %v", err)
+	}
+
+	if _, err := store.CreateUserPasskeyCredential(context.Background(), userID, "Recovery passkey", fixture.Credential()); err != nil {
 		t.Fatalf("create passkey: %v", err)
 	}
 
@@ -303,17 +302,4 @@ func TestRegenerateRecoveryCodes(t *testing.T) {
 	if status.RecoveryCodesRemaining != 10 {
 		t.Fatalf("expected 10 recovery codes remaining, got %d", status.RecoveryCodesRemaining)
 	}
-}
-
-func mustGeneratePublicKeyB64(t *testing.T) string {
-	t.Helper()
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		t.Fatalf("failed to generate test ecdsa key: %v", err)
-	}
-	der, err := x509.MarshalPKIXPublicKey(&key.PublicKey)
-	if err != nil {
-		t.Fatalf("failed to marshal test public key: %v", err)
-	}
-	return base64.RawURLEncoding.EncodeToString(der)
 }

@@ -2,6 +2,8 @@ import { Injectable, inject } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { Observable } from "rxjs";
 
+import { PublicKeyCredentialCreationJson, PublicKeyCredentialCreationOptionsJson } from "@core/utils/webauthn";
+
 export interface UserPasskey {
     id: string;
     name: string;
@@ -24,37 +26,10 @@ export interface UserTotpSetup {
 }
 
 export interface PasskeyRegistrationStartResponse {
-    publicKey: {
-        challenge: string;
-        rp: {
-            name: string;
-            id: string;
-        };
-        user: {
-            id: string;
-            name: string;
-            displayName: string;
-        };
-        pubKeyCredParams: {
-            type: PublicKeyCredentialType;
-            alg: number;
-        }[];
-        timeout: number;
-        attestation: AttestationConveyancePreference;
-        authenticatorSelection: {
-            residentKey: ResidentKeyRequirement;
-            userVerification: UserVerificationRequirement;
-        };
-    };
+    publicKey: PublicKeyCredentialCreationOptionsJson;
 }
 
-export interface PasskeyRegistrationFinishRequest {
-    name?: string;
-    credential_id: string;
-    client_data_json: string;
-    public_key: string;
-    transports?: string[];
-}
+export type PasskeyRegistrationFinishRequest = PublicKeyCredentialCreationJson;
 
 export interface UserRecoveryCodesResponse {
     codes: string[];

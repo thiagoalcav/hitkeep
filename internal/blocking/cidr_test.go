@@ -27,7 +27,7 @@ func TestNormalizeCIDR(t *testing.T) {
 			if err != nil {
 				t.Fatalf("normalize cidr: %v", err)
 			}
-			if ipNet == nil {
+			if !ipNet.IsValid() {
 				t.Fatalf("expected parsed network")
 			}
 			if normalized != tc.expected {

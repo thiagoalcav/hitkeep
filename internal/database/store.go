@@ -23,11 +23,13 @@ type Store struct {
 	path                string
 	analyticsMu         sync.Mutex
 	analyticsStatements *analyticsStatements
+	runtime             *runtimeCache
 }
 
 func NewStore(path string) *Store {
 	return &Store{
-		path: path,
+		path:    path,
+		runtime: newRuntimeCache(),
 	}
 }
 

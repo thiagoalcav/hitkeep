@@ -1,13 +1,13 @@
 package shared
 
 import (
-	"net"
 	"net/http/httptest"
+	"net/netip"
 	"testing"
 )
 
 func TestIsTrustedProxyDefaultsToFalse(t *testing.T) {
-	if IsTrustedProxy(net.ParseIP("127.0.0.1"), nil) {
+	if IsTrustedProxy(netip.MustParseAddr("127.0.0.1"), nil) {
 		t.Fatalf("expected proxy to be untrusted when trusted proxy list is empty")
 	}
 }
@@ -26,17 +26,28 @@ func TestGetRealIPIgnoresForwardedHeadersWithoutTrustedProxies(t *testing.T) {
 }
 
 func TestGetRealIPUsesForwardedHeadersForTrustedProxy(t *testing.T) {
-	_, proxyNet, err := net.ParseCIDR("10.0.0.0/8")
-	if err != nil {
-		t.Fatalf("failed to parse cidr: %v", err)
-	}
+	proxyNet := netip.MustParsePrefix("10.0.0.0/8")
 
 	req := httptest.NewRequest("GET", "http://localhost", nil)
 	req.RemoteAddr = "10.0.0.5:44321"
 	req.Header.Set("X-Forwarded-For", "203.0.113.10, 10.0.0.5")
 
-	ip := GetRealIP(req, []*net.IPNet{proxyNet})
+	ip := GetRealIP(req, []netip.Prefix{proxyNet})
 	if ip != "203.0.113.10" {
 		t.Fatalf("expected client ip from X-Forwarded-For, got %q", ip)
+	}
+}
+
+func TestGetRealIPUsesAllForwardedHeaderOccurrences(t *testing.T) {
+	proxyNet := netip.MustParsePrefix("10.0.0.0/8")
+
+	req := httptest.NewRequest("GET", "http://localhost", nil)
+	req.RemoteAddr = "10.0.0.5:44321"
+	req.Header.Add("X-Forwarded-For", "198.51.100.77")
+	req.Header.Add("X-Forwarded-For", "203.0.113.10, 10.0.0.5")
+
+	ip := GetRealIP(req, []netip.Prefix{proxyNet})
+	if ip != "203.0.113.10" {
+		t.Fatalf("expected client ip from all X-Forwarded-For values, got %q", ip)
 	}
 }

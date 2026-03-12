@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -28,6 +29,8 @@ import (
 type handler struct {
 	ctx *shared.Context
 }
+
+var faviconProxyTransport = newFaviconProxyTransport(5 * time.Second)
 
 func Register(mux *http.ServeMux, ctx *shared.Context) {
 	h := &handler{ctx: ctx}
@@ -1030,39 +1033,34 @@ func (h *handler) handleGetFavicon() http.HandlerFunc {
 			Path:   fmt.Sprintf("/ip3/%s.ico", domain),
 		}).String()
 
-		req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, ddgURL, nil)
+		target, err := url.Parse(ddgURL)
 		if err != nil {
 			http.Error(w, "Upstream error", http.StatusBadGateway)
 			return
 		}
 
-		client := &http.Client{
-			Timeout: 5 * time.Second,
-			CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-				return http.ErrUseLastResponse
+		proxy := &httputil.ReverseProxy{
+			Rewrite: func(proxyReq *httputil.ProxyRequest) {
+				proxyReq.SetURL(target)
+				proxyReq.Out.Method = http.MethodGet
+				proxyReq.Out.Body = nil
+				proxyReq.Out.ContentLength = 0
+				proxyReq.Out.Header.Del("Authorization")
+				proxyReq.Out.Header.Del("Cookie")
+				proxyReq.Out.Header.Del("X-API-Key")
+			},
+			Transport: faviconProxyTransport,
+			ModifyResponse: func(resp *http.Response) error {
+				resp.Header.Set("Cache-Control", "public, max-age=86400")
+				return nil
+			},
+			ErrorHandler: func(rw http.ResponseWriter, req *http.Request, proxyErr error) {
+				slog.Warn("Failed to fetch favicon upstream", "domain", domain, "error", proxyErr)
+				http.Error(rw, "Upstream error", http.StatusBadGateway)
 			},
 		}
-		//nolint:gosec // request URL is constrained to DuckDuckGo's fixed host and validated path segment.
-		resp, err := client.Do(req)
-		if err != nil {
-			slog.Warn("Failed to fetch favicon upstream", "domain", domain, "error", err)
-			http.Error(w, "Upstream error", http.StatusBadGateway)
-			return
-		}
-		defer func() {
-			if err := resp.Body.Close(); err != nil {
-				slog.Warn("Failed to close response body", "error", err)
-			}
-		}()
 
-		// Cache for 24 hours in the browser to reduce load
-		w.Header().Set("Cache-Control", "public, max-age=86400")
-		w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-		w.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
-
-		if _, err := io.Copy(w, resp.Body); err != nil {
-			slog.Warn("Failed to write favicon response", "error", err)
-		}
+		proxy.ServeHTTP(w, r)
 	}
 }
 
@@ -1079,4 +1077,10 @@ func isValidFaviconDomain(domain string) bool {
 		return false
 	}
 	return domainRegex.MatchString(domain)
+}
+
+func newFaviconProxyTransport(timeout time.Duration) http.RoundTripper {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.ResponseHeaderTimeout = timeout
+	return transport
 }

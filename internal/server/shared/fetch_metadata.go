@@ -72,13 +72,11 @@ func matchesOriginOrReferer(r *http.Request, expectedOrigin string) bool {
 		return false
 	}
 
-	origin := originFromURLString(r.Header.Get("Origin"))
-	if origin != "" {
+	if origin := originFromURLString(r.Header.Get("Origin")); origin != "" {
 		return origin == expectedOrigin
 	}
 
-	refererOrigin := originFromURLString(r.Header.Get("Referer"))
-	if refererOrigin != "" {
+	if refererOrigin := originFromURLString(r.Header.Get("Referer")); refererOrigin != "" {
 		return refererOrigin == expectedOrigin
 	}
 
@@ -98,9 +96,6 @@ func requestOrigin(r *http.Request) string {
 	if host == "" {
 		host = strings.TrimSpace(r.URL.Host)
 	}
-	if host == "" {
-		return ""
-	}
 
 	return canonicalOrigin(&url.URL{
 		Scheme: scheme,
@@ -117,7 +112,7 @@ func originFromURLString(raw string) string {
 }
 
 func canonicalOrigin(parsed *url.URL) string {
-	if parsed == nil {
+	if parsed == nil || parsed.Hostname() == "" {
 		return ""
 	}
 
@@ -126,22 +121,15 @@ func canonicalOrigin(parsed *url.URL) string {
 		return ""
 	}
 
-	hostname := strings.ToLower(strings.TrimSpace(parsed.Hostname()))
-	if hostname == "" {
-		return ""
-	}
-	port := strings.TrimSpace(parsed.Port())
-	if (scheme == "http" && port == "80") || (scheme == "https" && port == "443") {
-		port = ""
+	host := strings.ToLower(parsed.Host)
+	switch scheme {
+	case "http":
+		host = strings.TrimSuffix(host, ":80")
+	case "https":
+		host = strings.TrimSuffix(host, ":443")
 	}
 
-	if strings.Contains(hostname, ":") {
-		hostname = "[" + hostname + "]"
-	}
-	if port != "" {
-		return scheme + "://" + hostname + ":" + port
-	}
-	return scheme + "://" + hostname
+	return scheme + "://" + host
 }
 
 func firstCSVToken(value string) string {

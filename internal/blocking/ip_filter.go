@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net"
+	"net/netip"
 	"strings"
 	"sync"
 	"time"
@@ -20,9 +21,9 @@ type IPFilter struct {
 	store *database.Store
 
 	// Map site ID to blocked networks.
-	siteRules map[uuid.UUID][]*net.IPNet
+	siteRules map[uuid.UUID][]netip.Prefix
 	// Global blocked networks.
-	globalRules []*net.IPNet
+	globalRules []netip.Prefix
 
 	mu sync.RWMutex
 }
@@ -30,7 +31,7 @@ type IPFilter struct {
 func NewIPFilter(store *database.Store) *IPFilter {
 	return &IPFilter{
 		store:     store,
-		siteRules: make(map[uuid.UUID][]*net.IPNet),
+		siteRules: make(map[uuid.UUID][]netip.Prefix),
 	}
 }
 
@@ -72,7 +73,7 @@ func (f *IPFilter) Refresh(ctx context.Context) error {
 		return err
 	}
 
-	newGlobals := make([]*net.IPNet, 0, len(instanceCIDRs))
+	newGlobals := make([]netip.Prefix, 0, len(instanceCIDRs))
 	for _, cidr := range instanceCIDRs {
 		_, ipNet, parseErr := NormalizeCIDR(cidr)
 		if parseErr != nil {
@@ -82,7 +83,7 @@ func (f *IPFilter) Refresh(ctx context.Context) error {
 		newGlobals = append(newGlobals, ipNet)
 	}
 
-	newSites := make(map[uuid.UUID][]*net.IPNet)
+	newSites := make(map[uuid.UUID][]netip.Prefix)
 	for _, rule := range siteCIDRs {
 		_, ipNet, parseErr := NormalizeCIDR(rule.CIDR)
 		if parseErr != nil {
@@ -102,7 +103,7 @@ func (f *IPFilter) Refresh(ctx context.Context) error {
 
 func (f *IPFilter) IsBlocked(siteID uuid.UUID, ipStr string) bool {
 	ip := parseIP(ipStr)
-	if ip == nil {
+	if !ip.IsValid() {
 		return false
 	}
 
@@ -126,15 +127,19 @@ func (f *IPFilter) IsBlocked(siteID uuid.UUID, ipStr string) bool {
 	return false
 }
 
-func parseIP(value string) net.IP {
+func parseIP(value string) netip.Addr {
 	trimmed := strings.TrimSpace(value)
 	if trimmed == "" {
-		return nil
+		return netip.Addr{}
 	}
 
 	if host, _, err := net.SplitHostPort(trimmed); err == nil {
 		trimmed = host
 	}
 
-	return net.ParseIP(trimmed)
+	addr, err := netip.ParseAddr(trimmed)
+	if err != nil {
+		return netip.Addr{}
+	}
+	return addr.Unmap()
 }

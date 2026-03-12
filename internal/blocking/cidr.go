@@ -2,40 +2,36 @@ package blocking
 
 import (
 	"fmt"
-	"net"
+	"net/netip"
 	"strings"
 )
 
 // NormalizeCIDR accepts a plain IP or CIDR string and returns canonical CIDR form.
-func NormalizeCIDR(input string) (string, *net.IPNet, error) {
+func NormalizeCIDR(input string) (string, netip.Prefix, error) {
 	trimmed := strings.TrimSpace(input)
 	if trimmed == "" {
-		return "", nil, fmt.Errorf("cidr value is required")
+		return "", netip.Prefix{}, fmt.Errorf("cidr value is required")
 	}
 
 	if strings.Contains(trimmed, "/") {
-		_, ipNet, err := net.ParseCIDR(trimmed)
+		ipNet, err := netip.ParsePrefix(trimmed)
 		if err != nil {
-			return "", nil, fmt.Errorf("invalid cidr %q", trimmed)
+			return "", netip.Prefix{}, fmt.Errorf("invalid cidr %q", trimmed)
 		}
+		ipNet = ipNet.Masked()
 		return ipNet.String(), ipNet, nil
 	}
 
-	ip := net.ParseIP(trimmed)
-	if ip == nil {
-		return "", nil, fmt.Errorf("invalid ip %q", trimmed)
+	ip, err := netip.ParseAddr(trimmed)
+	if err != nil {
+		return "", netip.Prefix{}, fmt.Errorf("invalid ip %q", trimmed)
 	}
 
-	if ipv4 := ip.To4(); ipv4 != nil {
-		ipNet := &net.IPNet{IP: ipv4, Mask: net.CIDRMask(32, 32)}
-		return ipNet.String(), ipNet, nil
+	ip = ip.Unmap()
+	bits := 128
+	if ip.Is4() {
+		bits = 32
 	}
-
-	ipv6 := ip.To16()
-	if ipv6 == nil {
-		return "", nil, fmt.Errorf("invalid ip %q", trimmed)
-	}
-
-	ipNet := &net.IPNet{IP: ipv6, Mask: net.CIDRMask(128, 128)}
+	ipNet := netip.PrefixFrom(ip, bits)
 	return ipNet.String(), ipNet, nil
 }

@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-webauthn/webauthn/protocol"
+	webauthnlib "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/argon2"
 
@@ -212,24 +214,63 @@ func (h *handler) handleLogin() http.HandlerFunc {
 		hasRecoveryCode := recoveryCodesRemaining > 0
 
 		if totpEnabled || hasPasskey {
-			challenge, err := security.GenerateRandomChallenge(32)
-			if err != nil {
-				slog.Error("Failed to generate mfa challenge for login", "error", err, "user_id", user.ID)
+			userID := user.ID
+			var (
+				challenge      string
+				session        *webauthnlib.SessionData
+				passkeyOptions *protocol.PublicKeyCredentialRequestOptions
+			)
+
+			if hasPasskey {
+				passkeyUser, err := h.loadPasskeyUser(r.Context(), user.ID)
+				if err != nil {
+					slog.Error("Failed to load passkey user during login", "error", err, "user_id", user.ID)
+					http.Error(w, "Internal server error", http.StatusInternalServerError)
+					return
+				}
+
+				webAuthn, err := security.NewWebAuthn(h.ctx.Config.PublicURL, r)
+				if err != nil {
+					slog.Error("Failed to configure MFA passkey login", "error", err, "user_id", user.ID)
+					http.Error(w, "Internal server error", http.StatusInternalServerError)
+					return
+				}
+
+				assertion, beginSession, err := webAuthn.BeginLogin(passkeyUser)
+				if err != nil {
+					slog.Error("Failed to begin MFA passkey login", "error", err, "user_id", user.ID)
+					http.Error(w, "Internal server error", http.StatusInternalServerError)
+					return
+				}
+
+				challenge = beginSession.Challenge
+				session = beginSession
+				passkeyOptions = &assertion.Response
+			} else {
+				var err error
+				challenge, err = security.GenerateRandomChallenge(32)
+				if err != nil {
+					slog.Error("Failed to generate mfa challenge for login", "error", err, "user_id", user.ID)
+					http.Error(w, "Internal server error", http.StatusInternalServerError)
+					return
+				}
+			}
+
+			expiresAt := time.Now().UTC().Add(passkeyLoginChallengeTTL)
+			if session != nil && !session.Expires.IsZero() {
+				expiresAt = session.Expires
+			}
+
+			if h.ctx.AuthState == nil {
+				slog.Error("MFA auth state cache is not configured", "user_id", user.ID)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
 				return
 			}
-
-			userID := user.ID
-			challengeID, err := h.ctx.Store.CreatePasskeyLoginChallenge(r.Context(), challenge, database.CreateLoginChallengeInput{
+			challengeID := h.ctx.AuthState.CreatePasskeyLoginChallenge(challenge, database.CreateLoginChallengeInput{
 				UserID:     &userID,
 				RememberMe: req.RememberMe,
 				Flow:       "mfa",
-			}, time.Now().UTC().Add(passkeyLoginChallengeTTL))
-			if err != nil {
-				slog.Error("Failed to create mfa login challenge", "error", err, "user_id", user.ID)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
+			}, expiresAt, session)
 
 			factors := make([]string, 0, 2)
 			if totpEnabled {
@@ -246,7 +287,7 @@ func (h *handler) handleLogin() http.HandlerFunc {
 
 			if hasPasskey {
 				resp.Factors = append(resp.Factors, "passkey")
-				resp.Passkey = h.newPasskeyLoginRequestOptions(r, challenge)
+				resp.Passkey = passkeyOptions
 			}
 
 			w.Header().Set("Content-Type", "application/json")
@@ -273,10 +314,10 @@ func (h *handler) handleLogin() http.HandlerFunc {
 }
 
 type loginResponse struct {
-	Status         string                      `json:"status"`
-	ChallengeToken string                      `json:"challenge_token,omitempty"`
-	Factors        []string                    `json:"factors,omitempty"`
-	Passkey        *passkeyLoginRequestOptions `json:"passkey,omitempty"`
+	Status         string                                      `json:"status"`
+	ChallengeToken string                                      `json:"challenge_token,omitempty"`
+	Factors        []string                                    `json:"factors,omitempty"`
+	Passkey        *protocol.PublicKeyCredentialRequestOptions `json:"passkey,omitempty"`
 }
 
 func (h *handler) issueLoginSession(ctx context.Context, w http.ResponseWriter, userID uuid.UUID, rememberMe bool) error {
@@ -461,8 +502,7 @@ func (h *handler) handleResetPassword() http.HandlerFunc {
 		// 2. Perform the reset in the store
 		err = h.ctx.Store.CompletePasswordReset(r.Context(), req.Token, hashedPassword)
 		if err != nil {
-			// Don't leak exact DB errors to client, but "invalid token" is safe enough
-			if err.Error() == "invalid or expired token" || err.Error() == "token expired" {
+			if errors.Is(err, database.ErrPasswordResetInvalid) || errors.Is(err, database.ErrPasswordResetExpired) {
 				http.Error(w, "Invalid or expired link", http.StatusBadRequest)
 				return
 			}
@@ -504,7 +544,7 @@ func (h *handler) handleAcceptInvite() http.HandlerFunc {
 
 		email, err := h.ctx.Store.ResolvePasswordResetEmail(r.Context(), req.Token)
 		if err != nil {
-			if err.Error() == "invalid or expired token" || err.Error() == "token expired" {
+			if errors.Is(err, database.ErrPasswordResetInvalid) || errors.Is(err, database.ErrPasswordResetExpired) {
 				http.Error(w, "Invalid or expired link", http.StatusBadRequest)
 				return
 			}
@@ -524,7 +564,7 @@ func (h *handler) handleAcceptInvite() http.HandlerFunc {
 		// 2. Perform the reset in the store.
 		err = h.ctx.Store.CompletePasswordReset(r.Context(), req.Token, hashedPassword)
 		if err != nil {
-			if err.Error() == "invalid or expired token" || err.Error() == "token expired" {
+			if errors.Is(err, database.ErrPasswordResetInvalid) || errors.Is(err, database.ErrPasswordResetExpired) {
 				http.Error(w, "Invalid or expired link", http.StatusBadRequest)
 				return
 			}

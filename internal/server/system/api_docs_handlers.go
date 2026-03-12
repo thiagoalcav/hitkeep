@@ -821,7 +821,7 @@ func openAPISpecV1(publicURL string) map[string]any {
 			},
 			"/api/auth/passkey/login/finish": map[string]any{
 				"post": op([]string{"Auth"}, "Finish passkey login", "Verifies passkey assertion and issues session.", nil, nil,
-					jsonBody(map[string]any{"type": "object", "properties": map[string]any{"challenge_token": map[string]any{"type": "string"}, "credential_id": map[string]any{"type": "string"}, "client_data_json": map[string]any{"type": "string"}, "authenticator_data": map[string]any{"type": "string"}, "signature": map[string]any{"type": "string"}, "remember_me": map[string]any{"type": "boolean"}}, "required": []string{"challenge_token", "credential_id", "client_data_json", "authenticator_data", "signature"}}),
+					jsonBody(map[string]any{"type": "object", "properties": map[string]any{"challenge_token": map[string]any{"type": "string"}, "credential": map[string]any{"type": "object", "additionalProperties": true}, "remember_me": map[string]any{"type": "boolean"}}, "required": []string{"challenge_token", "credential"}}),
 					map[string]any{"200": jsonRefResp("Status", "#/components/schemas/Status")}),
 			},
 			"/api/auth/mfa/totp/verify": map[string]any{
@@ -1180,7 +1180,7 @@ func openAPISpecV1(publicURL string) map[string]any {
 			},
 			"/api/user/security/passkeys/register/finish": map[string]any{
 				"post": op([]string{"User"}, "Finish passkey registration", "Verifies passkey attestation and stores credential.", secCookie(), nil,
-					jsonBody(map[string]any{"type": "object", "properties": map[string]any{"name": map[string]any{"type": "string"}, "credential_id": map[string]any{"type": "string"}, "client_data_json": map[string]any{"type": "string"}, "public_key": map[string]any{"type": "string"}, "transports": map[string]any{"type": "array", "items": map[string]any{"type": "string"}}}, "required": []string{"credential_id", "client_data_json", "public_key"}}),
+					jsonBody(map[string]any{"type": "object", "properties": map[string]any{"id": map[string]any{"type": "string"}, "type": map[string]any{"type": "string"}, "rawId": map[string]any{"type": "string"}, "response": map[string]any{"type": "object", "additionalProperties": true}}, "required": []string{"id", "type", "rawId", "response"}}),
 					map[string]any{"200": jsonRefResp("Security status", "#/components/schemas/UserSecurityStatus")}),
 			},
 			"/api/user/security/passkeys/{id}": map[string]any{

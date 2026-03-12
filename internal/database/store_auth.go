@@ -5,11 +5,16 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+var ErrPasswordResetInvalid = errors.New("invalid or expired token")
+var ErrPasswordResetExpired = errors.New("token expired")
 
 // CreatePasswordResetToken generates a secure token, saves it, and returns it.
 func (s *Store) CreatePasswordResetToken(ctx context.Context, email string) (string, error) {
@@ -18,55 +23,23 @@ func (s *Store) CreatePasswordResetToken(ctx context.Context, email string) (str
 		return "", err
 	}
 	token := hex.EncodeToString(bytes)
-	now := time.Now().UTC()
-	expiresAt := now.Add(1 * time.Hour)
-
-	err := s.Transact(ctx, func(tx *sql.Tx) error {
-		// Cleanup old tokens
-		if _, err := tx.ExecContext(ctx, "DELETE FROM password_resets WHERE email = ?", email); err != nil {
-			return fmt.Errorf("failed to cleanup old tokens: %w", err)
-		}
-		// Insert new
-		if _, err := tx.ExecContext(ctx,
-			"INSERT INTO password_resets (email, token, created_at, expires_at) VALUES (?, ?, ?, ?)",
-			email, token, now, expiresAt,
-		); err != nil {
-			return fmt.Errorf("failed to insert reset token: %w", err)
-		}
-		return nil
-	})
-
-	if err != nil {
-		return "", err
-	}
+	expiresAt := time.Now().UTC().Add(passwordResetTTL)
+	s.storePasswordResetToken(email, token, expiresAt)
 	return token, nil
 }
 
 // CompletePasswordReset verifies a token and updates the password in a single transaction.
 func (s *Store) CompletePasswordReset(ctx context.Context, token string, newHashedPassword string) error {
-	return s.Transact(ctx, func(tx *sql.Tx) error {
-		var email string
-		var expiresAt time.Time
+	entry, found, err := s.lookupPasswordResetToken(token, true)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return ErrPasswordResetInvalid
+	}
+	email := entry.Email
 
-		// 1. Validate Token
-		err := tx.QueryRowContext(ctx,
-			"SELECT email, expires_at FROM password_resets WHERE token = ?",
-			token,
-		).Scan(&email, &expiresAt)
-
-		if err == sql.ErrNoRows {
-			return fmt.Errorf("invalid or expired token")
-		}
-		if err != nil {
-			return err
-		}
-
-		if time.Now().After(expiresAt) {
-			_, _ = tx.ExecContext(ctx, "DELETE FROM password_resets WHERE token = ?", token)
-			return fmt.Errorf("token expired")
-		}
-
-		// 2. Update Password
+	err = s.Transact(ctx, func(tx *sql.Tx) error {
 		res, err := tx.ExecContext(ctx, "UPDATE users SET password = ? WHERE email = ?", newHashedPassword, email)
 		if err != nil {
 			return err
@@ -75,31 +48,27 @@ func (s *Store) CompletePasswordReset(ctx context.Context, token string, newHash
 			return fmt.Errorf("user not found")
 		}
 
-		// 3. Cleanup
-		_, _ = tx.ExecContext(ctx, "DELETE FROM remember_me_tokens WHERE user_id = (SELECT id FROM users WHERE email = ?)", email)
-		_, err = tx.ExecContext(ctx, "DELETE FROM password_resets WHERE token = ?", token)
+		_, err = tx.ExecContext(ctx, "DELETE FROM remember_me_tokens WHERE user_id = (SELECT id FROM users WHERE email = ?)", email)
 		return err
 	})
+	if err != nil {
+		if time.Now().UTC().Before(entry.ExpiresAt.UTC()) {
+			s.storePasswordResetToken(entry.Email, strings.TrimSpace(token), entry.ExpiresAt)
+		}
+		return err
+	}
+	return nil
 }
 
 func (s *Store) ResolvePasswordResetEmail(ctx context.Context, token string) (string, error) {
-	var email string
-	var expiresAt time.Time
-	err := s.db.QueryRowContext(ctx,
-		"SELECT email, expires_at FROM password_resets WHERE token = ?",
-		token,
-	).Scan(&email, &expiresAt)
-	if err == sql.ErrNoRows {
-		return "", fmt.Errorf("invalid or expired token")
-	}
+	entry, found, err := s.lookupPasswordResetToken(token, false)
 	if err != nil {
 		return "", err
 	}
-	if time.Now().After(expiresAt) {
-		_, _ = s.db.ExecContext(ctx, "DELETE FROM password_resets WHERE token = ?", token)
-		return "", fmt.Errorf("token expired")
+	if !found {
+		return "", ErrPasswordResetInvalid
 	}
-	return email, nil
+	return entry.Email, nil
 }
 
 func (s *Store) UpdatePasswordByID(ctx context.Context, userID string, newHashedPassword string) error {

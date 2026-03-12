@@ -25,12 +25,12 @@ func (h *handler) loadMFAChallenge(w http.ResponseWriter, r *http.Request, chall
 		return database.LoginChallenge{}, false
 	}
 
-	challenge, found, err := h.ctx.Store.GetPasskeyLoginChallenge(r.Context(), challengeID)
-	if err != nil {
-		slog.Error("Failed to load mfa challenge", "error", err, "challenge_id", challengeID)
+	if h.ctx.AuthState == nil {
+		slog.Error("MFA auth state cache is not configured", "challenge_id", challengeID)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return database.LoginChallenge{}, false
 	}
+	challenge, found := h.ctx.AuthState.GetPasskeyLoginChallenge(challengeID)
 	if !found {
 		http.Error(w, "MFA challenge not found", http.StatusConflict)
 		return database.LoginChallenge{}, false
@@ -41,9 +41,7 @@ func (h *handler) loadMFAChallenge(w http.ResponseWriter, r *http.Request, chall
 	}
 
 	if time.Now().UTC().After(challenge.ExpiresAt.UTC()) {
-		if err := h.ctx.Store.DeletePasskeyLoginChallenge(r.Context(), challengeID); err != nil {
-			slog.Warn("Failed to delete expired mfa challenge", "error", err, "challenge_id", challengeID)
-		}
+		h.ctx.AuthState.DeletePasskeyLoginChallenge(challengeID)
 		http.Error(w, "MFA challenge expired", http.StatusGone)
 		return database.LoginChallenge{}, false
 	}
@@ -83,11 +81,7 @@ func (h *handler) handleMFATOTPVerify() http.HandlerFunc {
 			http.Error(w, "Invalid challenge token", http.StatusBadRequest)
 			return
 		}
-		if err := h.ctx.Store.DeletePasskeyLoginChallenge(r.Context(), challengeID); err != nil {
-			slog.Error("Failed to consume mfa challenge after totp verification", "error", err, "challenge_id", challengeID)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
+		h.ctx.AuthState.DeletePasskeyLoginChallenge(challengeID)
 
 		if err := h.issueLoginSession(r.Context(), w, challenge.UserID, challenge.RememberMe); err != nil {
 			slog.Error("Failed to issue login session after mfa totp verification", "error", err, "user_id", challenge.UserID)
@@ -131,11 +125,7 @@ func (h *handler) handleMFARecoveryCodeVerify() http.HandlerFunc {
 			http.Error(w, "Invalid challenge token", http.StatusBadRequest)
 			return
 		}
-		if err := h.ctx.Store.DeletePasskeyLoginChallenge(r.Context(), challengeID); err != nil {
-			slog.Error("Failed to consume mfa challenge after recovery code verification", "error", err, "challenge_id", challengeID)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
+		h.ctx.AuthState.DeletePasskeyLoginChallenge(challengeID)
 
 		if err := h.issueLoginSession(r.Context(), w, challenge.UserID, challenge.RememberMe); err != nil {
 			slog.Error("Failed to issue login session after recovery code verification", "error", err, "user_id", challenge.UserID)

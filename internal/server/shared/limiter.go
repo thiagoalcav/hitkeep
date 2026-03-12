@@ -3,90 +3,57 @@ package shared
 import (
 	"net"
 	"net/http"
+	"net/netip"
 	"strings"
-	"sync"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru/v2/expirable"
 	"golang.org/x/time/rate"
+)
+
+const (
+	rateLimiterCacheSize = 10000
+	rateLimiterEntryTTL  = 3 * time.Minute
 )
 
 // IPRateLimiter manages rate limiters for individual IPs.
 type IPRateLimiter struct {
-	ips   map[string]*visitor
-	mu    sync.RWMutex
+	ips   *lru.LRU[string, *rate.Limiter]
 	rate  rate.Limit
 	burst int
-	stop  chan struct{}
 }
 
-type visitor struct {
-	limiter  *rate.Limiter
-	lastSeen time.Time
-}
-
-// NewIPRateLimiter creates a limiter and starts a background cleanup routine.
+// NewIPRateLimiter creates a limiter backed by a bounded expiring LRU.
 // r: requests per second
 // b: burst size (allow short spikes of this many requests)
 func NewIPRateLimiter(r rate.Limit, b int) *IPRateLimiter {
-	l := &IPRateLimiter{
-		ips:   make(map[string]*visitor),
+	return &IPRateLimiter{
+		ips:   lru.NewLRU[string, *rate.Limiter](rateLimiterCacheSize, nil, rateLimiterEntryTTL),
 		rate:  r,
 		burst: b,
-		stop:  make(chan struct{}),
 	}
-
-	go l.cleanupLoop()
-
-	return l
 }
 
 // GetLimiter returns the rate limiter for the provided IP.
 func (i *IPRateLimiter) GetLimiter(ip string) *rate.Limiter {
-	i.mu.Lock()
-	defer i.mu.Unlock()
-
-	v, exists := i.ips[ip]
-	if !exists {
-		limiter := rate.NewLimiter(i.rate, i.burst)
-		i.ips[ip] = &visitor{limiter: limiter, lastSeen: time.Now()}
+	if limiter, ok := i.ips.Get(ip); ok && limiter != nil {
 		return limiter
 	}
 
-	v.lastSeen = time.Now()
-	return v.limiter
-}
-
-// cleanupLoop removes old entries every minute to prevent memory leaks.
-func (i *IPRateLimiter) cleanupLoop() {
-	ticker := time.NewTicker(1 * time.Minute)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-i.stop:
-			return
-		case <-ticker.C:
-			i.mu.Lock()
-			for ip, v := range i.ips {
-				// If IP hasn't been seen in 3 minutes, delete it to free memory.
-				if time.Since(v.lastSeen) > 3*time.Minute {
-					delete(i.ips, ip)
-				}
-			}
-			i.mu.Unlock()
-		}
-	}
+	limiter := rate.NewLimiter(i.rate, i.burst)
+	i.ips.Add(ip, limiter)
+	return limiter
 }
 
 func (i *IPRateLimiter) Stop() {
-	close(i.stop)
+	// expirable.LRU manages its own bounded lifecycle; nothing to stop here.
 }
 
 // GetRealIP extracts the real client IP using trusted proxy configuration.
-func GetRealIP(r *http.Request, trustedProxies []*net.IPNet) string {
+func GetRealIP(r *http.Request, trustedProxies []netip.Prefix) string {
 	directIP := RemoteIPFromAddr(r.RemoteAddr)
-	parsedDirectIP := net.ParseIP(directIP)
-	if parsedDirectIP == nil {
+	parsedDirectIP, ok := ParseAddr(directIP)
+	if !ok {
 		if directIP != "" {
 			return directIP
 		}
@@ -94,88 +61,120 @@ func GetRealIP(r *http.Request, trustedProxies []*net.IPNet) string {
 	}
 
 	if !IsTrustedProxy(parsedDirectIP, trustedProxies) {
-		return directIP
+		return parsedDirectIP.String()
 	}
 
-	if ip := parseIPHeader(r.Header.Get("CF-Connecting-IP")); ip != "" {
-		return ip
+	if ip, ok := firstValidHeaderIP(r.Header, "CF-Connecting-IP"); ok {
+		return ip.String()
 	}
-	if ip := parseIPHeader(r.Header.Get("Fastly-Client-IP")); ip != "" {
-		return ip
+	if ip, ok := firstValidHeaderIP(r.Header, "Fastly-Client-IP"); ok {
+		return ip.String()
 	}
-	if ip := parseIPHeader(r.Header.Get("CloudFront-Viewer-Address")); ip != "" {
-		return ip
+	if ip, ok := firstValidHeaderIP(r.Header, "CloudFront-Viewer-Address"); ok {
+		return ip.String()
 	}
 
-	if ip := parseIPHeader(r.Header.Get("X-Real-IP")); ip != "" {
-		return ip
+	if ip, ok := firstValidHeaderIP(r.Header, "X-Real-IP"); ok {
+		return ip.String()
 	}
 
 	if len(trustedProxies) > 0 {
-		xff := r.Header.Get("X-Forwarded-For")
-		if xff == "" {
-			return directIP
-		}
-		parts := strings.Split(xff, ",")
+		parts := allHeaderTokens(r.Header.Values("X-Forwarded-For"))
 		for i := len(parts) - 1; i >= 0; i-- {
-			ip := strings.TrimSpace(parts[i])
-			parsedIP := net.ParseIP(ip)
-			if parsedIP == nil {
+			parsedIP, ok := ParseAddr(parts[i])
+			if !ok {
 				continue
 			}
-			if !isIPInNetworks(parsedIP, trustedProxies) {
-				return ip
+			if !isAddrInNetworks(parsedIP, trustedProxies) {
+				return parsedIP.String()
 			}
 		}
 	}
 
-	return directIP
+	return parsedDirectIP.String()
 }
 
 // RemoteIPFromAddr extracts the IP portion of a host:port address.
 func RemoteIPFromAddr(addr string) string {
-	if addr == "" {
+	trimmed := strings.TrimSpace(addr)
+	if trimmed == "" {
 		return ""
 	}
-	host, _, err := net.SplitHostPort(addr)
+	host, _, err := net.SplitHostPort(trimmed)
 	if err != nil {
-		return addr
+		if parsed, ok := ParseAddr(trimmed); ok {
+			return parsed.String()
+		}
+		return trimmed
+	}
+	if parsed, ok := ParseAddr(host); ok {
+		return parsed.String()
 	}
 	return host
 }
 
-func parseIPHeader(value string) string {
-	if value == "" {
-		return ""
+// ParseAddr parses an IP address value and canonicalizes it with IPv4 unmapping.
+func ParseAddr(value string) (netip.Addr, bool) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return netip.Addr{}, false
 	}
-	if host, _, err := net.SplitHostPort(value); err == nil {
-		if isValidIP(host) {
-			return host
-		}
-		return ""
-	}
-	if isValidIP(value) {
-		return value
-	}
-	return ""
-}
 
-func isValidIP(ip string) bool {
-	return net.ParseIP(ip) != nil
+	if host, _, err := net.SplitHostPort(trimmed); err == nil {
+		trimmed = host
+	}
+
+	addr, err := netip.ParseAddr(trimmed)
+	if err != nil {
+		return netip.Addr{}, false
+	}
+	return addr.Unmap(), true
 }
 
 // IsTrustedProxy reports if an IP belongs to any of the provided networks.
-func IsTrustedProxy(ip net.IP, trustedProxies []*net.IPNet) bool {
+func IsTrustedProxy(ip netip.Addr, trustedProxies []netip.Prefix) bool {
 	if len(trustedProxies) == 0 {
 		return false
 	}
-	return isIPInNetworks(ip, trustedProxies)
+	return isAddrInNetworks(ip, trustedProxies)
 }
 
-// isIPInNetworks checks if an IP belongs to any of the provided networks.
-func isIPInNetworks(ip net.IP, networks []*net.IPNet) bool {
+func firstValidHeaderIP(header http.Header, name string) (netip.Addr, bool) {
+	values := header.Values(name)
+	for i := len(values) - 1; i >= 0; i-- {
+		for _, token := range reverseTokens(allHeaderTokens([]string{values[i]})) {
+			if parsed, ok := ParseAddr(token); ok {
+				return parsed, true
+			}
+		}
+	}
+	return netip.Addr{}, false
+}
+
+func allHeaderTokens(values []string) []string {
+	tokens := make([]string, 0, len(values))
+	for _, value := range values {
+		for token := range strings.SplitSeq(value, ",") {
+			token = strings.TrimSpace(token)
+			if token != "" {
+				tokens = append(tokens, token)
+			}
+		}
+	}
+	return tokens
+}
+
+func reverseTokens(tokens []string) []string {
+	for left, right := 0, len(tokens)-1; left < right; left, right = left+1, right-1 {
+		tokens[left], tokens[right] = tokens[right], tokens[left]
+	}
+	return tokens
+}
+
+// isAddrInNetworks checks if an IP belongs to any of the provided networks.
+func isAddrInNetworks(ip netip.Addr, networks []netip.Prefix) bool {
 	for _, network := range networks {
-		if network.Contains(ip) {
+		if network.Contains(ip.Unmap()) {
 			return true
 		}
 	}

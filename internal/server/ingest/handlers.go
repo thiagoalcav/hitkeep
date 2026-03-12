@@ -1,18 +1,20 @@
 package ingest
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/netip"
 	"net/url"
 	"regexp"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/rs/cors"
 
 	"hitkeep/internal/api"
 	"hitkeep/internal/server/shared"
@@ -23,48 +25,39 @@ type handler struct {
 }
 
 var (
-	forwardedHostPattern = regexp.MustCompile(`^(?i:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*)$`)
-	leaderForwardClient  = &http.Client{
-		Timeout: 5 * time.Second,
-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
+	forwardedHostPattern   = regexp.MustCompile(`^(?i:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*)$`)
+	leaderForwardTransport = newProxyTransport(5 * time.Second)
 )
 
 func Register(mux *http.ServeMux, ctx *shared.Context) {
 	h := &handler{ctx: ctx}
-	mux.HandleFunc("POST /ingest", ctx.Handler(shared.HandlerConfig{
+	ingestRoutes := http.NewServeMux()
+	ingestRoutes.HandleFunc("POST /ingest", ctx.Handler(shared.HandlerConfig{
 		RateLimiter: ctx.IngestLimiter,
 	}, h.handleIngest()))
-	mux.HandleFunc("OPTIONS /ingest", ctx.Handler(shared.HandlerConfig{
-		RateLimiter: ctx.IngestLimiter,
-	}, h.handleIngest()))
-	mux.HandleFunc("POST /ingest/event", ctx.Handler(shared.HandlerConfig{
+	ingestRoutes.HandleFunc("POST /ingest/event", ctx.Handler(shared.HandlerConfig{
 		RateLimiter: ctx.IngestLimiter,
 	}, h.handleIngestEvent()))
-	mux.HandleFunc("OPTIONS /ingest/event", ctx.Handler(shared.HandlerConfig{
-		RateLimiter: ctx.IngestLimiter,
-	}, h.handleIngestEvent()))
+
+	corsHandler := newIngestCORS().Handler(ingestRoutes)
+	mux.Handle("/ingest", corsHandler)
+	mux.Handle("/ingest/event", corsHandler)
+}
+
+func newIngestCORS() *cors.Cors {
+	return cors.New(cors.Options{
+		AllowOriginVaryRequestFunc: func(_ *http.Request, origin string) (bool, []string) {
+			return strings.TrimSpace(origin) != "", nil
+		},
+		AllowedMethods:   []string{http.MethodPost, http.MethodOptions},
+		AllowedHeaders:   []string{"Content-Type"},
+		AllowCredentials: true,
+		MaxAge:           86400,
+	})
 }
 
 func (h *handler) handleIngest() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-		if origin != "" {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-		} else {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-		}
-
-		if r.Method == http.MethodOptions {
-			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
 		if h.ctx.Cluster.IsLeader() {
 			h.handleIngestLeader(w, r)
 		} else {
@@ -175,31 +168,24 @@ func (h *handler) forwardToLeader(w http.ResponseWriter, r *http.Request, target
 		http.Error(w, "No leader available", http.StatusServiceUnavailable)
 		return
 	}
-	bodyBytes := new(bytes.Buffer)
-	if _, err := bodyBytes.ReadFrom(r.Body); err != nil {
-		http.Error(w, "Failed to read request body", http.StatusInternalServerError)
-		return
+
+	proxy := &httputil.ReverseProxy{
+		Rewrite: func(proxyReq *httputil.ProxyRequest) {
+			proxyReq.SetURL(forwardURL)
+			proxyReq.Out.Header.Set("Content-Type", "application/json")
+			if forwardedFor, ok := proxyReq.In.Header["X-Forwarded-For"]; ok {
+				proxyReq.Out.Header["X-Forwarded-For"] = append([]string(nil), forwardedFor...)
+			}
+			proxyReq.SetXForwarded()
+		},
+		Transport: leaderForwardTransport,
+		ErrorHandler: func(rw http.ResponseWriter, req *http.Request, proxyErr error) {
+			slog.Error("Follower failed to forward request", "error", proxyErr, "target_path", targetPath)
+			http.Error(rw, "Failed to forward request", http.StatusBadGateway)
+		},
 	}
 
-	proxyReq, err := http.NewRequestWithContext(r.Context(), r.Method, forwardURL.String(), bodyBytes)
-	if err != nil {
-		http.Error(w, "Failed to create forward request", http.StatusInternalServerError)
-		return
-	}
-
-	proxyReq.Header = r.Header.Clone()
-	proxyReq.Header.Set("Content-Type", "application/json")
-	appendForwardedFor(proxyReq.Header, r.RemoteAddr)
-
-	//nolint:gosec // proxyReq target is validated via buildForwardURL and constrained to cluster leader ingest endpoints.
-	resp, err := leaderForwardClient.Do(proxyReq)
-	if err != nil {
-		slog.Error("Follower failed to forward request", "error", err)
-		http.Error(w, "Failed to forward request", http.StatusInternalServerError)
-		return
-	}
-	defer resp.Body.Close()
-	w.WriteHeader(resp.StatusCode)
+	proxy.ServeHTTP(w, r)
 }
 
 func (h *handler) handleIngestFollower(w http.ResponseWriter, r *http.Request) {
@@ -208,21 +194,6 @@ func (h *handler) handleIngestFollower(w http.ResponseWriter, r *http.Request) {
 
 func (h *handler) handleIngestEvent() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-		if origin != "" {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-			w.Header().Set("Access-Control-Allow-Credentials", "true")
-		} else {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-		}
-
-		if r.Method == http.MethodOptions {
-			w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
 		if h.ctx.Cluster.IsLeader() {
 			h.handleIngestEventLeader(w, r)
 		} else {
@@ -339,23 +310,14 @@ func isValidForwardHost(host string) bool {
 	if strings.ContainsAny(trimmed, `/\?#`) {
 		return false
 	}
-	if net.ParseIP(trimmed) != nil {
+	if _, err := netip.ParseAddr(trimmed); err == nil {
 		return true
 	}
 	return forwardedHostPattern.MatchString(trimmed)
 }
 
-func appendForwardedFor(headers http.Header, remoteAddr string) {
-	ip := shared.RemoteIPFromAddr(remoteAddr)
-	if ip == "" {
-		return
-	}
-
-	existing := strings.TrimSpace(headers.Get("X-Forwarded-For"))
-	if existing == "" {
-		headers.Set("X-Forwarded-For", ip)
-		return
-	}
-
-	headers.Set("X-Forwarded-For", existing+", "+ip)
+func newProxyTransport(timeout time.Duration) http.RoundTripper {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.ResponseHeaderTimeout = timeout
+	return transport
 }

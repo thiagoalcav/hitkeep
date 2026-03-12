@@ -154,3 +154,39 @@ func TestFetchMetadataMiddleware_BlocksStateChangingAPIWithMismatchedOriginFallb
 		t.Fatalf("expected status %d, got %d", http.StatusNotFound, rec.Code)
 	}
 }
+
+func TestCanonicalOrigin_NormalizesDefaultPortsAndIPv6(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{
+			name: "https default port",
+			raw:  "https://hitkeep.example:443/path",
+			want: "https://hitkeep.example",
+		},
+		{
+			name: "http default port",
+			raw:  "http://hitkeep.example:80/path",
+			want: "http://hitkeep.example",
+		},
+		{
+			name: "ipv6 host preserves brackets",
+			raw:  "https://[2001:db8::1]:8443/path",
+			want: "https://[2001:db8::1]:8443",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodPost, "/api/login", nil)
+			req.Header.Set("Origin", tt.raw)
+
+			got := originFromURLString(req.Header.Get("Origin"))
+			if got != tt.want {
+				t.Fatalf("expected %q, got %q", tt.want, got)
+			}
+		})
+	}
+}

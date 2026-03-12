@@ -3,12 +3,15 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math"
 	"strings"
 	"time"
 
+	"github.com/go-webauthn/webauthn/protocol"
+	webauthnlib "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
@@ -21,6 +24,7 @@ type PasskeyCredential struct {
 	Name         string
 	CredentialID string
 	PublicKey    string
+	Credential   webauthnlib.Credential
 	SignCount    uint32
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
@@ -39,6 +43,7 @@ type LoginChallenge struct {
 	RememberMe bool
 	Flow       string
 	Challenge  string
+	Session    *webauthnlib.SessionData
 	ExpiresAt  time.Time
 }
 
@@ -65,59 +70,9 @@ func (s *Store) HasEnabledTOTP(ctx context.Context, userID uuid.UUID) (bool, err
 	return count > 0, nil
 }
 
-func (s *Store) HasPendingTOTPSetup(ctx context.Context, userID uuid.UUID) (bool, error) {
-	var count int
-	if err := s.QueryRowOrNil(ctx,
-		"SELECT COUNT(*) FROM user_totp_pending_setup WHERE user_id = ?",
-		[]any{&count},
-		userID,
-	); err != nil {
-		return false, fmt.Errorf("could not check pending totp setup: %w", err)
-	}
-	return count > 0, nil
-}
-
-func (s *Store) CreatePendingTOTPSetup(ctx context.Context, userID uuid.UUID, secret string, expiresAt time.Time) error {
-	now := time.Now().UTC()
-	return s.Transact(ctx, func(tx *sql.Tx) error {
-		if _, err := tx.ExecContext(ctx, "DELETE FROM user_totp_pending_setup WHERE user_id = ?", userID); err != nil {
-			return fmt.Errorf("could not remove existing pending totp setup: %w", err)
-		}
-		if _, err := tx.ExecContext(ctx,
-			"INSERT INTO user_totp_pending_setup (user_id, secret, created_at, expires_at) VALUES (?, ?, ?, ?)",
-			userID, secret, now, expiresAt.UTC(),
-		); err != nil {
-			return fmt.Errorf("could not insert pending totp setup: %w", err)
-		}
-		return nil
-	})
-}
-
-func (s *Store) DeletePendingTOTPSetup(ctx context.Context, userID uuid.UUID) error {
-	return s.Exec(ctx, "DELETE FROM user_totp_pending_setup WHERE user_id = ?", userID)
-}
-
-func (s *Store) GetPendingTOTPSetup(ctx context.Context, userID uuid.UUID) (secret string, expiresAt time.Time, found bool, err error) {
-	err = s.QueryRowOrNil(ctx,
-		"SELECT secret, expires_at FROM user_totp_pending_setup WHERE user_id = ?",
-		[]any{&secret, &expiresAt},
-		userID,
-	)
-	if err != nil {
-		return "", time.Time{}, false, fmt.Errorf("could not get pending totp setup: %w", err)
-	}
-	if strings.TrimSpace(secret) == "" {
-		return "", time.Time{}, false, nil
-	}
-	return secret, expiresAt, true, nil
-}
-
 func (s *Store) EnableUserTOTP(ctx context.Context, userID uuid.UUID, secret string) error {
 	now := time.Now().UTC()
 	return s.Transact(ctx, func(tx *sql.Tx) error {
-		if _, err := tx.ExecContext(ctx, "DELETE FROM user_totp_pending_setup WHERE user_id = ?", userID); err != nil {
-			return fmt.Errorf("could not remove pending totp setup: %w", err)
-		}
 		if _, err := tx.ExecContext(ctx, "DELETE FROM user_totp_factors WHERE user_id = ?", userID); err != nil {
 			return fmt.Errorf("could not remove existing totp factor: %w", err)
 		}
@@ -148,35 +103,22 @@ func (s *Store) GetUserTOTPSecret(ctx context.Context, userID uuid.UUID) (secret
 }
 
 func (s *Store) DisableUserTOTP(ctx context.Context, userID uuid.UUID) error {
-	return s.Transact(ctx, func(tx *sql.Tx) error {
-		if _, err := tx.ExecContext(ctx, "DELETE FROM user_totp_pending_setup WHERE user_id = ?", userID); err != nil {
-			return fmt.Errorf("could not remove pending totp setup: %w", err)
-		}
-		if _, err := tx.ExecContext(ctx, "DELETE FROM user_totp_factors WHERE user_id = ?", userID); err != nil {
-			return fmt.Errorf("could not remove enabled totp factor: %w", err)
-		}
-		return nil
-	})
+	if err := s.Exec(ctx, "DELETE FROM user_totp_factors WHERE user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not remove enabled totp factor: %w", err)
+	}
+	return nil
 }
 
 func (s *Store) DisableUserMFA(ctx context.Context, userID uuid.UUID) (DisableUserMFAResult, error) {
 	var result DisableUserMFAResult
 
 	err := s.Transact(ctx, func(tx *sql.Tx) error {
-		if _, err := tx.ExecContext(ctx, "DELETE FROM user_totp_pending_setup WHERE user_id = ?", userID); err != nil {
-			return fmt.Errorf("could not remove pending totp setup: %w", err)
-		}
-
 		totpRes, err := tx.ExecContext(ctx, "DELETE FROM user_totp_factors WHERE user_id = ?", userID)
 		if err != nil {
 			return fmt.Errorf("could not remove enabled totp factor: %w", err)
 		}
 		if rows, rowsErr := totpRes.RowsAffected(); rowsErr == nil {
 			result.TOTPDisabled = rows > 0
-		}
-
-		if _, err := tx.ExecContext(ctx, "DELETE FROM user_passkey_challenges WHERE user_id = ?", userID); err != nil {
-			return fmt.Errorf("could not remove pending passkey challenge: %w", err)
 		}
 
 		passkeyRes, err := tx.ExecContext(ctx, "DELETE FROM user_passkeys WHERE user_id = ?", userID)
@@ -187,9 +129,6 @@ func (s *Store) DisableUserMFA(ctx context.Context, userID uuid.UUID) (DisableUs
 			result.PasskeysDeleted = int(rows)
 		}
 
-		if _, err := tx.ExecContext(ctx, "DELETE FROM passkey_login_challenges WHERE user_id = ?", userID); err != nil {
-			return fmt.Errorf("could not remove passkey login challenges: %w", err)
-		}
 		if _, err := tx.ExecContext(ctx, "DELETE FROM user_recovery_codes WHERE user_id = ?", userID); err != nil {
 			return fmt.Errorf("could not remove recovery codes: %w", err)
 		}
@@ -329,41 +268,6 @@ func (s *Store) ConsumeRecoveryCode(ctx context.Context, userID uuid.UUID, code 
 	return remaining, true, nil
 }
 
-func (s *Store) CreatePasskeyChallenge(ctx context.Context, userID uuid.UUID, challenge string, requestedName string, expiresAt time.Time) error {
-	now := time.Now().UTC()
-	return s.Transact(ctx, func(tx *sql.Tx) error {
-		if _, err := tx.ExecContext(ctx, "DELETE FROM user_passkey_challenges WHERE user_id = ?", userID); err != nil {
-			return fmt.Errorf("could not remove existing passkey challenge: %w", err)
-		}
-		if _, err := tx.ExecContext(ctx,
-			"INSERT INTO user_passkey_challenges (user_id, challenge, requested_name, created_at, expires_at) VALUES (?, ?, ?, ?, ?)",
-			userID, challenge, strings.TrimSpace(requestedName), now, expiresAt.UTC(),
-		); err != nil {
-			return fmt.Errorf("could not insert passkey challenge: %w", err)
-		}
-		return nil
-	})
-}
-
-func (s *Store) GetPasskeyChallenge(ctx context.Context, userID uuid.UUID) (challenge string, requestedName string, expiresAt time.Time, found bool, err error) {
-	err = s.QueryRowOrNil(ctx,
-		"SELECT challenge, COALESCE(requested_name, ''), expires_at FROM user_passkey_challenges WHERE user_id = ?",
-		[]any{&challenge, &requestedName, &expiresAt},
-		userID,
-	)
-	if err != nil {
-		return "", "", time.Time{}, false, fmt.Errorf("could not get passkey challenge: %w", err)
-	}
-	if strings.TrimSpace(challenge) == "" {
-		return "", "", time.Time{}, false, nil
-	}
-	return challenge, requestedName, expiresAt, true, nil
-}
-
-func (s *Store) DeletePasskeyChallenge(ctx context.Context, userID uuid.UUID) error {
-	return s.Exec(ctx, "DELETE FROM user_passkey_challenges WHERE user_id = ?", userID)
-}
-
 func (s *Store) CreateUserPasskey(ctx context.Context, userID uuid.UUID, name string, credentialID string, publicKey string, transports []string) (uuid.UUID, error) {
 	passkeyID := uuid.New()
 	now := time.Now().UTC()
@@ -398,6 +302,51 @@ func (s *Store) CreateUserPasskey(ctx context.Context, userID uuid.UUID, name st
 	return passkeyID, nil
 }
 
+func (s *Store) CreateUserPasskeyCredential(ctx context.Context, userID uuid.UUID, name string, credential webauthnlib.Credential) (uuid.UUID, error) {
+	passkeyID := uuid.New()
+	now := time.Now().UTC()
+
+	name = strings.TrimSpace(name)
+	if name == "" {
+		name = "Passkey"
+	}
+
+	credentialID := security.EncodeCredentialID(credential.ID)
+	if credentialID == "" {
+		return uuid.Nil, fmt.Errorf("credential id is required")
+	}
+
+	credentialJSON, err := marshalPasskeyCredential(credential)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	publicKey := base64.RawURLEncoding.EncodeToString(credential.PublicKey)
+
+	var transportsJSON *string
+	if len(credential.Transport) > 0 {
+		transports := make([]string, 0, len(credential.Transport))
+		for _, transport := range credential.Transport {
+			transports = append(transports, string(transport))
+		}
+		payload, err := json.Marshal(transports)
+		if err != nil {
+			return uuid.Nil, fmt.Errorf("could not encode passkey transports: %w", err)
+		}
+		value := string(payload)
+		transportsJSON = &value
+	}
+
+	if err := s.Exec(ctx,
+		"INSERT INTO user_passkeys (id, user_id, name, credential_id, public_key, credential_json, transports_json, sign_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		passkeyID, userID, name, credentialID, publicKey, credentialJSON, transportsJSON, int64(credential.Authenticator.SignCount), now, now,
+	); err != nil {
+		return uuid.Nil, fmt.Errorf("could not insert user passkey credential: %w", err)
+	}
+
+	return passkeyID, nil
+}
+
 func (s *Store) ListUserPasskeys(ctx context.Context, userID uuid.UUID) ([]api.UserPasskey, error) {
 	passkeys := make([]api.UserPasskey, 0)
 	if err := s.QueryList(ctx,
@@ -427,9 +376,10 @@ func (s *Store) DeleteUserPasskey(ctx context.Context, userID uuid.UUID, passkey
 func (s *Store) GetPasskeyByCredentialID(ctx context.Context, credentialID string) (*PasskeyCredential, error) {
 	var row PasskeyCredential
 	var signCount int64
+	var credentialJSON string
 	err := s.QueryRowOrNil(ctx,
-		"SELECT id, user_id, name, credential_id, COALESCE(public_key, ''), sign_count, created_at, updated_at FROM user_passkeys WHERE credential_id = ?",
-		[]any{&row.ID, &row.UserID, &row.Name, &row.CredentialID, &row.PublicKey, &signCount, &row.CreatedAt, &row.UpdatedAt},
+		"SELECT id, user_id, name, credential_id, COALESCE(public_key, ''), COALESCE(credential_json, ''), sign_count, created_at, updated_at FROM user_passkeys WHERE credential_id = ?",
+		[]any{&row.ID, &row.UserID, &row.Name, &row.CredentialID, &row.PublicKey, &credentialJSON, &signCount, &row.CreatedAt, &row.UpdatedAt},
 		strings.TrimSpace(credentialID),
 	)
 	if err != nil {
@@ -445,6 +395,10 @@ func (s *Store) GetPasskeyByCredentialID(ctx context.Context, credentialID strin
 		return nil, fmt.Errorf("passkey sign count is out of range: %d", signCount)
 	}
 	row.SignCount = uint32(signCount)
+	row.Credential, err = parseStoredPasskeyCredential(row.CredentialID, row.PublicKey, credentialJSON, row.SignCount)
+	if err != nil {
+		return nil, err
+	}
 	return &row, nil
 }
 
@@ -458,47 +412,98 @@ func (s *Store) UpdatePasskeySignCount(ctx context.Context, passkeyID uuid.UUID,
 	return nil
 }
 
-func (s *Store) CreatePasskeyLoginChallenge(ctx context.Context, challenge string, input CreateLoginChallengeInput, expiresAt time.Time) (uuid.UUID, error) {
-	challengeID := uuid.New()
-	now := time.Now().UTC()
-	flow := strings.TrimSpace(input.Flow)
-	if flow == "" {
-		flow = "passwordless"
-	}
-	var userIDArg any
-	if input.UserID != nil && *input.UserID != uuid.Nil {
-		userIDArg = *input.UserID
-	}
-	if err := s.Exec(ctx,
-		"INSERT INTO passkey_login_challenges (id, user_id, challenge, remember_me, flow, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-		challengeID, userIDArg, strings.TrimSpace(challenge), input.RememberMe, flow, now, expiresAt.UTC(),
-	); err != nil {
-		return uuid.Nil, fmt.Errorf("could not create passkey login challenge: %w", err)
-	}
-	return challengeID, nil
-}
-
-func (s *Store) GetPasskeyLoginChallenge(ctx context.Context, challengeID uuid.UUID) (row LoginChallenge, found bool, err error) {
-	var userIDRaw string
-	err = s.QueryRowOrNil(ctx,
-		"SELECT challenge, COALESCE(CAST(user_id AS VARCHAR), ''), remember_me, COALESCE(flow, ''), expires_at FROM passkey_login_challenges WHERE id = ?",
-		[]any{&row.Challenge, &userIDRaw, &row.RememberMe, &row.Flow, &row.ExpiresAt},
-		challengeID,
-	)
+func (s *Store) UpdatePasskeyCredential(ctx context.Context, passkeyID uuid.UUID, credential webauthnlib.Credential) error {
+	credentialJSON, err := marshalPasskeyCredential(credential)
 	if err != nil {
-		return LoginChallenge{}, false, fmt.Errorf("could not get passkey login challenge: %w", err)
+		return err
 	}
-	if strings.TrimSpace(row.Challenge) == "" {
-		return LoginChallenge{}, false, nil
+
+	publicKey := base64.RawURLEncoding.EncodeToString(credential.PublicKey)
+
+	if err := s.ExecRowsAffected(ctx,
+		"UPDATE user_passkeys SET public_key = ?, credential_json = ?, sign_count = ?, updated_at = ? WHERE id = ?",
+		publicKey, credentialJSON, int64(credential.Authenticator.SignCount), time.Now().UTC(), passkeyID,
+	); err != nil {
+		return fmt.Errorf("could not update passkey credential: %w", err)
 	}
-	row.ID = challengeID
-	if parsedUserID, parseErr := uuid.Parse(strings.TrimSpace(userIDRaw)); parseErr == nil {
-		row.UserID = parsedUserID
-		row.HasUserID = parsedUserID != uuid.Nil
-	}
-	return row, true, nil
+	return nil
 }
 
-func (s *Store) DeletePasskeyLoginChallenge(ctx context.Context, challengeID uuid.UUID) error {
-	return s.Exec(ctx, "DELETE FROM passkey_login_challenges WHERE id = ?", challengeID)
+func (s *Store) ListUserPasskeyCredentials(ctx context.Context, userID uuid.UUID) ([]webauthnlib.Credential, error) {
+	credentials := make([]webauthnlib.Credential, 0)
+	if err := s.QueryList(ctx,
+		"SELECT credential_id, COALESCE(public_key, ''), COALESCE(credential_json, ''), sign_count FROM user_passkeys WHERE user_id = ? ORDER BY created_at DESC",
+		func(rows *sql.Rows) error {
+			var (
+				credentialID   string
+				publicKey      string
+				credentialJSON string
+				signCount      int64
+			)
+			if err := rows.Scan(&credentialID, &publicKey, &credentialJSON, &signCount); err != nil {
+				return fmt.Errorf("could not scan passkey credential: %w", err)
+			}
+			if signCount < 0 {
+				signCount = 0
+			}
+			if signCount > math.MaxUint32 {
+				return fmt.Errorf("passkey sign count is out of range: %d", signCount)
+			}
+			credential, err := parseStoredPasskeyCredential(credentialID, publicKey, credentialJSON, uint32(signCount))
+			if err != nil {
+				return err
+			}
+			credentials = append(credentials, credential)
+			return nil
+		},
+		userID,
+	); err != nil {
+		return nil, fmt.Errorf("could not list user passkey credentials: %w", err)
+	}
+	return credentials, nil
+}
+
+func marshalPasskeyCredential(credential webauthnlib.Credential) (*string, error) {
+	payload, err := json.Marshal(credential)
+	if err != nil {
+		return nil, fmt.Errorf("could not encode passkey credential: %w", err)
+	}
+	value := string(payload)
+	return &value, nil
+}
+
+func parseStoredPasskeyCredential(credentialID string, publicKey string, credentialJSON string, signCount uint32) (webauthnlib.Credential, error) {
+	credentialJSON = strings.TrimSpace(credentialJSON)
+	if credentialJSON != "" {
+		var credential webauthnlib.Credential
+		if err := json.Unmarshal([]byte(credentialJSON), &credential); err != nil {
+			return webauthnlib.Credential{}, fmt.Errorf("could not decode passkey credential: %w", err)
+		}
+		return credential, nil
+	}
+
+	rawCredentialID, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(credentialID))
+	if err != nil {
+		return webauthnlib.Credential{}, fmt.Errorf("could not decode legacy credential id: %w", err)
+	}
+
+	rawPublicKey, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(publicKey))
+	if err != nil {
+		return webauthnlib.Credential{}, fmt.Errorf("could not decode legacy passkey public key: %w", err)
+	}
+
+	return webauthnlib.Credential{
+		ID:        rawCredentialID,
+		PublicKey: rawPublicKey,
+		Flags: webauthnlib.CredentialFlags{
+			UserPresent:    true,
+			UserVerified:   true,
+			BackupEligible: false,
+			BackupState:    false,
+		},
+		Authenticator: webauthnlib.Authenticator{
+			SignCount: signCount,
+		},
+		Transport: []protocol.AuthenticatorTransport{},
+	}, nil
 }

@@ -5,6 +5,7 @@ import (
 	"iter"
 	"net"
 	"net/http"
+	"net/netip"
 	"slices"
 	"strings"
 
@@ -16,15 +17,15 @@ import (
 // CountryCodeExtractor provides methods to extract country codes from various sources.
 // It uses a fallback strategy optimized for web analytics accuracy.
 type CountryCodeExtractor struct {
-	ipResolver       func(net.IP) string
-	trustedProxyNets []*net.IPNet
+	ipResolver       func(netip.Addr) string
+	trustedProxyNets []netip.Prefix
 }
 
 // NewCountryCodeExtractor creates a new extractor with the default IP resolver.
-func NewCountryCodeExtractor(trustedProxyNets []*net.IPNet) *CountryCodeExtractor {
+func NewCountryCodeExtractor(trustedProxyNets []netip.Prefix) *CountryCodeExtractor {
 	return &CountryCodeExtractor{
-		ipResolver: func(ip net.IP) string {
-			return iploc.Country(ip)
+		ipResolver: func(ip netip.Addr) string {
+			return iploc.Country(net.IP(ip.AsSlice()))
 		},
 		trustedProxyNets: trustedProxyNets,
 	}
@@ -117,8 +118,8 @@ func (e *CountryCodeExtractor) fromProxyHeaders(r *http.Request) string {
 func (e *CountryCodeExtractor) fromGeoIP(r *http.Request) string {
 	userIP := shared.GetRealIP(r, e.trustedProxyNets)
 
-	parsedIP := net.ParseIP(userIP)
-	if parsedIP == nil {
+	parsedIP, ok := shared.ParseAddr(userIP)
+	if !ok {
 		return ""
 	}
 
@@ -136,8 +137,8 @@ func (e *CountryCodeExtractor) shouldTrustProxyHeaders(r *http.Request) bool {
 		return false
 	}
 
-	parsedDirectIP := net.ParseIP(directIP)
-	if parsedDirectIP == nil {
+	parsedDirectIP, ok := shared.ParseAddr(directIP)
+	if !ok {
 		return false
 	}
 
@@ -145,23 +146,8 @@ func (e *CountryCodeExtractor) shouldTrustProxyHeaders(r *http.Request) bool {
 }
 
 // isPrivateIP checks if an IP is in private/local address space.
-func (e *CountryCodeExtractor) isPrivateIP(ip net.IP) bool {
-	// Check for loopback
-	if ip.IsLoopback() {
-		return true
-	}
-
-	// Check for private IPv4 ranges
-	if ip.To4() != nil {
-		return ip.IsPrivate()
-	}
-
-	// Check for private IPv6 ranges (link-local, unique local)
-	if ip.To16() != nil {
-		return ip.IsPrivate() || ip.IsLinkLocalUnicast()
-	}
-
-	return false
+func (e *CountryCodeExtractor) isPrivateIP(ip netip.Addr) bool {
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast()
 }
 
 // isValidCountryCode checks if a country code is valid.

@@ -2,24 +2,18 @@ import { Injectable, computed, inject, signal } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { Observable, finalize, tap } from "rxjs";
 
+import { PublicKeyCredentialAssertionJson, PublicKeyCredentialRequestOptionsJson } from "@core/utils/webauthn";
+
 export type AuthStatus = "unknown" | "authenticated" | "unauthenticated";
 
 export interface PasskeyLoginStartResponse {
     challenge_token: string;
-    publicKey: {
-        challenge: string;
-        rpId: string;
-        timeout: number;
-        userVerification: UserVerificationRequirement;
-    };
+    publicKey: PublicKeyCredentialRequestOptionsJson;
 }
 
 export interface PasskeyLoginFinishRequest {
     challenge_token: string;
-    credential_id: string;
-    client_data_json: string;
-    authenticator_data: string;
-    signature: string;
+    credential: PublicKeyCredentialAssertionJson;
     remember_me?: boolean;
 }
 

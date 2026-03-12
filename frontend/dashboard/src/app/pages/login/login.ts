@@ -19,6 +19,7 @@ import { CloudStatus } from "@models/analytics.types";
 import { AuthService, LoginResponse, PasskeyLoginFinishRequest, PasskeyLoginStartResponse } from "@services/auth.service";
 import { AnalyticsService } from "@services/analytics.service";
 import { UserPreferencesService } from "@services/user-preferences.service";
+import { toAssertionResponseJson, toPublicKeyRequestOptions } from "@core/utils/webauthn";
 
 type MfaFactor = "totp" | "passkey" | "recovery_code";
 
@@ -389,44 +390,20 @@ export class Login {
     }
 
     private toPasskeyRequestOptions(options: PasskeyLoginStartResponse["publicKey"]): PublicKeyCredentialRequestOptions {
-        return {
-            challenge: this.base64UrlToArrayBuffer(options.challenge),
-            rpId: options.rpId,
-            timeout: options.timeout,
-            userVerification: options.userVerification
-        };
+        return toPublicKeyRequestOptions(options);
     }
 
     private toPasskeyFinishPayload(credential: PublicKeyCredential, challengeToken: string, rememberMe: boolean): PasskeyLoginFinishRequest {
-        const response = credential.response as AuthenticatorAssertionResponse;
+        const serialized = toAssertionResponseJson(credential);
+        if (!serialized) {
+            throw new Error("Invalid passkey assertion response");
+        }
+
         return {
             challenge_token: challengeToken,
-            credential_id: credential.id,
-            client_data_json: this.arrayBufferToBase64Url(response.clientDataJSON),
-            authenticator_data: this.arrayBufferToBase64Url(response.authenticatorData),
-            signature: this.arrayBufferToBase64Url(response.signature),
+            credential: serialized,
             remember_me: rememberMe
         };
-    }
-
-    private base64UrlToArrayBuffer(value: string): ArrayBuffer {
-        const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-        const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
-        const binary = atob(padded);
-        const out = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i += 1) {
-            out[i] = binary.charCodeAt(i);
-        }
-        return out.buffer.slice(0);
-    }
-
-    private arrayBufferToBase64Url(value: ArrayBuffer): string {
-        const bytes = new Uint8Array(value);
-        let binary = "";
-        for (const byte of bytes) {
-            binary += String.fromCharCode(byte);
-        }
-        return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
     }
 
     private signupUrlForJurisdiction(jurisdiction: "EU" | "US"): string {

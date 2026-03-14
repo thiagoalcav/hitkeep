@@ -1,9 +1,11 @@
 <div class="flex flex-col h-full w-full bg-[var(--p-surface-ground)] transition-colors duration-200">
     <!-- Header -->
     <app-page-header>
-        <div header-left>
-            <app-page-breadcrumb [items]="breadcrumbItems()" />
-        </div>
+        <ng-template appPageHeaderLeft>
+            <div>
+                <app-page-breadcrumb [items]="breadcrumbItems()" />
+            </div>
+        </ng-template>
     </app-page-header>
 
     <app-range-toolbar
@@ -15,7 +17,7 @@
         (customRangeDatesChange)="funnelFilterForm.customRangeDates().control().setValue($event)"
         (refresh)="refreshStats()"
     >
-        <p-button toolbar-right icon="pi pi-plus" [label]="'funnels.createAction' | transloco" (onClick)="openFunnelManager()" class="p-button-rounded p-button-secondary" size="small"> </p-button>
+        <p-button toolbar-right icon="pi pi-plus" [label]="'funnels.manageAction' | transloco" (onClick)="openFunnelManager()" class="p-button-rounded p-button-secondary" size="small"> </p-button>
     </app-range-toolbar>
 
     @if (siteService.isLoading()) {

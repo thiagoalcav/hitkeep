@@ -10,7 +10,7 @@ import { SiteService } from "@features/sites/services/site.service";
 import { AnalyticsService } from "@core/services/analytics.service";
 import { MetricList } from "@features/analytics/components/metric-list";
 import { DEFAULT_RANGE_OPTIONS, RangeToolbar, RangeOption } from "@components/range-toolbar/range-toolbar";
-import { PageHeader } from "@components/page-header/page-header";
+import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
 import { SeriesChart, SeriesDefinition, SeriesChartPoint } from "@features/analytics/components/series-chart";
 import { MetricStat, EventSeriesPoint, EventAudience } from "@models/analytics.types";
@@ -25,12 +25,13 @@ interface EventFilterChip {
 
 @Component({
     selector: "app-events",
-    imports: [FormsModule, ReactiveFormsModule, TranslocoPipe, SelectModule, CardModule, SkeletonModule, ButtonModule, MetricList, RangeToolbar, PageHeader, PageBreadcrumb, SeriesChart],
+    imports: [FormsModule, ReactiveFormsModule, TranslocoPipe, SelectModule, CardModule, SkeletonModule, ButtonModule, MetricList, RangeToolbar, PageHeader, PageHeaderLeft, PageBreadcrumb, SeriesChart],
     templateUrl: "./events.html",
     styleUrl: "./events.css",
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Events {
+    protected readonly addEventsDocsUrl = "https://hitkeep.com/guides/tracking/custom-events/";
     private siteService = inject(SiteService);
     private analyticsService = inject(AnalyticsService);
     private localeService = inject(TranslocoLocaleService);

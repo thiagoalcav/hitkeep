@@ -8,7 +8,7 @@ import { ButtonModule } from "primeng/button";
 import { CardModule } from "primeng/card";
 import { SiteService } from "@features/sites/services/site.service";
 import { StatsService } from "@features/analytics/services/stats.service";
-import { PageHeader } from "@components/page-header/page-header";
+import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
 import { KpiCard } from "@features/analytics/components/kpi-card";
 import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from "@components/range-toolbar/range-toolbar";
@@ -24,7 +24,7 @@ interface MetricFilter {
 @Component({
     selector: "app-utm-dashboard",
     standalone: true,
-    imports: [ReactiveFormsModule, RouterLink, TranslocoPipe, ButtonModule, CardModule, PageHeader, PageBreadcrumb, RangeToolbar, KpiCard, MetricList, SeriesChart],
+    imports: [ReactiveFormsModule, RouterLink, TranslocoPipe, ButtonModule, CardModule, PageHeader, PageHeaderLeft, PageBreadcrumb, RangeToolbar, KpiCard, MetricList, SeriesChart],
     templateUrl: "./utm.html",
     styleUrl: "./utm.css",
     changeDetection: ChangeDetectionStrategy.OnPush

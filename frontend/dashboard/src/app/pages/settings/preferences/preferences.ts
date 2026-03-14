@@ -7,7 +7,7 @@ import { ButtonModule } from "primeng/button";
 import { CardModule } from "primeng/card";
 import { SelectModule } from "primeng/select";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { PageHeader } from "@components/page-header/page-header";
+import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
 import { UserPreferences, UserPreferencesService } from "@services/user-preferences.service";
 import { getBaseLanguage, getLocaleDirection, normalizeLocaleTag, TextDirection } from "@core/i18n/locale-utils";
@@ -50,7 +50,7 @@ const LANGUAGE_FLAG_FALLBACK: Record<string, string> = {
 
 @Component({
     selector: "app-preferences",
-    imports: [ReactiveFormsModule, ButtonModule, CardModule, SelectModule, PageHeader, PageBreadcrumb, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, CardModule, SelectModule, PageHeader, PageHeaderLeft, PageBreadcrumb, TranslocoPipe],
     templateUrl: "./preferences.html",
     styleUrl: "./preferences.css",
     changeDetection: ChangeDetectionStrategy.OnPush

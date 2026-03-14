@@ -1,8 +1,10 @@
 <div class="flex flex-col h-full w-full bg-[var(--p-surface-ground)] transition-colors duration-200">
     <app-page-header>
-        <div header-left>
-            <app-page-breadcrumb [items]="breadcrumbItems()" />
-        </div>
+        <ng-template appPageHeaderLeft>
+            <div>
+                <app-page-breadcrumb [items]="breadcrumbItems()" />
+            </div>
+        </ng-template>
     </app-page-header>
 
     <app-range-toolbar
@@ -13,6 +15,19 @@
         (selectedRangeChange)="selectedRange.set($event)"
         (customRangeDatesChange)="customRangeDates.set($event)"
     >
+        <a
+            toolbar-right
+            pButton
+            [href]="addEventsDocsUrl"
+            target="_blank"
+            rel="noreferrer"
+            size="small"
+            icon="pi pi-external-link"
+            iconPos="right"
+            [label]="'events.docsAction' | transloco"
+            [attr.aria-label]="'events.docsAction' | transloco"
+            class="p-button-rounded p-button-secondary"
+        ></a>
     </app-range-toolbar>
 
     @if (noSite()) {

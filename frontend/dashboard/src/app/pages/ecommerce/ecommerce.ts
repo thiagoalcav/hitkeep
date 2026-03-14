@@ -9,7 +9,7 @@ import { CardModule } from "primeng/card";
 import { TableModule } from "primeng/table";
 import { SiteService } from "@features/sites/services/site.service";
 import { AnalyticsService } from "@core/services/analytics.service";
-import { PageHeader } from "@components/page-header/page-header";
+import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
 import { KpiCard } from "@features/analytics/components/kpi-card";
 import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from "@components/range-toolbar/range-toolbar";
@@ -31,12 +31,13 @@ interface ProductFilter {
 
 @Component({
     selector: "app-ecommerce",
-    imports: [ReactiveFormsModule, TranslocoPipe, ButtonModule, CardModule, TableModule, PageHeader, PageBreadcrumb, RangeToolbar, KpiCard, MetricList, SeriesChart],
+    imports: [ReactiveFormsModule, TranslocoPipe, ButtonModule, CardModule, TableModule, PageHeader, PageHeaderLeft, PageBreadcrumb, RangeToolbar, KpiCard, MetricList, SeriesChart],
     templateUrl: "./ecommerce.html",
     styleUrl: "./ecommerce.css",
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EcommercePage {
+    protected readonly ecommerceDocsUrl = "https://hitkeep.com/guides/analytics/ecommerce/";
     protected siteService = inject(SiteService);
     private analyticsService = inject(AnalyticsService);
     private localeService = inject(TranslocoLocaleService);

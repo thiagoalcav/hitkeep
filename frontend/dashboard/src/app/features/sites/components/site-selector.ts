@@ -66,28 +66,31 @@ import { ShareService } from "@services/share.service";
 
                     @if (sites().length > 0) {
                         @if (!shareService.isShareMode()) {
-                            <div class="flex items-center gap-1 rounded-xl border border-surface-200 bg-surface-50 p-1 dark:border-surface-700 dark:bg-surface-900/60">
+                            <div class="mt-1 flex items-center gap-1 px-1">
                                 <button
                                     type="button"
                                     (click)="settingsClicked.emit()"
-                                    class="flex size-8 items-center justify-center rounded-lg text-muted-color transition-colors hover:bg-white hover:text-[var(--p-text-color)] focus:outline-none focus:ring-2 focus:ring-primary-500 dark:hover:bg-surface-800"
+                                    class="cursor-pointer flex h-8 flex-1 items-center justify-center rounded-md text-muted-color transition-colors hover:bg-surface-100 hover:text-[var(--p-text-color)] focus:outline-none focus:ring-2 focus:ring-primary-500 dark:hover:bg-surface-800"
                                     [attr.aria-label]="'sites.selector.siteSettingsAria' | transloco"
+                                    [title]="'sites.selector.siteSettingsAria' | transloco"
                                 >
                                     <i class="pi pi-cog text-sm" aria-hidden="true"></i>
                                 </button>
                                 <button
                                     type="button"
                                     (click)="trackingClicked.emit()"
-                                    class="flex size-8 items-center justify-center rounded-lg text-muted-color transition-colors hover:bg-white hover:text-[var(--p-text-color)] focus:outline-none focus:ring-2 focus:ring-primary-500 dark:hover:bg-surface-800"
+                                    class="cursor-pointer flex h-8 flex-1 items-center justify-center rounded-md text-muted-color transition-colors hover:bg-surface-100 hover:text-[var(--p-text-color)] focus:outline-none focus:ring-2 focus:ring-primary-500 dark:hover:bg-surface-800"
                                     [attr.aria-label]="'sites.selector.trackingCodeAria' | transloco"
+                                    [title]="'sites.selector.trackingCodeAria' | transloco"
                                 >
                                     <i class="pi pi-code text-sm" aria-hidden="true"></i>
                                 </button>
                                 <button
                                     type="button"
                                     (click)="openShareDialog()"
-                                    class="flex size-8 items-center justify-center rounded-lg text-muted-color transition-colors hover:bg-white hover:text-[var(--p-text-color)] focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-surface-800"
+                                    class="cursor-pointer flex h-8 flex-1 items-center justify-center rounded-md text-muted-color transition-colors hover:bg-surface-100 hover:text-[var(--p-text-color)] focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-surface-800"
                                     [attr.aria-label]="'sites.selector.shareDashboardAria' | transloco"
+                                    [title]="'sites.selector.shareDashboardAria' | transloco"
                                     [disabled]="!current()"
                                 >
                                     <i class="pi pi-share-alt text-sm" aria-hidden="true"></i>

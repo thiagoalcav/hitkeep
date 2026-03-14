@@ -35,7 +35,7 @@
             <ng-template pTemplate="selectedItem" let-selected>
                 @if (selected) {
                 <div class="flex min-w-0 items-center gap-3">
-                    <img [src]="teamLogoUrl(selected)" [alt]="selected.name" class="team-switcher__avatar size-9 shrink-0" />
+                    <img [src]="teamLogoUrl(selected)" [alt]="selected.name" class="team-switcher__avatar size-7 shrink-0" />
                     <div class="min-w-0 flex-1">
                         <div class="truncate text-sm font-semibold text-[var(--p-text-color)]">{{ selected.name }}</div>
                     </div>
@@ -47,7 +47,7 @@
 
             <ng-template pTemplate="item" let-team>
                 <div class="flex min-w-0 items-center gap-3">
-                    <img [src]="teamLogoUrl(team)" [alt]="team.name" class="team-switcher__avatar size-9 shrink-0" />
+                    <img [src]="teamLogoUrl(team)" [alt]="team.name" class="team-switcher__avatar size-7 shrink-0" />
                     <div class="min-w-0 flex-1">
                         <div class="truncate text-sm font-medium text-[var(--p-text-color)]">{{ team.name }}</div>
                         <div class="mt-1 text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--p-text-muted-color)]">{{ roleLabel(team.role) }}</div>

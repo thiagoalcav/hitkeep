@@ -12,11 +12,11 @@ import { UserProfileService } from "@services/user-profile.service";
     imports: [AvatarModule, MenuModule, TranslocoPipe],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-1">
             <button
                 type="button"
                 (click)="prefs.toggleTheme()"
-                class="cursor-pointer p-2 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 text-muted-color focus:outline-none focus:ring-2 focus:ring-primary-500"
+                class="cursor-pointer rounded-full p-2 text-muted-color hover:bg-surface-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:hover:bg-surface-800"
                 [attr.aria-label]="prefs.isDarkMode() ? ('common.switchToLightModeAria' | transloco) : ('common.switchToDarkModeAria' | transloco)"
             >
                 <i class="pi" [class]="prefs.isDarkMode() ? 'pi-moon' : 'pi-sun'" aria-hidden="true"></i>
@@ -26,17 +26,17 @@ import { UserProfileService } from "@services/user-profile.service";
                 <button
                     type="button"
                     (click)="profileMenu.toggle($event)"
-                    class="cursor-pointer flex items-center gap-2 px-2 py-1.5 rounded-full hover:bg-surface-100 dark:hover:bg-surface-800 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    class="cursor-pointer flex items-center gap-2 rounded-full py-1.5 pl-2 pr-1 hover:bg-surface-100 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:hover:bg-surface-800"
                     aria-haspopup="true"
                     [attr.aria-label]="'common.openUserMenuAria' | transloco"
                 >
                     @if (profile.avatarUrl()) {
-                        <p-avatar [image]="profile.avatarUrl()" shape="circle" styleClass="bg-surface-200 dark:bg-surface-700" aria-hidden="true" />
+                        <p-avatar [image]="profile.avatarUrl()" shape="circle" styleClass="w-7 h-7 bg-surface-200 dark:bg-surface-700" aria-hidden="true" />
                     } @else {
-                        <p-avatar icon="pi pi-user" shape="circle" styleClass="bg-surface-200 dark:bg-surface-700" aria-hidden="true" />
+                        <p-avatar icon="pi pi-user" shape="circle" styleClass="w-7 h-7 bg-surface-200 dark:bg-surface-700" aria-hidden="true" />
                     }
-                    <span class="hidden sm:inline text-sm font-medium text-[var(--p-text-color)]">{{ profile.displayName() }}</span>
-                    <i class="pi pi-chevron-down text-xs text-muted-color" aria-hidden="true"></i>
+                    <span class="hidden pr-1 text-sm font-medium text-[var(--p-text-color)] xl:inline">{{ profile.displayName() }}</span>
+                    <i class="pi pi-chevron-down pr-1 text-xs text-muted-color" aria-hidden="true"></i>
                 </button>
                 <p-menu #profileMenu [model]="userMenu.menuItems()" [popup]="true" appendTo="body" />
             }

@@ -4,7 +4,7 @@ import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 import { DomSanitizer, SafeResourceUrl } from "@angular/platform-browser";
 
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
-import { PageHeader } from "@components/page-header/page-header";
+import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
 import { PreferencesService } from "@services/preferences.service";
 
 interface ScalarFrameEvent {
@@ -16,7 +16,7 @@ const SCALAR_FRAME_EVENT_SOURCE = "hitkeep-scalar-frame";
 
 @Component({
     selector: "app-api-reference-page",
-    imports: [PageHeader, PageBreadcrumb, TranslocoPipe],
+    imports: [PageHeader, PageHeaderLeft, PageBreadcrumb, TranslocoPipe],
     templateUrl: "./api-reference.html",
     styleUrl: "./api-reference.css",
     changeDetection: ChangeDetectionStrategy.OnPush

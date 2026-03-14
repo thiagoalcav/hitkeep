@@ -1,9 +1,11 @@
 <div class="flex flex-col h-full w-full bg-[var(--p-surface-ground)] transition-colors duration-200">
     <!-- Header -->
     <app-page-header>
-        <div header-left>
-            <app-page-breadcrumb [items]="breadcrumbItems()" />
-        </div>
+        <ng-template appPageHeaderLeft>
+            <div>
+                <app-page-breadcrumb [items]="breadcrumbItems()" />
+            </div>
+        </ng-template>
     </app-page-header>
 
     <app-range-toolbar

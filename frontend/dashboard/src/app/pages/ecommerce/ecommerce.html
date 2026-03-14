@@ -1,8 +1,10 @@
 <div class="flex flex-col h-full w-full bg-[var(--p-surface-ground)] transition-colors duration-200">
     <app-page-header>
-        <div header-left>
-            <app-page-breadcrumb [items]="breadcrumbItems()" />
-        </div>
+        <ng-template appPageHeaderLeft>
+            <div>
+                <app-page-breadcrumb [items]="breadcrumbItems()" />
+            </div>
+        </ng-template>
     </app-page-header>
 
     <app-range-toolbar
@@ -13,7 +15,21 @@
         (selectedRangeChange)="selectedRange.set($event)"
         (customRangeDatesChange)="customRangeDates.set($event)"
         (refresh)="refreshData()"
-    />
+    >
+        <a
+            toolbar-right
+            pButton
+            [href]="ecommerceDocsUrl"
+            target="_blank"
+            rel="noreferrer"
+            size="small"
+            icon="pi pi-external-link"
+            iconPos="right"
+            [label]="'ecommerce.docsAction' | transloco"
+            [attr.aria-label]="'ecommerce.docsAction' | transloco"
+            class="p-button-rounded p-button-secondary"
+        ></a>
+    </app-range-toolbar>
 
     @if (siteService.isLoading()) {
     <div class="flex items-center gap-2 text-sm text-[var(--p-text-muted-color)]">

@@ -28,7 +28,7 @@ dev-backend:
 
 dev-frontend:
 	@echo "Starting Angular with Hot Reload..."
-	@cd frontend/dashboard && npm ci --no-fund --no-audit && npm start
+	@cd frontend/dashboard && npm i --no-fund --no-audit && npm start
 
 run: build
 	@./hitkeep

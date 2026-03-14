@@ -87,11 +87,9 @@ describe("MainLayout", () => {
         expect(switchers.length).toBeGreaterThan(0);
     });
 
-    it("should place the desktop team switcher in the account cluster", () => {
+    it("should not render the legacy floating desktop account cluster", () => {
         const topbarCluster = fixture.nativeElement.querySelector(".layout-topbar__account-cluster");
-        expect(topbarCluster).toBeTruthy();
-        expect(topbarCluster.querySelector("app-team-switcher")).toBeTruthy();
-        expect(topbarCluster.querySelector("app-user-controls")).toBeTruthy();
+        expect(topbarCluster).toBeNull();
     });
 
     it("should show administration section for team owner/admin role", () => {

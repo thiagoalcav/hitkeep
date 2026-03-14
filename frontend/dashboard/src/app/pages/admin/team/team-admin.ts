@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } 
 import { toSignal } from "@angular/core/rxjs-interop";
 import { TranslocoService } from "@jsverse/transloco";
 import { TabsModule } from "primeng/tabs";
-import { PageHeader } from "@components/page-header/page-header";
+import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
 import { TeamService } from "@services/team.service";
 import { TeamOverviewPage } from "./team-overview";
@@ -18,7 +18,7 @@ interface TeamAdminTab {
 
 @Component({
     selector: "app-team-admin",
-    imports: [TabsModule, PageHeader, PageBreadcrumb, TeamOverviewPage, TeamMembersPage, TeamSettingsPage, TeamAuditPage],
+    imports: [TabsModule, PageHeader, PageHeaderLeft, PageBreadcrumb, TeamOverviewPage, TeamMembersPage, TeamSettingsPage, TeamAuditPage],
     templateUrl: "./team-admin.html",
     changeDetection: ChangeDetectionStrategy.OnPush
 })

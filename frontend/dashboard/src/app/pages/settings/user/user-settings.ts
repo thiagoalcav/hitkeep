@@ -6,7 +6,7 @@ import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
 import { compatForm } from "@angular/forms/signals/compat";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
-import { PageHeader } from "@components/page-header/page-header";
+import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
 import { getBaseLanguage, getLocaleDirection, normalizeLocaleTag, TextDirection } from "@core/i18n/locale-utils";
 import { buildTakeoutExportMenuItems, DEFAULT_TAKEOUT_EXPORT_FORMAT, TakeoutExportFormat } from "@core/export/export-formats";
 import { SettingsCard } from "@features/settings/components/settings-card";
@@ -65,7 +65,7 @@ const LANGUAGE_FLAG_FALLBACK: Record<string, string> = {
 
 @Component({
     selector: "app-user-settings",
-    imports: [ReactiveFormsModule, ButtonModule, InputTextModule, SelectModule, SplitButtonModule, SettingsCard, SettingsSecurity, PageHeader, PageBreadcrumb, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, InputTextModule, SelectModule, SplitButtonModule, SettingsCard, SettingsSecurity, PageHeader, PageHeaderLeft, PageBreadcrumb, TranslocoPipe],
     templateUrl: "./user-settings.html",
     styleUrl: "./user-settings.css",
     changeDetection: ChangeDetectionStrategy.OnPush

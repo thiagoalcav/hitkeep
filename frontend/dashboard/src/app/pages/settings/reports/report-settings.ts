@@ -6,7 +6,7 @@ import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 import { ButtonModule } from "primeng/button";
 import { DividerModule } from "primeng/divider";
 import { ToggleSwitchModule } from "primeng/toggleswitch";
-import { PageHeader } from "@components/page-header/page-header";
+import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
 import { SettingsCard } from "@features/settings/components/settings-card";
 import { ReportSubscriptionsService } from "@services/report-subscriptions.service";
@@ -14,7 +14,7 @@ import { FrequencyPrefs, SiteReportSubscription } from "@core/models/analytics.t
 
 @Component({
     selector: "app-report-settings",
-    imports: [FormsModule, ButtonModule, DividerModule, ToggleSwitchModule, SettingsCard, PageHeader, PageBreadcrumb, TranslocoPipe],
+    imports: [FormsModule, ButtonModule, DividerModule, ToggleSwitchModule, SettingsCard, PageHeader, PageHeaderLeft, PageBreadcrumb, TranslocoPipe],
     templateUrl: "./report-settings.html",
     styleUrl: "./report-settings.css",
     changeDetection: ChangeDetectionStrategy.OnPush

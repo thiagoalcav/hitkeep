@@ -2,13 +2,13 @@ import { ChangeDetectionStrategy, Component, computed, inject } from "@angular/c
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 import { toSignal } from "@angular/core/rxjs-interop";
 
-import { PageHeader } from "@components/page-header/page-header";
+import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
 import { SettingsAPIClients } from "@features/settings/components/settings-api-clients";
 
 @Component({
     selector: "app-api-clients-page",
-    imports: [PageHeader, PageBreadcrumb, SettingsAPIClients, TranslocoPipe],
+    imports: [PageHeader, PageHeaderLeft, PageBreadcrumb, SettingsAPIClients, TranslocoPipe],
     templateUrl: "./api-clients.html",
     styleUrl: "./api-clients.css",
     changeDetection: ChangeDetectionStrategy.OnPush

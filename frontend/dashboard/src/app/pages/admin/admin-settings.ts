@@ -14,7 +14,7 @@ import { MessageModule } from "primeng/message";
 import { HttpClient } from "@angular/common/http";
 import { HttpErrorResponse } from "@angular/common/http";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { PageHeader } from "@components/page-header/page-header";
+import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
 import { RelativeDateTime } from "@components/relative-date-time/relative-date-time";
 import { PermissionService } from "@services/permission.service";
@@ -69,7 +69,23 @@ interface StatusState {
 
 @Component({
     selector: "app-admin-settings",
-    imports: [ReactiveFormsModule, ConfirmPopupModule, TableModule, ButtonModule, SelectModule, CardModule, TabsModule, InputTextModule, MessageModule, PageHeader, PageBreadcrumb, AdminGlobalExclusionSettings, RelativeDateTime, TranslocoPipe],
+    imports: [
+        ReactiveFormsModule,
+        ConfirmPopupModule,
+        TableModule,
+        ButtonModule,
+        SelectModule,
+        CardModule,
+        TabsModule,
+        InputTextModule,
+        MessageModule,
+        PageHeader,
+        PageHeaderLeft,
+        PageBreadcrumb,
+        AdminGlobalExclusionSettings,
+        RelativeDateTime,
+        TranslocoPipe
+    ],
     templateUrl: "./admin-settings.html",
     styleUrl: "./admin-settings.css",
     changeDetection: ChangeDetectionStrategy.OnPush,

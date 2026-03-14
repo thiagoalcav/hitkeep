@@ -105,7 +105,7 @@ export class TeamSwitcher {
     private generateInitialsAvatar(team: Team): string {
         const initials = this.teamInitials(team.name);
         const palette = this.paletteFromSeed(team.id || team.name || "team");
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40" role="img" aria-label="${this.escapeAttr(team.name || "Team")}"><rect width="40" height="40" rx="20" fill="${palette.background}"/><text x="20" y="25" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" font-weight="700" fill="${palette.foreground}">${this.escapeText(initials)}</text></svg>`;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28" role="img" aria-label="${this.escapeAttr(team.name || "Team")}"><rect width="28" height="28" rx="6" fill="${palette.background}"/><text x="14" y="19" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" font-weight="700" fill="${palette.foreground}">${this.escapeText(initials)}</text></svg>`;
         return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
     }
 

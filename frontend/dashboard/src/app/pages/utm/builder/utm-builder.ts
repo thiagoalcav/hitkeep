@@ -8,7 +8,7 @@ import { CardModule } from "primeng/card";
 import { InputTextModule } from "primeng/inputtext";
 import { IftaLabelModule } from "primeng/iftalabel";
 import { SelectModule } from "primeng/select";
-import { PageHeader } from "@components/page-header/page-header";
+import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
 import { SiteService } from "@features/sites/services/site.service";
 import { SiteFavicon } from "@features/sites/components/site-favicon";
@@ -32,7 +32,7 @@ function urlValidator(): ValidatorFn {
     templateUrl: "./utm-builder.html",
     styleUrl: "./utm-builder.css",
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [FormsModule, ReactiveFormsModule, TranslocoPipe, ButtonModule, CardModule, InputTextModule, IftaLabelModule, SelectModule, SiteFavicon, PageHeader, PageBreadcrumb]
+    imports: [FormsModule, ReactiveFormsModule, TranslocoPipe, ButtonModule, CardModule, InputTextModule, IftaLabelModule, SelectModule, SiteFavicon, PageHeader, PageHeaderLeft, PageBreadcrumb]
 })
 export class UtmBuilder {
     private transloco = inject(TranslocoService);

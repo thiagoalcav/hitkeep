@@ -1,35 +1,34 @@
 <div class="range-toolbar">
     <div class="range-toolbar__controls">
-        <span class="p-buttonset range-toolbar__presets" [attr.aria-label]="'common.timeRangeSelectorAria' | transloco" role="group">
+        <div class="inline-flex items-center gap-1 rounded-lg border border-surface-200 bg-surface-100 p-1 dark:border-surface-700 dark:bg-surface-800" [attr.aria-label]="'common.timeRangeSelectorAria' | transloco" role="group">
             @for (option of presetRanges(); track option.value) {
             <button
                 type="button"
-                pButton
-                size="small"
-                class="range-toolbar__preset-button"
-                [class.range-toolbar__preset-button--active]="isPresetActive(option.value)"
-                [label]="option.shortLabel"
+                class="active:scale-95 cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                [class]="isPresetActive(option.value) ? 'bg-surface-0 dark:bg-surface-900 shadow-sm text-[var(--p-text-color)]' : 'text-muted-color hover:bg-surface-200/50 hover:text-[var(--p-text-color)] dark:hover:bg-surface-700/50'"
                 [attr.aria-pressed]="isPresetActive(option.value)"
                 [attr.aria-label]="option.label"
                 [pTooltip]="option.label"
                 tooltipPosition="bottom"
                 (click)="selectPreset(option)"
-            ></button>
+            >
+                {{ option.shortLabel }}
+            </button>
             }
             <button
                 type="button"
-                pButton
-                size="small"
-                class="range-toolbar__preset-button"
-                [class.range-toolbar__preset-button--active]="isCustomActive()"
-                [label]="customButtonLabel()"
+                class="active:scale-95 flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+                [class]="isCustomActive() ? 'bg-surface-0 dark:bg-surface-900 shadow-sm text-[var(--p-text-color)]' : 'text-muted-color hover:bg-surface-200/50 hover:text-[var(--p-text-color)] dark:hover:bg-surface-700/50'"
                 [attr.aria-pressed]="isCustomActive()"
                 [attr.aria-label]="'common.timeRanges.openCustomRangeAria' | transloco"
                 [pTooltip]="customRangeSummary() ?? undefined"
                 tooltipPosition="bottom"
                 (click)="toggleCustomRange($event, customPopover)"
-            ></button>
-        </span>
+            >
+                <i class="pi pi-calendar text-xs" aria-hidden="true"></i>
+                {{ customButtonLabel() }}
+            </button>
+        </div>
 
         @if (customRangeSummary(); as summary) {
         <div class="range-toolbar__summary" [attr.aria-label]="'common.timeRanges.customRange' | transloco">{{ summary }}</div>
@@ -75,24 +74,22 @@
                 </div>
 
                 <div class="range-toolbar__actions">
-                    <p-button [label]="'common.actions.cancel' | transloco" severity="secondary" styleClass="p-button-text" size="small" (onClick)="cancelCustomRange(customPopover)" />
-                    <p-button [label]="'common.actions.apply' | transloco" size="small" [disabled]="!canApplyCustomRange()" (onClick)="applyCustomRange(customPopover)" />
+                    <p-button [label]="'common.actions.cancel' | transloco" severity="secondary" styleClass="cursor-pointer p-button-text" size="small" (onClick)="cancelCustomRange(customPopover)" />
+                    <p-button [label]="'common.actions.apply' | transloco" styleClass="cursor-pointer" size="small" [disabled]="!canApplyCustomRange()" (onClick)="applyCustomRange(customPopover)" />
                 </div>
             </div>
         </p-popover>
 
         <p-button
             icon="pi pi-refresh"
-            [label]="'common.actions.refresh' | transloco"
-            loadingIcon="pi pi-refresh"
             (onClick)="refresh.emit()"
             [loading]="loading()"
-            class="range-toolbar__refresh"
-            [pTooltip]="'common.refreshDataTooltip' | transloco"
+            class="ml-1"
+            [pTooltip]="'common.actions.refresh' | transloco"
             tooltipPosition="bottom"
             [outlined]="true"
             severity="secondary"
-            size="small"
+            styleClass="flex h-9 w-9 cursor-pointer items-center justify-center p-0"
         />
     </div>
 

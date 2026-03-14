@@ -30,7 +30,7 @@ import { FunnelManager } from "@features/funnels/components/funnel-manager";
 import { FunnelViewer } from "@features/funnels/components/funnel-viewer";
 import { Funnel } from "@models/analytics.types";
 import { MetricStat } from "@models/analytics.types";
-import { PageHeader } from "@components/page-header/page-header";
+import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
 import { KpiCard } from "@features/analytics/components/kpi-card";
 import { ShareService } from "@services/share.service";
@@ -71,6 +71,7 @@ interface KpiCardData {
         InputTextModule,
         SkeletonModule,
         PageHeader,
+        PageHeaderLeft,
         PageBreadcrumb,
         RangeToolbar,
         RelativeDateTime,

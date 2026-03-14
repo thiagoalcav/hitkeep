@@ -62,8 +62,8 @@ jobs:
 
       - name: Prepare Public Assets
         run: |
-          rm -rf public
           mkdir -p public
+          find public -mindepth 1 ! -name embed.go -exec rm -rf {} +
           cp -r frontend/dashboard/dist/dashboard/browser/* public/
           tar -czf public-assets.tar.gz -C public .
 
@@ -109,8 +109,8 @@ jobs:
           set -euo pipefail
           archive="$(find artifacts/public -name 'public-assets.tar.gz' -print -quit)"
           test -n "$archive"
-          rm -rf public
           mkdir -p public
+          find public -mindepth 1 ! -name embed.go -exec rm -rf {} +
           tar -xzf "$archive" -C public
 
       - name: Resolve Go cache paths
@@ -286,8 +286,8 @@ jobs:
 
           public_archive="$(find artifacts/public -name 'public-assets.tar.gz' -print -quit)"
           test -n "$public_archive"
-          rm -rf public
           mkdir -p public
+          find public -mindepth 1 ! -name embed.go -exec rm -rf {} +
           tar -xzf "$public_archive" -C public
 
           while IFS= read -r archive; do

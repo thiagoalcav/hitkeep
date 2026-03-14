@@ -135,6 +135,7 @@ jobs:
           # is safer for DuckDB consumers than building on newer runner images.
           docker run --rm \
             -e CGO_ENABLED=1 \
+            -e GO_VERSION="$GO_VERSION" \
             -e GOOS=linux \
             -e GOARCH="${{ matrix.goarch }}" \
             -e GO_TARBALL_ARCH="${{ matrix.goarch }}" \

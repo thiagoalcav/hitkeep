@@ -87,7 +87,7 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        include: ${{ fromJSON(inputs.build_portable_targets && '[{"id":"linux-amd64","label":"Linux amd64","runner":"ubuntu-24.04","platform":"linux","goos":"linux","goarch":"amd64","artifact_suffix":"linux-amd64","glibc_baseline":"2.31"},{"id":"linux-arm64","label":"Linux arm64","runner":"ubuntu-24.04-arm","platform":"linux","goos":"linux","goarch":"arm64","artifact_suffix":"linux-arm64","glibc_baseline":"2.31"},{"id":"darwin-amd64","label":"macOS amd64","runner":"macos-15-intel","platform":"darwin","goos":"darwin","goarch":"amd64","artifact_suffix":"darwin-amd64"},{"id":"darwin-arm64","label":"macOS arm64","runner":"macos-14","platform":"darwin","goos":"darwin","goarch":"arm64","artifact_suffix":"darwin-arm64"}]' || '[{"id":"linux-amd64","label":"Linux amd64","runner":"ubuntu-24.04","platform":"linux","goos":"linux","goarch":"amd64","artifact_suffix":"linux-amd64","glibc_baseline":"2.31"},{"id":"linux-arm64","label":"Linux arm64","runner":"ubuntu-24.04-arm","platform":"linux","goos":"linux","goarch":"arm64","artifact_suffix":"linux-arm64","glibc_baseline":"2.31"}]') }}
+        include: ${{ fromJSON(inputs.build_portable_targets && '[{"id":"linux-amd64","label":"Linux amd64","runner":"ubuntu-22.04","platform":"linux","goos":"linux","goarch":"amd64","artifact_suffix":"linux-amd64","glibc_baseline":"2.35"},{"id":"linux-arm64","label":"Linux arm64","runner":"ubuntu-22.04-arm","platform":"linux","goos":"linux","goarch":"arm64","artifact_suffix":"linux-arm64","glibc_baseline":"2.35"},{"id":"darwin-amd64","label":"macOS amd64","runner":"macos-15-intel","platform":"darwin","goos":"darwin","goarch":"amd64","artifact_suffix":"darwin-amd64"},{"id":"darwin-arm64","label":"macOS arm64","runner":"macos-14","platform":"darwin","goos":"darwin","goarch":"arm64","artifact_suffix":"darwin-arm64"}]' || '[{"id":"linux-amd64","label":"Linux amd64","runner":"ubuntu-22.04","platform":"linux","goos":"linux","goarch":"amd64","artifact_suffix":"linux-amd64","glibc_baseline":"2.35"},{"id":"linux-arm64","label":"Linux arm64","runner":"ubuntu-22.04-arm","platform":"linux","goos":"linux","goarch":"arm64","artifact_suffix":"linux-arm64","glibc_baseline":"2.35"}]') }}
 
     steps:
       - uses: actions/checkout@v6
@@ -113,67 +113,33 @@ jobs:
           find public -mindepth 1 ! -name embed.go -exec rm -rf {} +
           tar -xzf "$archive" -C public
 
-      - name: Resolve Go cache paths
-        id: go-cache
-        if: ${{ matrix.platform == 'linux' }}
-        shell: bash
-        run: |
-          echo "gocache=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
-          echo "gomodcache=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
-
-      - name: Build Linux binaries against glibc ${{ matrix.glibc_baseline }}
+      - name: Build native Linux binaries on Ubuntu ${{ matrix.glibc_baseline }}
         if: ${{ matrix.platform == 'linux' }}
         shell: bash
         env:
-          GO_VERSION: ${{ steps.setup-go.outputs.go-version }}
+          CGO_ENABLED: 1
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
           HITKEEP_VERSION: ${{ inputs.version }}
           CLOUD_GO_BUILD_TAGS: ${{ inputs.cloud_go_build_tags }}
         run: |
           set -euo pipefail
 
-          # Bullseye keeps Linux release binaries on a glibc 2.31 baseline, which
-          # is safer for DuckDB consumers than building on newer runner images.
-          docker run --rm \
-            -e CGO_ENABLED=1 \
-            -e GO_VERSION="$GO_VERSION" \
-            -e GOOS=linux \
-            -e GOARCH="${{ matrix.goarch }}" \
-            -e GO_TARBALL_ARCH="${{ matrix.goarch }}" \
-            -e HITKEEP_VERSION="$HITKEEP_VERSION" \
-            -e CLOUD_GO_BUILD_TAGS="$CLOUD_GO_BUILD_TAGS" \
-            -e GOCACHE=/go-cache/build \
-            -e GOMODCACHE=/go-cache/mod \
-            -v "$PWD:/src" \
-            -v "${{ steps.go-cache.outputs.gocache }}:/go-cache/build" \
-            -v "${{ steps.go-cache.outputs.gomodcache }}:/go-cache/mod" \
-            -w /src \
-            debian:bullseye-slim \
-            bash -lc '
-              set -euo pipefail
+          # DuckDB's prebuilt linux bindings currently need a newer libstdc++
+          # than Bullseye provides; Ubuntu 22.04 satisfies that requirement.
+          export CC=gcc
+          export CXX=g++
 
-              export DEBIAN_FRONTEND=noninteractive
-              apt-get update
-              apt-get install -y --no-install-recommends build-essential ca-certificates curl git xz-utils
+          go build \
+            -ldflags="-w -s -X 'hitkeep/cmd.Version=${HITKEEP_VERSION}'" \
+            -o "hitkeep-linux-${{ matrix.goarch }}" \
+            ./cmd/hitkeep/main.go
 
-              curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${GO_TARBALL_ARCH}.tar.gz" -o /tmp/go.tgz
-              rm -rf /usr/local/go
-              tar -C /usr/local -xzf /tmp/go.tgz
-              export PATH=/usr/local/go/bin:$PATH
-
-              export CC=gcc
-              export CXX=g++
-
-              go build \
-                -ldflags="-w -s -X '\''hitkeep/cmd.Version=$HITKEEP_VERSION'\''" \
-                -o "hitkeep-linux-${{ matrix.goarch }}" \
-                ./cmd/hitkeep/main.go
-
-              go build \
-                -tags "$CLOUD_GO_BUILD_TAGS" \
-                -ldflags="-w -s -X '\''hitkeep/cmd.Version=$HITKEEP_VERSION'\''" \
-                -o "hitkeep-cloud-linux-${{ matrix.goarch }}" \
-                ./cmd/hitkeep/main.go
-            '
+          go build \
+            -tags "${CLOUD_GO_BUILD_TAGS}" \
+            -ldflags="-w -s -X 'hitkeep/cmd.Version=${HITKEEP_VERSION}'" \
+            -o "hitkeep-cloud-linux-${{ matrix.goarch }}" \
+            ./cmd/hitkeep/main.go
 
       - name: Build native ${{ matrix.label }} binaries
         if: ${{ matrix.platform != 'linux' }}

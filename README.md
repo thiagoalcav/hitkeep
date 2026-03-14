@@ -12,7 +12,7 @@
 HitKeep is an open source web analytics platform built for people who want a simpler stack than the usual PostgreSQL, Redis, ClickHouse, and reverse-proxy pileup.
 
 - Single binary runtime
-- Embedded DuckDB and NSQ
+- Embedded DuckDB and NSQ with batched ingest writes
 - Privacy-first tracking
 - Goals, funnels, ecommerce, email reports, and API clients
 - Self-hosted or managed cloud with EU/US region choice
@@ -26,8 +26,9 @@ HitKeep is an open source web analytics platform built for people who want a sim
 HitKeep is for teams that want product analytics without adopting a full analytics platform stack.
 
 - **Simple to run:** one binary, one data directory, no external database required
+- **Efficient write path:** NSQ buffers ingest bursts and DuckDB appender batches smooth out disk-heavy per-row inserts
 - **Privacy-first by default:** cookie-less tracking, Do Not Track support, focused data collection
-- **Useful out of the box:** traffic analytics with country and language breakdowns, custom events, goals, funnels, ecommerce, UTM attribution, and scheduled email reports
+- **Useful out of the box:** traffic analytics with countries/languages audience toggles, top/landing/exit page views, custom events, goals, funnels, ecommerce, UTM attribution, and scheduled email reports
 - **Built for teams:** passkeys, TOTP, site and team permissions, API clients, share links, and audit visibility
 - **Flexible deployment:** self-host it yourself or use HitKeep Cloud and still keep the migration path open
 

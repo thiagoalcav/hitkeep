@@ -196,6 +196,10 @@
         "metrics": {
             "countries": "Pays",
             "devices": "Appareils",
+            "pages": "Pages",
+            "landingPages": "Pages d'entrée",
+            "exitPages": "Pages de sortie",
+            "pageModeAria": "Sélectionner la métrique des pages",
             "topPages": "Pages principales",
             "topSources": "Sources principales"
         },

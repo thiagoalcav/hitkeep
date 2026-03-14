@@ -50,6 +50,8 @@ export interface SiteStats {
     pages_per_session: number;
     chart_data: ChartDataPoint[];
     top_pages: MetricStat[];
+    top_landing_pages: MetricStat[];
+    top_exit_pages: MetricStat[];
     top_referrers: MetricStat[];
     top_devices: MetricStat[];
     top_countries: MetricStat[];

@@ -4,6 +4,11 @@
             <i [class]="'pi ' + icon() + ' metric-list__title-icon'" aria-hidden="true"></i>
             <h3 class="metric-list__title">{{ title() }}</h3>
         </div>
+        @if (hasViewSelector()) {
+        <div class="metric-list__header-action">
+            <p-select [formControl]="viewControl" [options]="viewOptions()" optionLabel="label" optionValue="value" size="small" appendTo="body" class="metric-list__view-select" [attr.aria-label]="viewSelectAriaLabel() || title()" />
+        </div>
+        }
     </div>
 
     @if (isLoading()) {

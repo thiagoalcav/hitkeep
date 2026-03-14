@@ -89,14 +89,18 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
         <app-metric-list
-            [title]="'common.metrics.topPages' | transloco"
+            [title]="'common.metrics.pages' | transloco"
             icon="pi-file"
-            [data]="statsService.stats()?.top_pages || []"
+            [data]="pageMetricData()"
             [linkMode]="'path'"
             [siteDomain]="siteService.activeSite()?.domain || null"
             [isLoading]="statsService.isLoading()"
+            [viewOptions]="pageMetricOptions()"
+            [selectedView]="pageMetricMode()"
+            [viewSelectAriaLabel]="'common.metrics.pageModeAria' | transloco"
             [isRowClickable]="true"
             [activeValue]="activeFilterValue('path')"
+            (viewChanged)="onPageMetricModeChange($event)"
             (rowClicked)="applyMetricFilter('path', $event)"
         />
 

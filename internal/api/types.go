@@ -207,6 +207,8 @@ type SiteStats struct {
 	PagesPerSession    float64          `json:"pages_per_session"`
 	ChartData          []ChartDataPoint `json:"chart_data"`
 	TopPages           []MetricStat     `json:"top_pages"`
+	TopLandingPages    []MetricStat     `json:"top_landing_pages"`
+	TopExitPages       []MetricStat     `json:"top_exit_pages"`
 	TopReferrers       []MetricStat     `json:"top_referrers"`
 	TopDevices         []MetricStat     `json:"top_devices"`
 	TopCountries       []MetricStat     `json:"top_countries"`

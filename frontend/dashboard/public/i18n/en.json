@@ -196,6 +196,10 @@
         "metrics": {
             "countries": "Countries",
             "devices": "Devices",
+            "pages": "Pages",
+            "landingPages": "Landing pages",
+            "exitPages": "Exit pages",
+            "pageModeAria": "Select page metric",
             "topPages": "Top pages",
             "topSources": "Top sources"
         },

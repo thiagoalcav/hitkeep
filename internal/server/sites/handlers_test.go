@@ -404,6 +404,58 @@ func TestHandleGetSiteStats(t *testing.T) {
 	}
 }
 
+func TestHandleGetSiteStatsIncludesPageModes(t *testing.T) {
+	h, store, userID := setupTestEnv(t)
+	defer store.Close()
+
+	site, err := store.CreateSite(context.Background(), userID, "stats-pages.com")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	base := time.Date(2026, 3, 14, 12, 0, 0, 0, time.UTC)
+	for _, hit := range []struct {
+		sessionID uuid.UUID
+		path      string
+		timestamp time.Time
+	}{
+		{sessionID: uuid.New(), path: "/home", timestamp: base.Add(-2 * time.Hour)},
+		{sessionID: uuid.New(), path: "/pricing", timestamp: base.Add(-90 * time.Minute)},
+	} {
+		if err := store.CreateHit(context.Background(), &api.Hit{
+			SiteID:    site.ID,
+			SessionID: hit.sessionID,
+			PageID:    uuid.New(),
+			Timestamp: hit.timestamp,
+			Path:      hit.path,
+		}); err != nil {
+			t.Fatalf("create hit %s: %v", hit.path, err)
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/sites/"+site.ID.String()+"/stats", nil)
+	req.SetPathValue("id", site.ID.String())
+	req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, userID))
+
+	w := httptest.NewRecorder()
+	h.handleGetSiteStats().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var stats api.SiteStats
+	if err := json.NewDecoder(w.Body).Decode(&stats); err != nil {
+		t.Fatalf("decode stats: %v", err)
+	}
+
+	if len(stats.TopLandingPages) == 0 {
+		t.Fatalf("expected top_landing_pages in response, got %+v", stats)
+	}
+	if len(stats.TopExitPages) == 0 {
+		t.Fatalf("expected top_exit_pages in response, got %+v", stats)
+	}
+}
+
 func TestHandleGetSiteEcommerceSummary(t *testing.T) {
 	h, store, userID := setupTestEnv(t)
 	defer store.Close()

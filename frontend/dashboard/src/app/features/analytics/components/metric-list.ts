@@ -1,20 +1,29 @@
-import { Component, input, computed, output, ChangeDetectionStrategy, inject } from "@angular/core";
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, output } from "@angular/core";
 import { NgOptimizedImage } from "@angular/common";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
+import { FormControl, ReactiveFormsModule } from "@angular/forms";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 import { TranslocoDecimalPipe } from "@jsverse/transloco-locale";
 import { CardModule } from "primeng/card";
 import { SkeletonModule } from "primeng/skeleton";
+import { SelectModule } from "primeng/select";
 import { MetricStat } from "@models/analytics.types";
+
+export interface MetricListViewOption {
+    label: string;
+    value: string;
+}
 
 @Component({
     selector: "app-metric-list",
-    imports: [CardModule, SkeletonModule, TranslocoPipe, TranslocoDecimalPipe, NgOptimizedImage],
+    imports: [CardModule, SkeletonModule, TranslocoPipe, TranslocoDecimalPipe, NgOptimizedImage, ReactiveFormsModule, SelectModule],
     templateUrl: "./metric-list.html",
     styleUrl: "./metric-list.css",
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MetricList {
     private readonly transloco = inject(TranslocoService);
+    private readonly destroyRef = inject(DestroyRef);
 
     title = input.required<string>();
     icon = input<string>("pi-list");
@@ -26,9 +35,30 @@ export class MetricList {
     activeValue = input<string | null>(null);
     showCountryFlags = input<boolean>(false);
     showCountryNames = input<boolean>(false);
+    viewOptions = input<MetricListViewOption[]>([]);
+    selectedView = input<string | null>(null);
+    viewSelectAriaLabel = input<string | null>(null);
     rowClicked = output<MetricStat>();
+    viewChanged = output<string>();
+
+    protected readonly viewControl = new FormControl<string | null>(null);
 
     protected readonly totalValue = computed(() => this.data().reduce((sum, item) => sum + item.value, 0));
+    protected readonly hasViewSelector = computed(() => this.viewOptions().length > 1);
+
+    constructor() {
+        effect(() => {
+            const options = this.viewOptions();
+            const selected = this.selectedView() ?? options[0]?.value ?? null;
+            this.viewControl.setValue(selected, { emitEvent: false });
+        });
+
+        this.viewControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => {
+            if (value) {
+                this.viewChanged.emit(value);
+            }
+        });
+    }
 
     protected readonly maxValue = computed(() => {
         const list = this.data();

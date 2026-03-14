@@ -5,6 +5,7 @@
 .metric-list__header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.75rem;
     margin-bottom: 1rem;
 }
@@ -14,6 +15,7 @@
     min-width: 0;
     align-items: center;
     gap: 0.65rem;
+    flex: 1 1 auto;
 }
 
 .metric-list__title-icon {
@@ -24,6 +26,58 @@
     margin: 0;
     font-size: 1.05rem;
     font-weight: 700;
+}
+
+.metric-list__header-action {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-shrink: 0;
+}
+
+.metric-list__view-select {
+    min-width: 0;
+    max-width: 11rem;
+    flex-shrink: 0;
+}
+
+:host ::ng-deep .metric-list__view-select .p-select {
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    min-height: 2rem;
+    padding: 0;
+    color: var(--p-text-muted-color);
+    transition:
+        background-color 160ms ease,
+        color 160ms ease;
+}
+
+:host ::ng-deep .metric-list__view-select .p-select:not(.p-disabled):hover {
+    background: var(--p-surface-hover);
+    color: var(--p-text-color);
+}
+
+:host ::ng-deep .metric-list__view-select .p-select:not(.p-disabled).p-focus {
+    outline: 2px solid color-mix(in srgb, var(--p-primary-color) 30%, transparent);
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+:host ::ng-deep .metric-list__view-select .p-select-label {
+    padding: 0.35rem 0 0.35rem 0.55rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: inherit;
+}
+
+:host ::ng-deep .metric-list__view-select .p-select-dropdown {
+    width: 1.5rem;
+    color: inherit;
+}
+
+:host ::ng-deep .metric-list__view-select .p-select-dropdown-icon {
+    font-size: 0.75rem;
 }
 
 .metric-list__skeletons,

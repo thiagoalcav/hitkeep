@@ -3,9 +3,12 @@ import { provideHttpClient } from "@angular/common/http";
 import { provideRouter } from "@angular/router";
 import { TranslocoTestingModule } from "@jsverse/transloco";
 import { provideTranslocoLocale } from "@jsverse/transloco-locale";
+import { vi } from "vitest";
 
 import { Dashboard } from "@pages/dashboard/dashboard";
 import { SiteService } from "@features/sites/services/site.service";
+import { StatsService } from "@features/analytics/services/stats.service";
+import { HitService } from "@features/hits/services/hit.service";
 import { TeamService } from "@services/team.service";
 
 describe("Dashboard", () => {
@@ -67,5 +70,57 @@ describe("Dashboard", () => {
         fixture.detectChanges();
 
         expect(fixture.nativeElement.textContent).toContain("dashboard.empty.teamTitle");
+    });
+
+    it("should switch the pages card data between top, landing, and exit pages", () => {
+        const siteService = TestBed.inject(SiteService);
+        const statsService = TestBed.inject(StatsService);
+        const hitService = TestBed.inject(HitService);
+
+        vi.spyOn(statsService, "loadStats").mockImplementation(() => undefined);
+        vi.spyOn(hitService, "loadHits").mockImplementation(() => undefined);
+
+        siteService.activeSite.set({
+            id: "site-1",
+            user_id: "user-1",
+            domain: "example.com",
+            created_at: "2026-01-01T00:00:00Z"
+        });
+
+        statsService.stats.set({
+            live_visitors: 0,
+            total_pageviews: 10,
+            unique_sessions: 5,
+            bounce_rate: 40,
+            avg_session_duration: 12,
+            pages_per_session: 2,
+            chart_data: [],
+            top_pages: [{ name: "/pricing", value: 4 }],
+            top_landing_pages: [{ name: "/blog", value: 3 }],
+            top_exit_pages: [{ name: "/signup", value: 2 }],
+            top_referrers: [],
+            top_devices: [],
+            top_countries: [],
+            top_utm_campaigns: [],
+            top_utm_contents: [],
+            top_utm_mediums: [],
+            top_utm_sources: [],
+            top_utm_terms: [],
+            utm_campaign_hits: 0,
+            utm_content_hits: 0,
+            utm_medium_hits: 0,
+            utm_source_hits: 0,
+            utm_term_hits: 0,
+            goals: [],
+            funnels: []
+        });
+
+        expect((component as unknown as { pageMetricData: () => { name: string; value: number }[] }).pageMetricData()).toEqual([{ name: "/pricing", value: 4 }]);
+
+        (component as unknown as { onPageMetricModeChange: (mode: string) => void }).onPageMetricModeChange("top_landing_pages");
+        expect((component as unknown as { pageMetricData: () => { name: string; value: number }[] }).pageMetricData()).toEqual([{ name: "/blog", value: 3 }]);
+
+        (component as unknown as { onPageMetricModeChange: (mode: string) => void }).onPageMetricModeChange("top_exit_pages");
+        expect((component as unknown as { pageMetricData: () => { name: string; value: number }[] }).pageMetricData()).toEqual([{ name: "/signup", value: 2 }]);
     });
 });

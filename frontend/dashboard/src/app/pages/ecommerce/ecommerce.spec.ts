@@ -55,6 +55,8 @@ describe("EcommercePage", () => {
                     pages_per_session: 0,
                     chart_data: [],
                     top_pages: [],
+                    top_landing_pages: [],
+                    top_exit_pages: [],
                     top_referrers: [{ name: "Google", value: 1 }],
                     top_devices: [{ name: "Desktop", value: 1 }],
                     top_countries: [{ name: "United States", value: 1 }],

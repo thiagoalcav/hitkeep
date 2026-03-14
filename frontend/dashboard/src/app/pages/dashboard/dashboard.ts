@@ -23,7 +23,7 @@ import { SiteService } from "@features/sites/services/site.service";
 import { StatsService } from "@features/analytics/services/stats.service";
 import { HitService } from "@features/hits/services/hit.service";
 import { TrafficChart } from "@features/analytics/components/traffic-chart";
-import { MetricList } from "@features/analytics/components/metric-list";
+import { MetricList, MetricListViewOption } from "@features/analytics/components/metric-list";
 import { GoalList } from "@features/analytics/components/goal-list";
 import { FunnelList } from "@features/analytics/components/funnel-list";
 import { FunnelManager } from "@features/funnels/components/funnel-manager";
@@ -43,6 +43,7 @@ import { AddSiteDialog } from "@features/sites/components/add-site-dialog";
 import { TeamService } from "@services/team.service";
 
 type MetricFilterType = "path" | "referrer" | "device" | "country";
+type PageMetricMode = "top_pages" | "top_landing_pages" | "top_exit_pages";
 interface MetricFilter {
     type: MetricFilterType;
     value: string;
@@ -123,6 +124,7 @@ export class Dashboard {
         const domain = this.siteDomain();
         return domain ? `/api/favicon/${encodeURIComponent(domain)}` : "";
     });
+    protected readonly pageMetricMode = signal<PageMetricMode>("top_pages");
     protected activeFilters = signal<MetricFilter[]>([]);
     protected hasFilters = computed(() => this.activeFilters().length > 0);
     protected isExportingFiltered = signal(false);
@@ -137,6 +139,25 @@ export class Dashboard {
             label: this.filterLabel(filter)
         }))
     );
+    protected readonly pageMetricOptions = computed<MetricListViewOption[]>(() => {
+        this.activeLanguage();
+        return [
+            { label: this.transloco.translate("common.metrics.topPages"), value: "top_pages" },
+            { label: this.transloco.translate("common.metrics.landingPages"), value: "top_landing_pages" },
+            { label: this.transloco.translate("common.metrics.exitPages"), value: "top_exit_pages" }
+        ];
+    });
+    protected readonly pageMetricData = computed<MetricStat[]>(() => {
+        const stats = this.statsService.stats();
+        switch (this.pageMetricMode()) {
+            case "top_landing_pages":
+                return stats?.top_landing_pages ?? [];
+            case "top_exit_pages":
+                return stats?.top_exit_pages ?? [];
+            default:
+                return stats?.top_pages ?? [];
+        }
+    });
     protected exportUrl = computed(() => {
         const shareToken = this.shareService.token();
         const site = this.siteService.activeSite();
@@ -296,6 +317,12 @@ export class Dashboard {
 
     onSearch(event: Event) {
         this.searchSubject.next((event.target as HTMLInputElement).value);
+    }
+
+    protected onPageMetricModeChange(mode: string): void {
+        if (mode === "top_pages" || mode === "top_landing_pages" || mode === "top_exit_pages") {
+            this.pageMetricMode.set(mode);
+        }
     }
 
     loadHits(event: TableLazyLoadEvent) {

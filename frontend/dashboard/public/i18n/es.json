@@ -196,6 +196,10 @@
         "metrics": {
             "countries": "Países",
             "devices": "Dispositivos",
+            "pages": "Páginas",
+            "landingPages": "Páginas de entrada",
+            "exitPages": "Páginas de salida",
+            "pageModeAria": "Seleccionar métrica de páginas",
             "topPages": "Páginas principales",
             "topSources": "Fuentes principales"
         },

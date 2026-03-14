@@ -75,4 +75,18 @@ describe("MetricList", () => {
 
         expect(fixture.debugElement.query(By.css(".metric-list__item-icon"))).toBeNull();
     });
+
+    it("should render a header view selector when multiple view options are provided", () => {
+        fixture.componentRef.setInput("title", "Pages");
+        fixture.componentRef.setInput("icon", "pi-file");
+        fixture.componentRef.setInput("viewOptions", [
+            { label: "Top pages", value: "top" },
+            { label: "Landing pages", value: "landing" },
+            { label: "Exit pages", value: "exit" }
+        ]);
+        fixture.componentRef.setInput("selectedView", "landing");
+        fixture.detectChanges();
+
+        expect(fixture.debugElement.query(By.css(".metric-list__view-select"))).not.toBeNull();
+    });
 });

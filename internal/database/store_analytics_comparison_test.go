@@ -234,3 +234,137 @@ func TestGetSiteStatsComparisonBothPeriodsPopulated(t *testing.T) {
 		t.Errorf("expected 1 comparison pageview, got %d", result.Comparison.TotalPageviews)
 	}
 }
+
+func TestGetSiteStatsIncludesLandingAndExitPages(t *testing.T) {
+	store, userID := setupComparisonStore(t)
+	ctx := context.Background()
+
+	site, err := store.CreateSite(ctx, userID, "pages.example.com")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	base := time.Date(2026, 3, 14, 12, 0, 0, 0, time.UTC)
+	sessionA := uuid.New()
+	sessionB := uuid.New()
+	sessionC := uuid.New()
+
+	for _, hit := range []struct {
+		sessionID uuid.UUID
+		path      string
+		timestamp time.Time
+	}{
+		{sessionID: sessionA, path: "/home", timestamp: base.Add(-6 * time.Hour)},
+		{sessionID: sessionA, path: "/pricing", timestamp: base.Add(-5 * time.Hour)},
+		{sessionID: sessionA, path: "/signup", timestamp: base.Add(-4 * time.Hour)},
+		{sessionID: sessionB, path: "/blog", timestamp: base.Add(-3 * time.Hour)},
+		{sessionID: sessionB, path: "/pricing", timestamp: base.Add(-2 * time.Hour)},
+		{sessionID: sessionC, path: "/home", timestamp: base.Add(-90 * time.Minute)},
+	} {
+		if err := store.CreateHit(ctx, &api.Hit{
+			SiteID:    site.ID,
+			SessionID: hit.sessionID,
+			PageID:    uuid.New(),
+			Timestamp: hit.timestamp,
+			Path:      hit.path,
+		}); err != nil {
+			t.Fatalf("create hit %s: %v", hit.path, err)
+		}
+	}
+
+	result, err := store.GetSiteStats(ctx, api.AnalyticsParams{
+		SiteID: site.ID,
+		UserID: userID,
+		Start:  base.Add(-24 * time.Hour),
+		End:    base,
+	})
+	if err != nil {
+		t.Fatalf("GetSiteStats: %v", err)
+	}
+
+	if len(result.TopPages) < 2 {
+		t.Fatalf("expected top pages, got %v", result.TopPages)
+	}
+	if !containsMetric(result.TopPages, "/home", 2) {
+		t.Fatalf("expected /home with 2 pageviews in top pages, got %+v", result.TopPages)
+	}
+	if !containsMetric(result.TopPages, "/pricing", 2) {
+		t.Fatalf("expected /pricing with 2 pageviews in top pages, got %+v", result.TopPages)
+	}
+	if result.TopLandingPages[0].Name != "/home" || result.TopLandingPages[0].Value != 2 {
+		t.Fatalf("expected /home as top landing page with 2 sessions, got %+v", result.TopLandingPages[0])
+	}
+	if result.TopLandingPages[1].Name != "/blog" || result.TopLandingPages[1].Value != 1 {
+		t.Fatalf("expected /blog as second landing page, got %+v", result.TopLandingPages[1])
+	}
+	if result.TopExitPages[0].Name != "/home" || result.TopExitPages[0].Value != 1 {
+		t.Fatalf("expected /home as first exit page by alphabetical tiebreak, got %+v", result.TopExitPages[0])
+	}
+	if result.TopExitPages[1].Name != "/pricing" || result.TopExitPages[1].Value != 1 {
+		t.Fatalf("expected /pricing as second exit page, got %+v", result.TopExitPages[1])
+	}
+	if result.TopExitPages[2].Name != "/signup" || result.TopExitPages[2].Value != 1 {
+		t.Fatalf("expected /signup as third exit page, got %+v", result.TopExitPages[2])
+	}
+}
+
+func TestGetSiteStatsLandingAndExitUseFullSessionBoundaries(t *testing.T) {
+	store, userID := setupComparisonStore(t)
+	ctx := context.Background()
+
+	site, err := store.CreateSite(ctx, userID, "session-boundaries.example.com")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	base := time.Date(2026, 3, 14, 12, 0, 0, 0, time.UTC)
+	sessionID := uuid.New()
+
+	for _, hit := range []struct {
+		path      string
+		timestamp time.Time
+	}{
+		{path: "/campaign", timestamp: base.Add(-49 * time.Hour)},
+		{path: "/pricing", timestamp: base.Add(-2 * time.Hour)},
+		{path: "/checkout", timestamp: base.Add(2 * time.Hour)},
+	} {
+		if err := store.CreateHit(ctx, &api.Hit{
+			SiteID:    site.ID,
+			SessionID: sessionID,
+			PageID:    uuid.New(),
+			Timestamp: hit.timestamp,
+			Path:      hit.path,
+		}); err != nil {
+			t.Fatalf("create hit %s: %v", hit.path, err)
+		}
+	}
+
+	result, err := store.GetSiteStats(ctx, api.AnalyticsParams{
+		SiteID: site.ID,
+		UserID: userID,
+		Start:  base.Add(-24 * time.Hour),
+		End:    base,
+	})
+	if err != nil {
+		t.Fatalf("GetSiteStats: %v", err)
+	}
+
+	if len(result.TopPages) != 1 || result.TopPages[0].Name != "/pricing" {
+		t.Fatalf("expected only in-range top page /pricing, got %+v", result.TopPages)
+	}
+	if len(result.TopLandingPages) != 1 || result.TopLandingPages[0].Name != "/campaign" {
+		t.Fatalf("expected landing page from full session boundary, got %+v", result.TopLandingPages)
+	}
+	if len(result.TopExitPages) != 1 || result.TopExitPages[0].Name != "/checkout" {
+		t.Fatalf("expected exit page from full session boundary, got %+v", result.TopExitPages)
+	}
+}
+
+func containsMetric(metrics []api.MetricStat, name string, value int) bool {
+	for _, metric := range metrics {
+		if metric.Name == name && metric.Value == value {
+			return true
+		}
+	}
+	return false
+}

@@ -21,6 +21,8 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 	stats := &api.SiteStats{
 		ChartData:       []api.ChartDataPoint{},
 		TopPages:        []api.MetricStat{},
+		TopLandingPages: []api.MetricStat{},
+		TopExitPages:    []api.MetricStat{},
 		TopReferrers:    []api.MetricStat{},
 		TopDevices:      []api.MetricStat{},
 		TopCountries:    []api.MetricStat{},
@@ -251,6 +253,84 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 			stats.TopUTMSources = append(stats.TopUTMSources, m)
 		case "utm_term":
 			stats.TopUTMTerms = append(stats.TopUTMTerms, m)
+		}
+	}
+
+	//nolint:gosec // filterSQL is derived from a fixed allowlist
+	landingExitQuery := fmt.Sprintf(`
+		WITH matching_sessions AS (
+			SELECT DISTINCT h.session_id
+			FROM hits h
+			WHERE h.site_id = ? AND h.timestamp >= ? AND h.timestamp <= ?%s
+		),
+		session_hits AS (
+			SELECT
+				h.session_id,
+				h.path,
+				h.timestamp,
+				h.page_id
+			FROM hits h
+			INNER JOIN matching_sessions ms ON ms.session_id = h.session_id
+			WHERE h.site_id = ?
+		),
+		ranked_hits AS (
+			SELECT
+				session_id,
+				path,
+				ROW_NUMBER() OVER (
+					PARTITION BY session_id
+					ORDER BY timestamp ASC, path ASC, page_id ASC
+				) AS landing_rn,
+				ROW_NUMBER() OVER (
+					PARTITION BY session_id
+					ORDER BY timestamp DESC, path DESC, page_id DESC
+				) AS exit_rn
+			FROM session_hits
+		),
+		aggregated AS (
+			SELECT 'landing' AS kind, path AS name, COUNT(*) AS val
+			FROM ranked_hits
+			WHERE landing_rn = 1
+			GROUP BY path
+			UNION ALL
+			SELECT 'exit' AS kind, path AS name, COUNT(*) AS val
+			FROM ranked_hits
+			WHERE exit_rn = 1
+			GROUP BY path
+		),
+		ranked AS (
+			SELECT
+				kind,
+				name,
+				val,
+				ROW_NUMBER() OVER (PARTITION BY kind ORDER BY val DESC, name ASC) AS rn
+			FROM aggregated
+		)
+		SELECT kind, name, val
+		FROM ranked
+		WHERE rn <= 10
+		ORDER BY kind, val DESC, name ASC;
+	`, filterSQL)
+
+	landingExitArgs := append([]any{params.SiteID, params.Start, params.End}, filterArgs...)
+	landingExitArgs = append(landingExitArgs, params.SiteID)
+	landingExitRows, err := s.db.QueryContext(ctx, landingExitQuery, landingExitArgs...)
+	if err != nil {
+		return nil, err
+	}
+	defer landingExitRows.Close()
+
+	for landingExitRows.Next() {
+		var kind string
+		var m api.MetricStat
+		if err := landingExitRows.Scan(&kind, &m.Name, &m.Value); err != nil {
+			return nil, err
+		}
+		switch kind {
+		case "landing":
+			stats.TopLandingPages = append(stats.TopLandingPages, m)
+		case "exit":
+			stats.TopExitPages = append(stats.TopExitPages, m)
 		}
 	}
 

@@ -166,18 +166,12 @@ jobs:
             -o "hitkeep-cloud-${{ matrix.artifact_suffix }}" \
             ./cmd/hitkeep/main.go
 
-      - name: Archive binaries
-        shell: bash
-        run: |
-          set -euo pipefail
-          tar -czf "binaries-${{ matrix.id }}.tar.gz" \
-            "hitkeep-${{ matrix.artifact_suffix }}" \
-            "hitkeep-cloud-${{ matrix.artifact_suffix }}"
-
       - uses: actions/upload-artifact@v7
         with:
           name: binaries-${{ matrix.id }}
-          path: binaries-${{ matrix.id }}.tar.gz
+          path: |
+            hitkeep-${{ matrix.artifact_suffix }}
+            hitkeep-cloud-${{ matrix.artifact_suffix }}
           retention-days: 5
           compression-level: 0
 
@@ -200,15 +194,8 @@ jobs:
       - uses: actions/download-artifact@v5
         with:
           pattern: binaries-*
-          path: artifacts/binaries
-
-      - name: Extract release binaries
-        shell: bash
-        run: |
-          set -euo pipefail
-          while IFS= read -r archive; do
-            tar -xzf "$archive"
-          done < <(find artifacts/binaries -name 'binaries-*.tar.gz' -print | sort)
+          path: .
+          merge-multiple: true
 
       - name: Upload binaries to GitHub Release
         env:
@@ -243,7 +230,8 @@ jobs:
       - uses: actions/download-artifact@v5
         with:
           pattern: binaries-linux-*
-          path: artifacts/binaries
+          path: .
+          merge-multiple: true
 
       - name: Restore Docker build inputs
         shell: bash
@@ -255,10 +243,6 @@ jobs:
           mkdir -p public
           find public -mindepth 1 ! -name embed.go -exec rm -rf {} +
           tar -xzf "$public_archive" -C public
-
-          while IFS= read -r archive; do
-            tar -xzf "$archive"
-          done < <(find artifacts/binaries -name 'binaries-*.tar.gz' -print | sort)
 
       - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4

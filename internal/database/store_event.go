@@ -2,31 +2,51 @@ package database
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
+
+	duckdb "github.com/duckdb/duckdb-go/v2"
+	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
 )
 
 func (s *Store) CreateEvent(ctx context.Context, event *api.Event) error {
-	if event.Timestamp.IsZero() {
-		event.Timestamp = time.Now()
+	if event == nil {
+		return fmt.Errorf("event is required")
+	}
+	return s.CreateEventsBulk(ctx, []*api.Event{event})
+}
+
+func (s *Store) CreateEventsBulk(ctx context.Context, events []*api.Event) error {
+	if len(events) == 0 {
+		return nil
 	}
 
-	props, err := json.Marshal(event.Properties)
-	if err != nil {
-		return fmt.Errorf("failed to marshal event properties: %w", err)
-	}
+	return s.withAppender(ctx, "events", func(appender rowAppender) error {
+		for _, event := range events {
+			if event == nil {
+				continue
+			}
+			if event.ID == uuid.Nil {
+				event.ID = uuid.New()
+			}
+			if event.Timestamp.IsZero() {
+				event.Timestamp = time.Now()
+			}
 
-	_, err = s.db.ExecContext(ctx, `
-        INSERT INTO events (
-            site_id, session_id, name, properties, timestamp
-        ) VALUES (?, ?, ?, ?, ?)`,
-		event.SiteID, event.SessionID, event.Name, props, event.Timestamp,
-	)
-	if err != nil {
-		return fmt.Errorf("could not insert event: %w", err)
-	}
-	return nil
+			if err := appender.AppendRow(
+				duckdb.UUID(event.ID),
+				duckdb.UUID(event.SiteID),
+				duckdb.UUID(event.SessionID),
+				event.Name,
+				event.Properties,
+				event.Timestamp,
+			); err != nil {
+				return fmt.Errorf("append event row: %w", err)
+			}
+		}
+
+		return nil
+	})
 }

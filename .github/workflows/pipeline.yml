@@ -16,6 +16,11 @@ on:
         type: string
         default: "s3 billing tenancy"
         description: "Build tags for the cloud binary artifacts"
+      build_portable_targets:
+        required: false
+        type: boolean
+        default: false
+        description: "Whether to also build native Darwin release binaries"
       upload_to_release:
         required: false
         type: boolean
@@ -34,14 +39,11 @@ on:
         required: true
 
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
+  build-dashboard:
+    name: Build dashboard assets
+    runs-on: ubuntu-24.04
     permissions:
-      contents: write
-      packages: write
-      id-token: write
-      attestations: write
-      artifact-metadata: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v6
@@ -50,12 +52,235 @@ jobs:
         with:
           node-version: 24
           cache: "npm"
-          cache-dependency-path: "**/package-lock.json"
+          cache-dependency-path: frontend/dashboard/package-lock.json
+
+      - name: Build Dashboard
+        working-directory: frontend/dashboard
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build:prod
+
+      - name: Prepare Public Assets
+        run: |
+          rm -rf public
+          mkdir -p public
+          cp -r frontend/dashboard/dist/dashboard/browser/* public/
+          tar -czf public-assets.tar.gz -C public .
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: public-assets-${{ inputs.version }}
+          path: public-assets.tar.gz
+          retention-days: 5
+          compression-level: 0
+
+  build-binaries:
+    name: Build ${{ matrix.label }}
+    needs: build-dashboard
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include: ${{ fromJSON(inputs.build_portable_targets && '[{"id":"linux-amd64","label":"Linux amd64","runner":"ubuntu-24.04","platform":"linux","goos":"linux","goarch":"amd64","artifact_suffix":"linux-amd64","glibc_baseline":"2.31"},{"id":"linux-arm64","label":"Linux arm64","runner":"ubuntu-24.04-arm","platform":"linux","goos":"linux","goarch":"arm64","artifact_suffix":"linux-arm64","glibc_baseline":"2.31"},{"id":"darwin-amd64","label":"macOS amd64","runner":"macos-15-intel","platform":"darwin","goos":"darwin","goarch":"amd64","artifact_suffix":"darwin-amd64"},{"id":"darwin-arm64","label":"macOS arm64","runner":"macos-14","platform":"darwin","goos":"darwin","goarch":"arm64","artifact_suffix":"darwin-arm64"}]' || '[{"id":"linux-amd64","label":"Linux amd64","runner":"ubuntu-24.04","platform":"linux","goos":"linux","goarch":"amd64","artifact_suffix":"linux-amd64","glibc_baseline":"2.31"},{"id":"linux-arm64","label":"Linux arm64","runner":"ubuntu-24.04-arm","platform":"linux","goos":"linux","goarch":"arm64","artifact_suffix":"linux-arm64","glibc_baseline":"2.31"}]') }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: public-assets-${{ inputs.version }}
+          path: artifacts/public
 
       - uses: actions/setup-go@v6
         id: setup-go
         with:
           go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Restore embedded public assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$(find artifacts/public -name 'public-assets.tar.gz' -print -quit)"
+          test -n "$archive"
+          rm -rf public
+          mkdir -p public
+          tar -xzf "$archive" -C public
+
+      - name: Resolve Go cache paths
+        id: go-cache
+        if: ${{ matrix.platform == 'linux' }}
+        shell: bash
+        run: |
+          echo "gocache=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "gomodcache=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+
+      - name: Build Linux binaries against glibc ${{ matrix.glibc_baseline }}
+        if: ${{ matrix.platform == 'linux' }}
+        shell: bash
+        env:
+          GO_VERSION: ${{ steps.setup-go.outputs.go-version }}
+          HITKEEP_VERSION: ${{ inputs.version }}
+          CLOUD_GO_BUILD_TAGS: ${{ inputs.cloud_go_build_tags }}
+        run: |
+          set -euo pipefail
+
+          # Bullseye keeps Linux release binaries on a glibc 2.31 baseline, which
+          # is safer for DuckDB consumers than building on newer runner images.
+          docker run --rm \
+            -e CGO_ENABLED=1 \
+            -e GOOS=linux \
+            -e GOARCH="${{ matrix.goarch }}" \
+            -e HITKEEP_VERSION="$HITKEEP_VERSION" \
+            -e CLOUD_GO_BUILD_TAGS="$CLOUD_GO_BUILD_TAGS" \
+            -e GOCACHE=/go-cache/build \
+            -e GOMODCACHE=/go-cache/mod \
+            -v "$PWD:/src" \
+            -v "${{ steps.go-cache.outputs.gocache }}:/go-cache/build" \
+            -v "${{ steps.go-cache.outputs.gomodcache }}:/go-cache/mod" \
+            -w /src \
+            "golang:${GO_VERSION}-bullseye" \
+            bash -lc '
+              set -euo pipefail
+              export CC=gcc
+              export CXX=g++
+
+              go build \
+                -ldflags="-w -s -X '\''hitkeep/cmd.Version=$HITKEEP_VERSION'\''" \
+                -o "hitkeep-linux-${{ matrix.goarch }}" \
+                ./cmd/hitkeep/main.go
+
+              go build \
+                -tags "$CLOUD_GO_BUILD_TAGS" \
+                -ldflags="-w -s -X '\''hitkeep/cmd.Version=$HITKEEP_VERSION'\''" \
+                -o "hitkeep-cloud-linux-${{ matrix.goarch }}" \
+                ./cmd/hitkeep/main.go
+            '
+
+      - name: Build native ${{ matrix.label }} binaries
+        if: ${{ matrix.platform != 'linux' }}
+        shell: bash
+        env:
+          CGO_ENABLED: 1
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          HITKEEP_VERSION: ${{ inputs.version }}
+          CLOUD_GO_BUILD_TAGS: ${{ inputs.cloud_go_build_tags }}
+        run: |
+          set -euo pipefail
+          export CC=clang
+          export CXX=clang++
+
+          go build \
+            -ldflags="-w -s -X 'hitkeep/cmd.Version=${HITKEEP_VERSION}'" \
+            -o "hitkeep-${{ matrix.artifact_suffix }}" \
+            ./cmd/hitkeep/main.go
+
+          go build \
+            -tags "${CLOUD_GO_BUILD_TAGS}" \
+            -ldflags="-w -s -X 'hitkeep/cmd.Version=${HITKEEP_VERSION}'" \
+            -o "hitkeep-cloud-${{ matrix.artifact_suffix }}" \
+            ./cmd/hitkeep/main.go
+
+      - name: Archive binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf "binaries-${{ matrix.id }}.tar.gz" \
+            "hitkeep-${{ matrix.artifact_suffix }}" \
+            "hitkeep-cloud-${{ matrix.artifact_suffix }}"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: binaries-${{ matrix.id }}
+          path: binaries-${{ matrix.id }}.tar.gz
+          retention-days: 5
+          compression-level: 0
+
+      - name: Attest Binaries
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            hitkeep-${{ matrix.artifact_suffix }}
+            hitkeep-cloud-${{ matrix.artifact_suffix }}
+
+  upload-release-binaries:
+    name: Upload release binaries
+    needs: build-binaries
+    if: ${{ inputs.upload_to_release && inputs.release_tag_name != '' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: binaries-*
+          path: artifacts/binaries
+
+      - name: Extract release binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r archive; do
+            tar -xzf "$archive"
+          done < <(find artifacts/binaries -name 'binaries-*.tar.gz' -print | sort)
+
+      - name: Upload binaries to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.token }}
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find . -maxdepth 1 -type f -name 'hitkeep*' -print | sort)
+          test "${#files[@]}" -gt 0
+          gh release upload "${{ inputs.release_tag_name }}" "${files[@]}" --clobber
+
+  build-and-push-image:
+    name: Build and push Docker image
+    needs:
+      - build-dashboard
+      - build-binaries
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: public-assets-${{ inputs.version }}
+          path: artifacts/public
+
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: binaries-linux-*
+          path: artifacts/binaries
+
+      - name: Restore Docker build inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          public_archive="$(find artifacts/public -name 'public-assets.tar.gz' -print -quit)"
+          test -n "$public_archive"
+          rm -rf public
+          mkdir -p public
+          tar -xzf "$public_archive" -C public
+
+          while IFS= read -r archive; do
+            tar -xzf "$archive"
+          done < <(find artifacts/binaries -name 'binaries-*.tar.gz' -print | sort)
 
       - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
@@ -72,123 +297,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build Dashboard
-        working-directory: frontend/dashboard
-        run: |
-          npm ci --no-audit --no-fund
-          npm run build:prod
-
-      - name: Prepare Public Assets
-        run: |
-          mkdir -p public
-          cp -r frontend/dashboard/dist/dashboard/browser/* public/
-
-      - name: Restore Go Build Cache
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.cache/hitkeep-go-build
-            ~/.cache/hitkeep-go-mod
-          key: ${{ runner.os }}-hitkeep-linux-binaries-${{ steps.setup-go.outputs.go-version }}-${{ hashFiles('go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-hitkeep-linux-binaries-${{ steps.setup-go.outputs.go-version }}-
-            ${{ runner.os }}-hitkeep-linux-binaries-
-
-      - name: Build Linux Binaries
-        env:
-          GO_VERSION: ${{ steps.setup-go.outputs.go-version }}
-          BUILD_IMAGE: amazonlinux:2023
-          HITKEEP_VERSION: ${{ inputs.version }}
-          CLOUD_GO_BUILD_TAGS: ${{ inputs.cloud_go_build_tags }}
-        run: |
-          set -euo pipefail
-
-          mkdir -p "$HOME/.cache/hitkeep-go-build" "$HOME/.cache/hitkeep-go-mod"
-
-          build_arch() {
-            local platform="$1"
-            local goarch="$2"
-
-            docker run --rm \
-              --platform "$platform" \
-              -e GO_VERSION="$GO_VERSION" \
-              -e CGO_ENABLED=1 \
-              -e GOOS=linux \
-              -e GOARCH="$goarch" \
-              -e GO_TARBALL_ARCH="$goarch" \
-              -e HITKEEP_VERSION="$HITKEEP_VERSION" \
-              -e HOST_UID="$(id -u)" \
-              -e HOST_GID="$(id -g)" \
-              -e CLOUD_GO_BUILD_TAGS="$CLOUD_GO_BUILD_TAGS" \
-              -e GOCACHE=/cache/go-build \
-              -e GOMODCACHE=/cache/go-mod \
-              -v "$PWD:/src" \
-              -v "$HOME/.cache/hitkeep-go-build:/cache/go-build" \
-              -v "$HOME/.cache/hitkeep-go-mod:/cache/go-mod" \
-              -w /src \
-              "$BUILD_IMAGE" \
-              bash -lc '
-                set -euo pipefail
-
-                dnf install -y gcc gcc-c++ tar gzip xz git
-
-                curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${GO_TARBALL_ARCH}.tar.gz" -o /tmp/go.tgz
-                rm -rf /usr/local/go
-                tar -C /usr/local -xzf /tmp/go.tgz
-                export PATH=/usr/local/go/bin:$PATH
-
-                export CC=gcc
-                export CXX=g++
-
-                go build \
-                  -ldflags="-w -s -X '\''hitkeep/cmd.Version=$HITKEEP_VERSION'\''" \
-                  -o "hitkeep-linux-$GOARCH" \
-                  ./cmd/hitkeep/main.go
-
-                go build \
-                  -tags "$CLOUD_GO_BUILD_TAGS" \
-                  -ldflags="-w -s -X '\''hitkeep/cmd.Version=$HITKEEP_VERSION'\''" \
-                  -o "hitkeep-cloud-linux-$GOARCH" \
-                  ./cmd/hitkeep/main.go
-
-                chown "$HOST_UID:$HOST_GID" "hitkeep-linux-$GOARCH"
-                chown "$HOST_UID:$HOST_GID" "hitkeep-cloud-linux-$GOARCH"
-              '
-          }
-
-          build_arch linux/amd64 amd64
-          build_arch linux/arm64 arm64
-
-      - uses: actions/upload-artifact@v7
-        with:
-          name: hitkeep-binaries-${{ inputs.version }}
-          path: |
-            hitkeep-linux-amd64
-            hitkeep-linux-arm64
-            hitkeep-cloud-linux-amd64
-            hitkeep-cloud-linux-arm64
-          retention-days: 5
-
-      - name: Attest Binaries
-        uses: actions/attest@v4
-        with:
-          subject-path: |
-            hitkeep-linux-amd64
-            hitkeep-linux-arm64
-            hitkeep-cloud-linux-amd64
-            hitkeep-cloud-linux-arm64
-
-      - name: Upload Release Binaries
-        if: ${{ inputs.upload_to_release && inputs.release_tag_name != '' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release upload ${{ inputs.release_tag_name }} \
-            hitkeep-linux-amd64 \
-            hitkeep-linux-arm64 \
-            hitkeep-cloud-linux-amd64 \
-            hitkeep-cloud-linux-arm64
 
       - name: Extract Docker metadata
         id: meta

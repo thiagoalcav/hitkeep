@@ -19,38 +19,51 @@ type Consumer struct {
 	tenantMgr     *database.TenantStoreManager
 	hitsConsumer  *nsq.Consumer
 	eventConsumer *nsq.Consumer
+	hitBatcher    *storeBatcher[*api.Hit]
+	eventBatcher  *storeBatcher[*api.Event]
 	logger        *slog.Logger
 	logLevel      slog.Level
 }
 
 func NewConsumer(tenantMgr *database.TenantStoreManager, logger *slog.Logger, level slog.Level) *Consumer {
-	return &Consumer{
+	consumer := &Consumer{
 		tenantMgr: tenantMgr,
 		logger:    logger,
 		logLevel:  level,
 	}
+	consumer.hitBatcher = newStoreBatcher("hit", logger, ingestBatchSize, ingestBatchFlushInterval, ingestPersistTimeout, func(store *database.Store, ctx context.Context, hits []*api.Hit) error {
+		return store.CreateHitsBulk(ctx, hits)
+	})
+	consumer.eventBatcher = newStoreBatcher("event", logger, ingestBatchSize, ingestBatchFlushInterval, ingestPersistTimeout, func(store *database.Store, ctx context.Context, events []*api.Event) error {
+		return store.CreateEventsBulk(ctx, events)
+	})
+	return consumer
 }
 
 func (c *Consumer) Connect(addr string) error {
 	// Hits Consumer
-	hitsConsumer, err := nsq.NewConsumer("hits", "db-writer", nsq.NewConfig())
+	hitsConfig := nsq.NewConfig()
+	hitsConfig.MaxInFlight = ingestConsumerConcurrency
+	hitsConsumer, err := nsq.NewConsumer("hits", "db-writer", hitsConfig)
 	if err != nil {
 		return err
 	}
 	hitsConsumer.SetLogger(hklog.GoNSQLogger{Logger: c.logger}, hklog.NSQGoLevel(c.logLevel))
-	hitsConsumer.AddHandler(nsq.HandlerFunc(c.handleHit))
+	hitsConsumer.AddConcurrentHandlers(nsq.HandlerFunc(c.handleHit), ingestConsumerConcurrency)
 	if err := hitsConsumer.ConnectToNSQD(addr); err != nil {
 		return err
 	}
 	c.hitsConsumer = hitsConsumer
 
 	// Events Consumer
-	eventConsumer, err := nsq.NewConsumer("events", "db-writer", nsq.NewConfig())
+	eventConfig := nsq.NewConfig()
+	eventConfig.MaxInFlight = ingestConsumerConcurrency
+	eventConsumer, err := nsq.NewConsumer("events", "db-writer", eventConfig)
 	if err != nil {
 		return err
 	}
 	eventConsumer.SetLogger(hklog.GoNSQLogger{Logger: c.logger}, hklog.NSQGoLevel(c.logLevel))
-	eventConsumer.AddHandler(nsq.HandlerFunc(c.handleEvent))
+	eventConsumer.AddConcurrentHandlers(nsq.HandlerFunc(c.handleEvent), ingestConsumerConcurrency)
 	if err := eventConsumer.ConnectToNSQD(addr); err != nil {
 		return err
 	}
@@ -62,24 +75,28 @@ func (c *Consumer) Connect(addr string) error {
 func (c *Consumer) Stop() {
 	if c.hitsConsumer != nil {
 		c.hitsConsumer.Stop()
+		<-c.hitsConsumer.StopChan
 	}
 	if c.eventConsumer != nil {
 		c.eventConsumer.Stop()
+		<-c.eventConsumer.StopChan
+	}
+	if c.hitBatcher != nil {
+		c.hitBatcher.Stop()
+	}
+	if c.eventBatcher != nil {
+		c.eventBatcher.Stop()
 	}
 }
 
 func (c *Consumer) handleHit(m *nsq.Message) error {
-	return processMessage(m, c, func(store *database.Store, ctx context.Context, hit *api.Hit) error {
-		return store.CreateHit(ctx, hit)
-	}, func(v *api.Hit) (uuid.UUID, []any) {
+	return processMessage(m, c, c.hitBatcher, func(v *api.Hit) (uuid.UUID, []any) {
 		return v.SiteID, []any{"path", v.Path}
 	}, "hit")
 }
 
 func (c *Consumer) handleEvent(m *nsq.Message) error {
-	return processMessage(m, c, func(store *database.Store, ctx context.Context, event *api.Event) error {
-		return store.CreateEvent(ctx, event)
-	}, func(v *api.Event) (uuid.UUID, []any) {
+	return processMessage(m, c, c.eventBatcher, func(v *api.Event) (uuid.UUID, []any) {
 		return v.SiteID, []any{"name", v.Name}
 	}, "event")
 }
@@ -91,14 +108,17 @@ type siteIdentifiable interface {
 func processMessage[T siteIdentifiable](
 	m *nsq.Message,
 	c *Consumer,
-	persist func(*database.Store, context.Context, *T) error,
+	batcher *storeBatcher[*T],
 	identify func(*T) (uuid.UUID, []any),
 	kind string,
 ) error {
+	m.DisableAutoResponse()
+
 	var v T
 	if err := json.Unmarshal(m.Body, &v); err != nil {
 		slog.Error("Failed to unmarshal "+kind+" from NSQ", "error", err, "body", string(m.Body))
-		return nil // Don't requeue malformed
+		m.Finish()
+		return nil
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -109,14 +129,30 @@ func processMessage[T siteIdentifiable](
 	store, err := c.resolveStore(ctx, siteID)
 	if err != nil {
 		slog.Error("Failed to resolve tenant store for "+kind, "error", err, "site_id", siteID)
-		return err
+		m.Requeue(-1)
+		return nil
 	}
 
-	if err := persist(store, ctx, &v); err != nil {
-		slog.Error("Failed to create "+kind+" in database", "error", err, "site_id", siteID)
-		return err
+	result, err := batcher.Enqueue(batchItem[*T]{
+		message:  m,
+		value:    &v,
+		store:    store,
+		siteID:   siteID,
+		logAttrs: logAttrs,
+	})
+	if err != nil {
+		slog.Error("Failed to enqueue "+kind+" for batched persistence", "error", err, "site_id", siteID)
+		m.Requeue(-1)
+		return nil
 	}
 
+	if err := <-result; err != nil {
+		slog.Error("Failed to persist "+kind+" batch", "error", err, "site_id", siteID)
+		m.Requeue(-1)
+		return nil
+	}
+
+	m.Finish()
 	slog.Debug("Successfully processed "+kind, append([]any{"site_id", siteID}, logAttrs...)...)
 	return nil
 }

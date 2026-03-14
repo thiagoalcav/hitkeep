@@ -37,6 +37,7 @@ jobs:
         type=semver,pattern={{version}},value=${{ needs.release-please.outputs.tag_name }}
         type=semver,pattern={{major}}.{{minor}},value=${{ needs.release-please.outputs.tag_name }}
         type=semver,pattern={{major}},value=${{ needs.release-please.outputs.tag_name }}
+      build_portable_targets: true
       upload_to_release: true
       release_tag_name: ${{ needs.release-please.outputs.tag_name }}
     secrets:

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	duckdb "github.com/duckdb/duckdb-go/v2"
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
@@ -19,24 +20,57 @@ import (
 )
 
 func (s *Store) CreateHit(ctx context.Context, hit *api.Hit) error {
-	if hit.Timestamp.IsZero() {
-		hit.Timestamp = time.Now()
+	if hit == nil {
+		return fmt.Errorf("hit is required")
+	}
+	return s.CreateHitsBulk(ctx, []*api.Hit{hit})
+}
+
+func (s *Store) CreateHitsBulk(ctx context.Context, hits []*api.Hit) error {
+	if len(hits) == 0 {
+		return nil
 	}
 
-	_, err := s.db.ExecContext(ctx, `
-        INSERT INTO hits (
-            site_id, session_id, page_id, timestamp, path, referrer, user_agent, 
-            viewport_width, viewport_height, screen_width, screen_height, 
-            language, country_code, utm_source, utm_medium, utm_campaign, utm_term, utm_content, is_unique
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		hit.SiteID, hit.SessionID, hit.PageID, hit.Timestamp, hit.Path, hit.Referrer,
-		hit.UserAgent, hit.ViewportWidth, hit.ViewportHeight, hit.ScreenWidth,
-		hit.ScreenHeight, hit.Language, hit.CountryCode, hit.UTMSource, hit.UTMMedium, hit.UTMCampaign, hit.UTMTerm, hit.UTMContent, hit.IsUnique,
-	)
-	if err != nil {
-		return fmt.Errorf("could not insert hit: %w", err)
-	}
-	return nil
+	return s.withAppender(ctx, "hits", func(appender rowAppender) error {
+		for _, hit := range hits {
+			if hit == nil {
+				continue
+			}
+			if hit.ID == uuid.Nil {
+				hit.ID = uuid.New()
+			}
+			if hit.Timestamp.IsZero() {
+				hit.Timestamp = time.Now()
+			}
+
+			if err := appender.AppendRow(
+				duckdb.UUID(hit.ID),
+				duckdb.UUID(hit.SiteID),
+				duckdb.UUID(hit.SessionID),
+				duckdb.UUID(hit.PageID),
+				hit.Timestamp,
+				hit.Path,
+				nullableStringPtr(hit.Referrer),
+				nullableStringPtr(hit.UserAgent),
+				nullableIntPtr(hit.ViewportWidth),
+				nullableIntPtr(hit.ViewportHeight),
+				nullableIntPtr(hit.ScreenWidth),
+				nullableIntPtr(hit.ScreenHeight),
+				nullableStringPtr(hit.Language),
+				nullableBoolPtr(hit.IsUnique),
+				nullableStringPtr(hit.CountryCode),
+				nullableStringPtr(hit.UTMSource),
+				nullableStringPtr(hit.UTMMedium),
+				nullableStringPtr(hit.UTMCampaign),
+				nullableStringPtr(hit.UTMTerm),
+				nullableStringPtr(hit.UTMContent),
+			); err != nil {
+				return fmt.Errorf("append hit row: %w", err)
+			}
+		}
+
+		return nil
+	})
 }
 
 // GetHits returns paginated, sorted, and filtered hits.

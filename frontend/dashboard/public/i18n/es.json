@@ -222,7 +222,7 @@
             "customRange": "Rango personalizado",
             "customShort": "Personalizado",
             "customRangeSummary": "{{start}} - {{end}}",
-            "customRangeHint": "Elige una hora exacta de inicio y fin con precision de minutos.",
+            "customRangeHint": "Elige una hora exacta de inicio y fin con precisión de minutos.",
             "customStart": "Desde",
             "customEnd": "Hasta",
             "openCustomRangeAria": "Abrir rango de tiempo personalizado"
@@ -298,10 +298,10 @@
             "empty": "Aún no hay objetivos definidos.",
             "addTitle": "Agregar nuevo objetivo",
             "namePlaceholder": "p. ej. Registro exitoso",
-            "typePagePath": "Ruta de página",
-            "typeCustomEvent": "Evento personalizado",
-            "urlPathLabel": "Ruta URL",
-            "eventNameLabel": "Nombre del evento",
+            "typePagePath": "Ruta",
+            "typeCustomEvent": "Evento",
+            "urlPathLabel": "Ruta",
+            "eventNameLabel": "Evento",
             "urlPathPlaceholder": "/gracias",
             "eventNamePlaceholder": "signup_completed",
             "urlPathHelp": "Se activa cuando un usuario visita una URL especifica.",
@@ -311,6 +311,7 @@
         }
     },
     "funnels": {
+        "manageAction": "Administrar embudos",
         "createAction": "Crear embudo",
         "noSiteDescription": "Selecciona o crea un sitio para ver embudos.",
         "series": {
@@ -346,23 +347,23 @@
             "stepEventPlaceholder": "event_name",
             "addStep": "Agregar paso",
             "createAction": "Crear embudo",
-            "typePagePath": "Ruta de página",
-            "typeCustomEvent": "Evento personalizado"
+            "typePagePath": "Ruta",
+            "typeCustomEvent": "Evento"
         },
         "viewer": {
-            "dialogTitle": "Analisis de embudo",
+            "dialogTitle": "Análisis de embudo",
             "droppedSuffix": "abandono",
             "retention": "retención",
             "entry": "Entrada"
         }
     },
     "utm": {
-        "noSiteDescription": "Selecciona o crea un sitio para ver metricas UTM.",
+        "noSiteDescription": "Selecciona o crea un sitio para ver métricas UTM.",
         "series": {
             "title": "Rendimiento UTM",
             "description": "Sigue el tráfico impulsado por UTM a lo largo del tiempo.",
             "emptyTitle": "Todavía no hay actividad UTM",
-            "emptyDescription": "Etiqueta enlaces de campaña con parametros UTM para ver su rendimiento."
+            "emptyDescription": "Etiqueta enlaces de campaña con parámetros UTM para ver su rendimiento."
         },
         "metrics": {
             "topCampaigns": "Principales campañas",
@@ -568,7 +569,7 @@
             "loading": "Cargando clientes de API...",
             "empty": "Todavía no hay clientes de API.",
             "listTitle": "Clientes de API existentes",
-            "confirmDelete": "Eliminar el cliente de API \"{{name}}\"?",
+            "confirmDelete": "¿Eliminar el cliente de API \"{{name}}\"?",
             "status": {
                 "active": "Activo",
                 "revoked": "Revocado"
@@ -704,8 +705,8 @@
     "sites": {
         "addDialog": {
             "title": "Agregar sitio",
-            "instructionsLine1": "Ingresa tu dominio raiz o subdominio (p. ej., {{apex}}, {{subdomain}}).",
-            "instructionsLine2": "Rastreamos automaticamente {{www}} con tu dominio raiz.",
+            "instructionsLine1": "Ingresa tu dominio raíz o subdominio (p. ej., {{apex}}, {{subdomain}}).",
+            "instructionsLine2": "Rastreamos automáticamente {{www}} con tu dominio raíz.",
             "domainLabel": "Nombre de dominio",
             "domainPlaceholder": "example.com",
             "addAction": "Agregar sitio",
@@ -713,7 +714,7 @@
                 "domainRequired": "El dominio es obligatorio.",
                 "domainInvalid": "Formato de dominio inválido.",
                 "removeProtocol": "Elimina http:// o https://",
-                "removeWww": "Elimina 'www.'. Ingresa solo el dominio raiz.",
+                "removeWww": "Elimina 'www.'. Ingresa solo el dominio raíz.",
                 "createFailed": "No se pudo crear el sitio. El dominio puede existir ya."
             }
         },
@@ -797,12 +798,12 @@
                     "error": "No se pudieron exportar los datos del sitio. Inténtalo de nuevo."
                 }
             },
-            "unsavedChangesConfirm": "Tienes cambios sin guardar. Deseas descartarlos?"
+            "unsavedChangesConfirm": "Tienes cambios sin guardar. ¿Deseas descartarlos?"
         },
         "team": {
             "emailPlaceholder": "user@example.com",
             "addMemberAction": "Agregar miembro",
-            "confirmRemove": "Quitar a {{email}} del sitio?",
+            "confirmRemove": "¿Quitar a {{email}} del sitio?",
             "transfer": {
                 "title": "Transferir sitio",
                 "description": "Mueve este sitio y sus datos analíticos a otro equipo que puedas administrar.",
@@ -889,8 +890,8 @@
             "disable2faSuccess": "Se desactivó MFA para {{email}}."
         },
         "confirmDisable2fa": "¿Desactivar todos los métodos MFA para {{email}}? Esto también invalidará las sesiones recordadas.",
-        "confirmDeleteUser": "Eliminar usuario {{email}}?",
-        "confirmDeleteSite": "Eliminar sitio {{domain}}? Esta accion no se puede deshacer.",
+        "confirmDeleteUser": "¿Eliminar usuario {{email}}?",
+        "confirmDeleteSite": "¿Eliminar sitio {{domain}}? Esta acción no se puede deshacer.",
         "team": {
             "tabs": {
                 "overview": "Resumen",
@@ -1041,7 +1042,7 @@
         "passwordLabel": "Contraseña",
         "passwordPlaceholder": "••••••••",
         "passwordRequired": "La contraseña es obligatoria.",
-        "forgotPassword": "Olvidaste tu contraseña?",
+        "forgotPassword": "¿Olvidaste tu contraseña?",
         "rememberMe": "Recordarme",
         "signIn": "Iniciar sesión",
         "or": "o",
@@ -1138,6 +1139,7 @@
     },
     "events": {
         "title": "Eventos",
+        "docsAction": "Añadir eventos",
         "noSiteDescription": "Selecciona o crea un sitio para ver el análisis de eventos.",
         "eventNameLabel": "Evento",
         "eventNamePlaceholder": "Seleccionar un evento",
@@ -1187,6 +1189,7 @@
         }
     },
     "ecommerce": {
+        "docsAction": "Configurar comercio electrónico",
         "kpis": {
             "revenue": "Ingresos",
             "orders": "Pedidos",

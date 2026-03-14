@@ -298,10 +298,10 @@
             "empty": "No goals defined yet.",
             "addTitle": "Add new goal",
             "namePlaceholder": "e.g. Signup Success",
-            "typePagePath": "Page path",
-            "typeCustomEvent": "Custom event",
-            "urlPathLabel": "URL path",
-            "eventNameLabel": "Event name",
+            "typePagePath": "Path",
+            "typeCustomEvent": "Event",
+            "urlPathLabel": "Path",
+            "eventNameLabel": "Event",
             "urlPathPlaceholder": "/thank-you",
             "eventNamePlaceholder": "signup_completed",
             "urlPathHelp": "Triggers when a user visits a specific URL.",
@@ -311,6 +311,7 @@
         }
     },
     "funnels": {
+        "manageAction": "Manage funnels",
         "createAction": "Create funnel",
         "noSiteDescription": "Select or create a site to view funnels.",
         "series": {
@@ -346,8 +347,8 @@
             "stepEventPlaceholder": "event_name",
             "addStep": "Add step",
             "createAction": "Create funnel",
-            "typePagePath": "Page path",
-            "typeCustomEvent": "Custom event"
+            "typePagePath": "Path",
+            "typeCustomEvent": "Event"
         },
         "viewer": {
             "dialogTitle": "Funnel analysis",
@@ -1138,6 +1139,7 @@
     },
     "events": {
         "title": "Events",
+        "docsAction": "Add events",
         "noSiteDescription": "Select or create a site to view event analytics.",
         "eventNameLabel": "Event",
         "eventNamePlaceholder": "Select an event",
@@ -1187,6 +1189,7 @@
         }
     },
     "ecommerce": {
+        "docsAction": "Set up ecommerce",
         "kpis": {
             "revenue": "Revenue",
             "orders": "Orders",

@@ -211,8 +211,8 @@
         "searchPlaceholder": "Cerca...",
         "selectDateRange": "Seleziona intervallo date",
         "seriesChartAria": "Grafico serie temporale con dati per gli ultimi {{count}} intervalli",
-        "switchToDarkModeAria": "Passa alla modalita scura",
-        "switchToLightModeAria": "Passa alla modalita chiara",
+        "switchToDarkModeAria": "Passa alla modalità scura",
+        "switchToLightModeAria": "Passa alla modalità chiara",
         "timeRangeSelectorAria": "Selettore intervallo temporale",
         "timeRanges": {
             "last24Hours": "Ultime 24 ore",
@@ -241,7 +241,7 @@
         "openPageInNewTabAria": "Apri pagina in una nuova scheda",
         "openReferrerInNewTabAria": "Apri referrer in una nuova scheda",
         "exportStatus": {
-            "success": "Il download dell'esportazione e stato avviato.",
+            "success": "Il download dell'esportazione è stato avviato.",
             "error": "Impossibile esportare i dati filtrati. Riprova."
         },
         "chartTitleWithRange": "Traffico: {{range}}",
@@ -298,10 +298,10 @@
             "empty": "Nessun obiettivo definito al momento.",
             "addTitle": "Aggiungi nuovo obiettivo",
             "namePlaceholder": "es. Registrazione completata",
-            "typePagePath": "Percorso pagina",
-            "typeCustomEvent": "Evento personalizzato",
-            "urlPathLabel": "Percorso URL",
-            "eventNameLabel": "Nome evento",
+            "typePagePath": "Percorso",
+            "typeCustomEvent": "Evento",
+            "urlPathLabel": "Percorso",
+            "eventNameLabel": "Evento",
             "urlPathPlaceholder": "/grazie",
             "eventNamePlaceholder": "signup_completed",
             "urlPathHelp": "Si attiva quando un utente visita un URL specifico.",
@@ -311,13 +311,14 @@
         }
     },
     "funnels": {
+        "manageAction": "Gestisci funnel",
         "createAction": "Crea funnel",
         "noSiteDescription": "Seleziona o crea un sito per vedere i funnel.",
         "series": {
             "title": "Funnel",
             "description": "Filtra la serie per funnel.",
             "addFilterPlaceholder": "Aggiungi filtro funnel",
-            "emptyTitle": "Nessuna attivita funnel al momento",
+            "emptyTitle": "Nessuna attività funnel al momento",
             "emptyDescription": "Crea un funnel e porta traffico per vedere ingressi e completamenti nel tempo."
         },
         "kpis": {
@@ -336,7 +337,7 @@
         },
         "manager": {
             "dialogTitle": "Gestisci funnel",
-            "dialogDescription": "Traccia i percorsi utente attraverso piu passaggi.",
+            "dialogDescription": "Traccia i percorsi utente attraverso più passaggi.",
             "stepsLabel": "Passaggi",
             "viewStats": "Visualizza statistiche",
             "empty": "Nessun funnel definito al momento.",
@@ -346,8 +347,8 @@
             "stepEventPlaceholder": "event_name",
             "addStep": "Aggiungi passaggio",
             "createAction": "Crea funnel",
-            "typePagePath": "Percorso pagina",
-            "typeCustomEvent": "Evento personalizzato"
+            "typePagePath": "Percorso",
+            "typeCustomEvent": "Evento"
         },
         "viewer": {
             "dialogTitle": "Analisi funnel",
@@ -440,7 +441,7 @@
                 "title": "Autenticazione a due fattori",
                 "description": "Proteggi il tuo account con un codice monouso da un'app di autenticazione.",
                 "setupDescription": "Avvia la configurazione per generare un segreto e verificare un codice TOTP a 6 cifre.",
-                "enabledDescription": "L'autenticazione a due fattori e attualmente attiva sul tuo account.",
+                "enabledDescription": "L'autenticazione a due fattori è attualmente attiva sul tuo account.",
                 "secretLabel": "Chiave di configurazione manuale",
                 "otpauthLabel": "URI OTPAuth",
                 "verifyCodeLabel": "Codice di verifica",
@@ -520,7 +521,7 @@
                     "saved": "Profilo salvato"
                 },
                 "validation": {
-                    "emailRequired": "L'indirizzo email e obbligatorio.",
+                    "emailRequired": "L'indirizzo email è obbligatorio.",
                     "emailInvalid": "Inserisci un indirizzo email valido.",
                     "emailTooLong": "L'indirizzo email deve avere massimo 320 caratteri.",
                     "nameTooLong": "Nome e cognome devono avere massimo 120 caratteri."
@@ -528,8 +529,8 @@
                 "errors": {
                     "loadFailed": "Impossibile caricare il tuo profilo.",
                     "invalidInput": "Controlla i campi evidenziati e riprova.",
-                    "emailTaken": "Questo indirizzo email e gia in uso.",
-                    "notFound": "Il tuo account non e stato trovato.",
+                    "emailTaken": "Questo indirizzo email è già in uso.",
+                    "notFound": "Il tuo account non è stato trovato.",
                     "updateFailed": "Impossibile aggiornare il profilo. Riprova."
                 }
             },
@@ -596,16 +597,16 @@
                 "descriptionPlaceholder": "A cosa serve questo client",
                 "instanceRoleLabel": "Ruolo istanza",
                 "expiresAtLabel": "Scadenza",
-                "expiresAtHint": "Se lasciato vuoto, il token non scade mai. Non e consigliato.",
+                "expiresAtHint": "Se lasciato vuoto, il token non scade mai. Non è consigliato.",
                 "siteScopesLabel": "Ambiti sito",
                 "siteScopesHint": "Opzionale: limita questo client a siti e ruoli sito specifici.",
                 "selectSitePlaceholder": "Seleziona sito",
                 "validation": {
-                    "nameRequired": "Il nome del client e obbligatorio.",
+                    "nameRequired": "Il nome del client è obbligatorio.",
                     "nameTooLong": "Il nome del client deve avere al massimo 120 caratteri.",
-                    "instanceRoleRequired": "Il ruolo istanza e obbligatorio.",
+                    "instanceRoleRequired": "Il ruolo istanza è obbligatorio.",
                     "expiresAtPast": "La scadenza deve essere nel futuro.",
-                    "expiresAtInvalid": "La data di scadenza non e valida.",
+                    "expiresAtInvalid": "La data di scadenza non è valida.",
                     "scopeSiteRequired": "Seleziona un sito prima di aggiungere un ambito."
                 },
                 "teamSiteScopesHint": "Limita questo client a siti specifici all'interno del team selezionato."
@@ -643,7 +644,7 @@
         "createAdminAction": "Crea account amministratore",
         "createAdminAndContinueAction": "Crea account amministratore e continua",
         "errors": {
-            "unexpected": "Si e verificato un errore imprevisto. Riprova."
+            "unexpected": "Si è verificato un errore imprevisto. Riprova."
         }
     },
     "password": {
@@ -656,7 +657,7 @@
             "sendResetLink": "Invia link di reset",
             "backToSignIn": "Torna al login",
             "errors": {
-                "unexpected": "Qualcosa e andato storto. Riprova piu tardi."
+                "unexpected": "Qualcosa è andato storto. Riprova più tardi."
             }
         },
         "reset": {
@@ -669,7 +670,7 @@
             "errors": {
                 "tokenMissing": "Link non valido. Token mancante.",
                 "invalidLink": "Link di reset password non valido.",
-                "expiredOrInvalid": "Questo link e scaduto o non valido.",
+                "expiredOrInvalid": "Questo link è scaduto o non valido.",
                 "resetFailed": "Reimpostazione password non riuscita. Riprova."
             }
         }
@@ -677,7 +678,7 @@
     "share": {
         "dialog": {
             "title": "Condividi dashboard",
-            "description": "Chiunque abbia questo link puo visualizzare la dashboard in sola lettura.",
+            "description": "Chiunque abbia questo link può visualizzare la dashboard in sola lettura.",
             "generateAction": "Genera link",
             "shareUrlLabel": "URL condiviso",
             "tokenHintLabel": "Token",
@@ -687,7 +688,7 @@
             "loadFailed": "Impossibile caricare i link condivisi ora. Riprova.",
             "deleteAction": "Elimina",
             "deleteConfirmTitle": "Elimina link condiviso",
-            "deleteConfirmMessage": "Chiunque usi questo link perdera subito l'accesso.",
+            "deleteConfirmMessage": "Chiunque usi questo link perderà subito l'accesso.",
             "createSuccess": "Link condiviso creato.",
             "deleteSuccess": "Link condiviso eliminato.",
             "deleteFailed": "Impossibile eliminare il link condiviso ora.",
@@ -698,7 +699,7 @@
         "page": {
             "loading": "Caricamento dashboard condivisa...",
             "missingToken": "Token condiviso mancante.",
-            "invalidOrExpired": "Il link condiviso e non valido o scaduto."
+            "invalidOrExpired": "Il link condiviso è non valido o scaduto."
         }
     },
     "sites": {
@@ -710,7 +711,7 @@
             "domainPlaceholder": "example.com",
             "addAction": "Aggiungi sito",
             "errors": {
-                "domainRequired": "Il dominio e obbligatorio.",
+                "domainRequired": "Il dominio è obbligatorio.",
                 "domainInvalid": "Formato dominio non valido.",
                 "removeProtocol": "Rimuovi http:// o https://",
                 "removeWww": "Rimuovi 'www.'. Inserisci solo il dominio root.",
@@ -727,7 +728,7 @@
         },
         "retention": {
             "infoTitle": "Come funziona la retention",
-            "infoDescription": "Gli hit grezzi piu vecchi del periodo di retention vengono archiviati in file Parquet per storage a lungo termine e rimossi dal database hot per migliorare le prestazioni.",
+            "infoDescription": "Gli hit grezzi più vecchi del periodo di retention vengono archiviati in file Parquet per storage a lungo termine e rimossi dal database hot per migliorare le prestazioni.",
             "periodLabel": "Periodo di retention (giorni)",
             "hotDataSuffix": "giorni di dati hot",
             "defaultHint": "Predefinito: 365 giorni.",
@@ -824,7 +825,7 @@
             "description": "Copia e incolla il codice qui sotto nell'HTML del tuo sito.",
             "trackingCodeConfiguration": "Configurazione codice di tracciamento",
             "collectDntLabel": "Raccogli DNT",
-            "collectDntDescription": "Traccia gli utenti anche se \"Do Not Track\" e attivo nel browser.",
+            "collectDntDescription": "Traccia gli utenti anche se \"Do Not Track\" è attivo nel browser.",
             "disableBeaconLabel": "Disabilita sendBeacon",
             "disableBeaconDescription": "Usa richieste fetch standard invece di navigator.sendBeacon.",
             "htmlLabel": "HTML",
@@ -890,7 +891,7 @@
         },
         "confirmDisable2fa": "Disattivare tutti i metodi MFA per {{email}}? Questa azione invalida anche le sessioni ricordate.",
         "confirmDeleteUser": "Eliminare l'utente {{email}}?",
-        "confirmDeleteSite": "Eliminare il sito {{domain}}? Questa azione non puo essere annullata.",
+        "confirmDeleteSite": "Eliminare il sito {{domain}}? Questa azione non può essere annullata.",
         "team": {
             "tabs": {
                 "overview": "Panoramica",
@@ -1040,7 +1041,7 @@
         "emailInvalid": "Inserisci un indirizzo email valido.",
         "passwordLabel": "Password",
         "passwordPlaceholder": "••••••••",
-        "passwordRequired": "La password e obbligatoria.",
+        "passwordRequired": "La password è obbligatoria.",
         "forgotPassword": "Password dimenticata?",
         "rememberMe": "Ricordami",
         "signIn": "Accedi",
@@ -1056,11 +1057,11 @@
         "footerRights": "HitKeep. Tutti i diritti riservati.",
         "errors": {
             "invalidCredentials": "Email o password non validi.",
-            "passkeyNotSupported": "L'accesso con passkey non e supportato su questo dispositivo.",
+            "passkeyNotSupported": "L'accesso con passkey non è supportato su questo dispositivo.",
             "passkeyFailed": "Accesso con passkey non riuscito. Riprova.",
             "invalidTotp": "Codice autenticatore non valido.",
             "invalidRecoveryCode": "Codice di recupero non valido.",
-            "unexpected": "Si e verificato un errore imprevisto. Riprova."
+            "unexpected": "Si è verificato un errore imprevisto. Riprova."
         }
     },
     "signup": {
@@ -1124,10 +1125,10 @@
         },
         "language": {
             "heading": "Preferenze lingua",
-            "description": "La lingua del browser viene usata come predefinita finche non personalizzi queste impostazioni.",
+            "description": "La lingua del browser viene usata come predefinita finché non personalizzi queste impostazioni.",
             "defaultLabel": "Lingua predefinita",
             "defaultPlaceholder": "Seleziona una lingua predefinita",
-            "defaultHint": "Questa e la lingua principale dell'interfaccia della dashboard.",
+            "defaultHint": "Questa è la lingua principale dell'interfaccia della dashboard.",
             "rtlBadge": "RTL"
         }
     },
@@ -1138,6 +1139,7 @@
     },
     "events": {
         "title": "Eventi",
+        "docsAction": "Aggiungi eventi",
         "noSiteDescription": "Seleziona o crea un sito per visualizzare le analisi degli eventi.",
         "eventNameLabel": "Evento",
         "eventNamePlaceholder": "Seleziona un evento",
@@ -1187,6 +1189,7 @@
         }
     },
     "ecommerce": {
+        "docsAction": "Configura e-commerce",
         "kpis": {
             "revenue": "Ricavi",
             "orders": "Ordini",

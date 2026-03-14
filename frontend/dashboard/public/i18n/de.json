@@ -222,10 +222,10 @@
             "customRange": "Benutzerdefiniert",
             "customShort": "Benutzerdef.",
             "customRangeSummary": "{{start}} - {{end}}",
-            "customRangeHint": "Waehlen Sie eine genaue Start- und Endzeit bis auf die Minute.",
+            "customRangeHint": "Wählen Sie eine genaue Start- und Endzeit bis auf die Minute.",
             "customStart": "Von",
             "customEnd": "Bis",
-            "openCustomRangeAria": "Benutzerdefinierten Zeitraum oeffnen"
+            "openCustomRangeAria": "Benutzerdefinierten Zeitraum öffnen"
         },
         "unknownError": "Unbekannter Fehler",
         "unspecified": "Nicht angegeben",
@@ -264,7 +264,7 @@
             "noTrafficTitle": "Noch kein Traffic erfasst",
             "noTrafficDescription": "Installieren Sie das Tracking-Snippet auf Ihrer Website, um Analytics-Daten zu sammeln.",
             "teamTitle": "Noch keine Seiten in {{team}}",
-            "teamDescription": "Erstellen Sie die erste Seite in {{team}}, um Analytics-Daten fuer dieses Team zu sammeln.",
+            "teamDescription": "Erstellen Sie die erste Seite in {{team}}, um Analytics-Daten für dieses Team zu sammeln.",
             "getTrackingCode": "Tracking-Code anzeigen",
             "createSite": "Seite erstellen"
         }
@@ -298,10 +298,10 @@
             "empty": "Noch keine Ziele definiert.",
             "addTitle": "Neues Ziel hinzufügen",
             "namePlaceholder": "z. B. Erfolgreiche Registrierung",
-            "typePagePath": "Seitenpfad",
-            "typeCustomEvent": "Benutzerdefiniertes Event",
-            "urlPathLabel": "URL-Pfad",
-            "eventNameLabel": "Event-Name",
+            "typePagePath": "Pfad",
+            "typeCustomEvent": "Event",
+            "urlPathLabel": "Pfad",
+            "eventNameLabel": "Event",
             "urlPathPlaceholder": "/danke",
             "eventNamePlaceholder": "signup_completed",
             "urlPathHelp": "Wird ausgelöst, wenn ein Nutzer eine bestimmte URL besucht.",
@@ -311,6 +311,7 @@
         }
     },
     "funnels": {
+        "manageAction": "Funnels verwalten",
         "createAction": "Funnel erstellen",
         "noSiteDescription": "Wählen Sie eine Seite aus oder erstellen Sie eine, um Funnels zu sehen.",
         "series": {
@@ -346,8 +347,8 @@
             "stepEventPlaceholder": "event_name",
             "addStep": "Schritt hinzufügen",
             "createAction": "Funnel erstellen",
-            "typePagePath": "Seitenpfad",
-            "typeCustomEvent": "Benutzerdefiniertes Event"
+            "typePagePath": "Pfad",
+            "typeCustomEvent": "Event"
         },
         "viewer": {
             "dialogTitle": "Funnel-Analyse",
@@ -608,7 +609,7 @@
                     "expiresAtInvalid": "Ablaufzeit ist ungültig.",
                     "scopeSiteRequired": "Wählen Sie eine Site, bevor Sie einen Scope hinzufügen."
                 },
-                "teamSiteScopesHint": "Beschraenke diesen Client auf bestimmte Sites innerhalb des ausgewaehlten Teams."
+                "teamSiteScopesHint": "Beschränke diesen Client auf bestimmte Sites innerhalb des ausgewählten Teams."
             },
             "tokenNotice": {
                 "title": "Dieses Token jetzt kopieren",
@@ -630,7 +631,7 @@
                 "notFound": "API-Client nicht gefunden."
             },
             "teamTitle": "Team-API-Clients",
-            "teamDescription": "Erstelle teamgebundene API-Clients fuer gemeinsame Automationen, ohne sie an ein einzelnes Benutzerkonto zu koppeln."
+            "teamDescription": "Erstelle teamgebundene API-Clients für gemeinsame Automationen, ohne sie an ein einzelnes Benutzerkonto zu koppeln."
         }
     },
     "setup": {
@@ -1138,6 +1139,7 @@
     },
     "events": {
         "title": "Events",
+        "docsAction": "Events hinzufügen",
         "noSiteDescription": "Wählen Sie eine Website aus, um Event-Analytics anzuzeigen.",
         "eventNameLabel": "Event",
         "eventNamePlaceholder": "Event auswählen",
@@ -1187,6 +1189,7 @@
         }
     },
     "ecommerce": {
+        "docsAction": "E-Commerce einrichten",
         "kpis": {
             "revenue": "Umsatz",
             "orders": "Bestellungen",

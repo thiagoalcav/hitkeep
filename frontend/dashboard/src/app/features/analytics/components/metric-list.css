@@ -1,0 +1,170 @@
+.metric-list {
+    height: 100%;
+}
+
+.metric-list__header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.metric-list__title-wrap {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.metric-list__title-icon {
+    color: var(--p-primary-color);
+}
+
+.metric-list__title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.metric-list__skeletons,
+.metric-list__rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.metric-list__rows--compact {
+    gap: 0.375rem;
+}
+
+.metric-list__row {
+    min-height: 2.8rem;
+}
+
+.metric-list__row-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: 0 0.45rem 0.45rem 0;
+    transition: width 220ms ease;
+    background: color-mix(in srgb, var(--p-primary-color) 15%, transparent);
+}
+
+.metric-list__row-fill--empty {
+    width: 100%;
+    background: var(--p-surface-100);
+    border-radius: 0.375rem;
+}
+
+.metric-list__row-content,
+.metric-list__row-main,
+.metric-list__meta {
+    position: relative;
+    z-index: 1;
+}
+
+.metric-list__row-content {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+    padding: 0.35rem 0.45rem 0.35rem 0.6rem;
+}
+
+.metric-list__row-main {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    flex: 1 1 auto;
+    gap: 0.5rem;
+    padding-right: 0.45rem;
+}
+
+.metric-list__meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 0.15rem;
+    flex-shrink: 0;
+    min-width: 2.35rem;
+    line-height: 1;
+}
+
+.metric-list__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+    color: var(--p-text-color);
+    font-size: 0.875rem;
+}
+
+.metric-list__share {
+    font-size: 0.58rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    color: var(--p-text-muted-color);
+}
+
+.metric-list__value {
+    font-weight: 700;
+    color: var(--p-text-color);
+    font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+    min-width: 2rem;
+    text-align: right;
+}
+
+.metric-list__flag,
+.metric-list__favicon {
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+}
+
+.metric-list__item-icon {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+    color: var(--p-text-muted-color);
+}
+
+.metric-list__favicon {
+    border-radius: 0.18rem;
+}
+
+.metric-list__link {
+    flex-shrink: 0;
+    width: 0;
+    overflow: hidden;
+    margin-left: 0;
+    opacity: 0;
+    color: var(--p-text-muted-color);
+    transition:
+        width 160ms ease,
+        margin-left 160ms ease,
+        opacity 160ms ease,
+        color 160ms ease;
+}
+
+.group:hover .metric-list__link,
+.metric-list__link:focus-visible {
+    width: 0.75rem;
+    margin-left: 0.15rem;
+    opacity: 1;
+}
+
+.metric-list__link-icon {
+    font-size: 10px;
+}
+
+.metric-list__link:hover {
+    color: var(--p-primary-color);
+}
+
+.metric-list__row--empty {
+    align-items: center;
+}

@@ -1,0 +1,62 @@
+<p-card class="metric-list surface-card h-full border border-surface-200 shadow-sm dark:border-surface-700">
+    <div class="metric-list__header">
+        <div class="metric-list__title-wrap">
+            <i [class]="'pi ' + icon() + ' metric-list__title-icon'" aria-hidden="true"></i>
+            <h3 class="metric-list__title">{{ title() }}</h3>
+        </div>
+    </div>
+
+    @if (isLoading()) {
+    <div class="metric-list__skeletons">
+        @for (i of [1, 2, 3, 4, 5]; track i) {
+        <p-skeleton height="2.5rem" styleClass="w-full" />
+        }
+    </div>
+    } @else if (!data() || data().length === 0) {
+    <ul class="metric-list__rows">
+        <li class="metric-list__row metric-list__row--empty relative flex items-center justify-between p-2 text-sm">
+            <div class="metric-list__row-fill metric-list__row-fill--empty"></div>
+            <span class="metric-list__label">{{ "common.unspecified" | transloco }}</span>
+            <span class="metric-list__value">0</span>
+        </li>
+    </ul>
+    } @else {
+    <ul class="metric-list__rows metric-list__rows--compact">
+        @for (item of data(); track item.name) {
+        <li
+            [class]="rowClass(item)"
+            [attr.role]="isRowClickable() ? 'button' : null"
+            [attr.tabindex]="isRowClickable() ? 0 : -1"
+            (click)="onRowClick(item)"
+            (keydown.enter)="onRowClick(item)"
+            (keydown.space)="$event.preventDefault(); onRowClick(item)"
+        >
+            <div class="metric-list__row-fill" [style.width.%]="barWidth(item)"></div>
+            <div class="metric-list__row-content">
+                <div class="metric-list__row-main">
+                    @if (showCountryFlags() && countryFlagUrl(item.name); as flagUrl) {
+                    <img [ngSrc]="flagUrl" class="metric-list__flag" [width]="16" [height]="16" alt="" />
+                    } @if (linkInfo(item); as info) { @if (info.faviconUrl) {
+                    <img [ngSrc]="info.faviconUrl" class="metric-list__favicon" [width]="16" [height]="16" alt="" />
+                    }
+                    <span class="metric-list__label" [title]="titleForItem(item)">{{ displayLabel(item) }}</span>
+                    <a class="metric-list__link" [href]="info.href" target="_blank" rel="noopener noreferrer" (click)="$event.stopPropagation()" [attr.aria-label]="'common.openInNewTabAria' | transloco">
+                        <i class="pi pi-external-link metric-list__link-icon" aria-hidden="true"></i>
+                    </a>
+                    } @else { @if (isDeviceMetric()) {
+                    <i [class]="deviceIconClass(item) + ' metric-list__item-icon'" aria-hidden="true"></i>
+                    }
+                    <span class="metric-list__label" [title]="titleForItem(item)">{{ displayLabel(item) }}</span>
+                    }
+                </div>
+
+                <div class="metric-list__meta">
+                    <span class="metric-list__share">{{ shareForItem(item) | translocoDecimal: { maximumFractionDigits: 0 } }}%</span>
+                    <span class="metric-list__value">{{ item.value | translocoDecimal }}</span>
+                </div>
+            </div>
+        </li>
+        }
+    </ul>
+    }
+</p-card>

@@ -236,7 +236,7 @@
     "dashboard": {
         "breadcrumbOverview": "Resumen",
         "filteredBadge": "Filtrado",
-        "rawHitsTitle": "Hits sin procesar",
+        "rawHitsTitle": "Últimos hits",
         "noSiteDescription": "Selecciona o crea un sitio para ver analíticas.",
         "openPageInNewTabAria": "Abrir página en una nueva pestaña",
         "openReferrerInNewTabAria": "Abrir referencia en una nueva pestaña",

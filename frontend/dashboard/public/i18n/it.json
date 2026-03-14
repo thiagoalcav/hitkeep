@@ -236,7 +236,7 @@
     "dashboard": {
         "breadcrumbOverview": "Panoramica",
         "filteredBadge": "Filtrato",
-        "rawHitsTitle": "Hit grezzi",
+        "rawHitsTitle": "Ultimi hit",
         "noSiteDescription": "Seleziona o crea un sito per visualizzare le analitiche.",
         "openPageInNewTabAria": "Apri pagina in una nuova scheda",
         "openReferrerInNewTabAria": "Apri referrer in una nuova scheda",

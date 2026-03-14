@@ -236,7 +236,7 @@
     "dashboard": {
         "breadcrumbOverview": "Aperçu",
         "filteredBadge": "Filtré",
-        "rawHitsTitle": "Hits bruts",
+        "rawHitsTitle": "Derniers hits",
         "noSiteDescription": "Sélectionnez ou créez un site pour voir les analytiques.",
         "openPageInNewTabAria": "Ouvrir la page dans un nouvel onglet",
         "openReferrerInNewTabAria": "Ouvrir le référent dans un nouvel onglet",

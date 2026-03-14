@@ -137,6 +137,7 @@ jobs:
             -e CGO_ENABLED=1 \
             -e GOOS=linux \
             -e GOARCH="${{ matrix.goarch }}" \
+            -e GO_TARBALL_ARCH="${{ matrix.goarch }}" \
             -e HITKEEP_VERSION="$HITKEEP_VERSION" \
             -e CLOUD_GO_BUILD_TAGS="$CLOUD_GO_BUILD_TAGS" \
             -e GOCACHE=/go-cache/build \
@@ -145,9 +146,19 @@ jobs:
             -v "${{ steps.go-cache.outputs.gocache }}:/go-cache/build" \
             -v "${{ steps.go-cache.outputs.gomodcache }}:/go-cache/mod" \
             -w /src \
-            "golang:${GO_VERSION}-bullseye" \
+            debian:bullseye-slim \
             bash -lc '
               set -euo pipefail
+
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update
+              apt-get install -y --no-install-recommends build-essential ca-certificates curl git xz-utils
+
+              curl -fsSL "https://go.dev/dl/go${GO_VERSION}.linux-${GO_TARBALL_ARCH}.tar.gz" -o /tmp/go.tgz
+              rm -rf /usr/local/go
+              tar -C /usr/local -xzf /tmp/go.tgz
+              export PATH=/usr/local/go/bin:$PATH
+
               export CC=gcc
               export CXX=g++
 

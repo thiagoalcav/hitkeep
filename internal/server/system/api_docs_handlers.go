@@ -264,6 +264,7 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"top_referrers":        map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
 						"top_devices":          map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
 						"top_countries":        map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
+						"top_languages":        map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
 						"top_utm_campaigns":    map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
 						"top_utm_contents":     map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
 						"top_utm_mediums":      map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},

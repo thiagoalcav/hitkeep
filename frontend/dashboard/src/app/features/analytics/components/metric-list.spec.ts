@@ -89,4 +89,49 @@ describe("MetricList", () => {
 
         expect(fixture.debugElement.query(By.css(".metric-list__view-select"))).not.toBeNull();
     });
+
+    it("should render human-readable language names when enabled", () => {
+        fixture.componentRef.setInput("title", "Audience");
+        fixture.componentRef.setInput("icon", "pi-globe");
+        fixture.componentRef.setInput("showLanguageNames", true);
+        fixture.componentRef.setInput("data", [{ name: "de", value: 12 }]);
+        fixture.detectChanges();
+
+        expect(fixture.nativeElement.textContent).toContain("German");
+    });
+
+    it("should render representative flags for languages when enabled", () => {
+        fixture.componentRef.setInput("title", "Audience");
+        fixture.componentRef.setInput("icon", "pi-globe");
+        fixture.componentRef.setInput("showLanguageFlags", true);
+        fixture.componentRef.setInput("data", [{ name: "en", value: 12 }]);
+        fixture.detectChanges();
+
+        const flag = fixture.debugElement.query(By.css(".metric-list__flag"));
+        expect(flag).not.toBeNull();
+        expect(flag.nativeElement.getAttribute("ngsrc") ?? flag.nativeElement.getAttribute("src")).toContain("/flags/gb.svg");
+    });
+
+    it("should map Czech to the Czech Republic flag", () => {
+        fixture.componentRef.setInput("title", "Audience");
+        fixture.componentRef.setInput("icon", "pi-globe");
+        fixture.componentRef.setInput("showLanguageFlags", true);
+        fixture.componentRef.setInput("data", [{ name: "cs", value: 12 }]);
+        fixture.detectChanges();
+
+        const flag = fixture.debugElement.query(By.css(".metric-list__flag"));
+        expect(flag.nativeElement.getAttribute("ngsrc") ?? flag.nativeElement.getAttribute("src")).toContain("/flags/cz.svg");
+    });
+
+    it("should map Norwegian Bokmal to a Norwegian flag", () => {
+        fixture.componentRef.setInput("title", "Audience");
+        fixture.componentRef.setInput("icon", "pi-globe");
+        fixture.componentRef.setInput("showLanguageFlags", true);
+        fixture.componentRef.setInput("data", [{ name: "nb", value: 12 }]);
+        fixture.detectChanges();
+
+        const flag = fixture.debugElement.query(By.css(".metric-list__flag"));
+        const source = flag.nativeElement.getAttribute("ngsrc") ?? flag.nativeElement.getAttribute("src");
+        expect(source.includes("/flags/language/non.svg") || source.includes("/flags/no.svg")).toBeTruthy();
+    });
 });

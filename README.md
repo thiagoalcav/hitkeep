@@ -27,7 +27,7 @@ HitKeep is for teams that want product analytics without adopting a full analyti
 
 - **Simple to run:** one binary, one data directory, no external database required
 - **Privacy-first by default:** cookie-less tracking, Do Not Track support, focused data collection
-- **Useful out of the box:** traffic analytics, custom events, goals, funnels, ecommerce, UTM attribution, and scheduled email reports
+- **Useful out of the box:** traffic analytics with country and language breakdowns, custom events, goals, funnels, ecommerce, UTM attribution, and scheduled email reports
 - **Built for teams:** passkeys, TOTP, site and team permissions, API clients, share links, and audit visibility
 - **Flexible deployment:** self-host it yourself or use HitKeep Cloud and still keep the migration path open
 

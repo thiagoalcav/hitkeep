@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from "@angular/core";
+import { NgOptimizedImage } from "@angular/common";
 import { HttpErrorResponse } from "@angular/common/http";
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from "@angular/forms";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
@@ -17,7 +18,7 @@ import { SettingsAPIClients } from "@features/settings/components/settings-api-c
 
 @Component({
     selector: "app-team-settings",
-    imports: [CardModule, TranslocoPipe, ReactiveFormsModule, InputTextModule, ButtonModule, MessageModule, ConfirmPopupModule, SettingsAPIClients],
+    imports: [CardModule, TranslocoPipe, ReactiveFormsModule, InputTextModule, ButtonModule, MessageModule, ConfirmPopupModule, SettingsAPIClients, NgOptimizedImage],
     templateUrl: "./team-settings.html",
     styleUrl: "./team-settings.css",
     changeDetection: ChangeDetectionStrategy.OnPush,

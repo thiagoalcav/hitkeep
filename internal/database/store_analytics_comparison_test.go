@@ -253,20 +253,23 @@ func TestGetSiteStatsIncludesLandingAndExitPages(t *testing.T) {
 		sessionID uuid.UUID
 		path      string
 		timestamp time.Time
+		language  string
 	}{
-		{sessionID: sessionA, path: "/home", timestamp: base.Add(-6 * time.Hour)},
-		{sessionID: sessionA, path: "/pricing", timestamp: base.Add(-5 * time.Hour)},
-		{sessionID: sessionA, path: "/signup", timestamp: base.Add(-4 * time.Hour)},
-		{sessionID: sessionB, path: "/blog", timestamp: base.Add(-3 * time.Hour)},
-		{sessionID: sessionB, path: "/pricing", timestamp: base.Add(-2 * time.Hour)},
-		{sessionID: sessionC, path: "/home", timestamp: base.Add(-90 * time.Minute)},
+		{sessionID: sessionA, path: "/home", timestamp: base.Add(-6 * time.Hour), language: "de-DE"},
+		{sessionID: sessionA, path: "/pricing", timestamp: base.Add(-5 * time.Hour), language: "de-DE"},
+		{sessionID: sessionA, path: "/signup", timestamp: base.Add(-4 * time.Hour), language: "de-DE"},
+		{sessionID: sessionB, path: "/blog", timestamp: base.Add(-3 * time.Hour), language: "en-US"},
+		{sessionID: sessionB, path: "/pricing", timestamp: base.Add(-2 * time.Hour), language: "en-US"},
+		{sessionID: sessionC, path: "/home", timestamp: base.Add(-90 * time.Minute), language: "de-AT"},
 	} {
+		language := hit.language
 		if err := store.CreateHit(ctx, &api.Hit{
 			SiteID:    site.ID,
 			SessionID: hit.sessionID,
 			PageID:    uuid.New(),
 			Timestamp: hit.timestamp,
 			Path:      hit.path,
+			Language:  &language,
 		}); err != nil {
 			t.Fatalf("create hit %s: %v", hit.path, err)
 		}
@@ -305,6 +308,15 @@ func TestGetSiteStatsIncludesLandingAndExitPages(t *testing.T) {
 	}
 	if result.TopExitPages[2].Name != "/signup" || result.TopExitPages[2].Value != 1 {
 		t.Fatalf("expected /signup as third exit page, got %+v", result.TopExitPages[2])
+	}
+	if len(result.TopLanguages) < 2 {
+		t.Fatalf("expected top languages, got %+v", result.TopLanguages)
+	}
+	if result.TopLanguages[0].Name != "de" || result.TopLanguages[0].Value != 4 {
+		t.Fatalf("expected top language de with 4 hits, got %+v", result.TopLanguages[0])
+	}
+	if result.TopLanguages[1].Name != "en" || result.TopLanguages[1].Value != 2 {
+		t.Fatalf("expected second language en with 2 hits, got %+v", result.TopLanguages[1])
 	}
 }
 

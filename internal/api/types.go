@@ -212,6 +212,7 @@ type SiteStats struct {
 	TopReferrers       []MetricStat     `json:"top_referrers"`
 	TopDevices         []MetricStat     `json:"top_devices"`
 	TopCountries       []MetricStat     `json:"top_countries"`
+	TopLanguages       []MetricStat     `json:"top_languages"`
 	TopUTMCampaigns    []MetricStat     `json:"top_utm_campaigns"`
 	TopUTMContents     []MetricStat     `json:"top_utm_contents"`
 	TopUTMMediums      []MetricStat     `json:"top_utm_mediums"`

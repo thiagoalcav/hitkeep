@@ -31,11 +31,11 @@
             <input type="url" pInputText [formControl]="form.controls.logo_url" [placeholder]="'admin.team.settings.logoPlaceholder' | transloco" />
             @if (form.controls.logo_url.value) {
             <div class="team-settings__logo-preview">
-                <img [src]="form.controls.logo_url.value" [alt]="'admin.team.settings.logoPreviewAlt' | transloco" />
+                <img [ngSrc]="form.controls.logo_url.value" [width]="48" [height]="48" [alt]="'admin.team.settings.logoPreviewAlt' | transloco" />
             </div>
             } } @else { @if (t.logo_url) {
             <div class="team-settings__logo-preview">
-                <img [src]="t.logo_url" [alt]="'admin.team.settings.logoPreviewAlt' | transloco" />
+                <img [ngSrc]="t.logo_url" [width]="48" [height]="48" [alt]="'admin.team.settings.logoPreviewAlt' | transloco" />
             </div>
             } @else {
             <div class="team-settings__value">—</div>

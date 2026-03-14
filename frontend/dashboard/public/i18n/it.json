@@ -186,6 +186,7 @@
         "filters": {
             "country": "Paese: {{value}}",
             "device": "Dispositivo: {{value}}",
+            "language": "Lingua: {{value}}",
             "page": "Pagina: {{value}}",
             "source": "Sorgente: {{value}}"
         },
@@ -194,11 +195,14 @@
         },
         "loadingSiteData": "Caricamento dati sito...",
         "metrics": {
+            "audience": "Pubblico",
             "countries": "Paesi",
             "devices": "Dispositivi",
+            "languages": "Lingue",
             "pages": "Pagine",
             "landingPages": "Pagine di ingresso",
             "exitPages": "Pagine di uscita",
+            "geoModeAria": "Seleziona la metrica del pubblico",
             "pageModeAria": "Seleziona la metrica delle pagine",
             "topPages": "Pagine principali",
             "topSources": "Sorgenti principali"

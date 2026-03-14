@@ -7,6 +7,7 @@ import { TranslocoDecimalPipe } from "@jsverse/transloco-locale";
 import { CardModule } from "primeng/card";
 import { SkeletonModule } from "primeng/skeleton";
 import { SelectModule } from "primeng/select";
+import { countryFlagUrl, languageFlagUrl } from "@core/i18n/flag-utils";
 import { MetricStat } from "@models/analytics.types";
 
 export interface MetricListViewOption {
@@ -35,6 +36,8 @@ export class MetricList {
     activeValue = input<string | null>(null);
     showCountryFlags = input<boolean>(false);
     showCountryNames = input<boolean>(false);
+    showLanguageFlags = input<boolean>(false);
+    showLanguageNames = input<boolean>(false);
     viewOptions = input<MetricListViewOption[]>([]);
     selectedView = input<string | null>(null);
     viewSelectAriaLabel = input<string | null>(null);
@@ -90,16 +93,23 @@ export class MetricList {
     }
 
     protected countryFlagUrl(value: string): string | null {
-        const trimmed = value.trim();
-        const code = trimmed.toLowerCase();
-        if (!/^[a-z]{2}$/.test(code)) return "/flags/other/earth.svg";
-        return `/flags/${code}.svg`;
+        return countryFlagUrl(value);
+    }
+
+    protected languageFlagUrl(value: string): string | null {
+        return languageFlagUrl(value);
     }
 
     protected displayLabel(item: MetricStat): string {
-        if (!this.showCountryNames()) return item.name;
-        const name = this.countryDisplayName(item.name);
-        return name ?? item.name;
+        if (this.showCountryNames()) {
+            const name = this.countryDisplayName(item.name);
+            return name ?? item.name;
+        }
+        if (this.showLanguageNames()) {
+            const name = this.languageDisplayName(item.name);
+            return name ?? item.name;
+        }
+        return item.name;
     }
 
     protected titleForItem(item: MetricStat): string {
@@ -168,6 +178,18 @@ export class MetricList {
         try {
             const language = this.transloco.getActiveLang();
             const displayNames = new Intl.DisplayNames([language], { type: "region" });
+            return displayNames.of(code) ?? null;
+        } catch {
+            return null;
+        }
+    }
+
+    private languageDisplayName(value: string): string | null {
+        const code = value.trim().toLowerCase();
+        if (!/^[a-z]{2,3}$/.test(code)) return null;
+        try {
+            const language = this.transloco.getActiveLang();
+            const displayNames = new Intl.DisplayNames([language], { type: "language" });
             return displayNames.of(code) ?? null;
         } catch {
             return null;

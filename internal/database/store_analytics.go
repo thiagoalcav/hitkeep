@@ -26,6 +26,7 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		TopReferrers:    []api.MetricStat{},
 		TopDevices:      []api.MetricStat{},
 		TopCountries:    []api.MetricStat{},
+		TopLanguages:    []api.MetricStat{},
 		TopUTMCampaigns: []api.MetricStat{},
 		TopUTMContents:  []api.MetricStat{},
 		TopUTMMediums:   []api.MetricStat{},
@@ -172,6 +173,10 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 				hk_referrer(h.referrer) AS referrer,
 				hk_device(h.viewport_width) AS device,
 				hk_country(h.country_code) AS country,
+				CASE
+					WHEN NULLIF(TRIM(h.language), '') IS NULL THEN '(Unspecified)'
+					ELSE lower(split_part(TRIM(h.language), '-', 1))
+				END AS language,
 				COALESCE(NULLIF(TRIM(h.utm_campaign), ''), '(Unspecified)') AS utm_campaign,
 				COALESCE(NULLIF(TRIM(h.utm_content), ''), '(Unspecified)') AS utm_content,
 				COALESCE(NULLIF(TRIM(h.utm_medium), ''), '(Unspecified)') AS utm_medium,
@@ -187,13 +192,14 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 					WHEN GROUPING(referrer) = 0 THEN 'referrer'
 					WHEN GROUPING(device) = 0 THEN 'device'
 					WHEN GROUPING(country) = 0 THEN 'country'
+					WHEN GROUPING(language) = 0 THEN 'language'
 					WHEN GROUPING(utm_campaign) = 0 THEN 'utm_campaign'
 					WHEN GROUPING(utm_content) = 0 THEN 'utm_content'
 					WHEN GROUPING(utm_medium) = 0 THEN 'utm_medium'
 					WHEN GROUPING(utm_source) = 0 THEN 'utm_source'
 					WHEN GROUPING(utm_term) = 0 THEN 'utm_term'
 				END AS dim,
-				COALESCE(path, referrer, device, country, utm_campaign, utm_content, utm_medium, utm_source, utm_term) AS name,
+				COALESCE(path, referrer, device, country, language, utm_campaign, utm_content, utm_medium, utm_source, utm_term) AS name,
 				COUNT(*) AS val
 			FROM base
 			GROUP BY GROUPING SETS (
@@ -201,6 +207,7 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 				(referrer),
 				(device),
 				(country),
+				(language),
 				(utm_campaign),
 				(utm_content),
 				(utm_medium),
@@ -243,6 +250,8 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 			stats.TopDevices = append(stats.TopDevices, m)
 		case "country":
 			stats.TopCountries = append(stats.TopCountries, m)
+		case "language":
+			stats.TopLanguages = append(stats.TopLanguages, m)
 		case "utm_campaign":
 			stats.TopUTMCampaigns = append(stats.TopUTMCampaigns, m)
 		case "utm_content":

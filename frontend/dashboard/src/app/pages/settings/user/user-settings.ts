@@ -1,3 +1,4 @@
+import { NgOptimizedImage } from "@angular/common";
 import { HttpErrorResponse } from "@angular/common/http";
 
 import { takeUntilDestroyed, toSignal } from "@angular/core/rxjs-interop";
@@ -7,6 +8,7 @@ import { compatForm } from "@angular/forms/signals/compat";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
 import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
+import { localeFlagUrl } from "@core/i18n/flag-utils";
 import { getBaseLanguage, getLocaleDirection, normalizeLocaleTag, TextDirection } from "@core/i18n/locale-utils";
 import { buildTakeoutExportMenuItems, DEFAULT_TAKEOUT_EXPORT_FORMAT, TakeoutExportFormat } from "@core/export/export-formats";
 import { SettingsCard } from "@features/settings/components/settings-card";
@@ -36,36 +38,9 @@ interface EditableProfile {
 
 type AvailableLang = string | { id: string; label: string };
 
-const LANGUAGE_FLAG_FALLBACK: Record<string, string> = {
-    en: "us",
-    es: "es",
-    fr: "fr",
-    de: "de",
-    it: "it",
-    pt: "pt",
-    nl: "nl",
-    sv: "se",
-    da: "dk",
-    fi: "fi",
-    pl: "pl",
-    cs: "cz",
-    tr: "tr",
-    ru: "ru",
-    uk: "ua",
-    ar: "sa",
-    he: "il",
-    hi: "in",
-    id: "id",
-    th: "th",
-    vi: "vn",
-    zh: "cn",
-    ja: "jp",
-    ko: "kr"
-};
-
 @Component({
     selector: "app-user-settings",
-    imports: [ReactiveFormsModule, ButtonModule, InputTextModule, SelectModule, SplitButtonModule, SettingsCard, SettingsSecurity, PageHeader, PageHeaderLeft, PageBreadcrumb, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, InputTextModule, SelectModule, SplitButtonModule, SettingsCard, SettingsSecurity, PageHeader, PageHeaderLeft, PageBreadcrumb, TranslocoPipe, NgOptimizedImage],
     templateUrl: "./user-settings.html",
     styleUrl: "./user-settings.css",
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -133,7 +108,7 @@ export class UserSettings {
             options.push({
                 value: base,
                 label,
-                flagUrl: this.flagUrlForLocale(base),
+                flagUrl: localeFlagUrl(base),
                 direction: getLocaleDirection(base)
             });
         }
@@ -356,21 +331,6 @@ export class UserSettings {
         this.profileForm.email().markAsTouched();
         this.profileForm.givenName().markAsTouched();
         this.profileForm.lastName().markAsTouched();
-    }
-
-    private flagUrlForLocale(locale: string): string {
-        const normalized = normalizeLocaleTag(locale);
-        if (!normalized) return "/flags/other/earth.svg";
-        const [language, ...subtags] = normalized.split("-");
-        const region = subtags.find((part) => /^[A-Z]{2}$/.test(part));
-        if (region) {
-            return `/flags/${region.toLowerCase()}.svg`;
-        }
-        const fallback = LANGUAGE_FLAG_FALLBACK[language];
-        if (fallback) {
-            return `/flags/${fallback}.svg`;
-        }
-        return "/flags/other/earth.svg";
     }
 
     private displayNames(type: "language" | "region" | "script", locale: string): Intl.DisplayNames | null {

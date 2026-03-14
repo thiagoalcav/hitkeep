@@ -60,6 +60,7 @@ describe("EcommercePage", () => {
                     top_referrers: [{ name: "Google", value: 1 }],
                     top_devices: [{ name: "Desktop", value: 1 }],
                     top_countries: [{ name: "United States", value: 1 }],
+                    top_languages: [],
                     top_utm_campaigns: [],
                     top_utm_contents: [],
                     top_utm_mediums: [],

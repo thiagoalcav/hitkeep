@@ -126,15 +126,21 @@
         />
 
         <app-metric-list
-            [title]="'common.metrics.countries' | transloco"
+            [title]="'common.metrics.audience' | transloco"
             icon="pi-globe"
-            [data]="statsService.stats()?.top_countries || []"
+            [data]="geoMetricData()"
             [isLoading]="statsService.isLoading()"
+            [viewOptions]="geoMetricOptions()"
+            [selectedView]="geoMetricMode()"
+            [viewSelectAriaLabel]="'common.metrics.geoModeAria' | transloco"
             [isRowClickable]="true"
-            [showCountryFlags]="true"
-            [showCountryNames]="true"
-            [activeValue]="activeFilterValue('country')"
-            (rowClicked)="applyMetricFilter('country', $event)"
+            [showCountryFlags]="geoMetricMode() === 'top_countries'"
+            [showCountryNames]="geoMetricMode() === 'top_countries'"
+            [showLanguageFlags]="geoMetricMode() === 'top_languages'"
+            [showLanguageNames]="geoMetricMode() === 'top_languages'"
+            [activeValue]="activeFilterValue(geoMetricMode() === 'top_countries' ? 'country' : 'language')"
+            (viewChanged)="onGeoMetricModeChange($event)"
+            (rowClicked)="applyMetricFilter(geoMetricMode() === 'top_countries' ? 'country' : 'language', $event)"
         />
     </div>
 

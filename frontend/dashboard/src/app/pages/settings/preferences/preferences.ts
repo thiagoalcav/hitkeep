@@ -1,3 +1,4 @@
+import { NgOptimizedImage } from "@angular/common";
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from "@angular/core";
 
 import { FormControl, ReactiveFormsModule } from "@angular/forms";
@@ -9,6 +10,7 @@ import { SelectModule } from "primeng/select";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
 import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
 import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
+import { localeFlagUrl } from "@core/i18n/flag-utils";
 import { UserPreferences, UserPreferencesService } from "@services/user-preferences.service";
 import { getBaseLanguage, getLocaleDirection, normalizeLocaleTag, TextDirection } from "@core/i18n/locale-utils";
 
@@ -21,36 +23,9 @@ interface LanguageOption {
 
 type AvailableLang = string | { id: string; label: string };
 
-const LANGUAGE_FLAG_FALLBACK: Record<string, string> = {
-    en: "us",
-    es: "es",
-    fr: "fr",
-    de: "de",
-    it: "it",
-    pt: "pt",
-    nl: "nl",
-    sv: "se",
-    da: "dk",
-    fi: "fi",
-    pl: "pl",
-    cs: "cz",
-    tr: "tr",
-    ru: "ru",
-    uk: "ua",
-    ar: "sa",
-    he: "il",
-    hi: "in",
-    id: "id",
-    th: "th",
-    vi: "vn",
-    zh: "cn",
-    ja: "jp",
-    ko: "kr"
-};
-
 @Component({
     selector: "app-preferences",
-    imports: [ReactiveFormsModule, ButtonModule, CardModule, SelectModule, PageHeader, PageHeaderLeft, PageBreadcrumb, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, CardModule, SelectModule, PageHeader, PageHeaderLeft, PageBreadcrumb, TranslocoPipe, NgOptimizedImage],
     templateUrl: "./preferences.html",
     styleUrl: "./preferences.css",
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -89,7 +64,7 @@ export class Preferences {
             options.push({
                 value: base,
                 label,
-                flagUrl: this.flagUrlForLocale(base),
+                flagUrl: localeFlagUrl(base),
                 direction: getLocaleDirection(base)
             });
         }
@@ -196,22 +171,6 @@ export class Preferences {
     protected preferencesEqual(a: UserPreferences, b: UserPreferences): boolean {
         return a.default_locale === b.default_locale;
     }
-
-    private flagUrlForLocale(locale: string): string {
-        const normalized = normalizeLocaleTag(locale);
-        if (!normalized) return "/flags/other/earth.svg";
-        const [language, ...subtags] = normalized.split("-");
-        const region = subtags.find((part) => /^[A-Z]{2}$/.test(part));
-        if (region) {
-            return `/flags/${region.toLowerCase()}.svg`;
-        }
-        const fallback = LANGUAGE_FLAG_FALLBACK[language];
-        if (fallback) {
-            return `/flags/${fallback}.svg`;
-        }
-        return "/flags/other/earth.svg";
-    }
-
     private applyLocalePreview(locale: LanguageOption | string | null | undefined): void {
         const resolvedLocale = typeof locale === "string" ? locale : locale?.value;
         if (!resolvedLocale) {

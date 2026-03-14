@@ -56,6 +56,13 @@ func buildHitFilter(filterType, filterValue, alias string) (string, []any) {
 		}
 		expr := fmt.Sprintf("hk_country(%scountry_code)", prefix)
 		return " AND " + expr + " = ?", []any{normalized}
+	case "language":
+		expr := fmt.Sprintf("CASE WHEN NULLIF(TRIM(%slanguage), '') IS NULL THEN '(Unspecified)' ELSE lower(split_part(TRIM(%slanguage), '-', 1)) END", prefix, prefix)
+		normalized := strings.ToLower(strings.TrimSpace(filterValue))
+		if normalized != "" && normalized != "unspecified" && normalized != "(unspecified)" {
+			normalized = strings.SplitN(normalized, "-", 2)[0]
+		}
+		return " AND " + expr + " = ?", []any{normalizeUnspecified(normalized)}
 	case "utm_campaign":
 		expr := fmt.Sprintf("COALESCE(NULLIF(TRIM(%sutm_campaign), ''), '(Unspecified)')", prefix)
 		return " AND " + expr + " = ?", []any{normalizeUnspecified(filterValue)}

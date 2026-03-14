@@ -46,3 +46,14 @@ func TestBuildHitFiltersIncludesUTMClauses(t *testing.T) {
 		t.Fatalf("unexpected args: got %#v want %#v", args, []any{"paid", "/pricing"})
 	}
 }
+
+func TestBuildHitFilterLanguageNormalizesBaseCode(t *testing.T) {
+	clause, args := buildHitFilter("language", "de-DE", "h")
+	wantClause := " AND CASE WHEN NULLIF(TRIM(h.language), '') IS NULL THEN '(Unspecified)' ELSE lower(split_part(TRIM(h.language), '-', 1)) END = ?"
+	if clause != wantClause {
+		t.Fatalf("unexpected clause: got %q want %q", clause, wantClause)
+	}
+	if !reflect.DeepEqual(args, []any{"de"}) {
+		t.Fatalf("unexpected args: got %#v want %#v", args, []any{"de"})
+	}
+}

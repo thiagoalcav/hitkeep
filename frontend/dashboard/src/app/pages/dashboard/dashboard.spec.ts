@@ -101,6 +101,7 @@ describe("Dashboard", () => {
             top_referrers: [],
             top_devices: [],
             top_countries: [],
+            top_languages: [{ name: "de", value: 4 }],
             top_utm_campaigns: [],
             top_utm_contents: [],
             top_utm_mediums: [],
@@ -122,5 +123,55 @@ describe("Dashboard", () => {
 
         (component as unknown as { onPageMetricModeChange: (mode: string) => void }).onPageMetricModeChange("top_exit_pages");
         expect((component as unknown as { pageMetricData: () => { name: string; value: number }[] }).pageMetricData()).toEqual([{ name: "/signup", value: 2 }]);
+    });
+
+    it("should switch the audience card data between countries and languages", () => {
+        const siteService = TestBed.inject(SiteService);
+        const statsService = TestBed.inject(StatsService);
+        const hitService = TestBed.inject(HitService);
+
+        vi.spyOn(statsService, "loadStats").mockImplementation(() => undefined);
+        vi.spyOn(hitService, "loadHits").mockImplementation(() => undefined);
+
+        siteService.activeSite.set({
+            id: "site-1",
+            user_id: "user-1",
+            domain: "example.com",
+            created_at: "2026-01-01T00:00:00Z"
+        });
+
+        statsService.stats.set({
+            live_visitors: 0,
+            total_pageviews: 10,
+            unique_sessions: 5,
+            bounce_rate: 40,
+            avg_session_duration: 12,
+            pages_per_session: 2,
+            chart_data: [],
+            top_pages: [],
+            top_landing_pages: [],
+            top_exit_pages: [],
+            top_referrers: [],
+            top_devices: [],
+            top_countries: [{ name: "DE", value: 4 }],
+            top_languages: [{ name: "de", value: 3 }],
+            top_utm_campaigns: [],
+            top_utm_contents: [],
+            top_utm_mediums: [],
+            top_utm_sources: [],
+            top_utm_terms: [],
+            utm_campaign_hits: 0,
+            utm_content_hits: 0,
+            utm_medium_hits: 0,
+            utm_source_hits: 0,
+            utm_term_hits: 0,
+            goals: [],
+            funnels: []
+        });
+
+        expect((component as unknown as { geoMetricData: () => { name: string; value: number }[] }).geoMetricData()).toEqual([{ name: "DE", value: 4 }]);
+
+        (component as unknown as { onGeoMetricModeChange: (mode: string) => void }).onGeoMetricModeChange("top_languages");
+        expect((component as unknown as { geoMetricData: () => { name: string; value: number }[] }).geoMetricData()).toEqual([{ name: "de", value: 3 }]);
     });
 });

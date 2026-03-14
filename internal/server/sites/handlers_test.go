@@ -454,6 +454,9 @@ func TestHandleGetSiteStatsIncludesPageModes(t *testing.T) {
 	if len(stats.TopExitPages) == 0 {
 		t.Fatalf("expected top_exit_pages in response, got %+v", stats)
 	}
+	if stats.TopLanguages == nil {
+		t.Fatalf("expected top_languages in response, got %+v", stats)
+	}
 }
 
 func TestHandleGetSiteEcommerceSummary(t *testing.T) {

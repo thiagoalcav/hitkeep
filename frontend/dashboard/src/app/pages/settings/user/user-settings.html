@@ -117,7 +117,7 @@
                                 <ng-template #selectedItem let-selectedOption>
                                     @if (selectedOption) {
                                     <div class="flex items-center gap-2">
-                                        <img [src]="selectedOption.flagUrl" class="size-4 shrink-0 rounded-full" width="16" height="16" alt="" />
+                                        <img [ngSrc]="selectedOption.flagUrl" class="size-4 shrink-0 rounded-full" width="16" height="16" alt="" />
                                         <span class="font-medium text-[var(--p-text-color)]">{{ selectedOption.label }}</span>
                                         @if (selectedOption.direction === "rtl") {
                                         <span class="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-[var(--p-surface-200)] text-[var(--p-text-muted-color)]"> {{ "preferences.language.rtlBadge" | transloco }} </span>
@@ -127,7 +127,7 @@
                                 </ng-template>
                                 <ng-template #item let-option>
                                     <div class="flex items-center gap-3">
-                                        <img [src]="option.flagUrl" class="size-4 shrink-0 rounded-full" width="16" height="16" alt="" />
+                                        <img [ngSrc]="option.flagUrl" class="size-4 shrink-0 rounded-full" width="16" height="16" alt="" />
                                         <div class="flex flex-col">
                                             <span class="font-medium text-[var(--p-text-color)]">{{ option.label }}</span>
                                             <span class="text-xs text-[var(--p-text-muted-color)]">{{ option.value }}</span>

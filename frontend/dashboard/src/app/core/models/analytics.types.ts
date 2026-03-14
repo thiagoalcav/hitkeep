@@ -226,6 +226,7 @@ export interface SiteStats {
     top_referrers: MetricStat[];
     top_devices: MetricStat[];
     top_countries: MetricStat[];
+    top_languages: MetricStat[];
     top_utm_campaigns: MetricStat[];
     top_utm_contents: MetricStat[];
     top_utm_mediums: MetricStat[];

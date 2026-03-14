@@ -1,5 +1,5 @@
 import { ApplicationConfig, inject, isDevMode, provideBrowserGlobalErrorListeners, provideEnvironmentInitializer, provideZonelessChangeDetection } from "@angular/core";
-import { provideRouter } from "@angular/router";
+import { provideRouter, withViewTransitions } from "@angular/router";
 import { providePrimeNG } from "primeng/config";
 import Aura from "@primeuix/themes/aura";
 
@@ -18,7 +18,7 @@ export const appConfig: ApplicationConfig = {
         provideBrowserGlobalErrorListeners(),
         provideZonelessChangeDetection(),
         provideHttpClient(withFetch(), withInterceptors([shareInterceptor, authInterceptor])),
-        provideRouter(routes),
+        provideRouter(routes, withViewTransitions()),
         providePrimeNG({
             theme: {
                 preset: Aura,

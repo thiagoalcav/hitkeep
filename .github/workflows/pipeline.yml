@@ -244,6 +244,8 @@ jobs:
           find public -mindepth 1 ! -name embed.go -exec rm -rf {} +
           tar -xzf "$public_archive" -C public
 
+          find . -maxdepth 1 -type f -name 'hitkeep-cloud-linux-*' -delete
+
       - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
 

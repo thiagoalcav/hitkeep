@@ -20,9 +20,6 @@ func TestDefaultProviderReturnsUnlimited(t *testing.T) {
 	if ent.MaxSitesPerTeam != 0 {
 		t.Fatalf("expected MaxSitesPerTeam=0 (unlimited), got %d", ent.MaxSitesPerTeam)
 	}
-	if ent.MaxMonthlyEvents != 0 {
-		t.Fatalf("expected MaxMonthlyEvents=0 (unlimited), got %d", ent.MaxMonthlyEvents)
-	}
 	if ent.MaxRetentionDays != 0 {
 		t.Fatalf("expected MaxRetentionDays=0 (unlimited), got %d", ent.MaxRetentionDays)
 	}

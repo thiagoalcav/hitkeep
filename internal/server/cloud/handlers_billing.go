@@ -181,7 +181,7 @@ func (h *handler) handleSignup() http.HandlerFunc {
 		req.GivenName = strings.TrimSpace(req.GivenName)
 		req.LastName = strings.TrimSpace(req.LastName)
 		req.TeamName = strings.TrimSpace(req.TeamName)
-		req.PlanCode = normalizePlanCode(req.PlanCode)
+		req.PlanCode = database.CloudPlanFree // signup always starts on free
 		req.Jurisdiction = strings.TrimSpace(strings.ToUpper(req.Jurisdiction))
 		req.Locale = normalizeStripeLocale(req.Locale)
 
@@ -193,11 +193,7 @@ func (h *handler) handleSignup() http.HandlerFunc {
 			http.Error(w, "Team name is required", http.StatusBadRequest)
 			return
 		}
-		if req.PlanCode == "" {
-			http.Error(w, "Plan code is required", http.StatusBadRequest)
-			return
-		}
-		if configuredJurisdiction := strings.TrimSpace(strings.ToUpper(h.ctx.Config.CloudJurisdiction)); configuredJurisdiction != "" && req.Jurisdiction != "" && req.Jurisdiction != configuredJurisdiction {
+		if configuredJurisdiction := normalizeJurisdiction(h.ctx.Config.CloudJurisdiction); configuredJurisdiction != "" && req.Jurisdiction != "" && normalizeJurisdiction(req.Jurisdiction) != configuredJurisdiction {
 			http.Error(w, "Jurisdiction mismatch", http.StatusBadRequest)
 			return
 		}
@@ -245,33 +241,8 @@ func (h *handler) handleSignup() http.HandlerFunc {
 
 		resp := signupResponse{
 			Status:      "ok",
-			PlanCode:    req.PlanCode,
+			PlanCode:    database.CloudPlanFree,
 			RedirectURL: "/dashboard",
-		}
-		if req.PlanCode != database.CloudPlanFree {
-			checkoutURL, customerID, sessionID, priceID, err := h.createCheckout(r.Context(), account, req)
-			if err != nil {
-				slog.Error("Failed to create Stripe checkout session", "error", err, "team_id", account.TenantID, "plan_code", req.PlanCode)
-				http.Error(w, "Unable to start checkout", http.StatusBadGateway)
-				return
-			}
-
-			if err := h.ctx.Store.UpsertCloudBillingAccount(r.Context(), database.CloudBillingAccount{
-				TenantID:             account.TenantID,
-				PlanCode:             database.CloudPlanFree,
-				PlanName:             planNameForCode(database.CloudPlanFree),
-				SubscriptionStatus:   subscriptionStatusPending,
-				StripeCustomerID:     customerID,
-				StripeSubscriptionID: "",
-				StripePriceID:        priceID,
-			}); err != nil {
-				slog.Error("Failed to persist Stripe checkout metadata", "error", err, "team_id", account.TenantID, "session_id", sessionID)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
-
-			resp.CheckoutURL = checkoutURL
-			resp.RedirectURL = ""
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -384,10 +355,20 @@ func (h *handler) handleCreateBillingPortalSession() http.HandlerFunc {
 
 		account, err := h.ctx.Store.GetCloudBillingAccount(r.Context(), activeTenantID)
 		if errors.Is(err, database.ErrCloudBillingAccountNotFound) || account == nil {
-			http.Error(w, "Cloud billing account not found", http.StatusNotFound)
-			return
+			newAccount := database.CloudBillingAccount{
+				TenantID:           activeTenantID,
+				PlanCode:           database.CloudPlanFree,
+				PlanName:           planNameForCode(database.CloudPlanFree),
+				SubscriptionStatus: database.CloudSubscriptionStatusFree,
+			}
+			if upsertErr := h.ctx.Store.UpsertCloudBillingAccount(r.Context(), newAccount); upsertErr != nil {
+				slog.Error("Failed to auto-create cloud billing account", "error", upsertErr, "team_id", activeTenantID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			account = &newAccount
 		}
-		if err != nil {
+		if err != nil && !errors.Is(err, database.ErrCloudBillingAccountNotFound) {
 			slog.Error("Failed to load cloud billing account", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
@@ -453,10 +434,22 @@ func (h *handler) handleCreateBillingCheckoutSession() http.HandlerFunc {
 
 		account, err := h.ctx.Store.GetCloudBillingAccount(r.Context(), activeTenantID)
 		if errors.Is(err, database.ErrCloudBillingAccountNotFound) || account == nil {
-			http.Error(w, "Cloud billing account not found", http.StatusNotFound)
-			return
+			// Auto-create a free billing account for legacy users who signed up
+			// before the billing account table existed.
+			newAccount := database.CloudBillingAccount{
+				TenantID:           activeTenantID,
+				PlanCode:           database.CloudPlanFree,
+				PlanName:           planNameForCode(database.CloudPlanFree),
+				SubscriptionStatus: database.CloudSubscriptionStatusFree,
+			}
+			if upsertErr := h.ctx.Store.UpsertCloudBillingAccount(r.Context(), newAccount); upsertErr != nil {
+				slog.Error("Failed to auto-create cloud billing account", "error", upsertErr, "team_id", activeTenantID)
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			account = &newAccount
 		}
-		if err != nil {
+		if err != nil && !errors.Is(err, database.ErrCloudBillingAccountNotFound) {
 			slog.Error("Failed to load cloud billing account", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
@@ -679,6 +672,18 @@ func tenantIDFromStripeMetadata(metadata map[string]string) (uuid.UUID, error) {
 		return uuid.Nil, fmt.Errorf("parse subscription tenant_id: %w", err)
 	}
 	return tenantID, nil
+}
+
+// normalizeJurisdiction maps AWS region names or shorthand to "EU" or "US".
+func normalizeJurisdiction(value string) string {
+	v := strings.TrimSpace(strings.ToUpper(value))
+	if strings.HasPrefix(v, "EU") {
+		return "EU"
+	}
+	if strings.HasPrefix(v, "US") {
+		return "US"
+	}
+	return v
 }
 
 func normalizePlanCode(planCode string) string {

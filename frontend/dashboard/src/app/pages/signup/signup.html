@@ -15,76 +15,6 @@
                 </div>
                 }
 
-                <div class="hk-signup-jurisdiction">
-                    <div>
-                        <p class="hk-signup-section-eyebrow">{{ "signup.jurisdictionLabel" | transloco }}</p>
-                        <p class="hk-signup-section-copy">{{ "signup.jurisdictionDescription" | transloco }}</p>
-                    </div>
-                    <div class="hk-signup-jurisdiction-actions" role="radiogroup" [attr.aria-label]="'signup.jurisdictionLabel' | transloco">
-                        @for (jurisdiction of jurisdictionOptions; track jurisdiction) {
-                        <button
-                            type="button"
-                            class="hk-signup-jurisdiction-option"
-                            [class.hk-signup-jurisdiction-option-selected]="selectedJurisdiction() === jurisdiction"
-                            [attr.aria-checked]="selectedJurisdiction() === jurisdiction"
-                            role="radio"
-                            (click)="selectJurisdiction(jurisdiction)"
-                        >
-                            {{ ("signup.jurisdictions." + jurisdiction.toLowerCase()) | transloco }}
-                        </button>
-                        }
-                    </div>
-                </div>
-
-                @if (selectedJurisdiction() !== currentJurisdiction()) {
-                <div class="hk-auth-alert" role="status" aria-live="polite">
-                    <i class="pi pi-arrow-right-arrow-left mt-0.5" aria-hidden="true"></i>
-                    <span class="text-sm font-medium"> {{ "signup.jurisdictionRedirectHint" | transloco : { jurisdiction: ("signup.jurisdictions." + selectedJurisdiction().toLowerCase()) | transloco } }} </span>
-                </div>
-                }
-
-                <div class="hk-signup-plan-grid" role="radiogroup" [attr.aria-label]="'signup.planLabel' | transloco">
-                    @for (plan of planOptions; track plan.value) {
-                    <button type="button" class="hk-signup-plan" [class.hk-signup-plan-selected]="selectedPlan() === plan.value" [attr.aria-checked]="selectedPlan() === plan.value" role="radio" (click)="selectPlan(plan.value)">
-                        <span class="hk-signup-plan-title">{{ ("signup.plans." + plan.value + ".name") | transloco }}</span>
-                        <span class="hk-signup-plan-price">{{ ("signup.plans." + plan.value + ".price") | transloco }}</span>
-                        <span class="hk-signup-plan-copy">{{ ("signup.plans." + plan.value + ".description") | transloco }}</span>
-                    </button>
-                    }
-                </div>
-
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div class="hk-auth-field">
-                        <label for="givenName" class="hk-auth-field-label">{{ "signup.givenNameLabel" | transloco }}</label>
-                        <input pInputText id="givenName" [formControl]="signupForm.givenName().control()" class="w-full" autocomplete="given-name" [placeholder]="'signup.givenNamePlaceholder' | transloco" />
-                    </div>
-
-                    <div class="hk-auth-field">
-                        <label for="lastName" class="hk-auth-field-label">{{ "signup.lastNameLabel" | transloco }}</label>
-                        <input pInputText id="lastName" [formControl]="signupForm.lastName().control()" class="w-full" autocomplete="family-name" [placeholder]="'signup.lastNamePlaceholder' | transloco" />
-                    </div>
-                </div>
-
-                <div class="hk-auth-field">
-                    <label for="teamName" class="hk-auth-field-label">
-                        {{ "signup.teamNameLabel" | transloco }}
-                        <span class="api-client-required-asterisk" aria-hidden="true">*</span>
-                    </label>
-                    <input
-                        pInputText
-                        id="teamName"
-                        [formControl]="signupForm.teamName().control()"
-                        class="w-full"
-                        autocomplete="organization"
-                        [attr.aria-invalid]="signupForm.teamName().touched() && signupForm.teamName().invalid() ? true : null"
-                        [attr.aria-describedby]="signupForm.teamName().touched() && signupForm.teamName().invalid() ? 'signup-team-error' : null"
-                        [placeholder]="'signup.teamNamePlaceholder' | transloco"
-                    />
-                    @if (signupForm.teamName().touched() && signupForm.teamName().invalid()) {
-                    <small id="signup-team-error" class="hk-auth-field-error" role="status">{{ "signup.teamNameRequired" | transloco }}</small>
-                    }
-                </div>
-
                 <div class="hk-auth-field">
                     <label for="email" class="hk-auth-field-label">
                         {{ "common.emailAddress" | transloco }}
@@ -130,6 +60,26 @@
                     }
                 </div>
 
+                <div class="hk-auth-field">
+                    <label for="teamName" class="hk-auth-field-label">
+                        {{ "signup.teamNameLabel" | transloco }}
+                        <span class="api-client-required-asterisk" aria-hidden="true">*</span>
+                    </label>
+                    <input
+                        pInputText
+                        id="teamName"
+                        [formControl]="signupForm.teamName().control()"
+                        class="w-full"
+                        autocomplete="organization"
+                        [attr.aria-invalid]="signupForm.teamName().touched() && signupForm.teamName().invalid() ? true : null"
+                        [attr.aria-describedby]="signupForm.teamName().touched() && signupForm.teamName().invalid() ? 'signup-team-error' : null"
+                        [placeholder]="'signup.teamNamePlaceholder' | transloco"
+                    />
+                    @if (signupForm.teamName().touched() && signupForm.teamName().invalid()) {
+                    <small id="signup-team-error" class="hk-auth-field-error" role="status">{{ "signup.teamNameRequired" | transloco }}</small>
+                    }
+                </div>
+
                 <p-button [label]="'signup.submit' | transloco" type="submit" [loading]="isLoading()" [disabled]="isLoading() || signupForm().invalid()" class="w-full"> </p-button>
             </form>
         </div>
@@ -142,6 +92,9 @@
             <p class="hk-auth-footer-text">
                 <span>{{ "signup.otherJurisdictionPrompt" | transloco }}</span>
                 <a [href]="jurisdictionHref(alternateJurisdiction())" class="hk-auth-link"> {{ "signup.otherJurisdictionAction" | transloco : { jurisdiction: ("signup.jurisdictions." + alternateJurisdiction().toLowerCase()) | transloco } }} </a>
+            </p>
+            <p class="hk-auth-footer-text">
+                <a href="https://hitkeep.com/guides/installation/binary/" class="hk-auth-link" target="_blank" rel="noopener">{{ "signup.selfHostLink" | transloco }}</a>
             </p>
             <p class="hk-auth-footer-text">
                 <span aria-hidden="true">&copy;</span>

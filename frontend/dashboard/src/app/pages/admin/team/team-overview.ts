@@ -38,7 +38,6 @@ export class TeamOverviewPage {
         }
 
         return [
-            this.buildUsageCard("monthlyEvents", team.usage.current_monthly_events, team.entitlements.max_monthly_events),
             this.buildUsageCard("sites", team.usage.current_sites, team.entitlements.max_sites_per_team),
             this.buildUsageCard("members", team.usage.current_members, team.entitlements.max_team_members)
         ];

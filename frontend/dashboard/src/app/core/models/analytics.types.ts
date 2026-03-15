@@ -23,13 +23,11 @@ export interface TeamUsageSummary {
     current_sites: number;
     current_members: number;
     current_pending_invites: number;
-    current_monthly_events: number;
 }
 
 export interface TeamEntitlements {
     max_sites_per_team: number;
     max_team_members: number;
-    max_monthly_events: number;
     max_retention_days: number;
     allow_sso: boolean;
     allow_custom_branding: boolean;

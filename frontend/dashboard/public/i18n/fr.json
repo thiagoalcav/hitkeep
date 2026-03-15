@@ -925,7 +925,6 @@
                     "pendingInviteOne": "1 invitation en attente",
                     "pendingInviteMany": "{{count}} invitations en attente",
                     "metrics": {
-                        "monthlyEvents": "Événements mensuels",
                         "sites": "Sites",
                         "members": "Membres"
                     }
@@ -1073,8 +1072,8 @@
         }
     },
     "signup": {
-        "title": "Créez votre espace cloud",
-        "subtitle": "Choisissez votre juridiction, créez votre espace de travail, puis continuez vers Stripe uniquement si vous sélectionnez une offre payante.",
+        "title": "Commencez gratuitement",
+        "subtitle": "Créez votre espace de travail et commencez le suivi en moins d'une minute. Aucune carte bancaire requise.",
         "jurisdictionLabel": "Juridiction",
         "jurisdictionDescription": "Cet espace restera rattaché à la frontière légale et à la région AWS sélectionnées.",
         "jurisdictionRedirectHint": "Vous avez sélectionné {{jurisdiction}}. En continuant, nous vous redirigerons vers l’inscription régionale appropriée.",
@@ -1112,6 +1111,7 @@
                 "description": "Plus d'échelle pour les agences, les équipes produit et un volume d'événements plus élevé."
             }
         },
+        "selfHostLink": "Vous préférez héberger vous-même ? Voir la documentation →",
         "errors": {
             "emailExists": "Un compte existe déjà avec cette adresse e-mail.",
             "planUnavailable": "Cette option d'inscription n'est pas disponible pour le moment.",

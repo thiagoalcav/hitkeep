@@ -67,7 +67,6 @@ type Config struct {
 	CloudPlanName               string
 	CloudMaxTeams               int
 	CloudMaxSitesPerTeam        int
-	CloudMaxMonthlyEvents       int64
 	CloudMaxRetentionDays       int
 	CloudMaxTeamMembers         int
 	CloudAllowSSO               bool

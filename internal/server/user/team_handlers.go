@@ -70,7 +70,6 @@ func resolveTeamEntitlements(ctx context.Context, store *database.Store, provide
 	return &api.TeamEntitlements{
 		MaxSitesPerTeam:     ent.MaxSitesPerTeam,
 		MaxTeamMembers:      ent.MaxTeamMembers,
-		MaxMonthlyEvents:    ent.MaxMonthlyEvents,
 		MaxRetentionDays:    ent.MaxRetentionDays,
 		AllowSSO:            ent.AllowSSO,
 		AllowCustomBranding: ent.AllowCustomBranding,

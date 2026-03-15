@@ -40,12 +40,10 @@ describe("TeamOverviewPage", () => {
             current_sites: 3,
             current_members: 5,
             current_pending_invites: 2,
-            current_monthly_events: 1450
         },
         entitlements: {
             max_sites_per_team: 10,
             max_team_members: 8,
-            max_monthly_events: 2000,
             max_retention_days: 365,
             allow_sso: true,
             allow_custom_branding: true
@@ -95,7 +93,6 @@ describe("TeamOverviewPage", () => {
                                             pendingInviteOne: "1 pending invite",
                                             pendingInviteMany: "{{count}} pending invites",
                                             metrics: {
-                                                monthlyEvents: "Monthly events",
                                                 sites: "Sites",
                                                 members: "Members"
                                             }
@@ -156,11 +153,9 @@ describe("TeamOverviewPage", () => {
     it("renders usage cards for the active team", () => {
         const text = fixture.nativeElement.textContent;
         expect(text).toContain("Usage and limits");
-        expect(text).toContain("Monthly events");
         expect(text).toContain("Sites");
         expect(text).toContain("Members");
         expect(text).toContain("2 pending invites");
-        expect(text).toContain("1450");
     });
 
     it("renders cloud upgrade details when managed metadata is present", () => {

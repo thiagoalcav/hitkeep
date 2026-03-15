@@ -304,7 +304,7 @@ func TestHandleSignupCreatesFreeManagedAccount(t *testing.T) {
 	}
 }
 
-func TestHandleSignupStartsStripeCheckoutForPaidPlan(t *testing.T) {
+func TestHandleSignupForcesFreeEvenWhenPaidPlanRequested(t *testing.T) {
 	h, store := setupCloudTestHandler(t)
 	defer store.Close()
 
@@ -334,8 +334,14 @@ func TestHandleSignupStartsStripeCheckoutForPaidPlan(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if resp.CheckoutURL != "https://checkout.stripe.test/session" {
-		t.Fatalf("unexpected checkout url %q", resp.CheckoutURL)
+	if resp.CheckoutURL != "" {
+		t.Fatalf("expected no checkout url for signup, got %q", resp.CheckoutURL)
+	}
+	if resp.PlanCode != database.CloudPlanFree {
+		t.Fatalf("expected free plan code, got %q", resp.PlanCode)
+	}
+	if resp.RedirectURL != "/dashboard" {
+		t.Fatalf("expected redirect_url /dashboard, got %q", resp.RedirectURL)
 	}
 
 	user, err := store.GetUserByEmail(context.Background(), "pro@example.com")
@@ -358,25 +364,22 @@ func TestHandleSignupStartsStripeCheckoutForPaidPlan(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get billing account: %v", err)
 	}
-	if billingAccount.StripeCustomerID != "cus_test" {
-		t.Fatalf("unexpected stripe customer id: %+v", billingAccount)
+	if billingAccount.PlanCode != database.CloudPlanFree || billingAccount.SubscriptionStatus != database.CloudSubscriptionStatusFree {
+		t.Fatalf("expected free plan with free status, got %+v", billingAccount)
 	}
-	if billingAccount.PlanCode != database.CloudPlanFree || billingAccount.PlanName != "Free" || billingAccount.SubscriptionStatus != subscriptionStatusPending {
-		t.Fatalf("unexpected billing account: %+v", billingAccount)
+	if billingAccount.StripeCustomerID != "" {
+		t.Fatalf("expected no stripe customer for free signup, got %q", billingAccount.StripeCustomerID)
 	}
 
 	stripeClient, ok := h.stripe.(*fakeStripeClient)
-	if !ok || stripeClient.lastCheckoutInput == nil {
-		t.Fatal("expected checkout session input to be captured")
+	if !ok {
+		t.Fatal("expected fake stripe client")
 	}
-	if stripeClient.lastCustomerInput == nil {
-		t.Fatal("expected customer creation input to be captured")
+	if stripeClient.lastCheckoutInput != nil {
+		t.Fatal("expected no checkout session to be created during signup")
 	}
-	if stripeClient.lastCheckoutInput.Locale != "de" {
-		t.Fatalf("expected checkout locale de, got %q", stripeClient.lastCheckoutInput.Locale)
-	}
-	if got, want := stripeClient.lastCustomerInput.IdempotencyKey, stripeCustomerCreateIdempotencyKey(user.ID, teams[0].ID, "pro@example.com"); got != want {
-		t.Fatalf("expected customer idempotency key %q, got %q", want, got)
+	if stripeClient.lastCustomerInput != nil {
+		t.Fatal("expected no stripe customer to be created during signup")
 	}
 }
 

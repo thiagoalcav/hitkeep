@@ -925,7 +925,6 @@
                     "pendingInviteOne": "1 invitación pendiente",
                     "pendingInviteMany": "{{count}} invitaciones pendientes",
                     "metrics": {
-                        "monthlyEvents": "Eventos mensuales",
                         "sites": "Sitios",
                         "members": "Miembros"
                     }
@@ -1073,8 +1072,8 @@
         }
     },
     "signup": {
-        "title": "Crea tu espacio de trabajo en la nube",
-        "subtitle": "Elige tu jurisdicción, crea tu espacio de trabajo y continúa con Stripe solo si seleccionas un plan de pago.",
+        "title": "Empieza gratis",
+        "subtitle": "Crea tu espacio de trabajo y empieza a rastrear en menos de un minuto. Sin tarjeta de crédito.",
         "jurisdictionLabel": "Jurisdicción",
         "jurisdictionDescription": "Este espacio de trabajo permanecerá fijado al límite legal y a la región de AWS seleccionados.",
         "jurisdictionRedirectHint": "Has seleccionado {{jurisdiction}}. Al continuar te enviaremos al registro regional correcto.",
@@ -1112,6 +1111,7 @@
                 "description": "Más escala para agencias, equipos de producto y mayor volumen de eventos."
             }
         },
+        "selfHostLink": "¿Prefieres autoalojar? Ver la documentación →",
         "errors": {
             "emailExists": "Ya existe una cuenta con este correo electrónico.",
             "planUnavailable": "Esta opción de registro no está disponible ahora mismo.",

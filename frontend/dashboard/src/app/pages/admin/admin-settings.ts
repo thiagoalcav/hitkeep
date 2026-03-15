@@ -359,7 +359,7 @@ export class AdminSettings implements OnInit {
             },
             accept: () => {
                 this.deleteUserBlock.set(null);
-                this.http.delete(`/api/admin/users/${user.id}`).subscribe({
+                this.http.delete(`/api/admin/users/${user.id}?force=true`).subscribe({
                     next: () => this.loadUsers(),
                     error: (err) => {
                         if (this.handleDeleteUserError(err, user)) {

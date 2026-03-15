@@ -16,7 +16,6 @@ func TestLoadCloudConfigFromEnv(t *testing.T) {
 		"HITKEEP_CLOUD_PLAN_NAME":                "Pro",
 		"HITKEEP_CLOUD_MAX_TEAMS":                "2",
 		"HITKEEP_CLOUD_MAX_SITES_PER_TEAM":       "12",
-		"HITKEEP_CLOUD_MAX_MONTHLY_EVENTS":       "250000",
 		"HITKEEP_CLOUD_MAX_RETENTION_DAYS":       "365",
 		"HITKEEP_CLOUD_MAX_TEAM_MEMBERS":         "15",
 		"HITKEEP_CLOUD_ALLOW_SSO":                "true",
@@ -46,9 +45,6 @@ func TestLoadCloudConfigFromEnv(t *testing.T) {
 	}
 	if conf.CloudPlanCode != "pro" || conf.CloudPlanName != "Pro" {
 		t.Fatalf("unexpected cloud plan config: code=%q name=%q", conf.CloudPlanCode, conf.CloudPlanName)
-	}
-	if conf.CloudMaxMonthlyEvents != 250000 {
-		t.Fatalf("expected cloud monthly events 250000, got %d", conf.CloudMaxMonthlyEvents)
 	}
 	if !conf.CloudAllowSSO || !conf.CloudAllowCustomBranding {
 		t.Fatalf("expected cloud feature flags to load from env")

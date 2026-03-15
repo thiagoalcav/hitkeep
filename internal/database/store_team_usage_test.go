@@ -3,11 +3,6 @@ package database
 import (
 	"context"
 	"testing"
-	"time"
-
-	"github.com/google/uuid"
-
-	"hitkeep/internal/api"
 )
 
 func TestBuildTeamUsageSummary(t *testing.T) {
@@ -49,30 +44,6 @@ func TestBuildTeamUsageSummary(t *testing.T) {
 		t.Fatalf("create invite: %v", err)
 	}
 
-	now := time.Now().UTC()
-	for range 3 {
-		if err := store.CreateHit(ctx, &api.Hit{
-			SiteID:    site.ID,
-			SessionID: uuid.New(),
-			PageID:    uuid.New(),
-			Path:      "/",
-			Timestamp: now,
-		}); err != nil {
-			t.Fatalf("create hit: %v", err)
-		}
-	}
-	for range 2 {
-		if err := store.CreateEvent(ctx, &api.Event{
-			SiteID:     site.ID,
-			SessionID:  uuid.New(),
-			Name:       "trial_started",
-			Timestamp:  now,
-			Properties: map[string]any{"plan": "pro"},
-		}); err != nil {
-			t.Fatalf("create event: %v", err)
-		}
-	}
-
 	summary, err := store.BuildTeamUsageSummary(ctx, team.ID, store)
 	if err != nil {
 		t.Fatalf("build team usage summary: %v", err)
@@ -86,8 +57,5 @@ func TestBuildTeamUsageSummary(t *testing.T) {
 	}
 	if summary.CurrentPendingInvites != 1 {
 		t.Fatalf("expected 1 pending invite, got %d", summary.CurrentPendingInvites)
-	}
-	if summary.CurrentMonthlyEvents != 5 {
-		t.Fatalf("expected 5 monthly ingested events, got %d", summary.CurrentMonthlyEvents)
 	}
 }

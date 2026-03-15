@@ -9,11 +9,10 @@ import (
 // Entitlements describes what a tenant is allowed to do.
 // Zero values mean unlimited for integer fields.
 type Entitlements struct {
-	MaxTeams            int   // 0 = unlimited
-	MaxSitesPerTeam     int   // 0 = unlimited
-	MaxMonthlyEvents    int64 // 0 = unlimited
-	MaxRetentionDays    int   // 0 = unlimited
-	MaxTeamMembers      int   // 0 = unlimited
+	MaxTeams            int // 0 = unlimited
+	MaxSitesPerTeam     int // 0 = unlimited
+	MaxRetentionDays    int // 0 = unlimited
+	MaxTeamMembers      int // 0 = unlimited
 	AllowSSO            bool
 	AllowCustomBranding bool
 }

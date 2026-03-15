@@ -105,6 +105,9 @@ Tracker options, ecommerce events, custom events, and advanced tracking examples
 <details>
 <summary>See more screenshots</summary>
 
+### Comparison
+![HitKeep period-over-period comparison with delta badges and overlay charts](./.github/assets/dashboard-comparison.png)
+
 ### Events
 ![HitKeep custom event analytics with timeseries chart and property breakdown](./.github/assets/analytics-events.png)
 
@@ -122,6 +125,12 @@ Tracker options, ecommerce events, custom events, and advanced tracking examples
 
 ### API Clients
 ![HitKeep API client management](./.github/assets/security-api-clients.png)
+
+### Create Team
+![HitKeep create team dialog with name and logo setup](./.github/assets/feature-create-team.png)
+
+### Admin Users
+![HitKeep administration users view with roles and security controls](./.github/assets/admin-users.png)
 
 ### Team Overview
 ![HitKeep team administration overview](./.github/assets/admin-team-overview.png)

@@ -336,9 +336,25 @@ func (h *handler) handleDeleteUser() http.HandlerFunc {
 			return
 		}
 
-		// Check if target user is an owner (optional safety check, though role check handles permissions)
-		// Ideally, only owners can delete other owners, etc.
-		// For now, we rely on the route permission check (PermInstanceManageUsers).
+		force := r.URL.Query().Get("force") == "true"
+
+		if force {
+			// Archive all teams where the target user is the sole owner,
+			// so DeleteUser won't be blocked.
+			soleTeams, listErr := h.ctx.Store.ListSoleOwnerTeams(r.Context(), targetUserID)
+			if listErr != nil {
+				slog.Error("Failed to list sole-owner teams for force delete", "error", listErr, "target_user_id", targetUserID)
+				http.Error(w, "Failed to delete user", http.StatusInternalServerError)
+				return
+			}
+			for _, team := range soleTeams {
+				if archiveErr := h.ctx.Store.ArchiveTenant(r.Context(), team.ID, actorID); archiveErr != nil {
+					slog.Error("Failed to archive team during force delete", "error", archiveErr, "team_id", team.ID, "target_user_id", targetUserID)
+					http.Error(w, "Failed to archive team "+team.Name, http.StatusInternalServerError)
+					return
+				}
+			}
+		}
 
 		err = h.ctx.Store.DeleteUser(r.Context(), targetUserID)
 		if err != nil {
@@ -349,7 +365,7 @@ func (h *handler) handleDeleteUser() http.HandlerFunc {
 				if encodeErr := json.NewEncoder(w).Encode(api.AdminDeleteUserBlockedResponse{
 					Status:  "error",
 					Code:    "user_owns_teams",
-					Message: "Transfer ownership before deleting this user.",
+					Message: "Transfer ownership before deleting this user, or use ?force=true to archive their teams.",
 					Teams:   ownsTeamsErr.Teams,
 				}); encodeErr != nil {
 					slog.Error("Failed to encode delete user blocked response", "error", encodeErr, "target_user_id", targetUserID)

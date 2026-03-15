@@ -52,27 +52,27 @@ func resolveCloudBillingTeamEntitlements(ctx context.Context, store *database.St
 	switch code {
 	case database.CloudPlanBusiness:
 		return &api.TeamEntitlements{
-			MaxSitesPerTeam:     50,
-			MaxTeamMembers:      20,
-			MaxMonthlyEvents:    1000000,
+			MaxSitesPerTeam: 50,
+			MaxTeamMembers:  20,
+
 			MaxRetentionDays:    1095,
 			AllowSSO:            true,
 			AllowCustomBranding: true,
 		}
 	case database.CloudPlanPro:
 		return &api.TeamEntitlements{
-			MaxSitesPerTeam:     10,
-			MaxTeamMembers:      5,
-			MaxMonthlyEvents:    100000,
+			MaxSitesPerTeam: 10,
+			MaxTeamMembers:  5,
+
 			MaxRetentionDays:    365,
 			AllowSSO:            false,
 			AllowCustomBranding: false,
 		}
 	case database.CloudPlanFree:
 		return &api.TeamEntitlements{
-			MaxSitesPerTeam:     3,
-			MaxTeamMembers:      3,
-			MaxMonthlyEvents:    10000,
+			MaxSitesPerTeam: 3,
+			MaxTeamMembers:  3,
+
 			MaxRetentionDays:    60,
 			AllowSSO:            false,
 			AllowCustomBranding: false,

@@ -411,7 +411,6 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"current_sites":           map[string]any{"type": "integer"},
 						"current_members":         map[string]any{"type": "integer"},
 						"current_pending_invites": map[string]any{"type": "integer"},
-						"current_monthly_events":  map[string]any{"type": "integer"},
 					},
 				},
 				"TeamEntitlements": map[string]any{
@@ -419,7 +418,6 @@ func openAPISpecV1(publicURL string) map[string]any {
 					"properties": map[string]any{
 						"max_sites_per_team":    map[string]any{"type": "integer"},
 						"max_team_members":      map[string]any{"type": "integer"},
-						"max_monthly_events":    map[string]any{"type": "integer"},
 						"max_retention_days":    map[string]any{"type": "integer"},
 						"allow_sso":             map[string]any{"type": "boolean"},
 						"allow_custom_branding": map[string]any{"type": "boolean"},

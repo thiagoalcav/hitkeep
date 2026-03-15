@@ -925,7 +925,6 @@
                     "pendingInviteOne": "1 ausstehende Einladung",
                     "pendingInviteMany": "{{count}} ausstehende Einladungen",
                     "metrics": {
-                        "monthlyEvents": "Monatliche Events",
                         "sites": "Websites",
                         "members": "Mitglieder"
                     }
@@ -1073,8 +1072,8 @@
         }
     },
     "signup": {
-        "title": "Erstellen Sie Ihren Cloud-Workspace",
-        "subtitle": "Wählen Sie Ihre Jurisdiktion, erstellen Sie Ihren Workspace und fahren Sie nur bei einem bezahlten Plan mit Stripe fort.",
+        "title": "Kostenlos starten",
+        "subtitle": "Erstellen Sie Ihren Workspace und tracken Sie in unter einer Minute. Keine Kreditkarte erforderlich.",
         "jurisdictionLabel": "Jurisdiktion",
         "jurisdictionDescription": "Dieser Workspace bleibt an die ausgewählte rechtliche Grenze und AWS-Region gebunden.",
         "jurisdictionRedirectHint": "Sie haben {{jurisdiction}} gewählt. Beim Fortfahren leiten wir Sie zur passenden regionalen Registrierung weiter.",
@@ -1112,6 +1111,7 @@
                 "description": "Mehr Skalierung für Agenturen, Produktteams und höheres Event-Volumen."
             }
         },
+        "selfHostLink": "Sie möchten selbst hosten? Zur Dokumentation →",
         "errors": {
             "emailExists": "Für diese E-Mail-Adresse existiert bereits ein Konto.",
             "planUnavailable": "Diese Registrierungsoption ist derzeit nicht verfügbar.",

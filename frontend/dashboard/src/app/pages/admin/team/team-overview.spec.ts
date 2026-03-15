@@ -39,7 +39,7 @@ describe("TeamOverviewPage", () => {
         usage: {
             current_sites: 3,
             current_members: 5,
-            current_pending_invites: 2,
+            current_pending_invites: 2
         },
         entitlements: {
             max_sites_per_team: 10,

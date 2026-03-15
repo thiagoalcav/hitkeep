@@ -37,10 +37,7 @@ export class TeamOverviewPage {
             return [];
         }
 
-        return [
-            this.buildUsageCard("sites", team.usage.current_sites, team.entitlements.max_sites_per_team),
-            this.buildUsageCard("members", team.usage.current_members, team.entitlements.max_team_members)
-        ];
+        return [this.buildUsageCard("sites", team.usage.current_sites, team.entitlements.max_sites_per_team), this.buildUsageCard("members", team.usage.current_members, team.entitlements.max_team_members)];
     });
     protected readonly cloudPlan = computed(() => {
         const team = this.team();

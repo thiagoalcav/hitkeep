@@ -84,31 +84,25 @@ describe("Signup", () => {
 
     it("shows the hosted jurisdiction from system status", () => {
         expect(component["currentJurisdiction"]()).toBe("EU");
-        expect(component["selectedJurisdiction"]()).toBe("EU");
     });
 
-    it("submits a cloud signup request with the selected plan", () => {
+    it("submits a cloud signup request with free plan", () => {
         component["signupForm"].teamName().control().setValue("Cloud Team");
         component["signupForm"].email().control().setValue("user@example.com");
         component["signupForm"].password().control().setValue("password123");
-        component["selectPlan"]("pro");
 
         component["onSubmit"]();
 
         const payload = ((cloudServiceMock.signup as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]?.[0] ?? null) as Record<string, string> | null;
         expect(payload?.["team_name"]).toBe("Cloud Team");
         expect(payload?.["email"]).toBe("user@example.com");
-        expect(payload?.["plan_code"]).toBe("pro");
+        expect(payload?.["plan_code"]).toBe("free");
         expect(payload?.["jurisdiction"]).toBe("EU");
         expect(payload?.["locale"]).toBe("en");
     });
 
-    it("hydrates plan and profile fields from query params", async () => {
+    it("hydrates team name and email from query params", async () => {
         queryParams = {
-            plan: "business",
-            jurisdiction: "US",
-            given_name: "Ada",
-            last_name: "Lovelace",
             team_name: "Analytical Engine",
             email: "ada@example.com"
         };
@@ -117,31 +111,17 @@ describe("Signup", () => {
         component = fixture.componentInstance;
         fixture.detectChanges();
 
-        expect(component["selectedPlan"]()).toBe("business");
-        expect(component["selectedJurisdiction"]()).toBe("US");
-        expect(component["signupForm"].givenName().value()).toBe("Ada");
-        expect(component["signupForm"].lastName().value()).toBe("Lovelace");
         expect(component["signupForm"].teamName().value()).toBe("Analytical Engine");
         expect(component["signupForm"].email().value()).toBe("ada@example.com");
     });
 
-    it("redirects to the other region instead of creating a local account", () => {
-        const redirectSpy = vi.spyOn(component as unknown as Record<string, (...args: unknown[]) => unknown>, "redirectToExternal").mockImplementation(() => undefined);
-
+    it("provides a jurisdiction href for the alternate region", () => {
         component["signupForm"].teamName().control().setValue("Cloud Team");
         component["signupForm"].email().control().setValue("user@example.com");
-        component["signupForm"].password().control().setValue("password123");
-        component["signupForm"].givenName().control().setValue("Ada");
-        component["selectPlan"]("pro");
-        component["selectJurisdiction"]("US");
 
-        component["onSubmit"]();
-
-        expect(cloudServiceMock.signup).not.toHaveBeenCalled();
-        expect(redirectSpy).toHaveBeenCalledTimes(1);
-        expect(redirectSpy.mock.calls[0]?.[0]).toContain("https://cloud.hitkeep.com/signup");
-        expect(redirectSpy.mock.calls[0]?.[0]).toContain("plan=pro");
-        expect(redirectSpy.mock.calls[0]?.[0]).toContain("team_name=Cloud+Team");
-        expect(redirectSpy.mock.calls[0]?.[0]).toContain("email=user%40example.com");
+        const href = component["jurisdictionHref"]("US");
+        expect(href).toContain("https://cloud.hitkeep.com/signup");
+        expect(href).toContain("team_name=Cloud+Team");
+        expect(href).toContain("email=user%40example.com");
     });
 });

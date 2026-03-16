@@ -17,7 +17,7 @@ HitKeep is an open source web analytics platform built for people who want a sim
 - Goals, funnels, ecommerce, email reports, and API clients
 - Self-hosted or managed cloud with EU/US region choice
 
-[Website](https://hitkeep.com) · [Cloud](https://hitkeep.com/cloud) · [Docs](https://hitkeep.com/guides/introduction/) · [API](https://hitkeep.com/api/) · [Releases](https://github.com/PascaleBeier/hitkeep/releases)
+[Website](https://hitkeep.com) · [Cloud](https://hitkeep.com/cloud) · [Live Demo](https://demo.hitkeep.com/share/7a55968bb42df256512fbe7ff73ab88f29dd45c236eddc818bd66420b4ffbaad) · [Docs](https://hitkeep.com/guides/introduction/) · [API](https://hitkeep.com/api/) · [Releases](https://github.com/PascaleBeier/hitkeep/releases)
 
 ![HitKeep analytics dashboard — traffic overview, geographic breakdown, goals, funnels, and UTM attribution](./.github/assets/dashboard-overview.png)
 

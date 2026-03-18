@@ -7,6 +7,7 @@ import { TranslocoDecimalPipe } from "@jsverse/transloco-locale";
 import { CardModule } from "primeng/card";
 import { SkeletonModule } from "primeng/skeleton";
 import { SelectModule } from "primeng/select";
+import { browserIconUrl } from "@core/i18n/browser-utils";
 import { countryFlagUrl, languageFlagUrl } from "@core/i18n/flag-utils";
 import { MetricStat } from "@models/analytics.types";
 
@@ -34,6 +35,7 @@ export class MetricList {
     siteDomain = input<string | null>(null);
     isRowClickable = input<boolean>(false);
     activeValue = input<string | null>(null);
+    showBrowserIcons = input<boolean>(false);
     showCountryFlags = input<boolean>(false);
     showCountryNames = input<boolean>(false);
     showLanguageFlags = input<boolean>(false);
@@ -122,6 +124,10 @@ export class MetricList {
         const total = this.totalValue();
         if (!total) return 0;
         return (item.value / total) * 100;
+    }
+
+    protected browserIconUrl(item: MetricStat): string {
+        return browserIconUrl(item.name);
     }
 
     protected isDeviceMetric(): boolean {

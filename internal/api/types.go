@@ -212,6 +212,7 @@ type SiteStats struct {
 	TopReferrers       []MetricStat     `json:"top_referrers"`
 	TopDevices         []MetricStat     `json:"top_devices"`
 	TopCountries       []MetricStat     `json:"top_countries"`
+	TopBrowsers        []MetricStat     `json:"top_browsers"`
 	TopLanguages       []MetricStat     `json:"top_languages"`
 	TopUTMCampaigns    []MetricStat     `json:"top_utm_campaigns"`
 	TopUTMContents     []MetricStat     `json:"top_utm_contents"`
@@ -404,6 +405,12 @@ type TeamPlan struct {
 	SupportURL string `json:"support_url,omitempty"`
 }
 
+type CloudPlanTier struct {
+	Code         string           `json:"code"`
+	Name         string           `json:"name"`
+	Entitlements TeamEntitlements `json:"entitlements"`
+}
+
 type CloudStatus struct {
 	Hosted        bool   `json:"hosted"`
 	SignupEnabled bool   `json:"signup_enabled"`
@@ -454,6 +461,16 @@ type TeamAuditListResponse struct {
 	Offset  int              `json:"offset"`
 	HasMore bool             `json:"has_more"`
 	Action  string           `json:"action,omitempty"`
+}
+
+type AdminTeam struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	IsDefault   bool      `json:"is_default"`
+	IsArchived  bool      `json:"is_archived"`
+	MemberCount int       `json:"member_count"`
+	SiteCount   int       `json:"site_count"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
 type AdminDeleteUserBlockedResponse struct {

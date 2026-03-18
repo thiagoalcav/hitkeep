@@ -158,7 +158,10 @@
             "owner": "Eigentümer",
             "path": "Pfad",
             "referrer": "Referrer",
+            "members": "Mitglieder",
             "role": "Rolle",
+            "sites": "Seiten",
+            "status": "Status",
             "time": "Zeit",
             "type": "Typ",
             "value": "Wert"
@@ -188,7 +191,8 @@
             "device": "Gerät: {{value}}",
             "language": "Sprache: {{value}}",
             "page": "Seite: {{value}}",
-            "source": "Quelle: {{value}}"
+            "source": "Quelle: {{value}}",
+            "browser": "Browser: {{value}}"
         },
         "kpis": {
             "conversionRate": "Conversion-Rate"
@@ -196,6 +200,7 @@
         "loadingSiteData": "Seitendaten werden geladen...",
         "metrics": {
             "audience": "Zielgruppe",
+            "browsers": "Browser",
             "countries": "Länder",
             "devices": "Geräte",
             "languages": "Sprachen",
@@ -845,6 +850,7 @@
         "tabs": {
             "users": "Benutzer",
             "sites": "Seiten",
+            "teams": "Teams",
             "globalFilters": "Globale Filter"
         },
         "users": {
@@ -900,6 +906,16 @@
         "confirmDisable2fa": "Alle MFA-Methoden für {{email}} deaktivieren? Dadurch werden auch gespeicherte Sitzungen ungültig.",
         "confirmDeleteUser": "Benutzer {{email}} löschen?",
         "confirmDeleteSite": "Seite {{domain}} löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+        "confirmDeleteTeam": "Team \"{{name}}\" endgültig löschen? Dies kann nicht rückgängig gemacht werden.",
+        "confirmDeleteTeamWithSites": "Team \"{{name}}\" und seine {{sites}} Seite(n) endgültig löschen? Alle Analysedaten gehen verloren. Dies kann nicht rückgängig gemacht werden.",
+        "teams": {
+            "title": "Teams",
+            "status": {
+                "active": "Aktiv",
+                "archived": "Archiviert",
+                "default": "Standard"
+            }
+        },
         "team": {
             "tabs": {
                 "overview": "Übersicht",
@@ -941,6 +957,19 @@
                     "manageBillingAction": "Abrechnung verwalten",
                     "upgradeAction": "Tarif upgraden",
                     "supportAction": "Support kontaktieren"
+                },
+                "plans": {
+                    "title": "Tarif upgraden",
+                    "description": "Längere Aufbewahrung, mehr Websites und Teamkapazität freischalten.",
+                    "currentPlan": "Aktueller Tarif",
+                    "recommended": "Empfohlen",
+                    "upgradeAction": "Auf {{plan}} upgraden",
+                    "features": {
+                        "sites": "Bis zu {{count}} Websites",
+                        "members": "Bis zu {{count}} Teammitglieder",
+                        "retention": "{{count}} Jahre Datenaufbewahrung",
+                        "retentionDays": "{{count}} Tage Datenaufbewahrung"
+                    }
                 }
             },
             "members": {
@@ -1112,10 +1141,18 @@
             }
         },
         "selfHostLink": "Sie möchten selbst hosten? Zur Dokumentation →",
+        "tosLabel": "Ich stimme den",
+        "tosLink": "Nutzungsbedingungen",
+        "tosAnd": "und der",
+        "privacyLink": "Datenschutzrichtlinie",
+        "tosRequired": "Sie müssen die Nutzungsbedingungen und die Datenschutzrichtlinie akzeptieren.",
+        "verifyTitle": "Überprüfen Sie Ihr Postfach",
+        "verifySubtitle": "Wir haben einen Bestätigungslink an {{email}} gesendet. Klicken Sie darauf, um Ihren Workspace zu aktivieren.",
         "errors": {
             "emailExists": "Für diese E-Mail-Adresse existiert bereits ein Konto.",
             "planUnavailable": "Diese Registrierungsoption ist derzeit nicht verfügbar.",
-            "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
+            "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
+            "verificationExpired": "Dieser Bestätigungslink ist abgelaufen. Bitte registrieren Sie sich erneut."
         }
     },
     "preferences": {

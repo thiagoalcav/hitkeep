@@ -158,7 +158,10 @@
             "owner": "Owner",
             "path": "Path",
             "referrer": "Referrer",
+            "members": "Members",
             "role": "Role",
+            "sites": "Sites",
+            "status": "Status",
             "time": "Time",
             "type": "Type",
             "value": "Value"
@@ -188,7 +191,8 @@
             "device": "Device: {{value}}",
             "language": "Language: {{value}}",
             "page": "Page: {{value}}",
-            "source": "Source: {{value}}"
+            "source": "Source: {{value}}",
+            "browser": "Browser: {{value}}"
         },
         "kpis": {
             "conversionRate": "Conversion rate"
@@ -196,6 +200,7 @@
         "loadingSiteData": "Loading site data...",
         "metrics": {
             "audience": "Audience",
+            "browsers": "Browsers",
             "countries": "Countries",
             "devices": "Devices",
             "languages": "Languages",
@@ -845,6 +850,7 @@
         "tabs": {
             "users": "Users",
             "sites": "Sites",
+            "teams": "Teams",
             "globalFilters": "Global filters"
         },
         "users": {
@@ -900,6 +906,16 @@
         "confirmDisable2fa": "Disable all MFA methods for {{email}}? This also invalidates remembered sessions.",
         "confirmDeleteUser": "Delete user {{email}}?",
         "confirmDeleteSite": "Delete site {{domain}}? This action cannot be undone.",
+        "confirmDeleteTeam": "Permanently delete team \"{{name}}\"? This cannot be undone.",
+        "confirmDeleteTeamWithSites": "Permanently delete team \"{{name}}\" and its {{sites}} site(s)? All analytics data will be lost. This cannot be undone.",
+        "teams": {
+            "title": "Teams",
+            "status": {
+                "active": "Active",
+                "archived": "Archived",
+                "default": "Default"
+            }
+        },
         "team": {
             "tabs": {
                 "overview": "Overview",
@@ -941,6 +957,19 @@
                     "manageBillingAction": "Manage billing",
                     "upgradeAction": "Upgrade plan",
                     "supportAction": "Contact support"
+                },
+                "plans": {
+                    "title": "Upgrade your plan",
+                    "description": "Unlock longer retention, more sites, and team capacity.",
+                    "currentPlan": "Current plan",
+                    "recommended": "Recommended",
+                    "upgradeAction": "Upgrade to {{plan}}",
+                    "features": {
+                        "sites": "Up to {{count}} sites",
+                        "members": "Up to {{count}} team members",
+                        "retention": "{{count}}-year data retention",
+                        "retentionDays": "{{count}}-day data retention"
+                    }
                 }
             },
             "members": {
@@ -1112,10 +1141,18 @@
             }
         },
         "selfHostLink": "Want to self-host? See the docs →",
+        "tosLabel": "I agree to the",
+        "tosLink": "Terms of Service",
+        "tosAnd": "and",
+        "privacyLink": "Privacy Policy",
+        "tosRequired": "You must accept the Terms of Service and Privacy Policy.",
+        "verifyTitle": "Check your inbox",
+        "verifySubtitle": "We sent a verification link to {{email}}. Click it to activate your workspace.",
         "errors": {
             "emailExists": "An account with this email already exists.",
             "planUnavailable": "This signup option is not available right now.",
-            "unexpected": "An unexpected error occurred. Please try again."
+            "unexpected": "An unexpected error occurred. Please try again.",
+            "verificationExpired": "This verification link has expired. Please sign up again."
         }
     },
     "preferences": {

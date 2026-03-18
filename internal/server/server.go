@@ -261,6 +261,9 @@ func isImmutableAsset(path string) bool {
 	if strings.HasPrefix(path, "flags/") && strings.HasSuffix(path, ".svg") {
 		return true
 	}
+	if strings.HasPrefix(path, "browsers/") && strings.HasSuffix(path, ".avif") {
+		return true
+	}
 
 	return strings.HasSuffix(path, ".js") ||
 		strings.HasSuffix(path, ".css") ||

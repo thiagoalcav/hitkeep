@@ -158,7 +158,10 @@
             "owner": "Propriétaire",
             "path": "Chemin",
             "referrer": "Référent",
+            "members": "Membres",
             "role": "Rôle",
+            "sites": "Sites",
+            "status": "Statut",
             "time": "Heure",
             "type": "Type",
             "value": "Valeur"
@@ -188,7 +191,8 @@
             "device": "Appareil: {{value}}",
             "language": "Langue: {{value}}",
             "page": "Page: {{value}}",
-            "source": "Source: {{value}}"
+            "source": "Source: {{value}}",
+            "browser": "Navigateur : {{value}}"
         },
         "kpis": {
             "conversionRate": "Taux de conversion"
@@ -196,6 +200,7 @@
         "loadingSiteData": "Chargement des données du site...",
         "metrics": {
             "audience": "Audience",
+            "browsers": "Navigateurs",
             "countries": "Pays",
             "devices": "Appareils",
             "languages": "Langues",
@@ -845,6 +850,7 @@
         "tabs": {
             "users": "Utilisateurs",
             "sites": "Sites",
+            "teams": "Équipes",
             "globalFilters": "Filtres globaux"
         },
         "users": {
@@ -900,6 +906,16 @@
         "confirmDisable2fa": "Désactiver toutes les méthodes MFA pour {{email}} ? Cela invalidera aussi les sessions mémorisées.",
         "confirmDeleteUser": "Supprimer l'utilisateur {{email}} ?",
         "confirmDeleteSite": "Supprimer le site {{domain}} ? Cette action est irréversible.",
+        "confirmDeleteTeam": "Supprimer définitivement l'équipe \"{{name}}\" ? Cette action est irréversible.",
+        "confirmDeleteTeamWithSites": "Supprimer définitivement l'équipe \"{{name}}\" et ses {{sites}} site(s) ? Toutes les données analytiques seront perdues. Cette action est irréversible.",
+        "teams": {
+            "title": "Équipes",
+            "status": {
+                "active": "Actif",
+                "archived": "Archivé",
+                "default": "Par défaut"
+            }
+        },
         "team": {
             "tabs": {
                 "overview": "Aperçu",
@@ -941,6 +957,19 @@
                     "manageBillingAction": "Gérer la facturation",
                     "upgradeAction": "Changer de plan",
                     "supportAction": "Contacter le support"
+                },
+                "plans": {
+                    "title": "Changer de plan",
+                    "description": "Débloquez une rétention plus longue, plus de sites et de capacité d'équipe.",
+                    "currentPlan": "Plan actuel",
+                    "recommended": "Recommandé",
+                    "upgradeAction": "Passer à {{plan}}",
+                    "features": {
+                        "sites": "Jusqu'à {{count}} sites",
+                        "members": "Jusqu'à {{count}} membres d'équipe",
+                        "retention": "{{count}} ans de rétention des données",
+                        "retentionDays": "{{count}} jours de rétention des données"
+                    }
                 }
             },
             "members": {
@@ -1112,10 +1141,18 @@
             }
         },
         "selfHostLink": "Vous préférez héberger vous-même ? Voir la documentation →",
+        "tosLabel": "J'accepte les",
+        "tosLink": "Conditions d'utilisation",
+        "tosAnd": "et la",
+        "privacyLink": "Politique de confidentialité",
+        "tosRequired": "Vous devez accepter les Conditions d'utilisation et la Politique de confidentialité.",
+        "verifyTitle": "Vérifiez votre boîte de réception",
+        "verifySubtitle": "Nous avons envoyé un lien de vérification à {{email}}. Cliquez dessus pour activer votre espace.",
         "errors": {
             "emailExists": "Un compte existe déjà avec cette adresse e-mail.",
             "planUnavailable": "Cette option d'inscription n'est pas disponible pour le moment.",
-            "unexpected": "Une erreur inattendue est survenue. Veuillez réessayer."
+            "unexpected": "Une erreur inattendue est survenue. Veuillez réessayer.",
+            "verificationExpired": "Ce lien de vérification a expiré. Veuillez vous inscrire à nouveau."
         }
     },
     "preferences": {

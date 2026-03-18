@@ -158,7 +158,10 @@
             "owner": "Proprietario",
             "path": "Percorso",
             "referrer": "Referrer",
+            "members": "Membri",
             "role": "Ruolo",
+            "sites": "Siti",
+            "status": "Stato",
             "time": "Ora",
             "type": "Tipo",
             "value": "Valore"
@@ -188,7 +191,8 @@
             "device": "Dispositivo: {{value}}",
             "language": "Lingua: {{value}}",
             "page": "Pagina: {{value}}",
-            "source": "Sorgente: {{value}}"
+            "source": "Sorgente: {{value}}",
+            "browser": "Browser: {{value}}"
         },
         "kpis": {
             "conversionRate": "Tasso di conversione"
@@ -196,6 +200,7 @@
         "loadingSiteData": "Caricamento dati sito...",
         "metrics": {
             "audience": "Pubblico",
+            "browsers": "Browser",
             "countries": "Paesi",
             "devices": "Dispositivi",
             "languages": "Lingue",
@@ -845,6 +850,7 @@
         "tabs": {
             "users": "Utenti",
             "sites": "Siti",
+            "teams": "Team",
             "globalFilters": "Filtri globali"
         },
         "users": {
@@ -900,6 +906,16 @@
         "confirmDisable2fa": "Disattivare tutti i metodi MFA per {{email}}? Questa azione invalida anche le sessioni ricordate.",
         "confirmDeleteUser": "Eliminare l'utente {{email}}?",
         "confirmDeleteSite": "Eliminare il sito {{domain}}? Questa azione non può essere annullata.",
+        "confirmDeleteTeam": "Eliminare definitivamente il team \"{{name}}\"? Questa azione non può essere annullata.",
+        "confirmDeleteTeamWithSites": "Eliminare definitivamente il team \"{{name}}\" e i suoi {{sites}} sito/i? Tutti i dati analitici andranno persi. Questa azione non può essere annullata.",
+        "teams": {
+            "title": "Team",
+            "status": {
+                "active": "Attivo",
+                "archived": "Archiviato",
+                "default": "Predefinito"
+            }
+        },
         "team": {
             "tabs": {
                 "overview": "Panoramica",
@@ -941,6 +957,19 @@
                     "manageBillingAction": "Gestisci fatturazione",
                     "upgradeAction": "Aggiorna piano",
                     "supportAction": "Contatta il supporto"
+                },
+                "plans": {
+                    "title": "Aggiorna il tuo piano",
+                    "description": "Sblocca una retention più lunga, più siti e capacità del team.",
+                    "currentPlan": "Piano attuale",
+                    "recommended": "Consigliato",
+                    "upgradeAction": "Aggiorna a {{plan}}",
+                    "features": {
+                        "sites": "Fino a {{count}} siti",
+                        "members": "Fino a {{count}} membri del team",
+                        "retention": "{{count}} anni di retention dei dati",
+                        "retentionDays": "{{count}} giorni di retention dei dati"
+                    }
                 }
             },
             "members": {
@@ -1112,10 +1141,18 @@
             }
         },
         "selfHostLink": "Preferisci il self-hosting? Vedi la documentazione →",
+        "tosLabel": "Accetto i",
+        "tosLink": "Termini di Servizio",
+        "tosAnd": "e la",
+        "privacyLink": "Informativa sulla Privacy",
+        "tosRequired": "Devi accettare i Termini di Servizio e l'Informativa sulla Privacy.",
+        "verifyTitle": "Controlla la tua casella di posta",
+        "verifySubtitle": "Abbiamo inviato un link di verifica a {{email}}. Clicca per attivare il tuo workspace.",
         "errors": {
             "emailExists": "Esiste già un account con questa email.",
             "planUnavailable": "Questa opzione di registrazione non è disponibile al momento.",
-            "unexpected": "Si è verificato un errore imprevisto. Riprova."
+            "unexpected": "Si è verificato un errore imprevisto. Riprova.",
+            "verificationExpired": "Questo link di verifica è scaduto. Registrati di nuovo."
         }
     },
     "preferences": {

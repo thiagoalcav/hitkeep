@@ -21,8 +21,10 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -267,6 +269,7 @@ func main() {
 	days := flag.Int("days", 90, "Days of demo traffic to generate")
 	domain := flag.String("domain", "acme-analytics.io", "Demo site domain")
 	seed := flag.Int64("seed", 42, "Random seed for reproducibility")
+	shareToken := flag.String("share-token", "", "Create a share link with this exact token (64-char hex string)")
 	flag.Parse()
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
@@ -322,6 +325,9 @@ func main() {
 		os.Exit(1)
 	}
 	seedAPIClients(ctx, store, userID, siteTenantID, siteID)
+	if *shareToken != "" {
+		seedShareLink(ctx, store, siteID, userID, *shareToken)
+	}
 	if err := tenantMgr.SyncSite(ctx, siteID); err != nil {
 		slog.Error("Failed to sync tenant site metadata", "site_id", siteID, "tenant_id", siteTenantID, "error", err)
 		os.Exit(1)
@@ -417,6 +423,44 @@ func seedAPIClients(ctx context.Context, store *database.Store, userID, tenantID
 	}
 
 	slog.Info("Demo API clients ensured", "user_id", userID, "tenant_id", tenantID)
+}
+
+// seedShareLink creates a share link with a predetermined token so the public
+// URL stays stable across database resets.
+func seedShareLink(ctx context.Context, store *database.Store, siteID, createdBy uuid.UUID, token string) {
+	if len(token) != 64 {
+		slog.Error("Share token must be a 64-character hex string", "len", len(token))
+		os.Exit(1)
+	}
+	if _, err := hex.DecodeString(token); err != nil {
+		slog.Error("Share token is not valid hex", "error", err)
+		os.Exit(1)
+	}
+
+	sum := sha256.Sum256([]byte(token))
+	tokenHash := hex.EncodeToString(sum[:])
+
+	// Check if a share link with this token already exists.
+	var exists bool
+	_ = store.DB().QueryRowContext(ctx,
+		"SELECT COUNT(*) > 0 FROM share_links WHERE token_hash = ? AND revoked_at IS NULL",
+		tokenHash,
+	).Scan(&exists)
+	if exists {
+		slog.Info("Share link already exists, skipping", "token_hint", tokenHash[:8])
+		return
+	}
+
+	linkID := uuid.New()
+	now := time.Now().UTC()
+	if err := store.Exec(ctx,
+		"INSERT INTO share_links (id, site_id, token_hash, created_by, created_at) VALUES (?, ?, ?, ?, ?)",
+		linkID, siteID, tokenHash, createdBy, now,
+	); err != nil {
+		slog.Error("Failed to create share link", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("Share link seeded", "token_hint", tokenHash[:8])
 }
 
 // ─────────────────────────────────────────────

@@ -158,7 +158,10 @@
             "owner": "Propietario",
             "path": "Ruta",
             "referrer": "Referencia",
+            "members": "Miembros",
             "role": "Rol",
+            "sites": "Sitios",
+            "status": "Estado",
             "time": "Hora",
             "type": "Tipo",
             "value": "Valor"
@@ -188,7 +191,8 @@
             "device": "Dispositivo: {{value}}",
             "language": "Idioma: {{value}}",
             "page": "Página: {{value}}",
-            "source": "Fuente: {{value}}"
+            "source": "Fuente: {{value}}",
+            "browser": "Navegador: {{value}}"
         },
         "kpis": {
             "conversionRate": "Tasa de conversión"
@@ -196,6 +200,7 @@
         "loadingSiteData": "Cargando datos del sitio...",
         "metrics": {
             "audience": "Audiencia",
+            "browsers": "Navegadores",
             "countries": "Países",
             "devices": "Dispositivos",
             "languages": "Idiomas",
@@ -845,6 +850,7 @@
         "tabs": {
             "users": "Usuarios",
             "sites": "Sitios",
+            "teams": "Equipos",
             "globalFilters": "Filtros globales"
         },
         "users": {
@@ -900,6 +906,16 @@
         "confirmDisable2fa": "¿Desactivar todos los métodos MFA para {{email}}? Esto también invalidará las sesiones recordadas.",
         "confirmDeleteUser": "¿Eliminar usuario {{email}}?",
         "confirmDeleteSite": "¿Eliminar sitio {{domain}}? Esta acción no se puede deshacer.",
+        "confirmDeleteTeam": "¿Eliminar permanentemente el equipo \"{{name}}\"? Esta acción no se puede deshacer.",
+        "confirmDeleteTeamWithSites": "¿Eliminar permanentemente el equipo \"{{name}}\" y sus {{sites}} sitio(s)? Se perderán todos los datos analíticos. Esta acción no se puede deshacer.",
+        "teams": {
+            "title": "Equipos",
+            "status": {
+                "active": "Activo",
+                "archived": "Archivado",
+                "default": "Predeterminado"
+            }
+        },
         "team": {
             "tabs": {
                 "overview": "Resumen",
@@ -941,6 +957,19 @@
                     "manageBillingAction": "Gestionar facturación",
                     "upgradeAction": "Mejorar plan",
                     "supportAction": "Contactar soporte"
+                },
+                "plans": {
+                    "title": "Mejorar tu plan",
+                    "description": "Desbloquea mayor retención, más sitios y capacidad de equipo.",
+                    "currentPlan": "Plan actual",
+                    "recommended": "Recomendado",
+                    "upgradeAction": "Mejorar a {{plan}}",
+                    "features": {
+                        "sites": "Hasta {{count}} sitios",
+                        "members": "Hasta {{count}} miembros del equipo",
+                        "retention": "{{count}} años de retención de datos",
+                        "retentionDays": "{{count}} días de retención de datos"
+                    }
                 }
             },
             "members": {
@@ -1112,10 +1141,18 @@
             }
         },
         "selfHostLink": "¿Prefieres autoalojar? Ver la documentación →",
+        "tosLabel": "Acepto los",
+        "tosLink": "Términos de Servicio",
+        "tosAnd": "y la",
+        "privacyLink": "Política de Privacidad",
+        "tosRequired": "Debes aceptar los Términos de Servicio y la Política de Privacidad.",
+        "verifyTitle": "Revisa tu bandeja de entrada",
+        "verifySubtitle": "Hemos enviado un enlace de verificación a {{email}}. Haz clic para activar tu espacio de trabajo.",
         "errors": {
             "emailExists": "Ya existe una cuenta con este correo electrónico.",
             "planUnavailable": "Esta opción de registro no está disponible ahora mismo.",
-            "unexpected": "Se produjo un error inesperado. Inténtalo de nuevo."
+            "unexpected": "Se produjo un error inesperado. Inténtalo de nuevo.",
+            "verificationExpired": "Este enlace de verificación ha caducado. Regístrate de nuevo."
         }
     },
     "preferences": {

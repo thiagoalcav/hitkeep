@@ -39,7 +39,9 @@
             <div class="metric-list__row-fill" [style.width.%]="barWidth(item)"></div>
             <div class="metric-list__row-content">
                 <div class="metric-list__row-main">
-                    @if (showCountryFlags() && countryFlagUrl(item.name); as flagUrl) {
+                    @if (showBrowserIcons()) {
+                    <img [ngSrc]="browserIconUrl(item)" class="metric-list__flag" [width]="32" [height]="32" alt="" />
+                    } @else if (showCountryFlags() && countryFlagUrl(item.name); as flagUrl) {
                     <img [ngSrc]="flagUrl" class="metric-list__flag" [width]="16" [height]="16" alt="" />
                     } @else if (showLanguageFlags() && languageFlagUrl(item.name); as flagUrl) {
                     <img [ngSrc]="flagUrl" class="metric-list__flag" [width]="16" [height]="16" alt="" />

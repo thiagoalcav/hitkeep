@@ -87,7 +87,8 @@
     <div class="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ "dashboard.exportStatus.error" | transloco }}</div>
     }
 
-    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
+    <!-- Row 1: Pages, Sources, Devices -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <app-metric-list
             [title]="'common.metrics.pages' | transloco"
             icon="pi-file"
@@ -124,23 +125,43 @@
             [activeValue]="activeFilterValue('device')"
             (rowClicked)="applyMetricFilter('device', $event)"
         />
+    </div>
+
+    <!-- Row 2: Browsers, Countries, Languages -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        <app-metric-list
+            [title]="'common.metrics.browsers' | transloco"
+            icon="pi-globe"
+            [data]="statsService.stats()?.top_browsers || []"
+            [isLoading]="statsService.isLoading()"
+            [isRowClickable]="true"
+            [showBrowserIcons]="true"
+            [activeValue]="activeFilterValue('browser')"
+            (rowClicked)="applyMetricFilter('browser', $event)"
+        />
 
         <app-metric-list
-            [title]="'common.metrics.audience' | transloco"
-            icon="pi-globe"
-            [data]="geoMetricData()"
+            [title]="'common.metrics.countries' | transloco"
+            icon="pi-map"
+            [data]="statsService.stats()?.top_countries || []"
             [isLoading]="statsService.isLoading()"
-            [viewOptions]="geoMetricOptions()"
-            [selectedView]="geoMetricMode()"
-            [viewSelectAriaLabel]="'common.metrics.geoModeAria' | transloco"
             [isRowClickable]="true"
-            [showCountryFlags]="geoMetricMode() === 'top_countries'"
-            [showCountryNames]="geoMetricMode() === 'top_countries'"
-            [showLanguageFlags]="geoMetricMode() === 'top_languages'"
-            [showLanguageNames]="geoMetricMode() === 'top_languages'"
-            [activeValue]="activeFilterValue(geoMetricMode() === 'top_countries' ? 'country' : 'language')"
-            (viewChanged)="onGeoMetricModeChange($event)"
-            (rowClicked)="applyMetricFilter(geoMetricMode() === 'top_countries' ? 'country' : 'language', $event)"
+            [showCountryFlags]="true"
+            [showCountryNames]="true"
+            [activeValue]="activeFilterValue('country')"
+            (rowClicked)="applyMetricFilter('country', $event)"
+        />
+
+        <app-metric-list
+            [title]="'common.metrics.languages' | transloco"
+            icon="pi-language"
+            [data]="statsService.stats()?.top_languages || []"
+            [isLoading]="statsService.isLoading()"
+            [isRowClickable]="true"
+            [showLanguageFlags]="true"
+            [showLanguageNames]="true"
+            [activeValue]="activeFilterValue('language')"
+            (rowClicked)="applyMetricFilter('language', $event)"
         />
     </div>
 

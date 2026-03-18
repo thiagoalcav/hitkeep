@@ -11,6 +11,7 @@ import { CardModule } from "primeng/card";
 import { TabsModule } from "primeng/tabs";
 import { InputTextModule } from "primeng/inputtext";
 import { MessageModule } from "primeng/message";
+import { TagModule } from "primeng/tag";
 import { HttpClient } from "@angular/common/http";
 import { HttpErrorResponse } from "@angular/common/http";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
@@ -61,6 +62,16 @@ interface DisableUserMFAResponse {
     sessions_invalidated: number;
 }
 
+interface AdminTeam {
+    id: string;
+    name: string;
+    is_default: boolean;
+    is_archived: boolean;
+    member_count: number;
+    site_count: number;
+    created_at: string;
+}
+
 interface StatusState {
     severity: "success" | "error";
     key: string;
@@ -79,6 +90,7 @@ interface StatusState {
         TabsModule,
         InputTextModule,
         MessageModule,
+        TagModule,
         PageHeader,
         PageHeaderLeft,
         PageBreadcrumb,
@@ -101,8 +113,10 @@ export class AdminSettings implements OnInit {
 
     protected users = signal<User[]>([]);
     protected sites = signal<Site[]>([]);
+    protected teams = signal<AdminTeam[]>([]);
     protected isLoading = signal(false);
     protected isLoadingSites = signal(false);
+    protected isLoadingTeams = signal(false);
     protected disablingUserId = signal("");
     protected currentUserId = signal<string>("");
     protected roleControls = signal<Record<string, FormControl<InstanceRole>>>({});
@@ -175,6 +189,7 @@ export class AdminSettings implements OnInit {
 
         this.loadUsers();
         this.loadSites();
+        this.loadTeams();
     }
 
     loadUsers() {
@@ -391,6 +406,49 @@ export class AdminSettings implements OnInit {
                 this.http.delete(`/api/admin/sites/${site.id}`).subscribe({
                     next: () => this.loadSites(),
                     error: (err) => console.error("Failed to delete site", err)
+                });
+            }
+        });
+    }
+
+    loadTeams() {
+        this.isLoadingTeams.set(true);
+        this.http.get<AdminTeam[]>("/api/admin/teams").subscribe({
+            next: (teams) => {
+                this.teams.set(teams);
+                this.isLoadingTeams.set(false);
+            },
+            error: (err) => {
+                console.error("Failed to load teams", err);
+                this.isLoadingTeams.set(false);
+            }
+        });
+    }
+
+    confirmDeleteTeam(event: Event, team: AdminTeam) {
+        const messageKey = team.site_count > 0 ? "admin.confirmDeleteTeamWithSites" : "admin.confirmDeleteTeam";
+
+        this.confirmationService.confirm({
+            key: "admin-delete",
+            target: event.currentTarget as EventTarget,
+            message: this.transloco.translate(messageKey, { name: team.name, sites: team.site_count }),
+            icon: "pi pi-exclamation-triangle",
+            rejectButtonProps: {
+                label: this.transloco.translate("common.actions.cancel"),
+                severity: "secondary",
+                outlined: true
+            },
+            acceptButtonProps: {
+                label: this.transloco.translate("share.dialog.deleteAction"),
+                severity: "danger"
+            },
+            accept: () => {
+                this.http.delete(`/api/admin/teams/${team.id}?force=true`).subscribe({
+                    next: () => {
+                        this.loadTeams();
+                        this.loadSites();
+                    },
+                    error: (err) => console.error("Failed to delete team", err)
                 });
             }
         });

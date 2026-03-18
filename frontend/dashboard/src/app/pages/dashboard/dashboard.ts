@@ -42,9 +42,8 @@ import { TakeoutDownloadService } from "@services/takeout-download.service";
 import { AddSiteDialog } from "@features/sites/components/add-site-dialog";
 import { TeamService } from "@services/team.service";
 
-type MetricFilterType = "path" | "referrer" | "device" | "country" | "language";
+type MetricFilterType = "path" | "referrer" | "device" | "country" | "browser" | "language";
 type PageMetricMode = "top_pages" | "top_landing_pages" | "top_exit_pages";
-type GeoMetricMode = "top_countries" | "top_languages";
 interface MetricFilter {
     type: MetricFilterType;
     value: string;
@@ -126,7 +125,6 @@ export class Dashboard {
         return domain ? `/api/favicon/${encodeURIComponent(domain)}` : "";
     });
     protected readonly pageMetricMode = signal<PageMetricMode>("top_pages");
-    protected readonly geoMetricMode = signal<GeoMetricMode>("top_countries");
     protected activeFilters = signal<MetricFilter[]>([]);
     protected hasFilters = computed(() => this.activeFilters().length > 0);
     protected isExportingFiltered = signal(false);
@@ -158,22 +156,6 @@ export class Dashboard {
                 return stats?.top_exit_pages ?? [];
             default:
                 return stats?.top_pages ?? [];
-        }
-    });
-    protected readonly geoMetricOptions = computed<MetricListViewOption[]>(() => {
-        this.activeLanguage();
-        return [
-            { label: this.transloco.translate("common.metrics.countries"), value: "top_countries" },
-            { label: this.transloco.translate("common.metrics.languages"), value: "top_languages" }
-        ];
-    });
-    protected readonly geoMetricData = computed<MetricStat[]>(() => {
-        const stats = this.statsService.stats();
-        switch (this.geoMetricMode()) {
-            case "top_languages":
-                return stats?.top_languages ?? [];
-            default:
-                return stats?.top_countries ?? [];
         }
     });
     protected exportUrl = computed(() => {
@@ -343,12 +325,6 @@ export class Dashboard {
         }
     }
 
-    protected onGeoMetricModeChange(mode: string): void {
-        if (mode === "top_countries" || mode === "top_languages") {
-            this.geoMetricMode.set(mode);
-        }
-    }
-
     loadHits(event: TableLazyLoadEvent) {
         this.lastTableEvent = event;
         const site = this.siteService.activeSite();
@@ -482,6 +458,8 @@ export class Dashboard {
                 return this.transloco.translate("common.filters.device", { value: filter.value });
             case "country":
                 return this.transloco.translate("common.filters.country", { value: filter.value });
+            case "browser":
+                return this.transloco.translate("common.filters.browser", { value: filter.value });
             case "language":
                 return this.transloco.translate("common.filters.language", { value: this.displayLanguageLabel(filter.value) });
             default:

@@ -101,6 +101,7 @@ describe("Dashboard", () => {
             top_referrers: [],
             top_devices: [],
             top_countries: [],
+            top_browsers: [],
             top_languages: [{ name: "de", value: 4 }],
             top_utm_campaigns: [],
             top_utm_contents: [],
@@ -125,7 +126,7 @@ describe("Dashboard", () => {
         expect((component as unknown as { pageMetricData: () => { name: string; value: number }[] }).pageMetricData()).toEqual([{ name: "/signup", value: 2 }]);
     });
 
-    it("should switch the audience card data between countries and languages", () => {
+    it("should expose countries and languages from stats as separate data sources", () => {
         const siteService = TestBed.inject(SiteService);
         const statsService = TestBed.inject(StatsService);
         const hitService = TestBed.inject(HitService);
@@ -153,6 +154,7 @@ describe("Dashboard", () => {
             top_exit_pages: [],
             top_referrers: [],
             top_devices: [],
+            top_browsers: [],
             top_countries: [{ name: "DE", value: 4 }],
             top_languages: [{ name: "de", value: 3 }],
             top_utm_campaigns: [],
@@ -169,9 +171,7 @@ describe("Dashboard", () => {
             funnels: []
         });
 
-        expect((component as unknown as { geoMetricData: () => { name: string; value: number }[] }).geoMetricData()).toEqual([{ name: "DE", value: 4 }]);
-
-        (component as unknown as { onGeoMetricModeChange: (mode: string) => void }).onGeoMetricModeChange("top_languages");
-        expect((component as unknown as { geoMetricData: () => { name: string; value: number }[] }).geoMetricData()).toEqual([{ name: "de", value: 3 }]);
+        expect(statsService.stats()?.top_countries).toEqual([{ name: "DE", value: 4 }]);
+        expect(statsService.stats()?.top_languages).toEqual([{ name: "de", value: 3 }]);
     });
 });

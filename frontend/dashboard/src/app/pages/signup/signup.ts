@@ -9,6 +9,7 @@ import { TranslocoPipe } from "@jsverse/transloco";
 import { PasswordModule } from "primeng/password";
 import { ButtonModule } from "primeng/button";
 import { InputTextModule } from "primeng/inputtext";
+import { CheckboxModule } from "primeng/checkbox";
 
 import { Brand } from "@components/brand/brand";
 import { injectActiveLang } from "@core/i18n/active-lang";
@@ -20,7 +21,7 @@ type Jurisdiction = "EU" | "US";
 
 @Component({
     selector: "app-signup",
-    imports: [Brand, ReactiveFormsModule, PasswordModule, ButtonModule, InputTextModule, RouterLink, TranslocoPipe],
+    imports: [Brand, ReactiveFormsModule, PasswordModule, ButtonModule, InputTextModule, CheckboxModule, RouterLink, TranslocoPipe],
     templateUrl: "./signup.html",
     styleUrl: "./signup.css",
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -35,6 +36,8 @@ export class Signup {
     protected readonly isLoading = signal(false);
     protected readonly errorMessage = signal<string | null>(null);
     protected readonly cloudStatus = signal<CloudStatus | null>(null);
+    protected readonly verificationSent = signal(false);
+    protected readonly submittedEmail = signal("");
     private readonly activeLanguage = injectActiveLang();
     protected readonly currentYear = new Date().getFullYear();
     protected readonly currentJurisdiction = computed<Jurisdiction>(() => this.normalizeJurisdiction(this.cloudStatus()?.jurisdiction) ?? this.inferJurisdictionFromHost());
@@ -43,7 +46,8 @@ export class Signup {
     private readonly signupModel = signal({
         email: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.email] }),
         password: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.minLength(8)] }),
-        teamName: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.maxLength(120)] })
+        teamName: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.maxLength(120)] }),
+        acceptedTos: new FormControl(false, { nonNullable: true, validators: [Validators.requiredTrue] })
     });
     protected readonly signupForm = compatForm(this.signupModel);
 
@@ -68,6 +72,7 @@ export class Signup {
             this.signupForm.email().markAsTouched();
             this.signupForm.password().markAsTouched();
             this.signupForm.teamName().markAsTouched();
+            this.signupForm.acceptedTos().markAsTouched();
             return;
         }
 
@@ -77,7 +82,8 @@ export class Signup {
             team_name: this.signupForm.teamName().value().trim(),
             plan_code: "free",
             jurisdiction: this.currentJurisdiction(),
-            locale: this.activeLanguage()
+            locale: this.activeLanguage(),
+            accepted_tos: true
         };
 
         this.isLoading.set(true);
@@ -87,6 +93,11 @@ export class Signup {
             .pipe(finalize(() => this.isLoading.set(false)))
             .subscribe({
                 next: (response) => {
+                    if (response.status === "verification_sent") {
+                        this.submittedEmail.set(payload.email);
+                        this.verificationSent.set(true);
+                        return;
+                    }
                     const target = response.redirect_url?.trim() || "/dashboard";
                     void this.router.navigateByUrl(target);
                 },
@@ -128,6 +139,13 @@ export class Signup {
         const email = params.get("email")?.trim().toLowerCase();
         if (email) {
             this.signupForm.email().control().setValue(email);
+        }
+
+        const errorParam = params.get("error");
+        if (errorParam === "expired") {
+            this.errorMessage.set("signup.errors.verificationExpired");
+        } else if (errorParam === "exists") {
+            this.errorMessage.set("signup.errors.emailExists");
         }
     }
 

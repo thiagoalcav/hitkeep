@@ -109,12 +109,32 @@ describe("TeamOverviewPage", () => {
                                             unlimitedRetention: "Unlimited retention",
                                             upgradeAction: "Upgrade plan",
                                             supportAction: "Contact support"
+                                        },
+                                        plans: {
+                                            title: "Upgrade your plan",
+                                            description: "Unlock longer retention, more sites, and team capacity.",
+                                            currentPlan: "Current plan",
+                                            recommended: "Recommended",
+                                            upgradeAction: "Upgrade to {{plan}}",
+                                            features: {
+                                                sites: "Up to {{count}} sites",
+                                                members: "Up to {{count}} team members",
+                                                retention: "{{count}}-year data retention",
+                                                retentionDays: "{{count}}-day data retention"
+                                            }
                                         }
                                     }
                                 }
                             },
                             common: { columns: { role: "Role" } },
-                            teams: { roles: { owner: "Owner" } }
+                            teams: { roles: { owner: "Owner" } },
+                            signup: {
+                                plans: {
+                                    free: { name: "Free", price: "€0", description: "60-day retention to validate your sites." },
+                                    pro: { name: "Pro", price: "€15/mo", description: "Longer retention and more room for a small team." },
+                                    business: { name: "Business", price: "€39/mo", description: "More scale for agencies." }
+                                }
+                            }
                         }
                     },
                     translocoConfig: {
@@ -140,7 +160,26 @@ describe("TeamOverviewPage", () => {
                     provide: CloudService,
                     useValue: {
                         createBillingPortalSession: vi.fn().mockReturnValue(of({ url: "https://billing.stripe.test/session" })),
-                        createBillingCheckoutSession: vi.fn().mockReturnValue(of({ url: "https://checkout.stripe.test/session" }))
+                        createBillingCheckoutSession: vi.fn().mockReturnValue(of({ url: "https://checkout.stripe.test/session" })),
+                        getPlans: vi.fn().mockReturnValue(
+                            of([
+                                {
+                                    code: "free",
+                                    name: "Free",
+                                    entitlements: { max_sites_per_team: 3, max_team_members: 3, max_retention_days: 60, allow_sso: false, allow_custom_branding: false }
+                                },
+                                {
+                                    code: "pro",
+                                    name: "Pro",
+                                    entitlements: { max_sites_per_team: 10, max_team_members: 5, max_retention_days: 365, allow_sso: false, allow_custom_branding: false }
+                                },
+                                {
+                                    code: "business",
+                                    name: "Business",
+                                    entitlements: { max_sites_per_team: 50, max_team_members: 20, max_retention_days: 1095, allow_sso: true, allow_custom_branding: true }
+                                }
+                            ])
+                        )
                     }
                 }
             ]
@@ -158,14 +197,15 @@ describe("TeamOverviewPage", () => {
         expect(text).toContain("2 pending invites");
     });
 
-    it("renders cloud upgrade details when managed metadata is present", () => {
+    it("renders cloud plan with inline upgrade comparison for free users", () => {
         const text = fixture.nativeElement.textContent;
         expect(text).toContain("Cloud plan");
         expect(text).toContain("Managed cloud");
         expect(text).toContain("EU");
         expect(text).toContain("365 days");
-        expect(text).toContain("Upgrade plan");
-        expect(text).toContain("Contact support");
+        expect(text).toContain("Current plan");
+        expect(text).toContain("Upgrade to Pro");
+        expect(text).toContain("Upgrade to Business");
     });
 
     it("creates a billing portal session from the cloud card", () => {

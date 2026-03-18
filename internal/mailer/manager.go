@@ -139,6 +139,12 @@ func New(conf *config.Config) (*Mailer, error) {
 	}, nil
 }
 
+// NewWithDriver creates a Mailer with the specified driver. This is primarily
+// useful for testing where a no-op or mock driver is desired.
+func NewWithDriver(driver Driver, conf *config.Config) *Mailer {
+	return &Mailer{driver: driver, conf: conf}
+}
+
 // Send processes a Mailable (renders MJML) and dispatches via the driver.
 // Usage: mailer.Send(user.Email, mailables.NewWelcomeEmail(user))
 func (m *Mailer) Send(to string, email Mailable) error {

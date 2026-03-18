@@ -49,6 +49,14 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		InstancePerm: authcore.PermInstanceManageUsers,
 		RateLimiter:  ctx.ApiLimiter,
 	}, h.handleAdminDeleteSite()))
+	mux.HandleFunc("GET /api/admin/teams", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceManageUsers,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleAdminListTeams()))
+	mux.HandleFunc("POST /api/admin/teams/{id}/archive", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceManageUsers,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleAdminArchiveTeam()))
 	mux.HandleFunc("DELETE /api/admin/teams/{id}", ctx.Handler(shared.HandlerConfig{
 		InstancePerm: authcore.PermInstanceManageUsers,
 		RateLimiter:  ctx.ApiLimiter,
@@ -340,7 +348,8 @@ func (h *handler) handleDeleteUser() http.HandlerFunc {
 
 		if force {
 			// Archive all teams where the target user is the sole owner,
-			// so DeleteUser won't be blocked.
+			// so DeleteUser won't be blocked. Delete their sites first
+			// since ArchiveTenant requires an empty team.
 			soleTeams, listErr := h.ctx.Store.ListSoleOwnerTeams(r.Context(), targetUserID)
 			if listErr != nil {
 				slog.Error("Failed to list sole-owner teams for force delete", "error", listErr, "target_user_id", targetUserID)
@@ -348,9 +357,24 @@ func (h *handler) handleDeleteUser() http.HandlerFunc {
 				return
 			}
 			for _, team := range soleTeams {
-				if archiveErr := h.ctx.Store.ArchiveTenant(r.Context(), team.ID, actorID); archiveErr != nil {
+				// Delete all sites belonging to this team.
+				sites, sitesErr := h.ctx.Store.ListSitesForTenant(r.Context(), team.ID)
+				if sitesErr != nil {
+					slog.Error("Failed to list sites for team during force delete", "error", sitesErr, "team_id", team.ID)
+					http.Error(w, "Failed to delete user", http.StatusInternalServerError)
+					return
+				}
+				for _, site := range sites {
+					if delErr := h.ctx.Store.DeleteSite(r.Context(), site.ID); delErr != nil {
+						slog.Error("Failed to delete site during force delete", "error", delErr, "site_id", site.ID, "team_id", team.ID)
+						http.Error(w, "Failed to delete user", http.StatusInternalServerError)
+						return
+					}
+				}
+
+				if archiveErr := h.ctx.Store.AdminArchiveTenant(r.Context(), team.ID, actorID); archiveErr != nil {
 					slog.Error("Failed to archive team during force delete", "error", archiveErr, "team_id", team.ID, "target_user_id", targetUserID)
-					http.Error(w, "Failed to archive team "+team.Name, http.StatusInternalServerError)
+					http.Error(w, "Failed to delete user", http.StatusInternalServerError)
 					return
 				}
 			}
@@ -384,6 +408,53 @@ func (h *handler) handleDeleteUser() http.HandlerFunc {
 	}
 }
 
+func (h *handler) handleAdminListTeams() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		teams, err := h.ctx.Store.ListAllTeams(r.Context())
+		if err != nil {
+			slog.Error("Failed to list all teams", "error", err)
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(teams); err != nil {
+			slog.Error("Failed to encode teams response", "error", err)
+		}
+	}
+}
+
+func (h *handler) handleAdminArchiveTeam() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		teamID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+		if err != nil {
+			http.Error(w, "Invalid team ID", http.StatusBadRequest)
+			return
+		}
+
+		actorID := shared.GetUserIDFromContext(r)
+
+		err = h.ctx.Store.AdminArchiveTenant(r.Context(), teamID, actorID)
+		if err != nil {
+			switch {
+			case errors.Is(err, database.ErrTeamArchiveDefaultTenant):
+				http.Error(w, "The default team cannot be archived", http.StatusBadRequest)
+			case errors.Is(err, database.ErrTenantMembershipRequired):
+				http.Error(w, "Team not found or already archived", http.StatusBadRequest)
+			default:
+				slog.Error("Failed to archive team", "error", err, "team_id", teamID)
+				http.Error(w, "Internal error", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
+			slog.Error("Failed to encode archive team response", "error", err)
+		}
+	}
+}
+
 func (h *handler) handleAdminDeleteTeam() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if h.ctx.TenantStores == nil {
@@ -395,6 +466,44 @@ func (h *handler) handleAdminDeleteTeam() http.HandlerFunc {
 		if err != nil {
 			http.Error(w, "Invalid team ID", http.StatusBadRequest)
 			return
+		}
+
+		force := r.URL.Query().Get("force") == "true"
+
+		if force {
+			actorID := shared.GetUserIDFromContext(r)
+
+			// Delete all sites belonging to this team.
+			sites, sitesErr := h.ctx.Store.ListSitesForTenant(r.Context(), teamID)
+			if sitesErr != nil {
+				slog.Error("Failed to list sites for team during force delete", "error", sitesErr, "team_id", teamID)
+				http.Error(w, "Failed to delete team", http.StatusInternalServerError)
+				return
+			}
+			for _, site := range sites {
+				if h.ctx.TenantStores != nil {
+					err = h.ctx.TenantStores.DeleteSite(r.Context(), site.ID)
+				} else {
+					err = h.ctx.Store.DeleteSite(r.Context(), site.ID)
+				}
+				if err != nil {
+					slog.Error("Failed to delete site during force team delete", "error", err, "site_id", site.ID, "team_id", teamID)
+					http.Error(w, "Failed to delete team", http.StatusInternalServerError)
+					return
+				}
+			}
+
+			// Archive the team if not already archived.
+			archiveErr := h.ctx.Store.AdminArchiveTenant(r.Context(), teamID, actorID)
+			if archiveErr != nil && !errors.Is(archiveErr, database.ErrTenantMembershipRequired) {
+				if errors.Is(archiveErr, database.ErrTeamArchiveDefaultTenant) {
+					http.Error(w, "The default team cannot be deleted", http.StatusBadRequest)
+					return
+				}
+				slog.Error("Failed to archive team during force delete", "error", archiveErr, "team_id", teamID)
+				http.Error(w, "Failed to delete team", http.StatusInternalServerError)
+				return
+			}
 		}
 
 		deleted, err := h.ctx.TenantStores.PurgeArchivedTenant(r.Context(), teamID)

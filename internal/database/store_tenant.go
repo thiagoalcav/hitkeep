@@ -980,6 +980,140 @@ func (s *Store) ArchiveTenant(ctx context.Context, tenantID, actorID uuid.UUID) 
 	})
 }
 
+// ListAllTeams returns every tenant with member/site counts and archive status.
+// Intended for instance-admin views.
+func (s *Store) ListAllTeams(ctx context.Context) ([]api.AdminTeam, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT t.id, t.name, t.is_default, t.created_at,
+		       (SELECT COUNT(*) FROM tenant_members tm WHERE tm.tenant_id = t.id) AS member_count,
+		       (SELECT COUNT(*) FROM site_tenants st WHERE st.tenant_id = t.id) AS site_count,
+		       CASE WHEN ta.tenant_id IS NOT NULL THEN 1 ELSE 0 END AS is_archived
+		FROM tenants t
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = t.id
+		ORDER BY t.created_at DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("list all teams: %w", err)
+	}
+	defer rows.Close()
+
+	teams := []api.AdminTeam{}
+	for rows.Next() {
+		var team api.AdminTeam
+		var isArchived int
+		if err := rows.Scan(&team.ID, &team.Name, &team.IsDefault, &team.CreatedAt,
+			&team.MemberCount, &team.SiteCount, &isArchived); err != nil {
+			return nil, fmt.Errorf("scan admin team: %w", err)
+		}
+		team.IsArchived = isArchived == 1
+		teams = append(teams, team)
+	}
+	return teams, rows.Err()
+}
+
+// AdminArchiveTenant archives a tenant without checking actor ownership.
+// Sites must be deleted before calling this. Intended for instance-admin
+// force-delete flows where the admin is not a member of the target team.
+func (s *Store) AdminArchiveTenant(ctx context.Context, tenantID, actorID uuid.UUID) error {
+	return s.Transact(ctx, func(tx *sql.Tx) error {
+		var isDefault bool
+		err := tx.QueryRowContext(ctx, `
+			SELECT t.is_default
+			FROM tenants t
+			LEFT JOIN tenant_archives ta ON ta.tenant_id = t.id
+			WHERE t.id = ? AND ta.tenant_id IS NULL`,
+			tenantID,
+		).Scan(&isDefault)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrTenantMembershipRequired
+		}
+		if err != nil {
+			return fmt.Errorf("could not resolve team: %w", err)
+		}
+		if isDefault {
+			return ErrTeamArchiveDefaultTenant
+		}
+
+		// No actor-role check — caller is an instance admin.
+		// No site-count check — caller is responsible for deleting sites first.
+
+		defaultTenantID, err := getDefaultTenantID(ctx, tx)
+		if err != nil {
+			return err
+		}
+
+		memberRows, err := tx.QueryContext(ctx,
+			"SELECT CAST(user_id AS VARCHAR) FROM tenant_members WHERE tenant_id = ?",
+			tenantID,
+		)
+		if err != nil {
+			return fmt.Errorf("could not query team members for admin archive: %w", err)
+		}
+		memberIDs := make([]uuid.UUID, 0)
+		for memberRows.Next() {
+			var raw string
+			if err := memberRows.Scan(&raw); err != nil {
+				_ = memberRows.Close()
+				return fmt.Errorf("could not scan archived team member: %w", err)
+			}
+			memberID, err := uuid.Parse(strings.TrimSpace(raw))
+			if err != nil {
+				_ = memberRows.Close()
+				return fmt.Errorf("invalid archived team member id %q: %w", raw, err)
+			}
+			memberIDs = append(memberIDs, memberID)
+		}
+		if err := memberRows.Err(); err != nil {
+			_ = memberRows.Close()
+			return fmt.Errorf("could not read archived team members: %w", err)
+		}
+		_ = memberRows.Close()
+
+		now := time.Now().UTC()
+		for _, memberID := range memberIDs {
+			if err := ensureTenantMemberTx(ctx, tx, defaultTenantID, memberID, TenantRoleMember, actorID); err != nil {
+				return err
+			}
+		}
+
+		if _, err := tx.ExecContext(ctx,
+			"INSERT INTO tenant_archives (tenant_id, archived_at, archived_by) VALUES (?, ?, ?)",
+			tenantID, now, nullableUUID(actorID),
+		); err != nil {
+			return fmt.Errorf("could not archive tenant: %w", err)
+		}
+
+		for _, memberID := range memberIDs {
+			currentActiveTenantID, err := getActiveTenantID(ctx, tx, memberID)
+			if err != nil {
+				currentActiveTenantID = uuid.Nil
+			}
+			if currentActiveTenantID != tenantID {
+				continue
+			}
+
+			replacementTenantID, err := getPrimaryTenantID(ctx, tx, memberID)
+			if err != nil {
+				return fmt.Errorf("could not resolve replacement team after archive: %w", err)
+			}
+			locale, err := getUserLocaleTx(ctx, tx, memberID)
+			if err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, `
+				INSERT INTO user_preferences (user_id, default_locale, updated_at, active_tenant_id)
+				VALUES (?, ?, ?, ?)
+				ON CONFLICT (user_id) DO UPDATE SET
+					active_tenant_id = excluded.active_tenant_id,
+					updated_at = excluded.updated_at
+			`, memberID, locale, now, replacementTenantID); err != nil {
+				return fmt.Errorf("could not update active team after archive: %w", err)
+			}
+		}
+
+		return nil
+	})
+}
+
 func (s *Store) GetPurgeableTenant(ctx context.Context, tenantID uuid.UUID) (*api.Team, error) {
 	team, err := s.getPurgeableTenant(ctx, s.db, tenantID)
 	if errors.Is(err, sql.ErrNoRows) {

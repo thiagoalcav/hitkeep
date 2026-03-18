@@ -1,0 +1,10 @@
+{{ define "content" -}}
+Verify your email
+=================
+
+You're one step away from creating your {{ .TeamName }} workspace on HitKeep.
+
+Verify your email: {{ .Link }}
+
+This link expires in 24 hours.
+{{- end }}

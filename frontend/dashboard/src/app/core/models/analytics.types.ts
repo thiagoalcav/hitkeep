@@ -40,6 +40,12 @@ export interface TeamPlan {
     support_url?: string;
 }
 
+export interface CloudPlanTier {
+    code: string;
+    name: string;
+    entitlements: TeamEntitlements;
+}
+
 export interface UserTeamsResponse {
     active_team_id: string;
     recent_team_ids?: string[];
@@ -224,6 +230,7 @@ export interface SiteStats {
     top_referrers: MetricStat[];
     top_devices: MetricStat[];
     top_countries: MetricStat[];
+    top_browsers: MetricStat[];
     top_languages: MetricStat[];
     top_utm_campaigns: MetricStat[];
     top_utm_contents: MetricStat[];

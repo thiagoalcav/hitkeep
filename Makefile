@@ -47,4 +47,23 @@ build-docker:
 		--tag ghcr.io/pascalebeier/hitkeep:snapshot \
 		--load
 
+build-cloud:
+	@./build-cloud.sh arm64
+
+build-cloud-deploy:
+	@./build-cloud.sh arm64 --deploy
+
+dev-cloud:
+	@echo "Starting development environment (cloud/billing)..."
+	@if ! command -v air > /dev/null; then \
+		echo "Air is not installed. Installing..."; \
+		go install github.com/air-verse/air@latest; \
+	fi
+	@make -j2 dev-cloud-backend dev-frontend
+
+dev-cloud-backend:
+	@echo "Starting Backend with Live Reload (billing tags)..."
+	@HITKEEP_JWT_SECRET=$${HITKEEP_JWT_SECRET:-hitkeep-dev-jwt-secret} air -c .air-cloud.toml
+
+
 .PHONY: all build go-build frontend-build frontend-dashboard-build run clean

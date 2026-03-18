@@ -36,6 +36,10 @@ export class MainLayout {
     protected readonly cloudHosted = this.context.cloudHosted;
     protected readonly cloudSupportUrl = this.context.cloudSupportUrl;
     protected readonly canCreateTeams = computed(() => !this.cloudHosted());
+    protected readonly navBase = computed(() => {
+        const token = this.shareService.token();
+        return token ? `/share/${token}` : "";
+    });
     protected readonly docsUrl = MainLayout.docsURL;
     protected readonly supportUrl = computed(() => {
         if (!this.cloudHosted()) {

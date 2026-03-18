@@ -14,7 +14,8 @@
             <p-tablist>
                 <p-tab value="0">{{ "admin.tabs.users" | transloco }}</p-tab>
                 <p-tab value="1">{{ "admin.tabs.sites" | transloco }}</p-tab>
-                <p-tab value="2">{{ "admin.tabs.globalFilters" | transloco }}</p-tab>
+                <p-tab value="2">{{ "admin.tabs.teams" | transloco }}</p-tab>
+                <p-tab value="3">{{ "admin.tabs.globalFilters" | transloco }}</p-tab>
             </p-tablist>
             <p-tabpanels>
                 <p-tabpanel value="0">
@@ -157,6 +158,72 @@
                     </p-card>
                 </p-tabpanel>
                 <p-tabpanel value="2">
+                    <p-card>
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
+                            <h2 class="text-lg font-semibold m-0">{{ "admin.teams.title" | transloco }}</h2>
+                            <span class="p-input-icon-left hk-crud-search">
+                                <i class="pi pi-search"></i>
+                                <input pInputText #teamsSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="teamsTable.filterGlobal($any($event.target).value, 'contains')" />
+                            </span>
+                        </div>
+
+                        <div class="hk-crud-table-wrap">
+                            <p-table #teamsTable [value]="teams()" [loading]="isLoadingTeams()" [scrollable]="false" [globalFilterFields]="['name', 'created_at']" [sortField]="'created_at'" [sortOrder]="-1" styleClass="hk-crud-table p-datatable-sm">
+                                <ng-template pTemplate="header">
+                                    <tr>
+                                        <th pSortableColumn="name">
+                                            {{ "common.columns.name" | transloco }}
+                                            <p-sortIcon field="name" />
+                                        </th>
+                                        <th pSortableColumn="member_count">
+                                            {{ "common.columns.members" | transloco }}
+                                            <p-sortIcon field="member_count" />
+                                        </th>
+                                        <th pSortableColumn="site_count">
+                                            {{ "common.columns.sites" | transloco }}
+                                            <p-sortIcon field="site_count" />
+                                        </th>
+                                        <th pSortableColumn="is_archived">
+                                            {{ "common.columns.status" | transloco }}
+                                            <p-sortIcon field="is_archived" />
+                                        </th>
+                                        <th pSortableColumn="created_at">
+                                            {{ "common.columns.created" | transloco }}
+                                            <p-sortIcon field="created_at" />
+                                        </th>
+                                        <th>{{ "common.columns.actions" | transloco }}</th>
+                                    </tr>
+                                </ng-template>
+
+                                <ng-template pTemplate="body" let-team>
+                                    <tr>
+                                        <td>{{ team.name }}</td>
+                                        <td>{{ team.member_count }}</td>
+                                        <td>{{ team.site_count }}</td>
+                                        <td>
+                                            @if (team.is_default) {
+                                            <p-tag [value]="'admin.teams.status.default' | transloco" severity="info" />
+                                            } @else if (team.is_archived) {
+                                            <p-tag [value]="'admin.teams.status.archived' | transloco" severity="warn" />
+                                            } @else {
+                                            <p-tag [value]="'admin.teams.status.active' | transloco" severity="success" />
+                                            }
+                                        </td>
+                                        <td><app-relative-date-time [value]="team.created_at" /></td>
+                                        <td>
+                                            <div class="flex flex-wrap items-center justify-end gap-2">
+                                                @if (!team.is_default) {
+                                                <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="confirmDeleteTeam($event, team)" />
+                                                }
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </ng-template>
+                            </p-table>
+                        </div>
+                    </p-card>
+                </p-tabpanel>
+                <p-tabpanel value="3">
                     <p-card>
                         <app-admin-global-exclusion-settings />
                     </p-card>

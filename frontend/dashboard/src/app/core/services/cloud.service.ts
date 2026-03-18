@@ -2,6 +2,8 @@ import { Injectable, inject } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { Observable } from "rxjs";
 
+import { CloudPlanTier } from "@models/analytics.types";
+
 export interface CloudSignupRequest {
     email: string;
     password: string;
@@ -11,6 +13,7 @@ export interface CloudSignupRequest {
     locale?: string;
     given_name?: string;
     last_name?: string;
+    accepted_tos: boolean;
 }
 
 export interface CloudSignupResponse {
@@ -47,5 +50,9 @@ export class CloudService {
 
     createBillingCheckoutSession(payload: BillingCheckoutSessionRequest): Observable<BillingPortalSessionResponse> {
         return this.http.post<BillingPortalSessionResponse>("/api/cloud/billing/checkout", payload);
+    }
+
+    getPlans(): Observable<CloudPlanTier[]> {
+        return this.http.get<CloudPlanTier[]>("/api/cloud/plans");
     }
 }

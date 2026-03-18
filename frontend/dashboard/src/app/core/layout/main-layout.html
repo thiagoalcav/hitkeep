@@ -21,7 +21,7 @@
             <div class="text-xs font-semibold text-muted-color uppercase px-2 mb-2" role="presentation">{{ "nav.analytics" | transloco }}</div>
 
             <a
-                routerLink="/dashboard"
+                [routerLink]="navBase() + '/dashboard'"
                 routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                 class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
                 [attr.aria-label]="'nav.dashboardAria' | transloco"
@@ -29,7 +29,7 @@
                 <i class="pi pi-chart-bar" aria-hidden="true"></i> <span>{{ "nav.dashboard" | transloco }}</span>
             </a>
             <a
-                routerLink="/goals"
+                [routerLink]="navBase() + '/goals'"
                 routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                 class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
                 [attr.aria-label]="'nav.goalsAria' | transloco"
@@ -37,7 +37,7 @@
                 <i class="pi pi-flag" aria-hidden="true"></i> <span>{{ "nav.goals" | transloco }}</span>
             </a>
             <a
-                routerLink="/funnels"
+                [routerLink]="navBase() + '/funnels'"
                 routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                 class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
                 [attr.aria-label]="'nav.funnelsAria' | transloco"
@@ -45,7 +45,7 @@
                 <i class="pi pi-filter" aria-hidden="true"></i> <span>{{ "nav.funnels" | transloco }}</span>
             </a>
             <a
-                routerLink="/events"
+                [routerLink]="navBase() + '/events'"
                 routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                 class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
                 [attr.aria-label]="'nav.eventsAria' | transloco"
@@ -53,7 +53,7 @@
                 <i class="pi pi-bolt" aria-hidden="true"></i> <span>{{ "nav.events" | transloco }}</span>
             </a>
             <a
-                routerLink="/ecommerce"
+                [routerLink]="navBase() + '/ecommerce'"
                 routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                 class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
                 [attr.aria-label]="'nav.ecommerceAria' | transloco"
@@ -61,7 +61,7 @@
                 <i class="pi pi-shopping-bag" aria-hidden="true"></i> <span>{{ "nav.ecommerce" | transloco }}</span>
             </a>
             <a
-                routerLink="/utm"
+                [routerLink]="navBase() + '/utm'"
                 routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                 [routerLinkActiveOptions]="{ exact: true }"
                 class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -69,6 +69,7 @@
             >
                 <i class="pi pi-tags" aria-hidden="true"></i> <span>{{ "nav.utm" | transloco }}</span>
             </a>
+            @if (!shareService.isShareMode()) {
             <a
                 routerLink="/utm/builder"
                 routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
@@ -77,7 +78,7 @@
             >
                 <i class="pi pi-link" aria-hidden="true"></i> <span>{{ "nav.utmBuilder" | transloco }}</span>
             </a>
-
+            } @if (!shareService.isShareMode()) {
             <div class="text-xs font-semibold text-muted-color uppercase px-2 mt-4 mb-2" role="presentation">{{ "nav.integration" | transloco }}</div>
             <a
                 routerLink="/integration/api-clients"
@@ -145,7 +146,7 @@
             >
                 <i class="pi pi-users" aria-hidden="true"></i> <span>{{ "nav.team" | transloco }}</span>
             </a>
-            }
+            } }
         </nav>
     </aside>
 
@@ -160,6 +161,7 @@
                     </button>
                 </div>
             </div>
+            @if (!shareService.isShareMode()) {
             <app-team-switcher
                 [teams]="teamService.teams()"
                 [currentTeamId]="teamService.activeTeamId()"
@@ -172,6 +174,7 @@
                 (teamSelected)="context.onTeamSelected($event)"
                 (addClicked)="isCreateTeamVisible.set(true)"
             />
+            }
         </div>
 
         <div class="flex-1 overflow-y-auto p-4 md:p-8 md:pt-4 relative">
@@ -187,6 +190,7 @@
                     }
 
                     <div class="layout-topbar__account-cluster flex items-center gap-2">
+                        @if (!shareService.isShareMode()) {
                         <app-team-switcher
                             class="max-w-[16rem]"
                             [teams]="teamService.teams()"
@@ -200,6 +204,7 @@
                             (teamSelected)="context.onTeamSelected($event)"
                             (addClicked)="isCreateTeamVisible.set(true)"
                         />
+                        }
                         <app-user-controls [showMenu]="!shareService.isShareMode()" />
                     </div>
                 </div>
@@ -214,6 +219,7 @@
 
     <p-drawer [visible]="isMobileDrawerOpen()" (visibleChange)="isMobileDrawerOpen.set($event)">
         <div class="flex flex-col gap-6 h-full">
+            @if (!shareService.isShareMode()) {
             <app-team-switcher
                 [teams]="teamService.teams()"
                 [currentTeamId]="teamService.activeTeamId()"
@@ -225,6 +231,7 @@
                 (teamSelected)="context.onTeamSelected($event)"
                 (addClicked)="isCreateTeamVisible.set(true)"
             />
+            }
 
             <app-site-selector
                 [sites]="siteService.sites()"
@@ -237,23 +244,53 @@
             />
 
             <nav class="flex-1">
-                <a routerLink="/dashboard" (click)="isMobileDrawerOpen.set(false)" routerLinkActive="bg-primary-50 text-primary-700" class="flex items-center gap-3 px-3 py-2 rounded-md font-medium" [attr.aria-label]="'nav.dashboardAria' | transloco">
+                <a
+                    [routerLink]="navBase() + '/dashboard'"
+                    (click)="isMobileDrawerOpen.set(false)"
+                    routerLinkActive="bg-primary-50 text-primary-700"
+                    class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
+                    [attr.aria-label]="'nav.dashboardAria' | transloco"
+                >
                     <i class="pi pi-chart-bar" aria-hidden="true"></i> <span>{{ "nav.dashboard" | transloco }}</span>
                 </a>
-                <a routerLink="/goals" (click)="isMobileDrawerOpen.set(false)" routerLinkActive="bg-primary-50 text-primary-700" class="flex items-center gap-3 px-3 py-2 rounded-md font-medium" [attr.aria-label]="'nav.goalsAria' | transloco">
+                <a
+                    [routerLink]="navBase() + '/goals'"
+                    (click)="isMobileDrawerOpen.set(false)"
+                    routerLinkActive="bg-primary-50 text-primary-700"
+                    class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
+                    [attr.aria-label]="'nav.goalsAria' | transloco"
+                >
                     <i class="pi pi-flag" aria-hidden="true"></i> <span>{{ "nav.goals" | transloco }}</span>
                 </a>
-                <a routerLink="/funnels" (click)="isMobileDrawerOpen.set(false)" routerLinkActive="bg-primary-50 text-primary-700" class="flex items-center gap-3 px-3 py-2 rounded-md font-medium" [attr.aria-label]="'nav.funnelsAria' | transloco">
+                <a
+                    [routerLink]="navBase() + '/funnels'"
+                    (click)="isMobileDrawerOpen.set(false)"
+                    routerLinkActive="bg-primary-50 text-primary-700"
+                    class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
+                    [attr.aria-label]="'nav.funnelsAria' | transloco"
+                >
                     <i class="pi pi-filter" aria-hidden="true"></i> <span>{{ "nav.funnels" | transloco }}</span>
                 </a>
-                <a routerLink="/events" (click)="isMobileDrawerOpen.set(false)" routerLinkActive="bg-primary-50 text-primary-700" class="flex items-center gap-3 px-3 py-2 rounded-md font-medium" [attr.aria-label]="'nav.eventsAria' | transloco">
+                <a
+                    [routerLink]="navBase() + '/events'"
+                    (click)="isMobileDrawerOpen.set(false)"
+                    routerLinkActive="bg-primary-50 text-primary-700"
+                    class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
+                    [attr.aria-label]="'nav.eventsAria' | transloco"
+                >
                     <i class="pi pi-bolt" aria-hidden="true"></i> <span>{{ "nav.events" | transloco }}</span>
                 </a>
-                <a routerLink="/ecommerce" (click)="isMobileDrawerOpen.set(false)" routerLinkActive="bg-primary-50 text-primary-700" class="flex items-center gap-3 px-3 py-2 rounded-md font-medium" [attr.aria-label]="'nav.ecommerceAria' | transloco">
+                <a
+                    [routerLink]="navBase() + '/ecommerce'"
+                    (click)="isMobileDrawerOpen.set(false)"
+                    routerLinkActive="bg-primary-50 text-primary-700"
+                    class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
+                    [attr.aria-label]="'nav.ecommerceAria' | transloco"
+                >
                     <i class="pi pi-shopping-bag" aria-hidden="true"></i> <span>{{ "nav.ecommerce" | transloco }}</span>
                 </a>
                 <a
-                    routerLink="/utm"
+                    [routerLink]="navBase() + '/utm'"
                     [routerLinkActiveOptions]="{ exact: true }"
                     (click)="isMobileDrawerOpen.set(false)"
                     routerLinkActive="bg-primary-50 text-primary-700"
@@ -262,6 +299,7 @@
                 >
                     <i class="pi pi-tags" aria-hidden="true"></i> <span>{{ "nav.utm" | transloco }}</span>
                 </a>
+                @if (!shareService.isShareMode()) {
                 <a
                     routerLink="/utm/builder"
                     (click)="isMobileDrawerOpen.set(false)"
@@ -324,7 +362,7 @@
                 <a routerLink="/admin/team" (click)="isMobileDrawerOpen.set(false)" routerLinkActive="bg-primary-50 text-primary-700" class="flex items-center gap-3 px-3 py-2 rounded-md font-medium" [attr.aria-label]="'nav.teamAria' | transloco">
                     <i class="pi pi-users" aria-hidden="true"></i> <span>{{ "nav.team" | transloco }}</span>
                 </a>
-                }
+                } }
             </nav>
         </div>
     </p-drawer>

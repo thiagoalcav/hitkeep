@@ -21,6 +21,7 @@ import (
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
+	"hitkeep/internal/mailables"
 	serverauth "hitkeep/internal/server/auth"
 	"hitkeep/internal/server/shared"
 )
@@ -112,6 +113,9 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 	mux.HandleFunc("POST /api/cloud/signup", ctx.Handler(shared.HandlerConfig{
 		RateLimiter: ctx.AuthLimiter,
 	}, h.handleSignup()))
+	mux.HandleFunc("GET /api/cloud/signup/verify", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleVerifySignup()))
 	mux.HandleFunc("POST /api/cloud/billing/portal", ctx.Handler(shared.HandlerConfig{
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
@@ -120,6 +124,9 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleCreateBillingCheckoutSession()))
+	mux.HandleFunc("GET /api/cloud/plans", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleListCloudPlans()))
 	mux.HandleFunc("POST /api/cloud/webhooks/stripe", ctx.Handler(shared.HandlerConfig{
 		RateLimiter: ctx.WebhookLimiter,
 	}, h.handleStripeWebhook()))
@@ -134,6 +141,7 @@ type signupRequest struct {
 	PlanCode     string `json:"plan_code"`
 	Jurisdiction string `json:"jurisdiction"`
 	Locale       string `json:"locale"`
+	AcceptedTos  bool   `json:"accepted_tos"`
 }
 
 type signupResponse struct {
@@ -193,6 +201,10 @@ func (h *handler) handleSignup() http.HandlerFunc {
 			http.Error(w, "Team name is required", http.StatusBadRequest)
 			return
 		}
+		if !req.AcceptedTos {
+			http.Error(w, "You must accept the Terms of Service and Privacy Policy", http.StatusBadRequest)
+			return
+		}
 		if configuredJurisdiction := normalizeJurisdiction(h.ctx.Config.CloudJurisdiction); configuredJurisdiction != "" && req.Jurisdiction != "" && normalizeJurisdiction(req.Jurisdiction) != configuredJurisdiction {
 			http.Error(w, "Jurisdiction mismatch", http.StatusBadRequest)
 			return
@@ -205,20 +217,90 @@ func (h *handler) handleSignup() http.HandlerFunc {
 			return
 		}
 
-		account, err := h.ctx.Store.CreateManagedCloudAccount(r.Context(), database.CreateManagedCloudAccountInput{
+		existing, _ := h.ctx.Store.GetUserByEmail(r.Context(), req.Email)
+		if existing != nil {
+			http.Error(w, "Email already exists", http.StatusConflict)
+			return
+		}
+
+		token, err := h.ctx.Store.CreatePendingSignup(r.Context(), database.PendingSignupEntry{
 			Email:          req.Email,
 			HashedPassword: hashedPassword,
 			GivenName:      req.GivenName,
 			LastName:       req.LastName,
 			TeamName:       req.TeamName,
+			Jurisdiction:   req.Jurisdiction,
+			Locale:         req.Locale,
+			AcceptedTosAt:  time.Now().UTC(),
+		})
+		if err != nil {
+			slog.Error("Failed to create pending signup token", "error", err, "email", req.Email)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		verifyLink := strings.TrimRight(h.ctx.Config.PublicURL, "/") + "/api/cloud/signup/verify?token=" + token
+		if err := h.ctx.Mailer.Send(req.Email, mailables.NewEmailVerification(verifyLink, req.TeamName)); err != nil {
+			slog.Error("Failed to send verification email", "error", err, "email", req.Email)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		resp := signupResponse{
+			Status:   "verification_sent",
+			PlanCode: database.CloudPlanFree,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			slog.Error("Failed to encode cloud signup response", "error", err)
+		}
+	}
+}
+
+func (h *handler) handleVerifySignup() http.HandlerFunc {
+	signupURL := func(errorCode string) string {
+		return strings.TrimRight(h.ctx.Config.PublicURL, "/") + "/signup?error=" + errorCode
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !h.ctx.Config.CloudHosted || !h.ctx.Config.CloudSignupEnabled {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
+		}
+		if h.ctx.Store == nil {
+			http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
+			return
+		}
+
+		token := strings.TrimSpace(r.URL.Query().Get("token"))
+		if token == "" {
+			http.Redirect(w, r, signupURL("expired"), http.StatusFound)
+			return
+		}
+
+		entry, err := h.ctx.Store.CompletePendingSignup(r.Context(), token)
+		if err != nil {
+			slog.Warn("Signup verification failed", "error", err, "token_prefix", safeTokenPrefix(token))
+			http.Redirect(w, r, signupURL("expired"), http.StatusFound)
+			return
+		}
+
+		account, err := h.ctx.Store.CreateManagedCloudAccount(r.Context(), database.CreateManagedCloudAccountInput{
+			Email:          entry.Email,
+			HashedPassword: entry.HashedPassword,
+			GivenName:      entry.GivenName,
+			LastName:       entry.LastName,
+			TeamName:       entry.TeamName,
 		})
 		if errors.Is(err, database.ErrUserEmailAlreadyExists) {
-			http.Error(w, "Email already exists", http.StatusConflict)
+			http.Redirect(w, r, signupURL("exists"), http.StatusFound)
 			return
 		}
 		if err != nil {
-			slog.Error("Failed to create managed cloud account", "error", err, "email", req.Email)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			slog.Error("Failed to create managed cloud account during verification", "error", err, "email", entry.Email)
+			http.Redirect(w, r, signupURL("expired"), http.StatusFound)
 			return
 		}
 
@@ -229,28 +311,76 @@ func (h *handler) handleSignup() http.HandlerFunc {
 			SubscriptionStatus: database.CloudSubscriptionStatusFree,
 		}); err != nil {
 			slog.Error("Failed to initialize cloud billing account", "error", err, "team_id", account.TenantID)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			http.Redirect(w, r, signupURL("expired"), http.StatusFound)
 			return
 		}
 
 		if err := issueLoginSession(w, h.ctx.Config, account.UserID); err != nil {
 			slog.Error("Failed to issue cloud signup login session", "error", err, "user_id", account.UserID)
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			http.Redirect(w, r, signupURL("expired"), http.StatusFound)
 			return
 		}
 
-		resp := signupResponse{
-			Status:      "ok",
-			PlanCode:    database.CloudPlanFree,
-			RedirectURL: "/dashboard",
+		dashboardURL := strings.TrimRight(h.ctx.Config.PublicURL, "/") + "/dashboard"
+		http.Redirect(w, r, dashboardURL, http.StatusFound)
+	}
+}
+
+func (h *handler) handleListCloudPlans() http.HandlerFunc {
+	plans := []api.CloudPlanTier{
+		{
+			Code: database.CloudPlanFree,
+			Name: planNameForCode(database.CloudPlanFree),
+			Entitlements: api.TeamEntitlements{
+				MaxSitesPerTeam:     3,
+				MaxTeamMembers:      3,
+				MaxRetentionDays:    60,
+				AllowSSO:            false,
+				AllowCustomBranding: false,
+			},
+		},
+		{
+			Code: database.CloudPlanPro,
+			Name: planNameForCode(database.CloudPlanPro),
+			Entitlements: api.TeamEntitlements{
+				MaxSitesPerTeam:     10,
+				MaxTeamMembers:      5,
+				MaxRetentionDays:    365,
+				AllowSSO:            false,
+				AllowCustomBranding: false,
+			},
+		},
+		{
+			Code: database.CloudPlanBusiness,
+			Name: planNameForCode(database.CloudPlanBusiness),
+			Entitlements: api.TeamEntitlements{
+				MaxSitesPerTeam:     50,
+				MaxTeamMembers:      20,
+				MaxRetentionDays:    1095,
+				AllowSSO:            true,
+				AllowCustomBranding: true,
+			},
+		},
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !h.ctx.Config.CloudHosted {
+			http.Error(w, "Not found", http.StatusNotFound)
+			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			slog.Error("Failed to encode cloud signup response", "error", err)
+		if err := json.NewEncoder(w).Encode(plans); err != nil {
+			slog.Error("Failed to encode cloud plans response", "error", err)
 		}
 	}
+}
+
+func safeTokenPrefix(token string) string {
+	if len(token) > 8 {
+		return token[:8] + "..."
+	}
+	return "***"
 }
 
 func (h *handler) createCheckout(ctx context.Context, account *database.ManagedCloudAccount, req signupRequest) (checkoutURL string, customerID string, sessionID string, priceID string, err error) {

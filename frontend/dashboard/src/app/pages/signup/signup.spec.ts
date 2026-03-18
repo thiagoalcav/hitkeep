@@ -7,14 +7,14 @@ import { vi } from "vitest";
 
 import { Signup } from "@pages/signup/signup";
 import { AnalyticsService } from "@services/analytics.service";
-import { CloudService } from "@services/cloud.service";
+import { CloudService, CloudSignupResponse } from "@services/cloud.service";
 
 describe("Signup", () => {
     let component: Signup;
     let fixture: ComponentFixture<Signup>;
     let queryParams: Record<string, string>;
 
-    const cloudServiceMock = {
+    const cloudServiceMock: { signup: ReturnType<typeof vi.fn> } = {
         signup: vi.fn(() => NEVER)
     };
 
@@ -87,18 +87,22 @@ describe("Signup", () => {
     });
 
     it("submits a cloud signup request with free plan", () => {
+        cloudServiceMock.signup.mockReturnValue(of({ status: "verification_sent", plan_code: "free" } as CloudSignupResponse));
+
         component["signupForm"].teamName().control().setValue("Cloud Team");
         component["signupForm"].email().control().setValue("user@example.com");
         component["signupForm"].password().control().setValue("password123");
+        component["signupForm"].acceptedTos().control().setValue(true);
 
         component["onSubmit"]();
 
-        const payload = ((cloudServiceMock.signup as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]?.[0] ?? null) as Record<string, string> | null;
+        const payload = (cloudServiceMock.signup.mock.calls[0]?.[0] ?? null) as Record<string, unknown> | null;
         expect(payload?.["team_name"]).toBe("Cloud Team");
         expect(payload?.["email"]).toBe("user@example.com");
         expect(payload?.["plan_code"]).toBe("free");
         expect(payload?.["jurisdiction"]).toBe("EU");
         expect(payload?.["locale"]).toBe("en");
+        expect(payload?.["accepted_tos"]).toBe(true);
     });
 
     it("hydrates team name and email from query params", async () => {

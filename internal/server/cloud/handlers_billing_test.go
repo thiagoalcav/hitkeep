@@ -23,6 +23,7 @@ import (
 
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
+	"hitkeep/internal/mailer"
 	"hitkeep/internal/server/shared"
 )
 
@@ -67,6 +68,11 @@ func (f *fakeStripeClient) GetCharge(_ context.Context, chargeID string) (*strip
 	}, nil
 }
 
+type noopMailDriver struct{}
+
+func (noopMailDriver) Send(_ []string, _ string, _ string, _ string) error { return nil }
+func (noopMailDriver) Close() error                                        { return nil }
+
 type fakeWebhookVerifier struct {
 	event stripe.Event
 	err   error
@@ -87,21 +93,24 @@ func setupCloudTestHandler(t *testing.T) (*handler, *database.Store) {
 		t.Fatalf("migrate store: %v", err)
 	}
 
+	testConf := &config.Config{
+		PublicURL:                   "https://cloud.hitkeep.eu",
+		JWTSecret:                   "test-secret",
+		CloudHosted:                 true,
+		CloudSignupEnabled:          true,
+		CloudJurisdiction:           "EU",
+		StripeSecretKey:             "sk_test_123",
+		StripePortalConfigurationID: "bpc_test_123",
+		StripeWebhookSecret:         "whsec_test_123",
+		StripePriceProMonthly:       "price_pro",
+		StripePriceBusinessMonthly:  "price_business",
+	}
+
 	h := &handler{
 		ctx: &shared.Context{
-			Store: store,
-			Config: &config.Config{
-				PublicURL:                   "https://cloud.hitkeep.eu",
-				JWTSecret:                   "test-secret",
-				CloudHosted:                 true,
-				CloudSignupEnabled:          true,
-				CloudJurisdiction:           "EU",
-				StripeSecretKey:             "sk_test_123",
-				StripePortalConfigurationID: "bpc_test_123",
-				StripeWebhookSecret:         "whsec_test_123",
-				StripePriceProMonthly:       "price_pro",
-				StripePriceBusinessMonthly:  "price_business",
-			},
+			Store:  store,
+			Config: testConf,
+			Mailer: mailer.NewWithDriver(noopMailDriver{}, testConf),
 		},
 		stripe:   &fakeStripeClient{},
 		webhooks: fakeWebhookVerifier{},
@@ -243,7 +252,7 @@ func TestRegisterWebhookLimiterCanThrottleStripeWebhook(t *testing.T) {
 	}
 }
 
-func TestHandleSignupCreatesFreeManagedAccount(t *testing.T) {
+func TestHandleSignupSendsVerificationEmail(t *testing.T) {
 	h, store := setupCloudTestHandler(t)
 	defer store.Close()
 
@@ -255,6 +264,7 @@ func TestHandleSignupCreatesFreeManagedAccount(t *testing.T) {
 		TeamName:     "Free Team",
 		PlanCode:     database.CloudPlanFree,
 		Jurisdiction: "EU",
+		AcceptedTos:  true,
 	})
 	if err != nil {
 		t.Fatalf("marshal request: %v", err)
@@ -272,19 +282,81 @@ func TestHandleSignupCreatesFreeManagedAccount(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if resp.CheckoutURL != "" {
-		t.Fatalf("expected free plan to skip checkout, got %q", resp.CheckoutURL)
+	if resp.Status != "verification_sent" {
+		t.Fatalf("expected status verification_sent, got %q", resp.Status)
 	}
-	if resp.RedirectURL != "/dashboard" {
-		t.Fatalf("expected redirect_url /dashboard, got %q", resp.RedirectURL)
+	if resp.RedirectURL != "" {
+		t.Fatalf("expected no redirect_url before verification, got %q", resp.RedirectURL)
 	}
 
-	user, err := store.GetUserByEmail(context.Background(), "free@example.com")
+	// User should NOT exist yet — account is pending verification
+	user, _ := store.GetUserByEmail(context.Background(), "free@example.com")
+	if user != nil {
+		t.Fatal("expected user NOT to exist before email verification")
+	}
+}
+
+func TestHandleSignupRejectsWithoutTos(t *testing.T) {
+	h, store := setupCloudTestHandler(t)
+	defer store.Close()
+
+	body, err := json.Marshal(signupRequest{
+		Email:        "notos@example.com",
+		Password:     "password123",
+		TeamName:     "No ToS Team",
+		Jurisdiction: "EU",
+		AcceptedTos:  false,
+	})
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/cloud/signup", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	h.handleSignup().ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestHandleVerifySignupCreatesAccount(t *testing.T) {
+	h, store := setupCloudTestHandler(t)
+	defer store.Close()
+
+	// Pre-create a pending signup token directly
+	token, err := store.CreatePendingSignup(context.Background(), database.PendingSignupEntry{
+		Email:          "verify@example.com",
+		HashedPassword: "$2a$10$testhashedpassword",
+		GivenName:      "Verify",
+		LastName:       "User",
+		TeamName:       "Verify Team",
+		Jurisdiction:   "EU",
+		Locale:         "en",
+	})
+	if err != nil {
+		t.Fatalf("create pending signup: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/cloud/signup/verify?token="+token, nil)
+	w := httptest.NewRecorder()
+	h.handleVerifySignup().ServeHTTP(w, req)
+
+	if w.Code != http.StatusFound {
+		t.Fatalf("expected redirect status %d, got %d: %s", http.StatusFound, w.Code, w.Body.String())
+	}
+	location := w.Header().Get("Location")
+	if !strings.Contains(location, "/dashboard") {
+		t.Fatalf("expected redirect to dashboard, got %q", location)
+	}
+
+	// User and billing account should now exist
+	user, err := store.GetUserByEmail(context.Background(), "verify@example.com")
 	if err != nil {
 		t.Fatalf("get created user: %v", err)
 	}
 	if user == nil {
-		t.Fatal("expected created user")
+		t.Fatal("expected created user after verification")
 	}
 
 	teams, _, err := store.ListUserTeams(context.Background(), user.ID)
@@ -304,6 +376,23 @@ func TestHandleSignupCreatesFreeManagedAccount(t *testing.T) {
 	}
 }
 
+func TestHandleVerifySignupInvalidToken(t *testing.T) {
+	h, store := setupCloudTestHandler(t)
+	defer store.Close()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/cloud/signup/verify?token=invalid", nil)
+	w := httptest.NewRecorder()
+	h.handleVerifySignup().ServeHTTP(w, req)
+
+	if w.Code != http.StatusFound {
+		t.Fatalf("expected redirect status %d, got %d", http.StatusFound, w.Code)
+	}
+	location := w.Header().Get("Location")
+	if !strings.Contains(location, "error=expired") {
+		t.Fatalf("expected redirect to signup with error=expired, got %q", location)
+	}
+}
+
 func TestHandleSignupForcesFreeEvenWhenPaidPlanRequested(t *testing.T) {
 	h, store := setupCloudTestHandler(t)
 	defer store.Close()
@@ -317,6 +406,7 @@ func TestHandleSignupForcesFreeEvenWhenPaidPlanRequested(t *testing.T) {
 		PlanCode:     database.CloudPlanPro,
 		Jurisdiction: "EU",
 		Locale:       "de-DE",
+		AcceptedTos:  true,
 	})
 	if err != nil {
 		t.Fatalf("marshal request: %v", err)
@@ -334,41 +424,11 @@ func TestHandleSignupForcesFreeEvenWhenPaidPlanRequested(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if resp.CheckoutURL != "" {
-		t.Fatalf("expected no checkout url for signup, got %q", resp.CheckoutURL)
+	if resp.Status != "verification_sent" {
+		t.Fatalf("expected status verification_sent, got %q", resp.Status)
 	}
 	if resp.PlanCode != database.CloudPlanFree {
 		t.Fatalf("expected free plan code, got %q", resp.PlanCode)
-	}
-	if resp.RedirectURL != "/dashboard" {
-		t.Fatalf("expected redirect_url /dashboard, got %q", resp.RedirectURL)
-	}
-
-	user, err := store.GetUserByEmail(context.Background(), "pro@example.com")
-	if err != nil {
-		t.Fatalf("get created user: %v", err)
-	}
-	if user == nil {
-		t.Fatal("expected created user")
-	}
-
-	teams, _, err := store.ListUserTeams(context.Background(), user.ID)
-	if err != nil {
-		t.Fatalf("list user teams: %v", err)
-	}
-	if len(teams) != 1 {
-		t.Fatalf("expected one team, got %d", len(teams))
-	}
-
-	billingAccount, err := store.GetCloudBillingAccount(context.Background(), teams[0].ID)
-	if err != nil {
-		t.Fatalf("get billing account: %v", err)
-	}
-	if billingAccount.PlanCode != database.CloudPlanFree || billingAccount.SubscriptionStatus != database.CloudSubscriptionStatusFree {
-		t.Fatalf("expected free plan with free status, got %+v", billingAccount)
-	}
-	if billingAccount.StripeCustomerID != "" {
-		t.Fatalf("expected no stripe customer for free signup, got %q", billingAccount.StripeCustomerID)
 	}
 
 	stripeClient, ok := h.stripe.(*fakeStripeClient)

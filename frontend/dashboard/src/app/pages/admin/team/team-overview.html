@@ -48,15 +48,83 @@
                 </div>
             </div>
 
+            @if (canManageBilling()) {
             <div class="team-overview__cloud-actions">
-                @if (canManageBilling()) {
                 <p-button [label]="'admin.team.overview.cloud.manageBillingAction' | transloco" [loading]="portalPending()" [disabled]="!canManageBilling()" severity="secondary" (onClick)="openBillingPortal()" />
-                } @if (canStartUpgrade()) {
-                <p-button [label]="'admin.team.overview.cloud.upgradeAction' | transloco" [loading]="checkoutPending()" [disabled]="!canStartUpgrade()" (onClick)="startUpgradeCheckout()" />
-                } @if (cloudPlan.plan.support_url || cloudPlan.cloud.support_url; as supportUrl) {
+                @if (cloudPlan.plan.support_url || cloudPlan.cloud.support_url; as supportUrl) {
                 <a [href]="supportUrl" class="team-overview__cloud-link" target="_blank" rel="noreferrer"> {{ "admin.team.overview.cloud.supportAction" | transloco }} </a>
                 }
             </div>
+            } @if (showPlanComparison()) {
+            <div class="plan-comparison__grid">
+                @if (currentTier(); as current) {
+                <p-card styleClass="plan-comparison__card plan-comparison__card--current">
+                    <div class="plan-comparison__card-top">
+                        <div class="plan-comparison__name-row">
+                            <span class="plan-comparison__name">{{ ("signup.plans." + current.code + ".name") | transloco }}</span>
+                            <p-tag [value]="'admin.team.overview.plans.currentPlan' | transloco" severity="secondary" [rounded]="true" />
+                        </div>
+                        <span class="plan-comparison__price">{{ ("signup.plans." + current.code + ".price") | transloco }}</span>
+                        <p class="plan-comparison__desc">{{ ("signup.plans." + current.code + ".description") | transloco }}</p>
+                    </div>
+
+                    <div class="plan-comparison__features">
+                        <div class="plan-comparison__feature">
+                            <i class="pi pi-check"></i>
+                            <span>{{ "admin.team.overview.plans.features.sites" | transloco: { count: current.entitlements.max_sites_per_team } }}</span>
+                        </div>
+                        <div class="plan-comparison__feature">
+                            <i class="pi pi-check"></i>
+                            <span>{{ "admin.team.overview.plans.features.members" | transloco: { count: current.entitlements.max_team_members } }}</span>
+                        </div>
+                        <div class="plan-comparison__feature">
+                            <i class="pi pi-check"></i>
+                            <span>{{ retentionYears(current.entitlements.max_retention_days) }}</span>
+                        </div>
+                    </div>
+                </p-card>
+                } @for (tier of upgradeTiers(); track tier.code) {
+                <p-card [styleClass]="'plan-comparison__card' + (tier.code === 'pro' ? ' plan-comparison__card--recommended' : '')">
+                    <div class="plan-comparison__card-top">
+                        <div class="plan-comparison__name-row">
+                            <span class="plan-comparison__name">{{ ("signup.plans." + tier.code + ".name") | transloco }}</span>
+                            @if (tier.code === "pro") {
+                            <p-tag [value]="'admin.team.overview.plans.recommended' | transloco" severity="success" [rounded]="true" />
+                            }
+                        </div>
+                        <span class="plan-comparison__price">{{ ("signup.plans." + tier.code + ".price") | transloco }}</span>
+                        <p class="plan-comparison__desc">{{ ("signup.plans." + tier.code + ".description") | transloco }}</p>
+                    </div>
+
+                    <div class="plan-comparison__features">
+                        <div class="plan-comparison__feature">
+                            <i class="pi pi-check"></i>
+                            <span>{{ "admin.team.overview.plans.features.sites" | transloco: { count: tier.entitlements.max_sites_per_team } }}</span>
+                        </div>
+                        <div class="plan-comparison__feature">
+                            <i class="pi pi-check"></i>
+                            <span>{{ "admin.team.overview.plans.features.members" | transloco: { count: tier.entitlements.max_team_members } }}</span>
+                        </div>
+                        <div class="plan-comparison__feature">
+                            <i class="pi pi-check"></i>
+                            <span>{{ retentionYears(tier.entitlements.max_retention_days) }}</span>
+                        </div>
+                    </div>
+
+                    <div class="plan-comparison__action">
+                        <p-button
+                            [label]="'admin.team.overview.plans.upgradeAction' | transloco: { plan: tier.name }"
+                            [loading]="checkoutPending()"
+                            [disabled]="checkoutPending()"
+                            [severity]="tier.code === 'pro' ? 'primary' : 'secondary'"
+                            [fluid]="true"
+                            (onClick)="startCheckoutForPlan($any(tier.code))"
+                        />
+                    </div>
+                </p-card>
+                }
+            </div>
+            }
         </p-card>
     </section>
     } @if (showUsageSection()) {

@@ -1,15 +1,14 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from "@angular/core";
-import { ActivatedRoute } from "@angular/router";
+import { ActivatedRoute, RouterOutlet } from "@angular/router";
 
 import { TranslocoPipe } from "@jsverse/transloco";
-import { Dashboard } from "@pages/dashboard/dashboard";
 import { ShareService } from "@services/share.service";
 import { SiteService } from "@features/sites/services/site.service";
 
 @Component({
     selector: "app-share-dashboard",
     standalone: true,
-    imports: [Dashboard, TranslocoPipe],
+    imports: [RouterOutlet, TranslocoPipe],
     templateUrl: "./share.html",
     styleUrl: "./share.css",
     changeDetection: ChangeDetectionStrategy.OnPush

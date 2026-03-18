@@ -35,7 +35,34 @@ export const routes: Routes = [
         children: [
             {
                 path: "share/:token",
-                loadComponent: () => import("@pages/share/share").then((m) => m.ShareDashboard)
+                loadComponent: () => import("@pages/share/share").then((m) => m.ShareDashboard),
+                children: [
+                    {
+                        path: "dashboard",
+                        loadComponent: () => import("@pages/dashboard/dashboard").then((m) => m.Dashboard)
+                    },
+                    {
+                        path: "events",
+                        loadComponent: () => import("@pages/events/events").then((m) => m.Events)
+                    },
+                    {
+                        path: "ecommerce",
+                        loadComponent: () => import("@pages/ecommerce/ecommerce").then((m) => m.EcommercePage)
+                    },
+                    {
+                        path: "goals",
+                        loadComponent: () => import("@pages/goals/goals").then((m) => m.Goals)
+                    },
+                    {
+                        path: "funnels",
+                        loadComponent: () => import("@pages/funnels/funnels").then((m) => m.Funnels)
+                    },
+                    {
+                        path: "utm",
+                        loadComponent: () => import("@pages/utm/utm").then((m) => m.UtmDashboard)
+                    },
+                    { path: "", redirectTo: "dashboard", pathMatch: "full" }
+                ]
             },
             {
                 path: "dashboard",

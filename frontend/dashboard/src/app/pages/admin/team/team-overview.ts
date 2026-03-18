@@ -9,7 +9,7 @@ import { TeamService } from "@services/team.service";
 import { injectActiveLang } from "@core/i18n/active-lang";
 import { AnalyticsService } from "@services/analytics.service";
 import { CloudService } from "@services/cloud.service";
-import { SystemStatus, TeamRole } from "@models/analytics.types";
+import { CloudPlanTier, SystemStatus, TeamRole } from "@models/analytics.types";
 
 @Component({
     selector: "app-team-overview",
@@ -28,6 +28,7 @@ export class TeamOverviewPage {
 
     protected readonly team = this.teamService.activeTeam;
     protected readonly systemStatus = signal<SystemStatus | null>(null);
+    protected readonly planTiers = signal<CloudPlanTier[]>([]);
     protected readonly portalPending = signal(false);
     protected readonly checkoutPending = signal(false);
     protected readonly usageCards = computed(() => {
@@ -55,12 +56,26 @@ export class TeamOverviewPage {
     protected readonly showUsageSection = computed(() => this.usageCards().length > 0);
     protected readonly canManageBilling = computed(() => this.cloudPlan()?.plan.code !== "free" && !this.portalPending());
     protected readonly canStartUpgrade = computed(() => this.cloudPlan()?.plan.code === "free" && !this.checkoutPending());
+    protected readonly showPlanComparison = computed(() => this.canStartUpgrade() && this.planTiers().length > 1);
+    protected readonly currentTier = computed(() => {
+        const code = this.cloudPlan()?.plan.code;
+        return this.planTiers().find((t) => t.code === code) ?? null;
+    });
+    protected readonly upgradeTiers = computed(() => this.planTiers().filter((t) => t.code !== "free"));
 
     constructor() {
         this.analyticsService
             .getSystemStatus()
             .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe((status) => this.systemStatus.set(status));
+            .subscribe((status) => {
+                this.systemStatus.set(status);
+                if (status.cloud?.hosted) {
+                    this.cloudService
+                        .getPlans()
+                        .pipe(takeUntilDestroyed(this.destroyRef))
+                        .subscribe((tiers) => this.planTiers.set(tiers));
+                }
+            });
     }
 
     protected roleSeverity(role: TeamRole): "danger" | "info" | "secondary" {
@@ -137,6 +152,26 @@ export class TeamOverviewPage {
             });
     }
 
+    protected startCheckoutForPlan(planCode: "pro" | "business"): void {
+        if (this.checkoutPending()) {
+            return;
+        }
+
+        this.checkoutPending.set(true);
+        this.cloudService
+            .createBillingCheckoutSession({ plan_code: planCode, locale: this.activeLanguage() })
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+                next: ({ url }) => {
+                    this.checkoutPending.set(false);
+                    this.redirectTo(url);
+                },
+                error: () => {
+                    this.checkoutPending.set(false);
+                }
+            });
+    }
+
     protected startUpgradeCheckout(): void {
         if (this.checkoutPending()) {
             return;
@@ -171,6 +206,26 @@ export class TeamOverviewPage {
             limitLabel: this.usageLimitLabel(limit),
             description: this.usageDescription(current)
         };
+    }
+
+    protected retentionYears(days: number): string {
+        if (days <= 0) {
+            return this.transloco.translate("admin.team.overview.usage.unlimited");
+        }
+        if (days < 365) {
+            return this.transloco.translate("admin.team.overview.plans.features.retentionDays", { count: days });
+        }
+        return this.transloco.translate("admin.team.overview.plans.features.retention", { count: Math.round(days / 365) });
+    }
+
+    protected featureValue(value: number | boolean, suffix?: string): string {
+        if (typeof value === "boolean") {
+            return "";
+        }
+        if (value <= 0) {
+            return this.transloco.translate("admin.team.overview.usage.unlimited");
+        }
+        return suffix ? `${value} ${suffix}` : `${value}`;
     }
 
     protected redirectTo(url: string): void {

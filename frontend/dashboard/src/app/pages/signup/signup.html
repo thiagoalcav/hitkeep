@@ -1,5 +1,14 @@
 <main class="hk-auth-page">
     <section class="hk-auth-shell" aria-labelledby="signup-title">
+        @if (verificationSent()) {
+        <div class="hk-auth-card">
+            <header class="hk-auth-header">
+                <i class="pi pi-envelope text-4xl text-primary-500"></i>
+                <h1 class="hk-auth-title">{{ "signup.verifyTitle" | transloco }}</h1>
+                <p class="hk-auth-subtitle">{{ "signup.verifySubtitle" | transloco : { email: submittedEmail() } }}</p>
+            </header>
+        </div>
+        } @else {
         <div class="hk-auth-card">
             <header class="hk-auth-header">
                 <app-brand size="large"></app-brand>
@@ -80,9 +89,25 @@
                     }
                 </div>
 
+                <div class="hk-auth-field">
+                    <div class="flex items-start gap-2">
+                        <p-checkbox [formControl]="signupForm.acceptedTos().control()" [binary]="true" inputId="acceptedTos" />
+                        <label for="acceptedTos" class="text-sm">
+                            {{ "signup.tosLabel" | transloco }}
+                            <a href="https://hitkeep.com/legal/terms-of-service/" target="_blank" rel="noopener" class="hk-auth-link">{{ "signup.tosLink" | transloco }}</a>
+                            {{ "signup.tosAnd" | transloco }}
+                            <a href="https://hitkeep.com/legal/privacy-policy/" target="_blank" rel="noopener" class="hk-auth-link">{{ "signup.privacyLink" | transloco }}</a>.
+                        </label>
+                    </div>
+                    @if (signupForm.acceptedTos().touched() && signupForm.acceptedTos().invalid()) {
+                    <small class="hk-auth-field-error" role="status">{{ "signup.tosRequired" | transloco }}</small>
+                    }
+                </div>
+
                 <p-button [label]="'signup.submit' | transloco" type="submit" [loading]="isLoading()" [disabled]="isLoading() || signupForm().invalid()" class="w-full"> </p-button>
             </form>
         </div>
+        }
 
         <footer class="hk-auth-footer">
             <p class="hk-auth-footer-text">

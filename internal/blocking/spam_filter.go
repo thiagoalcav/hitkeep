@@ -1,0 +1,196 @@
+package blocking
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"net/netip"
+	"net/url"
+	"os"
+	"strings"
+	"sync"
+	"time"
+)
+
+const defaultSpamRefreshInterval = 24 * time.Hour
+
+type SpamDecision struct {
+	Blocked bool
+	Reason  string
+}
+
+type SpamFilter struct {
+	path string
+
+	mu            sync.RWMutex
+	data          SpamFeedData
+	referrerHosts map[string]struct{}
+	networks      []netip.Prefix
+}
+
+func NewSpamFilter(path string) *SpamFilter {
+	filter := &SpamFilter{path: path}
+	if embedded, err := LoadEmbeddedSpamFeedData(); err == nil {
+		filter.apply(embedded)
+	}
+	return filter
+}
+
+func (f *SpamFilter) RefreshFromDisk() error {
+	if strings.TrimSpace(f.path) == "" {
+		return nil
+	}
+
+	data, err := LoadSpamFeedData(f.path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	f.apply(data)
+	return nil
+}
+
+func (f *SpamFilter) StartRefreshLoop(ctx context.Context, autoUpdate bool, interval time.Duration, isLeader func() bool) {
+	if !autoUpdate {
+		return
+	}
+	if interval <= 0 {
+		interval = defaultSpamRefreshInterval
+	}
+
+	if isLeader() {
+		if err := f.Update(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			slog.Warn("Failed initial spam filter update", "error", err)
+		}
+	}
+
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if isLeader() {
+					if err := f.Update(ctx); err != nil && !errors.Is(err, context.Canceled) {
+						slog.Warn("Failed to refresh spam filter feeds", "error", err)
+					}
+				} else if err := f.RefreshFromDisk(); err != nil && !errors.Is(err, context.Canceled) {
+					slog.Warn("Failed to reload spam filter cache from disk", "error", err, "path", f.path)
+				}
+			}
+		}
+	}()
+}
+
+func (f *SpamFilter) Update(ctx context.Context) error {
+	data, err := FetchSpamFeedData(ctx, nil)
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(f.path) != "" {
+		if err := SaveSpamFeedData(f.path, data); err != nil {
+			return err
+		}
+	}
+	f.apply(data)
+	return nil
+}
+
+func (f *SpamFilter) Evaluate(siteDomain, userIP string, referrer *string) SpamDecision {
+	if f.isBlockedIP(userIP) {
+		return SpamDecision{Blocked: true, Reason: "spamhaus_drop"}
+	}
+
+	referrerHost := normalizeReferrerHost(referrer)
+	if referrerHost == "" || isSameSiteHost(referrerHost, siteDomain) {
+		return SpamDecision{}
+	}
+
+	f.mu.RLock()
+	_, blocked := f.referrerHosts[referrerHost]
+	f.mu.RUnlock()
+	if blocked {
+		return SpamDecision{Blocked: true, Reason: "matomo_referrer_spam"}
+	}
+
+	return SpamDecision{}
+}
+
+func (f *SpamFilter) isBlockedIP(value string) bool {
+	addr := parseIP(value)
+	if !addr.IsValid() {
+		return false
+	}
+
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	for _, prefix := range f.networks {
+		if prefix.Contains(addr) {
+			return true
+		}
+	}
+	return false
+}
+
+func (f *SpamFilter) apply(data SpamFeedData) {
+	referrerHosts := make(map[string]struct{}, len(data.ReferrerHostDenylist))
+	for _, host := range data.ReferrerHostDenylist {
+		referrerHosts[host] = struct{}{}
+	}
+
+	networks := make([]netip.Prefix, 0, len(data.NetworkDenylist))
+	for _, cidr := range data.NetworkDenylist {
+		prefix, err := netip.ParsePrefix(cidr)
+		if err != nil {
+			slog.Warn("Skipping invalid spam network prefix", "cidr", cidr, "error", err)
+			continue
+		}
+		networks = append(networks, prefix.Masked())
+	}
+
+	f.mu.Lock()
+	f.data = data
+	f.referrerHosts = referrerHosts
+	f.networks = networks
+	f.mu.Unlock()
+}
+
+func normalizeReferrerHost(referrer *string) string {
+	if referrer == nil {
+		return ""
+	}
+	value := strings.TrimSpace(strings.ToLower(*referrer))
+	if value == "" {
+		return ""
+	}
+
+	if strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://") {
+		u, err := url.Parse(value)
+		if err == nil {
+			return stripWWW(strings.ToLower(u.Hostname()))
+		}
+	}
+
+	return stripWWW(strings.Trim(value, "/"))
+}
+
+func normalizeHostname(value string) string {
+	return stripWWW(strings.ToLower(strings.TrimSpace(value)))
+}
+
+func stripWWW(value string) string {
+	return strings.TrimPrefix(value, "www.")
+}
+
+func isSameSiteHost(referrerHost, siteDomain string) bool {
+	normalizedSite := normalizeHostname(siteDomain)
+	if normalizedSite == "" || referrerHost == "" {
+		return false
+	}
+	return referrerHost == normalizedSite || strings.HasSuffix(referrerHost, "."+normalizedSite)
+}

@@ -201,6 +201,7 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"page_id":         map[string]any{"type": "string", "format": "uuid"},
 						"timestamp":       map[string]any{"type": "string", "format": "date-time"},
 						"path":            map[string]any{"type": "string"},
+						"hostname":        map[string]any{"type": "string"},
 						"referrer":        map[string]any{"type": "string"},
 						"user_agent":      map[string]any{"type": "string"},
 						"viewport_width":  map[string]any{"type": "integer"},

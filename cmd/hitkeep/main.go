@@ -11,5 +11,9 @@ func main() {
 		hitkeepcmd.Recover()
 		return
 	}
+	if len(os.Args) > 1 && os.Args[1] == "update-spam-lists" {
+		hitkeepcmd.UpdateSpamLists(os.Args[2:])
+		return
+	}
 	hitkeepcmd.Run()
 }

@@ -45,6 +45,9 @@ type Config struct {
 	NSQHTTPAddress              string
 	NSQTCPAddress               string
 	PublicURL                   string
+	SpamFilterAutoUpdate        bool
+	SpamFilterPath              string
+	SpamFilterUpdateIntervalMin int
 	Version                     string
 	DataRetentionDays           int
 	BackupPath                  string
@@ -171,6 +174,9 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	defPublicURL := getEnv("HITKEEP_PUBLIC_URL", "http://localhost:8080")
 	defLogLevel := getEnv("HITKEEP_LOG_LEVEL", "info")
 	defJWT := getEnv("HITKEEP_JWT_SECRET", "")
+	defSpamFilterPath := getEnv("HITKEEP_SPAM_FILTER_PATH", "")
+	defSpamFilterAutoUpdate := getBool("HITKEEP_SPAM_FILTER_AUTO_UPDATE", false)
+	defSpamFilterUpdateInterval := getInt("HITKEEP_SPAM_FILTER_UPDATE_INTERVAL", 1440)
 
 	defNSQTCP := getEnv("HITKEEP_NSQ_TCP_ADDRESS", "127.0.0.1:4150")
 	defNSQHTTP := getEnv("HITKEEP_NSQ_HTTP_ADDRESS", "127.0.0.1:4151")
@@ -217,6 +223,9 @@ func load(args []string, getEnv func(string, string) string) *Config {
 	fs.StringVar(&conf.BindAddr, "bind", defBind, "Address for cluster gossip")
 	fs.StringVar(&conf.JoinAddr, "join", defJoin, "Address of a peer to join")
 	fs.StringVar(&conf.PublicURL, "public-url", defPublicURL, "Public URL")
+	fs.StringVar(&conf.SpamFilterPath, "spam-filter-path", defSpamFilterPath, "Path to cached spam filter data (defaults to <data-path>/spam-filter.json)")
+	fs.BoolVar(&conf.SpamFilterAutoUpdate, "spam-filter-auto-update", defSpamFilterAutoUpdate, "Automatically refresh OSS spam filter feeds on the leader node (disabled by default for airgapped/offline installs)")
+	fs.IntVar(&conf.SpamFilterUpdateIntervalMin, "spam-filter-update-interval", defSpamFilterUpdateInterval, "Minutes between OSS spam filter feed refreshes")
 
 	fs.StringVar(&conf.DBPath, "db", defDB, "Database file path")
 	fs.StringVar(&conf.DataPath, "data-path", defDataPath, "Base directory for per-tenant data files")

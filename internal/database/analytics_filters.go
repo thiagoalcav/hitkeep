@@ -39,6 +39,9 @@ func buildHitFilter(filterType, filterValue, alias string) (string, []any) {
 	switch filterType {
 	case "path":
 		return fmt.Sprintf(" AND %spath = ?", prefix), []any{filterValue}
+	case "hostname":
+		expr := fmt.Sprintf("COALESCE(NULLIF(TRIM(%shostname), ''), '(Unknown Host)')", prefix)
+		return " AND " + expr + " = ?", []any{normalizeUnknownHost(filterValue)}
 	case "referrer":
 		normalized := filterValue
 		if isDirectReferrer(filterValue) {
@@ -46,6 +49,9 @@ func buildHitFilter(filterType, filterValue, alias string) (string, []any) {
 		}
 		expr := fmt.Sprintf("hk_referrer(%sreferrer)", prefix)
 		return " AND " + expr + " = ?", []any{normalized}
+	case "referrer_host":
+		expr := referrerHostExpr(prefix)
+		return " AND " + expr + " = ?", []any{normalizeReferrerHostFilter(filterValue)}
 	case "device":
 		expr := fmt.Sprintf("hk_device(%sviewport_width)", prefix)
 		return " AND " + expr + " = ?", []any{filterValue}
@@ -102,4 +108,28 @@ func normalizeUnspecified(value string) string {
 		return "(Unspecified)"
 	}
 	return value
+}
+
+func normalizeUnknownHost(value string) string {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	if normalized == "unknown host" || normalized == "(unknown host)" {
+		return "(Unknown Host)"
+	}
+	return value
+}
+
+func normalizeReferrerHostFilter(value string) string {
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	if normalized == "direct" || normalized == "(direct)" {
+		return "(Direct)"
+	}
+	return strings.TrimPrefix(normalized, "www.")
+}
+
+func referrerHostExpr(prefix string) string {
+	return fmt.Sprintf(`CASE
+		WHEN %sreferrer IS NULL OR NULLIF(TRIM(%sreferrer), '') IS NULL THEN '(Direct)'
+		WHEN lower(%sreferrer) LIKE 'http%%' THEN regexp_replace(regexp_extract(lower(%sreferrer), 'https?://([^/:?#]+)', 1), '^www\\.', '')
+		ELSE regexp_replace(lower(TRIM(%sreferrer)), '^www\\.', '')
+	END`, prefix, prefix, prefix, prefix, prefix)
 }

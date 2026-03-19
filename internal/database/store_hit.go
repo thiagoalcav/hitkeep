@@ -50,6 +50,7 @@ func (s *Store) CreateHitsBulk(ctx context.Context, hits []*api.Hit) error {
 				duckdb.UUID(hit.PageID),
 				hit.Timestamp,
 				hit.Path,
+				nullableStringPtr(hit.Hostname),
 				nullableStringPtr(hit.Referrer),
 				nullableStringPtr(hit.UserAgent),
 				nullableIntPtr(hit.ViewportWidth),
@@ -92,6 +93,7 @@ func (s *Store) GetHits(ctx context.Context, params api.HitQueryParams) (*api.Pa
 	if params.Query != "" {
 		baseQuery += ` AND (
 			h.path ILIKE ?
+			OR h.hostname ILIKE ?
 			OR h.referrer ILIKE ?
 			OR h.user_agent ILIKE ?
 			OR h.utm_source ILIKE ?
@@ -101,7 +103,7 @@ func (s *Store) GetHits(ctx context.Context, params api.HitQueryParams) (*api.Pa
 			OR h.utm_content ILIKE ?
 		)`
 		wildcard := "%" + params.Query + "%"
-		args = append(args, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard)
+		args = append(args, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard)
 	}
 
 	var total int
@@ -134,7 +136,7 @@ func (s *Store) GetHits(ctx context.Context, params api.HitQueryParams) (*api.Pa
 	//nolint:gosec
 	selectQuery := `
 		SELECT
-            h.id, h.site_id, h.session_id, h.page_id, h.timestamp, h.path, h.referrer, h.user_agent,
+            h.id, h.site_id, h.session_id, h.page_id, h.timestamp, h.path, h.hostname, h.referrer, h.user_agent,
             h.viewport_width, h.viewport_height, h.screen_width, h.screen_height, h.language, h.country_code,
             h.utm_source, h.utm_medium, h.utm_campaign, h.utm_term, h.utm_content, h.is_unique
 	` + baseQuery // whitelisted
@@ -149,7 +151,7 @@ func (s *Store) GetHits(ctx context.Context, params api.HitQueryParams) (*api.Pa
 	for rows.Next() {
 		var hit api.Hit
 		if err := rows.Scan(
-			&hit.ID, &hit.SiteID, &hit.SessionID, &hit.PageID, &hit.Timestamp, &hit.Path, &hit.Referrer,
+			&hit.ID, &hit.SiteID, &hit.SessionID, &hit.PageID, &hit.Timestamp, &hit.Path, &hit.Hostname, &hit.Referrer,
 			&hit.UserAgent, &hit.ViewportWidth, &hit.ViewportHeight, &hit.ScreenWidth,
 			&hit.ScreenHeight, &hit.Language, &hit.CountryCode, &hit.UTMSource, &hit.UTMMedium, &hit.UTMCampaign, &hit.UTMTerm, &hit.UTMContent, &hit.IsUnique,
 		); err != nil {
@@ -181,6 +183,7 @@ func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w 
 		"page_id",
 		"timestamp",
 		"path",
+		"hostname",
 		"referrer",
 		"user_agent",
 		"viewport_width",
@@ -201,15 +204,15 @@ func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w 
 
 	for rows.Next() {
 		var (
-			id, siteID, sessionID, pageID              uuid.UUID
-			timestamp                                  time.Time
-			path                                       string
-			referrer, userAgent, language, countryCode sql.NullString
-			utmSource, utmMedium, utmCampaign          sql.NullString
-			utmTerm, utmContent                        sql.NullString
-			viewportWidth, viewportHeight              sql.NullInt32
-			screenWidth, screenHeight                  sql.NullInt32
-			isUnique                                   sql.NullBool
+			id, siteID, sessionID, pageID                        uuid.UUID
+			timestamp                                            time.Time
+			path                                                 string
+			hostname, referrer, userAgent, language, countryCode sql.NullString
+			utmSource, utmMedium, utmCampaign                    sql.NullString
+			utmTerm, utmContent                                  sql.NullString
+			viewportWidth, viewportHeight                        sql.NullInt32
+			screenWidth, screenHeight                            sql.NullInt32
+			isUnique                                             sql.NullBool
 		)
 		if err := rows.Scan(
 			&id,
@@ -218,6 +221,7 @@ func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w 
 			&pageID,
 			&timestamp,
 			&path,
+			&hostname,
 			&referrer,
 			&userAgent,
 			&viewportWidth,
@@ -243,6 +247,7 @@ func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w 
 			pageID.String(),
 			timestamp.Format(time.RFC3339),
 			path,
+			nullString(hostname),
 			nullString(referrer),
 			nullString(userAgent),
 			nullInt32(viewportWidth),
@@ -367,6 +372,7 @@ func buildHitExportQuery(params api.HitQueryParams) (string, []any) {
 	if params.Query != "" {
 		baseQuery += ` AND (
 			h.path ILIKE ?
+			OR h.hostname ILIKE ?
 			OR h.referrer ILIKE ?
 			OR h.user_agent ILIKE ?
 			OR h.utm_source ILIKE ?
@@ -376,7 +382,7 @@ func buildHitExportQuery(params api.HitQueryParams) (string, []any) {
 			OR h.utm_content ILIKE ?
 		)`
 		wildcard := "%" + params.Query + "%"
-		args = append(args, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard)
+		args = append(args, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard)
 	}
 
 	baseQuery += " ORDER BY h.timestamp DESC"
@@ -384,7 +390,7 @@ func buildHitExportQuery(params api.HitQueryParams) (string, []any) {
 	//nolint:gosec // baseQuery is built from fixed allowlists and parameter placeholders
 	selectQuery := `
 		SELECT
-            h.id, h.site_id, h.session_id, h.page_id, h.timestamp, h.path, h.referrer, h.user_agent,
+            h.id, h.site_id, h.session_id, h.page_id, h.timestamp, h.path, h.hostname, h.referrer, h.user_agent,
             h.viewport_width, h.viewport_height, h.screen_width, h.screen_height, h.language, h.country_code,
             h.utm_source, h.utm_medium, h.utm_campaign, h.utm_term, h.utm_content, h.is_unique
 	` + baseQuery

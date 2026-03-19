@@ -13,6 +13,7 @@ type Hit struct {
 	PageID         uuid.UUID `json:"page_id"`
 	Timestamp      time.Time `json:"timestamp"`
 	Path           string    `json:"path"`
+	Hostname       *string   `json:"hostname"`
 	Referrer       *string   `json:"referrer"`
 	UserAgent      *string   `json:"user_agent"`
 	ViewportWidth  *int      `json:"viewport_width"`

@@ -57,3 +57,29 @@ func TestBuildHitFilterLanguageNormalizesBaseCode(t *testing.T) {
 		t.Fatalf("unexpected args: got %#v want %#v", args, []any{"de"})
 	}
 }
+
+func TestBuildHitFilterHostname(t *testing.T) {
+	clause, args := buildHitFilter("hostname", "blog.example.com", "h")
+	wantClause := " AND COALESCE(NULLIF(TRIM(h.hostname), ''), '(Unknown Host)') = ?"
+	if clause != wantClause {
+		t.Fatalf("unexpected clause: got %q want %q", clause, wantClause)
+	}
+	if !reflect.DeepEqual(args, []any{"blog.example.com"}) {
+		t.Fatalf("unexpected args: got %#v want %#v", args, []any{"blog.example.com"})
+	}
+}
+
+func TestBuildHitFilterReferrerHost(t *testing.T) {
+	clause, args := buildHitFilter("referrer_host", "www.Google.com", "h")
+	wantClause := ` AND CASE
+		WHEN h.referrer IS NULL OR NULLIF(TRIM(h.referrer), '') IS NULL THEN '(Direct)'
+		WHEN lower(h.referrer) LIKE 'http%' THEN regexp_replace(regexp_extract(lower(h.referrer), 'https?://([^/:?#]+)', 1), '^www\\.', '')
+		ELSE regexp_replace(lower(TRIM(h.referrer)), '^www\\.', '')
+	END = ?`
+	if clause != wantClause {
+		t.Fatalf("unexpected clause: got %q want %q", clause, wantClause)
+	}
+	if !reflect.DeepEqual(args, []any{"google.com"}) {
+		t.Fatalf("unexpected args: got %#v want %#v", args, []any{"google.com"})
+	}
+}

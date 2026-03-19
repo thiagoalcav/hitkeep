@@ -78,7 +78,7 @@ func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid Origin header", http.StatusBadRequest)
 		return
 	}
-	domain := strings.TrimPrefix(parsedURL.Hostname(), "www.")
+	domain := normalizeOriginHostname(parsedURL.Hostname())
 
 	site, err := h.ctx.Store.FindSiteByDomain(r.Context(), domain)
 	if err != nil {
@@ -123,6 +123,15 @@ func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.ctx.SpamFilter != nil {
+		decision := h.ctx.SpamFilter.Evaluate(site.Domain, userIP, payload.Referrer)
+		if decision.Blocked {
+			slog.Info("Dropped spam hit", "site_id", site.ID, "reason", decision.Reason)
+			w.WriteHeader(http.StatusAccepted)
+			return
+		}
+	}
+
 	extractor := NewCountryCodeExtractor(h.ctx.Config.GetTrustedProxyNetworks())
 	countryCode := extractor.ExtractFromRequest(r, payload.Language)
 
@@ -137,6 +146,7 @@ func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 		PageID:         payload.PageID,
 		Timestamp:      time.Now().UTC(),
 		Path:           payload.Path,
+		Hostname:       &domain,
 		Referrer:       payload.Referrer,
 		UserAgent:      payload.UserAgent,
 		ViewportWidth:  payload.VPWidth,
@@ -214,7 +224,7 @@ func (h *handler) handleIngestEventLeader(w http.ResponseWriter, r *http.Request
 		http.Error(w, "Invalid Origin header", http.StatusBadRequest)
 		return
 	}
-	domain := strings.TrimPrefix(parsedURL.Hostname(), "www.")
+	domain := normalizeOriginHostname(parsedURL.Hostname())
 
 	site, err := h.ctx.Store.FindSiteByDomain(r.Context(), domain)
 	if err != nil {
@@ -232,6 +242,15 @@ func (h *handler) handleIngestEventLeader(w http.ResponseWriter, r *http.Request
 	if h.ctx.IPFilter != nil && h.ctx.IPFilter.IsBlocked(site.ID, userIP) {
 		w.WriteHeader(http.StatusAccepted)
 		return
+	}
+
+	if h.ctx.SpamFilter != nil {
+		decision := h.ctx.SpamFilter.Evaluate(site.Domain, userIP, nil)
+		if decision.Blocked {
+			slog.Info("Dropped spam event", "site_id", site.ID, "reason", decision.Reason)
+			w.WriteHeader(http.StatusAccepted)
+			return
+		}
 	}
 
 	type eventPayload struct {
@@ -320,4 +339,8 @@ func newProxyTransport(timeout time.Duration) http.RoundTripper {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.ResponseHeaderTimeout = timeout
 	return transport
+}
+
+func normalizeOriginHostname(host string) string {
+	return strings.TrimPrefix(strings.ToLower(strings.TrimSpace(host)), "www.")
 }

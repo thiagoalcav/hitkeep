@@ -40,6 +40,7 @@ func TestCreateHitsBulk(t *testing.T) {
 	ctx := context.Background()
 
 	referrer := "https://example.com"
+	hostname := "appender.example.com"
 	language := "de-DE"
 	country := "DE"
 	viewport := 1440
@@ -52,6 +53,7 @@ func TestCreateHitsBulk(t *testing.T) {
 			PageID:        uuid.New(),
 			Timestamp:     time.Now().Add(-2 * time.Minute),
 			Path:          "/pricing",
+			Hostname:      &hostname,
 			Referrer:      &referrer,
 			ViewportWidth: &viewport,
 			Language:      &language,
@@ -97,6 +99,9 @@ func TestCreateHitsBulk(t *testing.T) {
 	} else {
 		if got.Language == nil || *got.Language != language {
 			t.Fatalf("expected language %q, got %+v", language, got.Language)
+		}
+		if got.Hostname == nil || *got.Hostname != hostname {
+			t.Fatalf("expected hostname %q, got %+v", hostname, got.Hostname)
 		}
 		if got.CountryCode == nil || *got.CountryCode != country {
 			t.Fatalf("expected country %q, got %+v", country, got.CountryCode)

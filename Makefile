@@ -53,6 +53,9 @@ build-cloud:
 build-cloud-deploy:
 	@./build-cloud.sh arm64 --deploy
 
+update-default-spam-filter:
+	@./scripts/update-default-spam-filter.sh
+
 dev-cloud:
 	@echo "Starting development environment (cloud/billing)..."
 	@if ! command -v air > /dev/null; then \
@@ -66,4 +69,4 @@ dev-cloud-backend:
 	@HITKEEP_JWT_SECRET=$${HITKEEP_JWT_SECRET:-hitkeep-dev-jwt-secret} air -c .air-cloud.toml
 
 
-.PHONY: all build go-build frontend-build frontend-dashboard-build run clean
+.PHONY: all build go-build frontend-build frontend-dashboard-build run clean update-default-spam-filter

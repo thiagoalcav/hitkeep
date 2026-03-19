@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS hits (
     page_id         UUID        NOT NULL,
     timestamp       TIMESTAMPTZ NOT NULL,
     path            VARCHAR     NOT NULL,
+    hostname        VARCHAR,
     referrer        VARCHAR,
     user_agent      VARCHAR,
     viewport_width  INT,

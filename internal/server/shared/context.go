@@ -55,6 +55,7 @@ type Context struct {
 	WebhookLimiter *IPRateLimiter
 	AuthState      *AuthStateStore
 	IPFilter       *blocking.IPFilter
+	SpamFilter     *blocking.SpamFilter
 }
 
 // AnalyticsStore resolves the tenant-specific store that holds analytics data for the given site.

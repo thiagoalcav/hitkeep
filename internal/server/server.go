@@ -51,6 +51,8 @@ type Server struct {
 	webhookLimiter *shared.IPRateLimiter
 	ipFilter       *blocking.IPFilter
 	ipFilterStop   context.CancelFunc
+	spamFilter     *blocking.SpamFilter
+	spamFilterStop context.CancelFunc
 	takeout        *takeout.TakeoutService
 	ctx            *shared.Context
 
@@ -79,6 +81,24 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStore
 		ipFilterStop = cancel
 	}
 
+	spamFilterPath := conf.SpamFilterPath
+	if spamFilterPath == "" {
+		spamFilterPath = conf.DataPath + "/spam-filter.json"
+	}
+
+	spamFilter := blocking.NewSpamFilter(spamFilterPath)
+	if err := spamFilter.RefreshFromDisk(); err != nil {
+		slog.Warn("Failed to load cached spam filter data; embedded defaults will be used", "error", err, "path", spamFilterPath)
+	}
+
+	isLeader := func() bool {
+		return cluster != nil && cluster.IsLeader()
+	}
+
+	filterCtx, spamFilterCancel := context.WithCancel(context.Background())
+	spamFilter.StartRefreshLoop(filterCtx, conf.SpamFilterAutoUpdate, time.Duration(conf.SpamFilterUpdateIntervalMin)*time.Minute, isLeader)
+	spamFilterStop := spamFilterCancel
+
 	s := &Server{
 		store:          store,
 		cluster:        cluster,
@@ -91,6 +111,8 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStore
 		webhookLimiter: webhookLim,
 		ipFilter:       ipFilter,
 		ipFilterStop:   ipFilterStop,
+		spamFilter:     spamFilter,
+		spamFilterStop: spamFilterStop,
 		takeout:        takeoutService,
 	}
 
@@ -109,6 +131,7 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStore
 		WebhookLimiter: webhookLim,
 		AuthState:      authState,
 		IPFilter:       ipFilter,
+		SpamFilter:     spamFilter,
 	}
 
 	// Load static HTML into memory
@@ -135,6 +158,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 	if s.ipFilterStop != nil {
 		s.ipFilterStop()
+	}
+	if s.spamFilterStop != nil {
+		s.spamFilterStop()
 	}
 
 	s.ingestLimiter.Stop()

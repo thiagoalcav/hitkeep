@@ -235,7 +235,7 @@
             "customRange": "Benutzerdefiniert",
             "customShort": "Benutzerdef.",
             "customRangeSummary": "{{start}} - {{end}}",
-            "customRangeHint": "Wählen Sie eine genaue Start- und Endzeit bis auf die Minute.",
+            "customRangeHint": "Wähle eine genaue Start- und Endzeit bis auf die Minute.",
             "customStart": "Von",
             "customEnd": "Bis",
             "openCustomRangeAria": "Benutzerdefinierten Zeitraum öffnen"
@@ -250,12 +250,12 @@
         "breadcrumbOverview": "Übersicht",
         "filteredBadge": "Gefiltert",
         "rawHitsTitle": "Letzte Hits",
-        "noSiteDescription": "Wählen Sie eine Seite aus oder erstellen Sie eine, um Analysen zu sehen.",
+        "noSiteDescription": "Wähle eine Seite aus oder erstelle eine, um Analysen zu sehen.",
         "openPageInNewTabAria": "Seite in neuem Tab öffnen",
         "openReferrerInNewTabAria": "Referrer in neuem Tab öffnen",
         "exportStatus": {
             "success": "Export-Download wurde gestartet.",
-            "error": "Export der gefilterten Daten fehlgeschlagen. Bitte versuchen Sie es erneut."
+            "error": "Export der gefilterten Daten fehlgeschlagen. Bitte versuche es erneut."
         },
         "chartTitleWithRange": "Traffic: {{range}}",
         "chartTitleCustomRange": "Traffic: {{start}} - {{end}}",
@@ -275,22 +275,22 @@
         },
         "empty": {
             "noTrafficTitle": "Noch kein Traffic erfasst",
-            "noTrafficDescription": "Installieren Sie das Tracking-Snippet auf Ihrer Website, um Analytics-Daten zu sammeln.",
+            "noTrafficDescription": "Installiere das Tracking-Snippet auf deiner Website, um Analytics-Daten zu sammeln.",
             "teamTitle": "Noch keine Seiten in {{team}}",
-            "teamDescription": "Erstellen Sie die erste Seite in {{team}}, um Analytics-Daten für dieses Team zu sammeln.",
+            "teamDescription": "Erstelle die erste Seite in {{team}}, um Analytics-Daten für dieses Team zu sammeln.",
             "getTrackingCode": "Tracking-Code anzeigen",
             "createSite": "Seite erstellen"
         }
     },
     "goals": {
         "manageAction": "Ziele verwalten",
-        "noSiteDescription": "Wählen Sie eine Seite aus oder erstellen Sie eine, um Ziele zu sehen.",
+        "noSiteDescription": "Wähle eine Seite aus oder erstelle eine, um Ziele zu sehen.",
         "series": {
             "title": "Ziele",
-            "description": "Filtern Sie die Zeitreihe nach Zielen.",
+            "description": "Filtere die Zeitreihe nach Zielen.",
             "addFilterPlaceholder": "Zielfilter hinzufügen",
             "emptyTitle": "Noch keine Ziel-Conversions",
-            "emptyDescription": "Erstellen Sie ein Ziel und generieren Sie Traffic, um Conversions über die Zeit zu sehen."
+            "emptyDescription": "Erstelle ein Ziel und generiere Traffic, um Conversions über die Zeit zu sehen."
         },
         "kpis": {
             "totalGoals": "Gesamtzahl Ziele",
@@ -300,14 +300,14 @@
             "title": "Ziele",
             "manageTooltip": "Ziele verwalten",
             "emptyTitle": "Noch keine Ziele",
-            "emptyDescription": "Verfolgen Sie konkrete Conversion-Events wie Registrierungen oder Käufe.",
+            "emptyDescription": "Verfolge konkrete Conversion-Events wie Registrierungen oder Käufe.",
             "createAction": "Ziel erstellen",
             "conversionsSuffix": "Conversions",
             "conversionRateShort": "CR"
         },
         "manager": {
             "dialogTitle": "Ziele verwalten",
-            "dialogDescription": "Definieren Sie Conversion-Ziele, um bestimmte Nutzeraktionen oder Seitenaufrufe zu verfolgen.",
+            "dialogDescription": "Definiere Conversion-Ziele, um bestimmte Nutzeraktionen oder Seitenaufrufe zu verfolgen.",
             "empty": "Noch keine Ziele definiert.",
             "addTitle": "Neues Ziel hinzufügen",
             "namePlaceholder": "z. B. Erfolgreiche Registrierung",
@@ -318,7 +318,7 @@
             "urlPathPlaceholder": "/danke",
             "eventNamePlaceholder": "signup_completed",
             "urlPathHelp": "Wird ausgelöst, wenn ein Nutzer eine bestimmte URL besucht.",
-            "eventNameHelpPrefix": "Wird ausgelöst, wenn Sie",
+            "eventNameHelpPrefix": "Wird ausgelöst, wenn du",
             "eventNameHelpSuffix": "aufrufen.",
             "createAction": "Ziel erstellen"
         }
@@ -326,13 +326,13 @@
     "funnels": {
         "manageAction": "Funnels verwalten",
         "createAction": "Funnel erstellen",
-        "noSiteDescription": "Wählen Sie eine Seite aus oder erstellen Sie eine, um Funnels zu sehen.",
+        "noSiteDescription": "Wähle eine Seite aus oder erstelle eine, um Funnels zu sehen.",
         "series": {
             "title": "Funnels",
-            "description": "Filtern Sie die Zeitreihe nach Funnels.",
+            "description": "Filtere die Zeitreihe nach Funnels.",
             "addFilterPlaceholder": "Funnel-Filter hinzufügen",
             "emptyTitle": "Noch keine Funnel-Aktivität",
-            "emptyDescription": "Erstellen Sie einen Funnel und generieren Sie Traffic, um Einstiege und Abschlüsse über die Zeit zu sehen."
+            "emptyDescription": "Erstelle einen Funnel und generiere Traffic, um Einstiege und Abschlüsse über die Zeit zu sehen."
         },
         "kpis": {
             "funnels": "Funnels",
@@ -344,13 +344,13 @@
             "title": "Funnels",
             "manageTooltip": "Funnels verwalten",
             "emptyTitle": "Noch keine Funnels",
-            "emptyDescription": "Erstellen Sie eine Event-Abfolge, um Abbrüche und Conversions zu messen.",
+            "emptyDescription": "Erstelle eine Event-Abfolge, um Abbrüche und Conversions zu messen.",
             "createAction": "Funnel erstellen",
             "stepsCount": "{{count}} Schritte"
         },
         "manager": {
             "dialogTitle": "Funnels verwalten",
-            "dialogDescription": "Verfolgen Sie Nutzerpfade über mehrere Schritte.",
+            "dialogDescription": "Verfolge Nutzerpfade über mehrere Schritte.",
             "stepsLabel": "Schritte",
             "viewStats": "Statistik anzeigen",
             "empty": "Noch keine Funnels definiert.",
@@ -371,12 +371,12 @@
         }
     },
     "utm": {
-        "noSiteDescription": "Wählen Sie eine Seite aus oder erstellen Sie eine, um UTM-Metriken zu sehen.",
+        "noSiteDescription": "Wähle eine Seite aus oder erstelle eine, um UTM-Metriken zu sehen.",
         "series": {
             "title": "UTM-Performance",
-            "description": "Verfolgen Sie UTM-getriebenen Traffic im Zeitverlauf.",
+            "description": "Verfolge UTM-getriebenen Traffic im Zeitverlauf.",
             "emptyTitle": "Noch keine UTM-Aktivitat",
-            "emptyDescription": "Versehen Sie Kampagnenlinks mit UTM-Parametern, um deren Performance zu sehen."
+            "emptyDescription": "Versehe Kampagnenlinks mit UTM-Parametern, um deren Performance zu sehen."
         },
         "metrics": {
             "topCampaigns": "Top-Kampagnen",
@@ -402,14 +402,14 @@
     },
     "utmBuilder": {
         "breadcrumb": "UTM-Generator",
-        "subtitle": "Erstellen Sie getaggte Kampagnenlinks, um Traffic-Quellen in Ihren Analysen zu verfolgen.",
+        "subtitle": "Erstelle getaggte Kampagnenlinks, um Traffic-Quellen in deinen Analysen zu verfolgen.",
         "form": {
             "title": "Link erstellen",
             "siteSelectLabel": "URL von Website vorausfüllen",
             "siteSelectPlaceholder": "Website auswählen…",
             "siteSelectHint": "Durch Auswahl einer Website wird die URL unten vorausgefüllt.",
             "websiteUrlLabel": "Website-URL",
-            "websiteUrlHint": "Die vollständige URL mit https://, die Sie verfolgen möchten.",
+            "websiteUrlHint": "Die vollständige URL mit https://, die du verfolgen möchtest.",
             "sourceLabel": "Kampagnenquelle",
             "sourceHint": "Herkunft des Traffics — z. B. google, newsletter, twitter.",
             "mediumLabel": "Kampagnenmedium",
@@ -423,7 +423,7 @@
         },
         "preview": {
             "title": "Generierte URL",
-            "description": "Füllen Sie mindestens Website-URL und Kampagnenquelle aus, um einen getaggten Link zu erzeugen.",
+            "description": "Fülle mindestens Website-URL und Kampagnenquelle aus, um einen getaggten Link zu erzeugen.",
             "copyAction": "URL kopieren"
         },
         "reference": {
@@ -436,7 +436,7 @@
         },
         "validation": {
             "urlRequired": "Website-URL ist erforderlich.",
-            "urlInvalid": "Geben Sie eine gültige URL mit https:// oder http:// ein.",
+            "urlInvalid": "Gib eine gültige URL mit https:// oder http:// ein.",
             "sourceRequired": "Kampagnenquelle ist erforderlich."
         }
     },
@@ -452,28 +452,28 @@
             "updatePassword": "Passwort aktualisieren",
             "twoFactor": {
                 "title": "Zwei-Faktor-Authentifizierung",
-                "description": "Schützen Sie Ihr Konto mit einem Einmalcode aus einer Authenticator-App.",
-                "setupDescription": "Starten Sie die Einrichtung, um einen geheimen Schlüssel zu erstellen und einen 6-stelligen TOTP-Code zu bestätigen.",
-                "enabledDescription": "Die Zwei-Faktor-Authentifizierung ist für Ihr Konto derzeit aktiviert.",
+                "description": "Schütze dein Konto mit einem Einmalcode aus einer Authenticator-App.",
+                "setupDescription": "Starte die Einrichtung, um einen geheimen Schlüssel zu erstellen und einen 6-stelligen TOTP-Code zu bestätigen.",
+                "enabledDescription": "Die Zwei-Faktor-Authentifizierung ist für dein Konto derzeit aktiviert.",
                 "secretLabel": "Manueller Einrichtungs-Schlüssel",
                 "otpauthLabel": "OTPAuth-URI",
                 "verifyCodeLabel": "Bestätigungscode",
                 "disableCodeLabel": "Aktueller Authenticator-Code",
-                "disableHint": "Geben Sie einen gültigen 6-stelligen Code ein, um die Zwei-Faktor-Authentifizierung zu deaktivieren.",
+                "disableHint": "Gib einen gültigen 6-stelligen Code ein, um die Zwei-Faktor-Authentifizierung zu deaktivieren.",
                 "startSetupAction": "Einrichtung starten",
                 "verifyAction": "Zwei-Faktor aktivieren",
                 "disableAction": "Zwei-Faktor deaktivieren",
                 "enabled": "Zwei-Faktor-Authentifizierung aktiviert.",
                 "disabled": "Zwei-Faktor-Authentifizierung deaktiviert.",
                 "errors": {
-                    "startFailed": "Die Einrichtung der Zwei-Faktor-Authentifizierung konnte nicht gestartet werden. Bitte versuchen Sie es erneut.",
-                    "verifyFailed": "Verifizierung fehlgeschlagen. Prüfen Sie Ihren Code und versuchen Sie es erneut.",
+                    "startFailed": "Die Einrichtung der Zwei-Faktor-Authentifizierung konnte nicht gestartet werden. Bitte versuche es erneut.",
+                    "verifyFailed": "Verifizierung fehlgeschlagen. Prüfe deinen Code und versuche es erneut.",
                     "disableFailed": "Die Zwei-Faktor-Authentifizierung konnte nicht deaktiviert werden."
                 }
             },
             "passkeys": {
                 "title": "Passkeys",
-                "description": "Registrieren Sie einen Passkey für die gerätebasierte Anmeldung.",
+                "description": "Registriere einen Passkey für die gerätebasierte Anmeldung.",
                 "empty": "Noch keine Passkeys registriert.",
                 "nameLabel": "Passkey-Name",
                 "namePlaceholder": "z. B. Arbeitslaptop",
@@ -484,18 +484,18 @@
                 "deleted": "Passkey entfernt.",
                 "errors": {
                     "notSupported": "Dieser Browser unterstützt die Passkey-Registrierung nicht.",
-                    "registrationFailed": "Passkey-Registrierung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+                    "registrationFailed": "Passkey-Registrierung fehlgeschlagen. Bitte versuche es erneut.",
                     "deleteFailed": "Dieser Passkey kann derzeit nicht entfernt werden."
                 }
             },
             "recoveryCodes": {
                 "title": "Wiederherstellungscodes",
-                "description": "Erstellen Sie einmalige Backup-Codes für die Konto-Wiederherstellung, falls Sie Ihren Authenticator oder Passkey verlieren.",
+                "description": "Erstelle einmalige Backup-Codes für die Konto-Wiederherstellung, falls du deinen Authenticator oder Passkey verlierst.",
                 "remainingLabel": "Backup-Codes",
                 "remainingValue": "{{count}} Codes übrig",
                 "generatedBadge": "Erstellt",
-                "requiresMfa": "Aktivieren Sie TOTP oder registrieren Sie einen Passkey, bevor Sie Wiederherstellungscodes erstellen.",
-                "codesTitle": "Speichern Sie diese Wiederherstellungscodes jetzt",
+                "requiresMfa": "Aktiviere TOTP oder registriere einen Passkey, bevor du Wiederherstellungscodes erstellst.",
+                "codesTitle": "Speichere diese Wiederherstellungscodes jetzt",
                 "codesHint": "Jeder Code kann einmal verwendet werden. Sie werden nur beim Erstellen oder erneuten Generieren angezeigt.",
                 "copyAction": "Alle kopieren",
                 "downloadAction": ".txt herunterladen",
@@ -507,22 +507,22 @@
                 "errors": {
                     "copyFailed": "Wiederherstellungscodes konnten nicht kopiert werden.",
                     "downloadFailed": "Wiederherstellungscodes konnten nicht heruntergeladen werden.",
-                    "generateFailed": "Wiederherstellungscodes konnten nicht erstellt werden. Bitte versuchen Sie es erneut.",
-                    "mfaRequired": "Aktivieren Sie TOTP oder registrieren Sie einen Passkey, bevor Sie Wiederherstellungscodes erstellen."
+                    "generateFailed": "Wiederherstellungscodes konnten nicht erstellt werden. Bitte versuche es erneut.",
+                    "mfaRequired": "Aktiviere TOTP oder registriere einen Passkey, bevor du Wiederherstellungscodes erstellst."
                 }
             },
             "errors": {
                 "loadFailed": "Sicherheitseinstellungen konnten nicht geladen werden.",
                 "invalidCurrentPassword": "Aktuelles Passwort ist falsch.",
-                "updateFailed": "Passwort konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut."
+                "updateFailed": "Passwort konnte nicht aktualisiert werden. Bitte versuche es erneut."
             }
         },
         "user": {
             "breadcrumb": "Benutzereinstellungen",
-            "subtitle": "Verwalten Sie die Sicherheit und Einstellungen Ihres Kontos.",
+            "subtitle": "Verwalte die Sicherheit und Einstellungen deines Kontos.",
             "profile": {
                 "title": "Profil",
-                "description": "Aktualisieren Sie Ihre persönlichen Angaben und Ihre Anmelde-E-Mail.",
+                "description": "Aktualisiere deine persönlichen Angaben und deine Anmelde-E-Mail.",
                 "emailLabel": "E-Mail-Adresse",
                 "emailPlaceholder": "you@example.com",
                 "givenNameLabel": "Vorname",
@@ -535,37 +535,37 @@
                 },
                 "validation": {
                     "emailRequired": "E-Mail ist erforderlich.",
-                    "emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+                    "emailInvalid": "Bitte gib eine gültige E-Mail-Adresse ein.",
                     "emailTooLong": "E-Mail darf maximal 320 Zeichen haben.",
                     "nameTooLong": "Vor- und Nachname dürfen maximal 120 Zeichen haben."
                 },
                 "errors": {
                     "loadFailed": "Profil konnte nicht geladen werden.",
-                    "invalidInput": "Bitte prüfen Sie die markierten Felder und versuchen Sie es erneut.",
+                    "invalidInput": "Bitte prüfe die markierten Felder und versuche es erneut.",
                     "emailTaken": "Diese E-Mail wird bereits verwendet.",
-                    "notFound": "Ihr Konto wurde nicht gefunden.",
-                    "updateFailed": "Profil konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut."
+                    "notFound": "Dein Konto wurde nicht gefunden.",
+                    "updateFailed": "Profil konnte nicht aktualisiert werden. Bitte versuche es erneut."
                 }
             },
             "dataExportTitle": "Datenexport",
             "exportAllTitle": "Alle Daten exportieren",
-            "exportAllDescription": "Laden Sie alle Ihre Daten über alle Seiten hinweg als CSV, XLSX, Parquet, JSON oder NDJSON herunter.",
+            "exportAllDescription": "Lade alle deine Daten über alle Seiten hinweg als CSV, XLSX, Parquet, JSON oder NDJSON herunter.",
             "exportStatus": {
                 "success": "Download wurde gestartet.",
-                "error": "Datenexport fehlgeschlagen. Bitte versuchen Sie es erneut."
+                "error": "Datenexport fehlgeschlagen. Bitte versuche es erneut."
             }
         },
         "reports": {
             "breadcrumb": "E-Mail-Berichte",
-            "subtitle": "Konfigurieren Sie geplante Analyse-E-Mails für Ihre Websites.",
+            "subtitle": "Konfiguriere geplante Analyse-E-Mails für deine Websites.",
             "digest": {
                 "title": "Konsolidierter Digest",
-                "description": "Erhalten Sie eine Zusammenfassungs-E-Mail für alle Ihre Websites."
+                "description": "Erhalte eine Zusammenfassungs-E-Mail für alle deine Websites."
             },
             "perSite": {
                 "title": "Website-spezifische Berichte",
                 "description": "Einzelne E-Mails für jede Website.",
-                "empty": "Keine Websites gefunden. Fügen Sie eine Website hinzu."
+                "empty": "Keine Websites gefunden. Füge eine Website hinzu."
             },
             "frequency": {
                 "daily": "Täglich",
@@ -578,7 +578,7 @@
         },
         "apiClients": {
             "title": "API-Clients",
-            "description": "Erstellen Sie delegierte API-Clients mit Berechtigungen, die auf Ihren eigenen Zugriff begrenzt sind.",
+            "description": "Erstelle delegierte API-Clients mit Berechtigungen, die auf deinen eigenen Zugriff begrenzt sind.",
             "loading": "API-Clients werden geladen...",
             "empty": "Noch keine API-Clients.",
             "listTitle": "Vorhandene API-Clients",
@@ -620,13 +620,13 @@
                     "instanceRoleRequired": "Instanzrolle ist erforderlich.",
                     "expiresAtPast": "Ablaufzeit muss in der Zukunft liegen.",
                     "expiresAtInvalid": "Ablaufzeit ist ungültig.",
-                    "scopeSiteRequired": "Wählen Sie eine Site, bevor Sie einen Scope hinzufügen."
+                    "scopeSiteRequired": "Wähle eine Site, bevor du einen Scope hinzufügst."
                 },
                 "teamSiteScopesHint": "Beschränke diesen Client auf bestimmte Sites innerhalb des ausgewählten Teams."
             },
             "tokenNotice": {
                 "title": "Dieses Token jetzt kopieren",
-                "description": "Aus Sicherheitsgründen wird das Token nur einmal angezeigt. Speichern Sie es in Ihrem Secret-Manager."
+                "description": "Aus Sicherheitsgründen wird das Token nur einmal angezeigt. Speichere es in deinem Secret-Manager."
             },
             "messages": {
                 "created": "API-Client erstellt.",
@@ -648,7 +648,7 @@
         }
     },
     "setup": {
-        "description": "Erstellen Sie Ihr Administratorkonto, um zu starten.",
+        "description": "Erstelle dein Administratorkonto, um zu starten.",
         "givenNameLabel": "Vorname",
         "givenNamePlaceholder": "Max",
         "lastNameLabel": "Nachname",
@@ -657,20 +657,20 @@
         "createAdminAction": "Admin-Konto erstellen",
         "createAdminAndContinueAction": "Admin-Konto erstellen und fortfahren",
         "errors": {
-            "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
+            "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut."
         }
     },
     "password": {
         "forgot": {
             "title": "Passwort zurücksetzen",
-            "description": "Geben Sie Ihre E-Mail-Adresse ein. Wir senden Ihnen einen Link zum Zurücksetzen Ihres Passworts.",
+            "description": "Gib deine E-Mail-Adresse ein. Wir senden dir einen Link zum Zurücksetzen deines Passworts.",
             "successTitle": "Posteingang prüfen!",
             "successDescription": "Falls ein Konto für {{email}} existiert, haben wir einen Link zum Zurücksetzen gesendet.",
             "returnToSignIn": "Zurück zur Anmeldung",
             "sendResetLink": "Link zum Zurücksetzen senden",
             "backToSignIn": "Zurück zur Anmeldung",
             "errors": {
-                "unexpected": "Etwas ist schiefgelaufen. Bitte versuchen Sie es später erneut."
+                "unexpected": "Etwas ist schiefgelaufen. Bitte versuche es später erneut."
             }
         },
         "reset": {
@@ -684,7 +684,7 @@
                 "tokenMissing": "Ungültiger Link. Das Token fehlt.",
                 "invalidLink": "Ungültiger Link zum Zurücksetzen des Passworts.",
                 "expiredOrInvalid": "Dieser Link ist abgelaufen oder ungültig.",
-                "resetFailed": "Passwort konnte nicht zurückgesetzt werden. Bitte versuchen Sie es erneut."
+                "resetFailed": "Passwort konnte nicht zurückgesetzt werden. Bitte versuche es erneut."
             }
         }
     },
@@ -697,8 +697,8 @@
             "tokenHintLabel": "Token",
             "urlUnavailable": "URL ist für bestehende Links ausgeblendet",
             "empty": "Noch keine Freigabelinks vorhanden.",
-            "generateFailed": "Freigabelink konnte momentan nicht erstellt werden. Bitte versuchen Sie es erneut.",
-            "loadFailed": "Freigabelinks konnten momentan nicht geladen werden. Bitte versuchen Sie es erneut.",
+            "generateFailed": "Freigabelink konnte momentan nicht erstellt werden. Bitte versuche es erneut.",
+            "loadFailed": "Freigabelinks konnten momentan nicht geladen werden. Bitte versuche es erneut.",
             "deleteAction": "Löschen",
             "deleteConfirmTitle": "Freigabelink löschen",
             "deleteConfirmMessage": "Alle Nutzer mit diesem Link verlieren sofort den Zugriff.",
@@ -718,23 +718,23 @@
     "sites": {
         "addDialog": {
             "title": "Seite hinzufügen",
-            "instructionsLine1": "Geben Sie Ihre Hauptdomain oder Subdomain ein (z. B. {{apex}}, {{subdomain}}).",
-            "instructionsLine2": "{{www}} wird bei Ihrer Hauptdomain automatisch mit erfasst.",
+            "instructionsLine1": "Gib deine Hauptdomain oder Subdomain ein (z. B. {{apex}}, {{subdomain}}).",
+            "instructionsLine2": "{{www}} wird bei deiner Hauptdomain automatisch mit erfasst.",
             "domainLabel": "Domainname",
             "domainPlaceholder": "example.com",
             "addAction": "Seite hinzufügen",
             "errors": {
                 "domainRequired": "Domain ist erforderlich.",
                 "domainInvalid": "Ungültiges Domain-Format.",
-                "removeProtocol": "Bitte entfernen Sie http:// oder https://",
-                "removeWww": "Bitte entfernen Sie 'www.'. Geben Sie nur die Hauptdomain ein.",
+                "removeProtocol": "Bitte entferne http:// oder https://",
+                "removeWww": "Bitte entferne 'www.'. Gib nur die Hauptdomain ein.",
                 "createFailed": "Seite konnte nicht erstellt werden. Die Domain existiert möglicherweise bereits."
             }
         },
         "danger": {
             "deleteTitle": "Seite löschen",
             "deleteDescription": "Löscht diese Seite und alle zugehörigen Analytics-Daten dauerhaft.",
-            "confirmLabel": "Geben Sie \"{{domain}}\" zur Bestätigung ein",
+            "confirmLabel": "Gib \"{{domain}}\" zur Bestätigung ein",
             "confirmPlaceholder": "example.com",
             "deleteAction": "Seite löschen",
             "deleteFailed": "Seite konnte nicht gelöscht werden."
@@ -748,7 +748,7 @@
             "savePolicy": "Richtlinie speichern"
         },
         "exclusions": {
-            "description": "Schließen Sie internen, Monitoring- oder Bot-Traffic per IP oder CIDR aus, damit er nicht in der Analytics-Speicherung landet.",
+            "description": "Schließe internen, Monitoring- oder Bot-Traffic per IP oder CIDR aus, damit er nicht in der Analytics-Speicherung landet.",
             "cidrLabel": "IP oder CIDR",
             "cidrPlaceholder": "203.0.113.5 oder 192.168.0.0/24",
             "descriptionLabel": "Beschreibung",
@@ -757,18 +757,18 @@
             "loading": "Ausschlüsse werden geladen...",
             "empty": "Für diese Seite sind keine Ausschlüsse konfiguriert.",
             "confirmDelete": "Ausschluss {{cidr}} löschen?",
-            "suggestionsTitle": "Ihre aktuelle IP",
-            "suggestionsHint": "Kopieren Sie dieses CIDR und fügen Sie es in das Feld IP oder CIDR ein.",
+            "suggestionsTitle": "Deine aktuelle IP",
+            "suggestionsHint": "Kopiere dieses CIDR und füge es in das Feld IP oder CIDR ein.",
             "copySuggestionsAction": "Aktuelle IP kopieren",
-            "currentIpLoading": "Ihre IP wird ermittelt...",
-            "currentIpUnavailable": "Ihre aktuelle IP konnte nicht ermittelt werden.",
+            "currentIpLoading": "Deine IP wird ermittelt...",
+            "currentIpUnavailable": "Deine aktuelle IP konnte nicht ermittelt werden.",
             "columns": {
                 "cidr": "CIDR",
                 "description": "Beschreibung",
                 "created": "Erstellt"
             },
             "errors": {
-                "invalidCidr": "Geben Sie eine gültige IP- oder CIDR-Angabe ein.",
+                "invalidCidr": "Gib eine gültige IP- oder CIDR-Angabe ein.",
                 "descriptionTooLong": "Die Beschreibung darf maximal 255 Zeichen lang sein.",
                 "loadFailed": "Ausschlüsse konnten nicht geladen werden.",
                 "createFailed": "Ausschluss konnte nicht erstellt werden.",
@@ -781,7 +781,7 @@
             "sitesLabel": "Seiten",
             "addSiteAria": "Neue Seite hinzufügen",
             "selectPlaceholder": "Seite auswählen",
-            "selectSiteAria": "Wählen Sie eine Seite, um Statistiken zu sehen",
+            "selectSiteAria": "Wähle eine Seite, um Statistiken zu sehen",
             "siteSettingsAria": "Seiteneinstellungen",
             "trackingCodeAria": "Tracking-Code",
             "shareDashboardAria": "Dashboard teilen"
@@ -805,13 +805,13 @@
                 "domainLabel": "Domain",
                 "dataExportTitle": "Datenexport",
                 "exportSiteDataTitle": "Seitendaten exportieren",
-                "exportSiteDataDescription": "Laden Sie alle Hits und Events für diese Seite als CSV, XLSX, Parquet, JSON oder NDJSON herunter.",
+                "exportSiteDataDescription": "Lade alle Hits und Events für diese Seite als CSV, XLSX, Parquet, JSON oder NDJSON herunter.",
                 "exportStatus": {
                     "success": "Download wurde gestartet.",
-                    "error": "Seitendatenexport fehlgeschlagen. Bitte versuchen Sie es erneut."
+                    "error": "Seitendatenexport fehlgeschlagen. Bitte versuche es erneut."
                 }
             },
-            "unsavedChangesConfirm": "Sie haben ungespeicherte Änderungen. Verwerfen?"
+            "unsavedChangesConfirm": "Du hast ungespeicherte Änderungen. Verwerfen?"
         },
         "team": {
             "emailPlaceholder": "user@example.com",
@@ -830,12 +830,12 @@
                 }
             },
             "errors": {
-                "addFailed": "Mitglied konnte nicht hinzugefügt werden. Stellen Sie sicher, dass der Benutzer existiert.",
+                "addFailed": "Mitglied konnte nicht hinzugefügt werden. Stelle sicher, dass der Benutzer existiert.",
                 "removeFailed": "Mitglied konnte nicht entfernt werden: {{error}}"
             }
         },
         "tracking": {
-            "description": "Kopieren Sie den folgenden Code und fügen Sie ihn in das HTML Ihrer Website ein.",
+            "description": "Kopiere den folgenden Code und füge ihn in das HTML deiner Website ein.",
             "trackingCodeConfiguration": "Tracking-Code-Konfiguration",
             "collectDntLabel": "DNT erfassen",
             "collectDntDescription": "Nutzer erfassen, auch wenn im Browser \"Do Not Track\" aktiviert ist.",
@@ -863,7 +863,7 @@
         },
         "exclusions": {
             "title": "Globale IP/CIDR-Filter",
-            "description": "Verwerfen Sie Traffic aus ausgewählten Netzwerken für jede Seite in dieser HitKeep-Instanz.",
+            "description": "Verwerfe Traffic aus ausgewählten Netzwerken für jede Seite in dieser HitKeep-Instanz.",
             "cidrLabel": "IP oder CIDR",
             "cidrPlaceholder": "203.0.113.5 oder 192.168.0.0/24",
             "descriptionLabel": "Beschreibung",
@@ -872,18 +872,18 @@
             "loading": "Globale Filter werden geladen...",
             "empty": "Keine globalen Filter konfiguriert.",
             "confirmDelete": "Globalen Filter {{cidr}} löschen?",
-            "suggestionsTitle": "Ihre aktuelle IP",
-            "suggestionsHint": "Kopieren Sie dieses CIDR und fügen Sie es in das Feld IP oder CIDR ein.",
+            "suggestionsTitle": "Deine aktuelle IP",
+            "suggestionsHint": "Kopiere dieses CIDR und füge es in das Feld IP oder CIDR ein.",
             "copySuggestionsAction": "Aktuelle IP kopieren",
-            "currentIpLoading": "Ihre IP wird ermittelt...",
-            "currentIpUnavailable": "Ihre aktuelle IP konnte nicht ermittelt werden.",
+            "currentIpLoading": "Deine IP wird ermittelt...",
+            "currentIpUnavailable": "Deine aktuelle IP konnte nicht ermittelt werden.",
             "columns": {
                 "cidr": "CIDR",
                 "description": "Beschreibung",
                 "created": "Erstellt"
             },
             "errors": {
-                "invalidCidr": "Geben Sie eine gültige IP- oder CIDR-Angabe ein.",
+                "invalidCidr": "Gib eine gültige IP- oder CIDR-Angabe ein.",
                 "descriptionTooLong": "Die Beschreibung darf maximal 255 Zeichen lang sein.",
                 "loadFailed": "Globale Filter konnten nicht geladen werden.",
                 "createFailed": "Globaler Filter konnte nicht erstellt werden.",
@@ -1067,14 +1067,14 @@
         "signOut": "Abmelden"
     },
     "login": {
-        "subtitle": "Melden Sie sich an, um Ihr Dashboard zu öffnen.",
+        "subtitle": "Melde dich an, um dein Dashboard zu öffnen.",
         "cloudSignupPrompt": "Neu bei HitKeep Cloud?",
         "cloudSignupAction": "{{jurisdiction}}-Workspace erstellen",
         "cloudSignupAlternatePrompt": "Andere rechtliche Grenze benötigt?",
         "cloudSignupAlternateAction": "{{jurisdiction}}-Cloud verwenden",
         "emailLabel": "E-Mail-Adresse",
         "emailPlaceholder": "you@example.com",
-        "emailInvalid": "Bitte geben Sie eine gültige E-Mail-Adresse ein.",
+        "emailInvalid": "Bitte gib eine gültige E-Mail-Adresse ein.",
         "passwordLabel": "Passwort",
         "passwordPlaceholder": "••••••••",
         "passwordRequired": "Passwort ist erforderlich.",
@@ -1084,7 +1084,7 @@
         "or": "oder",
         "signInWithPasskey": "Mit Passkey anmelden",
         "mfaTitle": "Zwei-Faktor-Verifizierung",
-        "mfaSubtitle": "Schließen Sie die Anmeldung mit Ihrem Authenticator-Code, einem Wiederherstellungscode oder einem Passkey ab.",
+        "mfaSubtitle": "Schließe die Anmeldung mit deinem Authenticator-Code, einem Wiederherstellungscode oder einem Passkey ab.",
         "totpCodeLabel": "Authenticator-Code",
         "recoveryCodeLabel": "Wiederherstellungscode",
         "recoveryCodePlaceholder": "ABCD-EFGH",
@@ -1094,18 +1094,18 @@
         "errors": {
             "invalidCredentials": "Ungültige E-Mail-Adresse oder Passwort.",
             "passkeyNotSupported": "Passkey-Anmeldung wird auf diesem Gerät nicht unterstützt.",
-            "passkeyFailed": "Passkey-Anmeldung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+            "passkeyFailed": "Passkey-Anmeldung fehlgeschlagen. Bitte versuche es erneut.",
             "invalidTotp": "Ungültiger Authenticator-Code.",
             "invalidRecoveryCode": "Ungültiger Wiederherstellungscode.",
-            "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut."
+            "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut."
         }
     },
     "signup": {
         "title": "Kostenlos starten",
-        "subtitle": "Erstellen Sie Ihren Workspace und tracken Sie in unter einer Minute. Keine Kreditkarte erforderlich.",
+        "subtitle": "Erstelle deinen Workspace und tracke in unter einer Minute. Keine Kreditkarte erforderlich.",
         "jurisdictionLabel": "Jurisdiktion",
         "jurisdictionDescription": "Dieser Workspace bleibt an die ausgewählte rechtliche Grenze und AWS-Region gebunden.",
-        "jurisdictionRedirectHint": "Sie haben {{jurisdiction}} gewählt. Beim Fortfahren leiten wir Sie zur passenden regionalen Registrierung weiter.",
+        "jurisdictionRedirectHint": "Du hast {{jurisdiction}} gewählt. Beim Fortfahren leiten wir dich zur passenden regionalen Registrierung weiter.",
         "jurisdictions": {
             "eu": "EU",
             "us": "US"
@@ -1119,7 +1119,7 @@
         "teamNameRequired": "Ein Teamname ist erforderlich.",
         "emailPlaceholder": "you@example.com",
         "submit": "Workspace erstellen",
-        "haveAccount": "Sie haben bereits ein Konto?",
+        "haveAccount": "Du hast bereits ein Konto?",
         "signInAction": "Anmelden",
         "otherJurisdictionPrompt": "Andere rechtliche Grenze benötigt?",
         "otherJurisdictionAction": "{{jurisdiction}}-Registrierung verwenden",
@@ -1127,7 +1127,7 @@
             "free": {
                 "name": "Free",
                 "price": "€0",
-                "description": "60 Tage Aufbewahrung, um Ihre Websites zu validieren, bevor Sie upgraden."
+                "description": "60 Tage Aufbewahrung, um deine Websites zu validieren, bevor du upgradest."
             },
             "pro": {
                 "name": "Pro",
@@ -1140,24 +1140,24 @@
                 "description": "Mehr Skalierung für Agenturen, Produktteams und höheres Event-Volumen."
             }
         },
-        "selfHostLink": "Sie möchten selbst hosten? Zur Dokumentation →",
-        "tosLabel": "Ich stimme den",
+        "selfHostLink": "Du möchtest selbst hosten? Zur Dokumentation →",
+        "tosLabel": "Ich akzeptiere die",
         "tosLink": "Nutzungsbedingungen",
-        "tosAnd": "und der",
+        "tosAnd": "und die",
         "privacyLink": "Datenschutzrichtlinie",
-        "tosRequired": "Sie müssen die Nutzungsbedingungen und die Datenschutzrichtlinie akzeptieren.",
-        "verifyTitle": "Überprüfen Sie Ihr Postfach",
-        "verifySubtitle": "Wir haben einen Bestätigungslink an {{email}} gesendet. Klicken Sie darauf, um Ihren Workspace zu aktivieren.",
+        "tosRequired": "Du musst die Nutzungsbedingungen und die Datenschutzrichtlinie akzeptieren.",
+        "verifyTitle": "Überprüfe dein Postfach",
+        "verifySubtitle": "Wir haben einen Bestätigungslink an {{email}} gesendet. Klicke darauf, um deinen Workspace zu aktivieren.",
         "errors": {
             "emailExists": "Für diese E-Mail-Adresse existiert bereits ein Konto.",
             "planUnavailable": "Diese Registrierungsoption ist derzeit nicht verfügbar.",
-            "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuchen Sie es erneut.",
-            "verificationExpired": "Dieser Bestätigungslink ist abgelaufen. Bitte registrieren Sie sich erneut."
+            "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut.",
+            "verificationExpired": "Dieser Bestätigungslink ist abgelaufen. Bitte registriere dich erneut."
         }
     },
     "preferences": {
         "breadcrumb": "Einstellungen",
-        "subtitle": "Verwalten Sie Ihre Anwendungseinstellungen.",
+        "subtitle": "Verwalte deine Anwendungseinstellungen.",
         "actions": {
             "saveChanges": "Änderungen speichern"
         },
@@ -1166,11 +1166,11 @@
             "saveFailed": "Speichern fehlgeschlagen"
         },
         "errors": {
-            "loadFailed": "Einstellungen konnten nicht geladen werden. Bitte aktualisieren Sie die Seite und versuchen Sie es erneut."
+            "loadFailed": "Einstellungen konnten nicht geladen werden. Bitte aktualisiere die Seite und versuche es erneut."
         },
         "language": {
             "heading": "Spracheinstellungen",
-            "description": "Die Sprache Ihres Browsers wird standardmäßig verwendet, bis Sie diese Einstellungen anpassen.",
+            "description": "Die Sprache deines Browsers wird standardmäßig verwendet, bis du diese Einstellungen anpasst.",
             "defaultLabel": "Standardsprache",
             "defaultPlaceholder": "Standardsprache auswählen",
             "defaultHint": "Dies ist die primäre Sprache für die Dashboard-Oberfläche.",
@@ -1185,7 +1185,7 @@
     "events": {
         "title": "Events",
         "docsAction": "Events hinzufügen",
-        "noSiteDescription": "Wählen Sie eine Website aus, um Event-Analytics anzuzeigen.",
+        "noSiteDescription": "Wähle eine Website aus, um Event-Analytics anzuzeigen.",
         "eventNameLabel": "Event",
         "eventNamePlaceholder": "Event auswählen",
         "propertyKeyLabel": "Aufschlüsseln nach",
@@ -1194,12 +1194,12 @@
             "title": "Event-Aktivität",
             "description": "Event-Vorkommen im ausgewählten Zeitraum.",
             "emptyTitle": "Keine Event-Daten",
-            "emptyDescription": "Wählen Sie ein Event, um die Aktivität im Zeitverlauf anzuzeigen."
+            "emptyDescription": "Wähle ein Event, um die Aktivität im Zeitverlauf anzuzeigen."
         },
         "breakdown": {
             "title": "Eigenschaftsaufschlüsselung",
-            "selectEventFirst": "Wählen Sie ein Event aus, um eine Eigenschaftsaufschlüsselung anzuzeigen.",
-            "selectPropertyFirst": "Wählen Sie eine Eigenschaft aus, um die Aufschlüsselung anzuzeigen."
+            "selectEventFirst": "Wähle ein Event aus, um eine Eigenschaftsaufschlüsselung anzuzeigen.",
+            "selectPropertyFirst": "Wähle eine Eigenschaft aus, um die Aufschlüsselung anzuzeigen."
         },
         "kpis": {
             "totalEvents": "Gesamte Events"
@@ -1207,7 +1207,7 @@
     },
     "integration": {
         "apiClients": {
-            "subtitle": "Erstellen und verwalten Sie API-Clients für Integrationen."
+            "subtitle": "Erstelle und verwalte API-Clients für Integrationen."
         },
         "apiReference": {
             "subtitle": "Versionierte REST-API-Referenz mit Details zu Session- und API-Key-Authentifizierung.",
@@ -1218,11 +1218,11 @@
             "latest": "neueste",
             "operationsTitle": "Operationen",
             "loading": "API-Referenz wird geladen...",
-            "empty": "Keine API-Operationen entsprechen Ihrer Suche.",
+            "empty": "Keine API-Operationen entsprechen deiner Suche.",
             "noSummary": "Keine Zusammenfassung",
             "auth": {
                 "title": "Authentifizierung",
-                "description": "Verwenden Sie je nach Endpunktanforderung eine dieser Anmeldeinformationen.",
+                "description": "Verwende je nach Endpunktanforderung eine dieser Anmeldeinformationen.",
                 "bearerLabel": "Bearer-Token",
                 "apiKeyLabel": "X-API-Key-Header",
                 "cookieLabel": "Session-Cookie"

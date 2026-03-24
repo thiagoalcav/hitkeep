@@ -1,0 +1,120 @@
+<div class="flex flex-col h-full w-full bg-[var(--p-surface-ground)] transition-colors duration-200">
+    <app-page-header>
+        <ng-template appPageHeaderLeft>
+            <div>
+                <app-page-breadcrumb [items]="breadcrumbItems()" />
+            </div>
+        </ng-template>
+    </app-page-header>
+
+    <app-range-toolbar
+        [timeRanges]="timeRanges()"
+        [selectedRange]="selectedRange()"
+        [customRangeDates]="customRangeDates()"
+        [loading]="isLoading()"
+        (selectedRangeChange)="selectedRange.set($event)"
+        (customRangeDatesChange)="customRangeDates.set($event)"
+    >
+        <a
+            toolbar-right
+            pButton
+            [href]="docsUrl"
+            target="_blank"
+            rel="noreferrer"
+            size="small"
+            icon="pi pi-external-link"
+            iconPos="right"
+            [label]="'aiChatbots.docsAction' | transloco"
+            [attr.aria-label]="'aiChatbots.docsAction' | transloco"
+            class="p-button-rounded p-button-secondary"
+        ></a>
+    </app-range-toolbar>
+
+    @if (noSite()) {
+    <div class="flex flex-col items-center justify-center h-[50vh] gap-4">
+        <i class="pi pi-comments text-6xl text-primary opacity-20"></i>
+        <h2 class="text-2xl font-semibold text-muted-color">{{ "common.noSiteSelected" | transloco }}</h2>
+        <p class="text-muted-color">{{ "aiChatbots.noSiteDescription" | transloco }}</p>
+    </div>
+    } @else {
+    <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card mb-6">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-end">
+            <div class="flex-1">
+                <h2 class="text-lg font-semibold">{{ "aiChatbots.header.title" | transloco }}</h2>
+                <p class="text-sm text-[var(--p-text-muted-color)] mt-1">{{ "aiChatbots.header.description" | transloco }}</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full lg:w-auto lg:min-w-[28rem]">
+                <div class="flex flex-col gap-1">
+                    <label for="scope-key-select" class="text-sm font-medium">{{ "aiChatbots.filters.groupBy" | transloco }}</label>
+                    <p-select inputId="scope-key-select" [options]="scopeKeyOptions()" [ngModel]="selectedScopeKey()" (ngModelChange)="selectedScopeKey.set($event)" optionLabel="label" optionValue="value" class="w-full" />
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label for="scope-value-select" class="text-sm font-medium">{{ "aiChatbots.filters.value" | transloco }}</label>
+                    <p-select
+                        inputId="scope-value-select"
+                        [options]="scopeValueOptions()"
+                        [ngModel]="selectedScopeValue()"
+                        (ngModelChange)="selectedScopeValue.set($event)"
+                        optionLabel="label"
+                        optionValue="value"
+                        [placeholder]="'aiChatbots.filters.allValues' | transloco"
+                        [loading]="isLoadingBreakdowns()"
+                        [showClear]="true"
+                        class="w-full"
+                    />
+                </div>
+            </div>
+        </div>
+    </p-card>
+
+    <div class="flex flex-wrap items-center gap-2 mb-6">
+        @if (filterChips().length > 0) { @for (chip of filterChips(); track chip.key) {
+        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--p-primary-color)] text-sm">
+            <span class="font-medium text-[var(--p-text-color)]">{{ chip.label }}</span>
+        </span>
+        }
+        <button type="button" class="text-xs text-muted-color hover:text-[var(--p-text-color)] underline" (click)="clearFilters()">{{ "common.actions.clearAll" | transloco }}</button>
+        } @else {
+        <span class="text-sm text-[var(--p-text-muted-color)]">{{ "aiChatbots.filters.unfiltered" | transloco }}</span>
+        }
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mb-6">
+        @for (card of kpiCards(); track card.label) {
+        <app-kpi-card [label]="card.label" [value]="card.value" [delta]="card.delta" [loading]="isLoadingSeries() || isLoadingComparison()" />
+        }
+    </div>
+
+    <div class="mb-6">
+        <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card">
+            <div class="mb-4">
+                <h3 class="text-lg font-semibold">{{ "aiChatbots.chart.title" | transloco }}</h3>
+                <p class="text-sm text-[var(--p-text-muted-color)] mt-1">{{ "aiChatbots.chart.description" | transloco }}</p>
+            </div>
+            <app-series-chart
+                [data]="chartSeries()"
+                [series]="chartConfig()"
+                [comparisonData]="comparisonChartSeries()"
+                [isLoading]="isLoadingSeries()"
+                [isShortRange]="isShortRange()"
+                [comparisonLabel]="comparisonLabel()"
+                [emptyTitle]="'aiChatbots.chart.emptyTitle' | transloco"
+                [emptyDescription]="'aiChatbots.chart.emptyDescription' | transloco"
+            />
+        </p-card>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-6">
+        <app-metric-list [title]="'aiChatbots.breakdowns.intents' | transloco" icon="pi-send" [data]="topIntents()" [isLoading]="isLoadingBreakdowns()" />
+        <app-metric-list [title]="'aiChatbots.breakdowns.providers' | transloco" icon="pi-globe" [data]="topProviders()" [isLoading]="isLoadingBreakdowns()" />
+        <app-metric-list [title]="'aiChatbots.breakdowns.surfaces' | transloco" icon="pi-window-maximize" [data]="topSurfaces()" [isLoading]="isLoadingBreakdowns()" />
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <app-metric-list [title]="'common.metrics.topPages' | transloco" icon="pi-file" [data]="audience()?.top_pages ?? []" [isLoading]="isLoadingAudience()" [linkMode]="'path'" [siteDomain]="activeSite()?.domain ?? null" />
+        <app-metric-list [title]="'common.metrics.topSources' | transloco" icon="pi-link" [data]="audience()?.top_referrers ?? []" [isLoading]="isLoadingAudience()" [linkMode]="'url'" />
+        <app-metric-list [title]="'common.metrics.devices' | transloco" icon="pi-mobile" [data]="audience()?.top_devices ?? []" [isLoading]="isLoadingAudience()" />
+        <app-metric-list [title]="'common.metrics.countries' | transloco" icon="pi-globe" [data]="audience()?.top_countries ?? []" [isLoading]="isLoadingAudience()" [showCountryFlags]="true" [showCountryNames]="true" />
+    </div>
+    }
+</div>

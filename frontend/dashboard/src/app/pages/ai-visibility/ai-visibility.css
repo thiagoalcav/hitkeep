@@ -1,0 +1,10 @@
+.ai-visibility__note {
+    border-left: 3px solid var(--p-primary-color);
+    padding-left: 0.875rem;
+    color: var(--p-text-muted-color);
+}
+
+.ai-visibility__path-cell {
+    max-width: 20rem;
+    overflow-wrap: anywhere;
+}

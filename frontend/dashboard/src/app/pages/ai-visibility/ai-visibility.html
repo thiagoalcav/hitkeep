@@ -1,0 +1,268 @@
+<div class="flex flex-col h-full w-full bg-[var(--p-surface-ground)] transition-colors duration-200">
+    <app-page-header>
+        <ng-template appPageHeaderLeft>
+            <div>
+                <app-page-breadcrumb [items]="breadcrumbItems()" />
+            </div>
+        </ng-template>
+    </app-page-header>
+
+    <app-range-toolbar
+        [timeRanges]="timeRanges()"
+        [selectedRange]="selectedRange()"
+        [customRangeDates]="customRangeDates()"
+        [loading]="isLoading()"
+        (selectedRangeChange)="selectedRange.set($event)"
+        (customRangeDatesChange)="customRangeDates.set($event)"
+        (refresh)="refreshData()"
+    >
+        <div toolbar-right class="flex items-center gap-2">
+            <p-splitButton
+                icon="pi pi-download"
+                [label]="isExporting() ? ('common.preparing' | transloco) : ('common.actions.exportCsv' | transloco)"
+                [model]="exportMenuItems()"
+                [disabled]="!exportUrl() || isExporting()"
+                styleClass="p-button-outlined p-button-sm"
+                (onClick)="exportFiltered('csv')"
+            />
+            <a
+                pButton
+                [href]="docsUrl"
+                target="_blank"
+                rel="noreferrer"
+                size="small"
+                icon="pi pi-external-link"
+                iconPos="right"
+                [label]="'aiVisibility.docsAction' | transloco"
+                [attr.aria-label]="'aiVisibility.docsAction' | transloco"
+                class="p-button-rounded p-button-secondary"
+            ></a>
+        </div>
+    </app-range-toolbar>
+
+    @if (noSite()) {
+    <div class="flex flex-col items-center justify-center h-[50vh] gap-4">
+        <i class="pi pi-sparkles text-6xl text-primary opacity-20"></i>
+        <h2 class="text-2xl font-semibold text-muted-color">{{ "common.noSiteSelected" | transloco }}</h2>
+        <p class="text-muted-color">{{ "aiVisibility.noSiteDescription" | transloco }}</p>
+    </div>
+    } @else {
+
+    <!-- Filter chips + export status -->
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+        @if (filterChips().length > 0) { @for (chip of filterChips(); track chip.key) {
+        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--p-primary-color)] text-sm">
+            <span class="font-medium text-[var(--p-text-color)]">{{ chip.label }}</span>
+            <button type="button" class="text-muted-color hover:text-[var(--p-text-color)]" (click)="clearFilter(chip.key)" [attr.aria-label]="'common.removeFilterAria' | transloco">
+                <i class="pi pi-times" aria-hidden="true"></i>
+            </button>
+        </span>
+        }
+        <button type="button" class="text-xs text-muted-color hover:text-[var(--p-text-color)] underline" (click)="clearFilters()">{{ "common.actions.clearAll" | transloco }}</button>
+        } @else {
+        <span class="text-sm text-[var(--p-text-muted-color)]">{{ "aiVisibility.filters.unfiltered" | transloco }}</span>
+        }
+    </div>
+    @if (exportState() === "success") {
+    <div class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{{ "aiVisibility.exportStatus.success" | transloco }}</div>
+    } @if (exportState() === "error") {
+    <div class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ "aiVisibility.exportStatus.error" | transloco }}</div>
+    }
+
+    <!-- Primary KPIs: 4-column grid -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        @for (card of primaryKpiCards(); track card.label) {
+        <app-kpi-card [label]="card.label" [value]="card.value" [loading]="card.loading" />
+        }
+    </div>
+
+    <!-- Secondary stats row -->
+    <div class="grid grid-cols-3 gap-4 mb-6">
+        @for (card of secondaryKpiCards(); track card.label) {
+        <app-kpi-card [label]="card.label" [value]="card.value" [loading]="card.loading" />
+        }
+    </div>
+
+    <!-- Chart card with inline filters -->
+    <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card mb-6">
+        <div class="flex flex-col gap-4 xl:flex-row xl:items-end mb-4">
+            <div class="flex-1">
+                <h3 class="text-lg font-semibold">{{ "aiVisibility.chart.title" | transloco }}</h3>
+                <p class="text-sm text-[var(--p-text-muted-color)] mt-1">{{ "aiVisibility.chart.description" | transloco }}</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full xl:w-auto xl:min-w-[36rem]">
+                <p-select
+                    [options]="assistantOptions()"
+                    [ngModel]="filterValue('assistantName')"
+                    (ngModelChange)="setFilter('assistantName', $event)"
+                    optionLabel="label"
+                    optionValue="value"
+                    [placeholder]="'aiVisibility.filters.allAssistants' | transloco"
+                    [showClear]="true"
+                    class="w-full"
+                    size="small"
+                />
+                <p-select
+                    [options]="familyOptions()"
+                    [ngModel]="filterValue('assistantFamily')"
+                    (ngModelChange)="setFilter('assistantFamily', $event)"
+                    optionLabel="label"
+                    optionValue="value"
+                    [placeholder]="'aiVisibility.filters.allFamilies' | transloco"
+                    [showClear]="true"
+                    class="w-full"
+                    size="small"
+                />
+                <p-select
+                    [options]="resourceTypeOptions()"
+                    [ngModel]="filterValue('resourceType')"
+                    (ngModelChange)="setFilter('resourceType', $event)"
+                    optionLabel="label"
+                    optionValue="value"
+                    [placeholder]="'aiVisibility.filters.allResourceTypes' | transloco"
+                    [showClear]="true"
+                    class="w-full"
+                    size="small"
+                />
+            </div>
+        </div>
+        <app-series-chart
+            [data]="series()"
+            [series]="chartConfig()"
+            [isLoading]="isLoadingSeries()"
+            [isShortRange]="isShortRange()"
+            [emptyTitle]="'aiVisibility.chart.emptyTitle' | transloco"
+            [emptyDescription]="'aiVisibility.chart.emptyDescription' | transloco"
+        />
+    </p-card>
+
+    <!-- Breakdowns: 4-column grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+        <app-metric-list [title]="'aiVisibility.breakdowns.assistants' | transloco" icon="pi-android" [data]="overview()?.top_assistants ?? []" [isLoading]="isLoadingOverview()" />
+        <app-metric-list [title]="'aiVisibility.breakdowns.paths' | transloco" icon="pi-file" [data]="overview()?.top_paths ?? []" [isLoading]="isLoadingOverview()" [linkMode]="'path'" [siteDomain]="activeSite()?.domain ?? null" />
+        <app-metric-list
+            [title]="'aiVisibility.breakdowns.errorPaths' | transloco"
+            icon="pi-exclamation-triangle"
+            [data]="overview()?.top_error_paths ?? []"
+            [isLoading]="isLoadingOverview()"
+            [linkMode]="'path'"
+            [siteDomain]="activeSite()?.domain ?? null"
+        />
+        <app-metric-list [title]="'aiVisibility.breakdowns.resourceTypes' | transloco" icon="pi-database" [data]="overview()?.resource_type_split ?? []" [isLoading]="isLoadingOverview()" />
+    </div>
+
+    <!-- Correlation section -->
+    <section data-testid="ai-visibility-correlation-shot">
+        <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card mb-6">
+            <div class="flex flex-col gap-4">
+                <!-- Header + KPIs -->
+                <div>
+                    <h3 class="text-lg font-semibold">{{ "aiVisibility.correlation.title" | transloco }}</h3>
+                    <p class="text-sm text-[var(--p-text-muted-color)] mt-1">{{ "aiVisibility.correlation.description" | transloco }}</p>
+                </div>
+
+                <div data-testid="ai-visibility-correlation-kpis" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    @for (card of correlationKpis(); track card.label) {
+                    <app-kpi-card [label]="card.label" [value]="card.value" [loading]="card.loading" />
+                    }
+                </div>
+
+                <p data-testid="ai-visibility-correlation-note" class="ai-visibility__note text-sm">{{ "aiVisibility.correlation.note" | transloco }}</p>
+
+                <!-- Tables -->
+                <div data-testid="ai-visibility-correlation-tables" class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                    <div>
+                        <h4 class="text-base font-semibold mb-1">{{ "aiVisibility.tables.citationYield.title" | transloco }}</h4>
+                        <p class="text-xs text-[var(--p-text-muted-color)] mb-3">{{ "aiVisibility.tables.citationYield.description" | transloco }}</p>
+                        <p-table [value]="citationYieldRows()" [loading]="isLoadingCorrelation()" styleClass="p-datatable-sm" [tableStyle]="{ 'min-width': '100%' }">
+                            <ng-template pTemplate="header">
+                                <tr>
+                                    <th>{{ "aiVisibility.columns.path" | transloco }}</th>
+                                    <th>{{ "aiVisibility.columns.assistant" | transloco }}</th>
+                                    <th class="text-right">{{ "aiVisibility.columns.fetches" | transloco }}</th>
+                                    <th class="text-right">{{ "aiVisibility.columns.aiVisits" | transloco }}</th>
+                                    <th class="text-right">{{ "aiVisibility.columns.yield" | transloco }}</th>
+                                </tr>
+                            </ng-template>
+                            <ng-template pTemplate="body" let-row>
+                                <tr>
+                                    <td class="ai-visibility__path-cell">{{ row.path }}</td>
+                                    <td>{{ row.assistant_name }}</td>
+                                    <td class="text-right">{{ row.fetch_count | translocoDecimal }}</td>
+                                    <td class="text-right">{{ row.ai_referred_visits | translocoDecimal }}</td>
+                                    <td class="text-right">{{ formatPercent(row.citation_yield_pct) }}</td>
+                                </tr>
+                            </ng-template>
+                            <ng-template pTemplate="emptymessage">
+                                <tr>
+                                    <td colspan="5" class="text-center text-sm text-[var(--p-text-muted-color)] py-6">{{ "aiVisibility.tables.citationYield.empty" | transloco }}</td>
+                                </tr>
+                            </ng-template>
+                        </p-table>
+                    </div>
+
+                    <div>
+                        <h4 class="text-base font-semibold mb-1">{{ "aiVisibility.tables.opportunityPages.title" | transloco }}</h4>
+                        <p class="text-xs text-[var(--p-text-muted-color)] mb-3">{{ "aiVisibility.tables.opportunityPages.description" | transloco }}</p>
+                        <p-table [value]="opportunityRows()" [loading]="isLoadingCorrelation()" styleClass="p-datatable-sm" [tableStyle]="{ 'min-width': '100%' }">
+                            <ng-template pTemplate="header">
+                                <tr>
+                                    <th>{{ "aiVisibility.columns.path" | transloco }}</th>
+                                    <th class="text-right">{{ "aiVisibility.columns.fetches" | transloco }}</th>
+                                    <th class="text-right">{{ "aiVisibility.columns.aiVisits" | transloco }}</th>
+                                    <th class="text-right">{{ "aiVisibility.columns.errors" | transloco }}</th>
+                                    <th class="text-right">{{ "aiVisibility.columns.errorRate" | transloco }}</th>
+                                </tr>
+                            </ng-template>
+                            <ng-template pTemplate="body" let-row>
+                                <tr>
+                                    <td class="ai-visibility__path-cell">{{ row.path }}</td>
+                                    <td class="text-right">{{ row.fetch_count | translocoDecimal }}</td>
+                                    <td class="text-right">{{ row.ai_referred_visits | translocoDecimal }}</td>
+                                    <td class="text-right">{{ row.error_requests | translocoDecimal }}</td>
+                                    <td class="text-right">{{ formatPercent(row.error_rate_pct) }}</td>
+                                </tr>
+                            </ng-template>
+                            <ng-template pTemplate="emptymessage">
+                                <tr>
+                                    <td colspan="5" class="text-center text-sm text-[var(--p-text-muted-color)] py-6">{{ "aiVisibility.tables.opportunityPages.empty" | transloco }}</td>
+                                </tr>
+                            </ng-template>
+                        </p-table>
+                    </div>
+
+                    <div>
+                        <h4 class="text-base font-semibold mb-1">{{ "aiVisibility.tables.failureHotspots.title" | transloco }}</h4>
+                        <p class="text-xs text-[var(--p-text-muted-color)] mb-3">{{ "aiVisibility.tables.failureHotspots.description" | transloco }}</p>
+                        <p-table [value]="failureHotspotRows()" [loading]="isLoadingCorrelation()" styleClass="p-datatable-sm" [tableStyle]="{ 'min-width': '100%' }">
+                            <ng-template pTemplate="header">
+                                <tr>
+                                    <th>{{ "aiVisibility.columns.assistant" | transloco }}</th>
+                                    <th>{{ "aiVisibility.columns.pathPrefix" | transloco }}</th>
+                                    <th class="text-right">{{ "aiVisibility.columns.requests" | transloco }}</th>
+                                    <th class="text-right">{{ "aiVisibility.columns.errors" | transloco }}</th>
+                                    <th class="text-right">{{ "aiVisibility.columns.errorRate" | transloco }}</th>
+                                </tr>
+                            </ng-template>
+                            <ng-template pTemplate="body" let-row>
+                                <tr>
+                                    <td>{{ row.assistant_name }}</td>
+                                    <td>{{ row.path_prefix }}</td>
+                                    <td class="text-right">{{ row.total_requests | translocoDecimal }}</td>
+                                    <td class="text-right">{{ row.error_requests | translocoDecimal }}</td>
+                                    <td class="text-right">{{ formatPercent(row.error_rate_pct) }}</td>
+                                </tr>
+                            </ng-template>
+                            <ng-template pTemplate="emptymessage">
+                                <tr>
+                                    <td colspan="5" class="text-center text-sm text-[var(--p-text-muted-color)] py-6">{{ "aiVisibility.tables.failureHotspots.empty" | transloco }}</td>
+                                </tr>
+                            </ng-template>
+                        </p-table>
+                    </div>
+                </div>
+            </div>
+        </p-card>
+    </section>
+    }
+</div>

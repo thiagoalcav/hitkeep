@@ -23,22 +23,22 @@ func TestNormalizeReferrerHost(t *testing.T) {
 		},
 		{
 			name:     "blank referrer",
-			referrer: strPtr("   "),
+			referrer: new("   "),
 			want:     "",
 		},
 		{
 			name:     "url with port query and uppercase",
-			referrer: strPtr(" HTTPS://WWW.Spam.Example:8443/path?q=1 "),
+			referrer: new(" HTTPS://WWW.Spam.Example:8443/path?q=1 "),
 			want:     "spam.example",
 		},
 		{
 			name:     "plain hostname with slashes",
-			referrer: strPtr("www.buttons-for-website.example///"),
+			referrer: new("www.buttons-for-website.example///"),
 			want:     "buttons-for-website.example",
 		},
 		{
 			name:     "hostname without scheme keeps host",
-			referrer: strPtr("semalt.example"),
+			referrer: new("semalt.example"),
 			want:     "semalt.example",
 		},
 	}
@@ -120,35 +120,35 @@ func TestSpamFilterEvaluate(t *testing.T) {
 			name:       "blocks known spam referrer url",
 			siteDomain: "site.example",
 			userIP:     "198.51.100.10",
-			referrer:   strPtr("https://www.buttons-for-website.example/landing?campaign=1"),
+			referrer:   new("https://www.buttons-for-website.example/landing?campaign=1"),
 			want:       SpamDecision{Blocked: true, Reason: "matomo_referrer_spam"},
 		},
 		{
 			name:       "blocks plain spam referrer host",
 			siteDomain: "site.example",
 			userIP:     "198.51.100.10",
-			referrer:   strPtr("seo-audit.example///"),
+			referrer:   new("seo-audit.example///"),
 			want:       SpamDecision{Blocked: true, Reason: "matomo_referrer_spam"},
 		},
 		{
 			name:       "allows same-site referrer even if denylisted",
 			siteDomain: "example.com",
 			userIP:     "198.51.100.10",
-			referrer:   strPtr("https://www.example.com/docs/getting-started"),
+			referrer:   new("https://www.example.com/docs/getting-started"),
 			want:       SpamDecision{},
 		},
 		{
 			name:       "allows same-site subdomain referrer",
 			siteDomain: "example.com",
 			userIP:     "198.51.100.10",
-			referrer:   strPtr("https://blog.example.com/post"),
+			referrer:   new("https://blog.example.com/post"),
 			want:       SpamDecision{},
 		},
 		{
 			name:       "blocks spamhaus ipv4 network before referrer checks",
 			siteDomain: "example.com",
 			userIP:     "203.0.113.5",
-			referrer:   strPtr("https://www.example.com/internal"),
+			referrer:   new("https://www.example.com/internal"),
 			want:       SpamDecision{Blocked: true, Reason: "spamhaus_drop"},
 		},
 		{
@@ -284,6 +284,7 @@ func TestFetchSpamFeedDataAllFeedsFail(t *testing.T) {
 	}
 }
 
+//go:fix inline
 func strPtr(value string) *string {
-	return &value
+	return new(value)
 }

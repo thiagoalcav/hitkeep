@@ -83,3 +83,25 @@ func TestBuildHitFilterReferrerHost(t *testing.T) {
 		t.Fatalf("unexpected args: got %#v want %#v", args, []any{"google.com"})
 	}
 }
+
+func TestBuildHitFilterAIBot(t *testing.T) {
+	clause, args := buildHitFilter("ai_bot", "GPTBot", "h")
+	wantClause := " AND hk_ai_bot(h.user_agent) = ?"
+	if clause != wantClause {
+		t.Fatalf("unexpected clause: got %q want %q", clause, wantClause)
+	}
+	if !reflect.DeepEqual(args, []any{"GPTBot"}) {
+		t.Fatalf("unexpected args: got %#v want %#v", args, []any{"GPTBot"})
+	}
+}
+
+func TestBuildHitFilterAISource(t *testing.T) {
+	clause, args := buildHitFilter("ai_source", "ChatGPT", "h")
+	wantClause := " AND hk_ai_source(h.referrer) = ?"
+	if clause != wantClause {
+		t.Fatalf("unexpected clause: got %q want %q", clause, wantClause)
+	}
+	if !reflect.DeepEqual(args, []any{"ChatGPT"}) {
+		t.Fatalf("unexpected args: got %#v want %#v", args, []any{"ChatGPT"})
+	}
+}

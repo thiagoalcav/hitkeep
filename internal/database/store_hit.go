@@ -6,8 +6,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -16,7 +14,6 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
-	"hitkeep/internal/exportfmt"
 )
 
 func (s *Store) CreateHit(ctx context.Context, hit *api.Hit) error {
@@ -276,58 +273,13 @@ func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w 
 }
 
 func (s *Store) ExportHitsFile(ctx context.Context, params api.HitQueryParams, format string) (string, error) {
-	normalizedFormat := exportfmt.Normalize(format, exportfmt.FormatCSV)
-	ext := normalizedFormat
-	duckFormat := exportfmt.DuckDBCopyOptions(normalizedFormat)
-
-	tmpFile, err := os.CreateTemp("", fmt.Sprintf("hitkeep_hits_*.%s", ext))
-	if err != nil {
-		return "", fmt.Errorf("failed to create export file: %w", err)
-	}
-	filename := tmpFile.Name()
-	if err := tmpFile.Close(); err != nil {
-		cleanupExportTempFile(filename)
-		return "", fmt.Errorf("failed to close export file: %w", err)
-	}
-
 	selectQuery, args := buildHitExportQuery(params)
-	//nolint:gosec // filename is generated locally; selectQuery uses parameter placeholders
-	copyQuery := fmt.Sprintf("COPY (%s) TO '%s' (FORMAT %s);", selectQuery, filename, duckFormat)
-	err = s.WithDuckDBSession(ctx, DuckDBSessionOptions{
-		Excel: normalizedFormat == exportfmt.FormatXLSX,
-	}, func(conn *sql.Conn) error {
-		if _, err := conn.ExecContext(ctx, copyQuery, args...); err != nil {
-			return err
-		}
-		return nil
-	})
+	filename, err := s.exportQueryToTempFile(ctx, "hitkeep_hits_", "hitkeep_hits_", selectQuery, args, format)
 	if err != nil {
-		cleanupExportTempFile(filename)
 		return "", fmt.Errorf("failed to export hits: %w", err)
 	}
 
 	return filename, nil
-}
-
-func cleanupExportTempFile(filename string) {
-	if filename == "" {
-		return
-	}
-
-	cleaned := filepath.Clean(filename)
-	base := filepath.Base(cleaned)
-	if !strings.HasPrefix(base, "hitkeep_hits_") {
-		return
-	}
-
-	tempDir := filepath.Clean(os.TempDir())
-	rel, err := filepath.Rel(tempDir, cleaned)
-	if err != nil || rel == "." || strings.HasPrefix(rel, "..") {
-		return
-	}
-
-	//nolint:gosec // cleaned path is constrained to an app-owned temp file under os.TempDir.
-	_ = os.Remove(cleaned)
 }
 
 func nullString(value sql.NullString) string {

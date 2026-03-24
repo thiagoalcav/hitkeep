@@ -372,6 +372,145 @@ func TestGetSiteStatsLandingAndExitUseFullSessionBoundaries(t *testing.T) {
 	}
 }
 
+func TestGetSiteStatsIncludesAIDimensions(t *testing.T) {
+	store, userID := setupComparisonStore(t)
+	ctx := context.Background()
+
+	site, err := store.CreateSite(ctx, userID, "ai-dimensions.example.com")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	base := time.Date(2026, 3, 18, 12, 0, 0, 0, time.UTC)
+	sessionA := uuid.New()
+	sessionB := uuid.New()
+	sessionC := uuid.New()
+	sessionD := uuid.New()
+	sessionE := uuid.New()
+
+	chatGPTRef := "https://chatgpt.com/share/abc"
+	perplexityRef := "https://www.perplexity.ai/page/example"
+	falsePositiveYouRef := "https://thankyou.com/pricing"
+	falsePositiveArcRef := "https://sparc.net/docs"
+	gptBotUA := "Mozilla/5.0 (compatible; GPTBot/1.0; +https://openai.com/gptbot)"
+	claudeBotUA := "Mozilla/5.0 (compatible; ClaudeBot/1.0; +https://www.anthropic.com/claudebot)"
+	falsePositiveDeepSeekUA := "Mozilla/5.0 (compatible; DeepSeekBrowser/1.0; +https://example.com/bot)"
+	chromeUA := "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+
+	for _, hit := range []api.Hit{
+		{
+			SiteID:    site.ID,
+			SessionID: sessionA,
+			PageID:    uuid.New(),
+			Timestamp: base.Add(-6 * time.Hour),
+			Path:      "/docs/ai",
+			UserAgent: &gptBotUA,
+		},
+		{
+			SiteID:    site.ID,
+			SessionID: sessionA,
+			PageID:    uuid.New(),
+			Timestamp: base.Add(-5 * time.Hour),
+			Path:      "/docs/ai/setup",
+			UserAgent: &gptBotUA,
+		},
+		{
+			SiteID:    site.ID,
+			SessionID: sessionB,
+			PageID:    uuid.New(),
+			Timestamp: base.Add(-4 * time.Hour),
+			Path:      "/pricing",
+			UserAgent: &claudeBotUA,
+		},
+		{
+			SiteID:    site.ID,
+			SessionID: sessionC,
+			PageID:    uuid.New(),
+			Timestamp: base.Add(-3 * time.Hour),
+			Path:      "/blog/hitkeep-ai",
+			Referrer:  &chatGPTRef,
+			UserAgent: &chromeUA,
+		},
+		{
+			SiteID:    site.ID,
+			SessionID: sessionC,
+			PageID:    uuid.New(),
+			Timestamp: base.Add(-2 * time.Hour),
+			Path:      "/docs/case-study",
+			Referrer:  &chatGPTRef,
+			UserAgent: &chromeUA,
+		},
+		{
+			SiteID:    site.ID,
+			SessionID: uuid.New(),
+			PageID:    uuid.New(),
+			Timestamp: base.Add(-90 * time.Minute),
+			Path:      "/compare",
+			Referrer:  &perplexityRef,
+			UserAgent: &chromeUA,
+		},
+		{
+			SiteID:    site.ID,
+			SessionID: sessionD,
+			PageID:    uuid.New(),
+			Timestamp: base.Add(-70 * time.Minute),
+			Path:      "/thank-you",
+			Referrer:  &falsePositiveYouRef,
+			UserAgent: &chromeUA,
+		},
+		{
+			SiteID:    site.ID,
+			SessionID: sessionD,
+			PageID:    uuid.New(),
+			Timestamp: base.Add(-65 * time.Minute),
+			Path:      "/thank-you/details",
+			Referrer:  &falsePositiveArcRef,
+			UserAgent: &chromeUA,
+		},
+		{
+			SiteID:    site.ID,
+			SessionID: sessionE,
+			PageID:    uuid.New(),
+			Timestamp: base.Add(-50 * time.Minute),
+			Path:      "/deepseek-browser",
+			UserAgent: &falsePositiveDeepSeekUA,
+		},
+	} {
+		if err := store.CreateHit(ctx, &hit); err != nil {
+			t.Fatalf("create hit %s: %v", hit.Path, err)
+		}
+	}
+
+	result, err := store.GetSiteStats(ctx, api.AnalyticsParams{
+		SiteID: site.ID,
+		UserID: userID,
+		Start:  base.Add(-24 * time.Hour),
+		End:    base,
+	})
+	if err != nil {
+		t.Fatalf("GetSiteStats: %v", err)
+	}
+
+	if result.AIBotHits != 3 {
+		t.Fatalf("expected 3 AI bot hits, got %d", result.AIBotHits)
+	}
+	if result.AISourceVisits != 2 {
+		t.Fatalf("expected 2 AI source visits, got %d", result.AISourceVisits)
+	}
+	if !containsMetric(result.TopAIBots, "GPTBot", 2) {
+		t.Fatalf("expected GPTBot with 2 hits, got %+v", result.TopAIBots)
+	}
+	if !containsMetric(result.TopAIBots, "ClaudeBot", 1) {
+		t.Fatalf("expected ClaudeBot with 1 hit, got %+v", result.TopAIBots)
+	}
+	if !containsMetric(result.TopAISources, "ChatGPT", 1) {
+		t.Fatalf("expected ChatGPT with 1 session, got %+v", result.TopAISources)
+	}
+	if !containsMetric(result.TopAISources, "Perplexity", 1) {
+		t.Fatalf("expected Perplexity with 1 session, got %+v", result.TopAISources)
+	}
+}
+
 func containsMetric(metrics []api.MetricStat, name string, value int) bool {
 	for _, metric := range metrics {
 		if metric.Name == name && metric.Value == value {

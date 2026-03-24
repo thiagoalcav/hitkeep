@@ -6,16 +6,12 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	duckdb "github.com/duckdb/duckdb-go/v2"
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
-	"hitkeep/internal/exportfmt"
 )
 
 func (s *Store) CreateAIFetch(ctx context.Context, fetch *api.AIFetch) error {
@@ -586,33 +582,9 @@ func (s *Store) ExportAIFetchCSV(ctx context.Context, params api.AIFetchQueryPar
 }
 
 func (s *Store) ExportAIFetchFile(ctx context.Context, params api.AIFetchQueryParams, format string) (string, error) {
-	normalizedFormat := exportfmt.Normalize(format, exportfmt.FormatCSV)
-	ext := normalizedFormat
-	duckFormat := exportfmt.DuckDBCopyOptions(normalizedFormat)
-
-	tmpFile, err := os.CreateTemp("", fmt.Sprintf("hitkeep_aifetch_*.%s", ext))
-	if err != nil {
-		return "", fmt.Errorf("failed to create export file: %w", err)
-	}
-	filename := tmpFile.Name()
-	if err := tmpFile.Close(); err != nil {
-		cleanupAIFetchExportFile(filename)
-		return "", fmt.Errorf("failed to close export file: %w", err)
-	}
-
 	selectQuery, args := buildAIFetchExportQuery(params)
-	//nolint:gosec // filename is generated locally; selectQuery uses parameter placeholders
-	copyQuery := fmt.Sprintf("COPY (%s) TO '%s' (FORMAT %s);", selectQuery, filename, duckFormat)
-	err = s.WithDuckDBSession(ctx, DuckDBSessionOptions{
-		Excel: normalizedFormat == exportfmt.FormatXLSX,
-	}, func(conn *sql.Conn) error {
-		if _, err := conn.ExecContext(ctx, copyQuery, args...); err != nil {
-			return err
-		}
-		return nil
-	})
+	filename, err := s.exportQueryToTempFile(ctx, "hitkeep_aifetch_", "hitkeep_aifetch_", selectQuery, args, format)
 	if err != nil {
-		cleanupAIFetchExportFile(filename)
 		return "", fmt.Errorf("failed to export ai fetches: %w", err)
 	}
 
@@ -626,9 +598,9 @@ func buildAIFetchExportQuery(params api.AIFetchQueryParams) (string, []any) {
 		  AND timestamp >= ?
 		  AND timestamp <= ?
 	`
-	args := []any{params.SiteID, params.Start, params.End}
-
 	filterSQL, filterArgs := buildAIFetchFilters(params)
+	args := make([]any, 0, 3+len(filterArgs))
+	args = append(args, params.SiteID, params.Start, params.End)
 	baseQuery += filterSQL
 	args = append(args, filterArgs...)
 
@@ -643,27 +615,6 @@ func buildAIFetchExportQuery(params api.AIFetchQueryParams) (string, []any) {
 	` + baseQuery
 
 	return selectQuery, args
-}
-
-func cleanupAIFetchExportFile(filename string) {
-	if filename == "" {
-		return
-	}
-
-	cleaned := filepath.Clean(filename)
-	base := filepath.Base(cleaned)
-	if !strings.HasPrefix(base, "hitkeep_aifetch_") {
-		return
-	}
-
-	tempDir := filepath.Clean(os.TempDir())
-	rel, err := filepath.Rel(tempDir, cleaned)
-	if err != nil || rel == "." || strings.HasPrefix(rel, "..") {
-		return
-	}
-
-	//nolint:gosec // cleaned path is constrained to an app-owned temp file under os.TempDir.
-	_ = os.Remove(cleaned)
 }
 
 func nullInt64(value sql.NullInt64) string {

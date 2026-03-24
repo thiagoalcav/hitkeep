@@ -145,6 +145,15 @@ func TestRetentionArchivesAndPrunesUTMHits(t *testing.T) {
 	if !utmCampaign.Valid || utmCampaign.String != "retention-check" {
 		t.Fatalf("expected utm_campaign=retention-check, got %q (valid=%v)", utmCampaign.String, utmCampaign.Valid)
 	}
+	var source string
+	if err := store.DB().QueryRowContext(ctx,
+		fmt.Sprintf("SELECT _source FROM read_parquet('%s') WHERE utm_source IS NOT NULL LIMIT 1", safePath),
+	).Scan(&source); err != nil {
+		t.Fatalf("query archive source discriminator: %v", err)
+	}
+	if source != "hits" {
+		t.Fatalf("expected _source=hits for archived hit row, got %q", source)
+	}
 
 	// Hot storage is empty.
 	var remaining int
@@ -361,6 +370,58 @@ func TestRetentionMixedWindowArchivesOnlyStale(t *testing.T) {
 	}
 	if hot != 1 {
 		t.Fatalf("expected recent hit in hot storage, got %d", hot)
+	}
+}
+
+func TestRetentionPrunesOldAIFetches(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	siteID := seedSite(t, ctx, store, 7)
+
+	old := time.Now().UTC().Add(-14 * 24 * time.Hour)
+	recent := time.Now().UTC().Add(-2 * 24 * time.Hour)
+
+	if err := store.CreateAIFetch(ctx, &api.AIFetch{
+		SiteID:          siteID,
+		Timestamp:       old,
+		AssistantName:   "GPTBot",
+		AssistantFamily: "OpenAI",
+		Path:            "/old-doc",
+		StatusCode:      200,
+		ResourceType:    "html",
+	}); err != nil {
+		t.Fatalf("create old ai fetch: %v", err)
+	}
+	if err := store.CreateAIFetch(ctx, &api.AIFetch{
+		SiteID:          siteID,
+		Timestamp:       recent,
+		AssistantName:   "GPTBot",
+		AssistantFamily: "OpenAI",
+		Path:            "/recent-doc",
+		StatusCode:      200,
+		ResourceType:    "html",
+	}); err != nil {
+		t.Fatalf("create recent ai fetch: %v", err)
+	}
+
+	w := NewRetentionWorker(newTestTenantMgr(t, store), archiveDir, 365, nil)
+	if err := w.Run(ctx); err != nil {
+		t.Fatalf("run retention: %v", err)
+	}
+
+	var oldCount, recentCount int
+	if err := store.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM ai_fetches WHERE site_id = ? AND path = '/old-doc'", siteID).Scan(&oldCount); err != nil {
+		t.Fatalf("count old ai fetches: %v", err)
+	}
+	if err := store.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM ai_fetches WHERE site_id = ? AND path = '/recent-doc'", siteID).Scan(&recentCount); err != nil {
+		t.Fatalf("count recent ai fetches: %v", err)
+	}
+	if oldCount != 0 {
+		t.Fatalf("expected old ai fetch to be pruned, got %d rows", oldCount)
+	}
+	if recentCount != 1 {
+		t.Fatalf("expected recent ai fetch to remain, got %d rows", recentCount)
 	}
 }
 

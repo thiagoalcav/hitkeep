@@ -14,6 +14,10 @@
 //     demo_requested, purchase_completed.
 //   - Creates GA4-inspired ecommerce events: view_item, add_to_cart,
 //     begin_checkout, purchase.
+//   - Creates AI chatbot workflow events: assistant.chat_started,
+//     assistant.message_sent, assistant.response_rendered,
+//     assistant.citation_clicked, assistant.handoff_requested,
+//     assistant.goal_assisted.
 //   - Sets up Goals and Funnels that reference those events.
 //   - Runs the rollup backfill so all charts are populated immediately.
 package main
@@ -113,6 +117,9 @@ var pages = []weightedEntry[string]{
 var referrers = []weightedEntry[*string]{
 	{nil, 380},                                       // direct / typed
 	{new("https://www.google.com"), 200},             // Google search
+	{new("https://chatgpt.com"), 24},                 // ChatGPT referral
+	{new("https://www.perplexity.ai"), 18},           // Perplexity referral
+	{new("https://claude.ai"), 10},                   // Claude referral
 	{new("https://news.ycombinator.com"), 120},       // HN
 	{new("https://twitter.com"), 80},                 // Twitter/X
 	{new("https://www.reddit.com/r/selfhosted"), 60}, // Reddit
@@ -202,6 +209,48 @@ var languages = []weightedEntry[*string]{
 	{new("it-IT"), 20},
 }
 
+type aiFetchBot struct {
+	name      string
+	family    string
+	userAgent string
+}
+
+var aiFetchBots = []weightedEntry[aiFetchBot]{
+	{aiFetchBot{name: "GPTBot", family: "OpenAI", userAgent: "Mozilla/5.0 (compatible; GPTBot/1.2; +https://openai.com/gptbot)"}, 32},
+	{aiFetchBot{name: "ChatGPT-User", family: "OpenAI", userAgent: "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot"}, 18},
+	{aiFetchBot{name: "PerplexityBot", family: "Perplexity", userAgent: "Mozilla/5.0 (compatible; PerplexityBot/1.0; +https://www.perplexity.ai/perplexitybot)"}, 22},
+	{aiFetchBot{name: "ClaudeBot", family: "Anthropic", userAgent: "Mozilla/5.0 (compatible; ClaudeBot/1.0; +https://www.anthropic.com/bot)"}, 18},
+	{aiFetchBot{name: "Google-Extended", family: "Google", userAgent: "Mozilla/5.0 (compatible; Google-Extended; +http://www.google.com/bot.html)"}, 16},
+	{aiFetchBot{name: "DeepSeek", family: "DeepSeek", userAgent: "Mozilla/5.0 (compatible; DeepSeekBot/1.0; +https://deepseek.com/bot)"}, 9},
+}
+
+type aiFetchTarget struct {
+	path        string
+	contentType string
+	statusCode  int
+	responseMin int
+	responseMax int
+	bytesMin    int64
+	bytesMax    int64
+}
+
+var aiFetchTargets = []weightedEntry[aiFetchTarget]{
+	{aiFetchTarget{path: "/", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 90, responseMax: 260, bytesMin: 21_000, bytesMax: 54_000}, 34},
+	{aiFetchTarget{path: "/pricing", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 110, responseMax: 290, bytesMin: 24_000, bytesMax: 60_000}, 26},
+	{aiFetchTarget{path: "/features", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 100, responseMax: 260, bytesMin: 22_000, bytesMax: 52_000}, 20},
+	{aiFetchTarget{path: "/blog/privacy-first-analytics-2025", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 120, responseMax: 320, bytesMin: 19_000, bytesMax: 45_000}, 18},
+	{aiFetchTarget{path: "/blog/replace-google-analytics", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 120, responseMax: 320, bytesMin: 18_000, bytesMax: 43_000}, 18},
+	{aiFetchTarget{path: "/docs/getting-started", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 80, responseMax: 220, bytesMin: 15_000, bytesMax: 36_000}, 28},
+	{aiFetchTarget{path: "/docs/configuration", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 85, responseMax: 240, bytesMin: 17_000, bytesMax: 39_000}, 24},
+	{aiFetchTarget{path: "/docs/api-reference", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 140, responseMax: 360, bytesMin: 27_000, bytesMax: 74_000}, 20},
+	{aiFetchTarget{path: "/docs/api-reference/openapi.json", contentType: "application/json", statusCode: 200, responseMin: 70, responseMax: 180, bytesMin: 70_000, bytesMax: 180_000}, 12},
+	{aiFetchTarget{path: "/guides/ai-visibility.pdf", contentType: "application/pdf", statusCode: 200, responseMin: 150, responseMax: 420, bytesMin: 240_000, bytesMax: 860_000}, 8},
+	{aiFetchTarget{path: "/assets/architecture-diagram.png", contentType: "image/png", statusCode: 200, responseMin: 45, responseMax: 120, bytesMin: 42_000, bytesMax: 280_000}, 6},
+	{aiFetchTarget{path: "/docs/legacy-sdk", contentType: "text/html; charset=utf-8", statusCode: 404, responseMin: 80, responseMax: 160, bytesMin: 4_000, bytesMax: 12_000}, 5},
+	{aiFetchTarget{path: "/blog/ai-overview", contentType: "text/html; charset=utf-8", statusCode: 404, responseMin: 75, responseMax: 150, bytesMin: 3_500, bytesMax: 10_000}, 4},
+	{aiFetchTarget{path: "/api/assistant-index", contentType: "application/json", statusCode: 503, responseMin: 300, responseMax: 1_300, bytesMin: 1_000, bytesMax: 4_000}, 3},
+}
+
 type utmParams struct {
 	source, medium, campaign string
 	term, content            *string
@@ -214,6 +263,12 @@ type ecommerceProduct struct {
 	category  string
 	price     int
 	priceYear int
+}
+
+type chatbotBot struct {
+	botID    string
+	provider string
+	model    string
 }
 
 var utmCampaigns = []weightedEntry[*utmParams]{
@@ -255,6 +310,13 @@ var ecommerceProducts = []weightedEntry[ecommerceProduct]{
 	{ecommerceProduct{itemID: "business-plan", itemName: "Business Plan", plan: "business", category: "subscription", price: 199, priceYear: 1990}, 20},
 	{ecommerceProduct{itemID: "team-seat-pack", itemName: "Team Seat Pack", plan: "business", category: "add-on", price: 49, priceYear: 490}, 7},
 	{ecommerceProduct{itemID: "annual-upgrade", itemName: "Annual Upgrade", plan: "pro", category: "upgrade", price: 199, priceYear: 199}, 3},
+}
+
+var chatbotBots = []weightedEntry[chatbotBot]{
+	{chatbotBot{botID: "support-copilot", provider: "openai", model: "gpt-4.1-mini"}, 42},
+	{chatbotBot{botID: "docs-guide", provider: "anthropic", model: "claude-3-7-sonnet"}, 28},
+	{chatbotBot{botID: "sales-assistant", provider: "google", model: "gemini-2.0-flash"}, 18},
+	{chatbotBot{botID: "checkout-helper", provider: "openai", model: "gpt-4.1"}, 12},
 }
 
 // ─────────────────────────────────────────────
@@ -344,6 +406,7 @@ func main() {
 
 	slog.Info("Seeding traffic", "days", *days)
 	stats := seedTraffic(ctx, analyticsStore, siteID, goalIDs, *days, rng)
+	stats.aiFetches = seedAIFetches(ctx, analyticsStore, siteID, *days, rng)
 
 	slog.Info("Running rollup backfill...")
 	rollupWorker := worker.NewRollupBackfillWorker(tenantMgr)
@@ -362,6 +425,7 @@ func main() {
 	fmt.Printf("  Pageviews:     %d\n", stats.hits)
 	fmt.Printf("  Sessions:      %d\n", stats.sessions)
 	fmt.Printf("  Events:        %d\n", stats.events)
+	fmt.Printf("  AI Fetches:    %d\n", stats.aiFetches)
 	fmt.Printf("  Period:        last %d days\n", *days)
 	fmt.Println()
 }
@@ -545,9 +609,10 @@ func createFunnels(ctx context.Context, store *database.Store, siteID uuid.UUID)
 // ─────────────────────────────────────────────
 
 type seedStats struct {
-	hits     int
-	sessions int
-	events   int
+	hits      int
+	sessions  int
+	events    int
+	aiFetches int
 }
 
 func seedTraffic(ctx context.Context, store *database.Store, siteID uuid.UUID, goals goalIDs, numDays int, rng *mrand.Rand) seedStats {
@@ -662,6 +727,57 @@ func seedTraffic(ctx context.Context, store *database.Store, siteID uuid.UUID, g
 	return stats
 }
 
+func seedAIFetches(ctx context.Context, store *database.Store, siteID uuid.UUID, numDays int, rng *mrand.Rand) int {
+	now := time.Now().UTC()
+	start := now.AddDate(0, 0, -numDays).Truncate(24 * time.Hour)
+	count := 0
+
+	for d := range numDays {
+		day := start.Add(time.Duration(d) * 24 * time.Hour)
+		fetchesToday := 10 + rng.Intn(12)
+		if day.Weekday() != time.Saturday && day.Weekday() != time.Sunday {
+			fetchesToday += 4 + rng.Intn(6)
+		}
+		if rng.Float64() < 0.12 {
+			fetchesToday += 8 + rng.Intn(10)
+		}
+
+		for i := 0; i < fetchesToday; i++ {
+			bot := pickWeighted(rng, aiFetchBots)
+			target := pickWeighted(rng, aiFetchTargets)
+			responseMs := target.responseMin + rng.Intn(max(target.responseMax-target.responseMin, 1))
+			bytesServed := target.bytesMin + rng.Int63n(max64(target.bytesMax-target.bytesMin, 1))
+			contentType := target.contentType
+			userAgent := bot.userAgent
+			hostname := "acme-analytics.io"
+
+			fetch := &api.AIFetch{
+				SiteID:          siteID,
+				Timestamp:       randomTimeInDay(rng, day),
+				AssistantName:   bot.name,
+				AssistantFamily: bot.family,
+				Path:            target.path,
+				Hostname:        &hostname,
+				StatusCode:      target.statusCode,
+				ContentType:     &contentType,
+				ResourceType:    classifySeedResourceType(target.contentType),
+				ResponseMs:      &responseMs,
+				BytesServed:     &bytesServed,
+				UserAgent:       &userAgent,
+			}
+
+			if err := store.CreateAIFetch(ctx, fetch); err != nil {
+				slog.Error("Failed to insert ai fetch", "assistant", bot.name, "path", target.path, "error", err)
+				continue
+			}
+			count++
+		}
+	}
+
+	slog.Info("AI fetches seeded", "count", count)
+	return count
+}
+
 // fireConversionEvents randomly fires zero or more conversion events for a session.
 func fireConversionEvents(ctx context.Context, store *database.Store, siteID, sessionID uuid.UUID, goals goalIDs, rng *mrand.Rand, ts time.Time, entryPage string, utm *utmParams) int {
 	_ = goals // goalIDs are used for reference, events use the same string values
@@ -706,6 +822,7 @@ func fireConversionEvents(ctx context.Context, store *database.Store, siteID, se
 		}
 	}
 	count += fireEcommerceEvents(ctx, store, siteID, sessionID, rng, ts, entryPage, utm)
+	count += fireAIChatbotEvents(ctx, store, siteID, sessionID, rng, ts, entryPage, utm)
 	return count
 }
 
@@ -855,6 +972,160 @@ func insertSeedEvent(ctx context.Context, store *database.Store, event *api.Even
 		return false
 	}
 	return true
+}
+
+func fireAIChatbotEvents(ctx context.Context, store *database.Store, siteID, sessionID uuid.UUID, rng *mrand.Rand, ts time.Time, entryPage string, utm *utmParams) int {
+	startProb := 0.05
+	switch entryPage {
+	case "/docs/getting-started", "/docs/configuration", "/docs/api-reference":
+		startProb = 0.28
+	case "/pricing", "/signup":
+		startProb = 0.19
+	case "/features":
+		startProb = 0.14
+	case "/contact":
+		startProb = 0.18
+	}
+
+	if utm != nil {
+		switch strings.ToLower(strings.TrimSpace(utm.source)) {
+		case "google", "newsletter", "linkedin":
+			startProb += 0.03
+		case "producthunt":
+			startProb += 0.02
+		}
+	}
+
+	if rng.Float64() >= minFloat(startProb, 0.42) {
+		return 0
+	}
+
+	count := 0
+	conversationID := uuid.NewString()
+	bot := pickWeighted(rng, chatbotBots)
+	surface := randomChatbotSurface(entryPage, rng)
+	intent := randomChatbotIntent(entryPage, rng)
+	startedAt := ts.Add(20 * time.Second)
+	messageCount := 1
+	if rng.Float64() < 0.38 {
+		messageCount++
+	}
+	if rng.Float64() < 0.14 {
+		messageCount++
+	}
+
+	if insertSeedEvent(ctx, store, &api.Event{
+		SiteID:    siteID,
+		SessionID: sessionID,
+		Name:      "assistant.chat_started",
+		Properties: map[string]any{
+			"bot_id":   bot.botID,
+			"provider": bot.provider,
+			"model":    bot.model,
+			"surface":  surface,
+		},
+		Timestamp: startedAt,
+	}) {
+		count++
+	}
+
+	responseBase := startedAt.Add(8 * time.Second)
+	citationCount := 0
+	for i := 0; i < messageCount; i++ {
+		messageIndex := i + 1
+		promptAt := startedAt.Add(time.Duration(i) * 95 * time.Second)
+		responseMs := 450 + rng.Intn(1100)
+		toolCount := 0
+		if rng.Float64() < 0.42 {
+			toolCount = 1 + rng.Intn(2)
+		}
+		currentCitations := 0
+		if rng.Float64() < 0.58 {
+			currentCitations = 1 + rng.Intn(3)
+		}
+		citationCount += currentCitations
+
+		if insertSeedEvent(ctx, store, &api.Event{
+			SiteID:    siteID,
+			SessionID: sessionID,
+			Name:      "assistant.message_sent",
+			Properties: map[string]any{
+				"conversation_id": conversationID,
+				"message_index":   messageIndex,
+				"intent":          intent,
+			},
+			Timestamp: promptAt,
+		}) {
+			count++
+		}
+
+		if insertSeedEvent(ctx, store, &api.Event{
+			SiteID:    siteID,
+			SessionID: sessionID,
+			Name:      "assistant.response_rendered",
+			Properties: map[string]any{
+				"conversation_id": conversationID,
+				"message_index":   messageIndex,
+				"response_ms":     responseMs,
+				"tool_count":      toolCount,
+				"citation_count":  currentCitations,
+			},
+			Timestamp: responseBase.Add(time.Duration(i) * 95 * time.Second),
+		}) {
+			count++
+		}
+
+		if currentCitations > 0 && rng.Float64() < 0.34 {
+			if insertSeedEvent(ctx, store, &api.Event{
+				SiteID:    siteID,
+				SessionID: sessionID,
+				Name:      "assistant.citation_clicked",
+				Properties: map[string]any{
+					"conversation_id": conversationID,
+					"citation_url":    randomCitationURL(entryPage, rng),
+					"citation_index":  1 + rng.Intn(currentCitations),
+				},
+				Timestamp: responseBase.Add(time.Duration(i)*95*time.Second + 12*time.Second),
+			}) {
+				count++
+			}
+		}
+	}
+
+	if rng.Float64() < 0.16 {
+		if insertSeedEvent(ctx, store, &api.Event{
+			SiteID:    siteID,
+			SessionID: sessionID,
+			Name:      "assistant.handoff_requested",
+			Properties: map[string]any{
+				"conversation_id": conversationID,
+				"message_index":   messageCount,
+				"reason":          randomHandoffReason(entryPage, rng),
+			},
+			Timestamp: responseBase.Add(time.Duration(messageCount)*95*time.Second + 15*time.Second),
+		}) {
+			count++
+		}
+	}
+
+	if rng.Float64() < assistedGoalProbability(entryPage) {
+		goalName := randomChatbotGoalName(entryPage, rng)
+		if insertSeedEvent(ctx, store, &api.Event{
+			SiteID:    siteID,
+			SessionID: sessionID,
+			Name:      "assistant.goal_assisted",
+			Properties: map[string]any{
+				"conversation_id": conversationID,
+				"goal_name":       goalName,
+				"goal_value":      goalName,
+			},
+			Timestamp: responseBase.Add(time.Duration(messageCount)*95*time.Second + 30*time.Second),
+		}) {
+			count++
+		}
+	}
+
+	return count
 }
 
 func buildCatalogEventProps(item map[string]any, currency string) map[string]any {
@@ -1145,6 +1416,29 @@ func randomTimeInDay(rng *mrand.Rand, day time.Time) time.Time {
 	return day.Add(time.Duration(hour)*time.Hour + time.Duration(minute)*time.Minute + time.Duration(second)*time.Second)
 }
 
+func max64(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func classifySeedResourceType(contentType string) string {
+	normalized := strings.ToLower(strings.TrimSpace(contentType))
+	switch {
+	case strings.HasPrefix(normalized, "text/html"):
+		return "html"
+	case strings.HasPrefix(normalized, "application/pdf"),
+		strings.Contains(normalized, "msword"),
+		strings.Contains(normalized, "officedocument"):
+		return "document"
+	case strings.HasPrefix(normalized, "image/"):
+		return "image"
+	default:
+		return "other"
+	}
+}
+
 func randomCompanySize(rng *mrand.Rand) string {
 	sizes := []string{"1-10", "11-50", "51-200", "201-500", "500+"}
 	return sizes[rng.Intn(len(sizes))]
@@ -1224,4 +1518,140 @@ func randomDemoSource(rng *mrand.Rand) string {
 		{"contact-form", 20},
 		{"live-chat", 10},
 	})
+}
+
+func randomChatbotSurface(entryPage string, rng *mrand.Rand) string {
+	switch entryPage {
+	case "/docs/getting-started", "/docs/configuration", "/docs/api-reference":
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"docs-sidebar", 45},
+			{"help-center", 35},
+			{"inline-docs", 20},
+		})
+	case "/pricing", "/signup":
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"pricing-assistant", 60},
+			{"checkout-sidebar", 25},
+			{"homepage-widget", 15},
+		})
+	case "/contact":
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"support-widget", 70},
+			{"contact-page", 30},
+		})
+	default:
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"homepage-widget", 40},
+			{"support-widget", 35},
+			{"help-center", 25},
+		})
+	}
+}
+
+func randomChatbotIntent(entryPage string, rng *mrand.Rand) string {
+	switch entryPage {
+	case "/docs/getting-started", "/docs/configuration", "/docs/api-reference":
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"setup", 35},
+			{"api", 25},
+			{"installation", 20},
+			{"retention", 10},
+			{"permissions", 10},
+		})
+	case "/pricing", "/signup":
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"pricing", 40},
+			{"plan-comparison", 25},
+			{"trial", 20},
+			{"billing", 15},
+		})
+	case "/contact":
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"support", 40},
+			{"migration", 25},
+			{"sales", 20},
+			{"security", 15},
+		})
+	default:
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"features", 25},
+			{"pricing", 20},
+			{"support", 20},
+			{"analytics", 20},
+			{"migration", 15},
+		})
+	}
+}
+
+func randomCitationURL(entryPage string, rng *mrand.Rand) string {
+	switch entryPage {
+	case "/docs/getting-started", "/docs/configuration", "/docs/api-reference":
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"/docs/getting-started", 35},
+			{"/docs/configuration", 30},
+			{"/docs/api-reference", 20},
+			{"/blog/privacy-first-analytics-2025", 15},
+		})
+	default:
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"/pricing", 30},
+			{"/features", 30},
+			{"/docs/getting-started", 20},
+			{"/contact", 20},
+		})
+	}
+}
+
+func randomHandoffReason(entryPage string, rng *mrand.Rand) string {
+	switch entryPage {
+	case "/pricing", "/signup":
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"custom-pricing", 45},
+			{"invoice-question", 30},
+			{"enterprise-security", 25},
+		})
+	default:
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"needs-human-review", 45},
+			{"account-question", 30},
+			{"complex-integration", 25},
+		})
+	}
+}
+
+func assistedGoalProbability(entryPage string) float64 {
+	switch entryPage {
+	case "/pricing", "/signup":
+		return 0.22
+	case "/docs/getting-started", "/docs/configuration", "/docs/api-reference":
+		return 0.11
+	case "/contact":
+		return 0.18
+	default:
+		return 0.08
+	}
+}
+
+func randomChatbotGoalName(entryPage string, rng *mrand.Rand) string {
+	switch entryPage {
+	case "/pricing", "/signup":
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"trial_started", 45},
+			{"purchase_completed", 35},
+			{"demo_requested", 20},
+		})
+	case "/contact":
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"demo_requested", 55},
+			{"newsletter_signup", 25},
+			{"trial_started", 20},
+		})
+	default:
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"newsletter_signup", 35},
+			{"trial_started", 35},
+			{"demo_requested", 20},
+			{"purchase_completed", 10},
+		})
+	}
 }

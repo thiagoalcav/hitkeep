@@ -14,7 +14,7 @@ HitKeep is an open source web analytics platform built for people who want a sim
 - Single binary runtime
 - Embedded DuckDB and NSQ with batched ingest writes
 - Privacy-first tracking
-- Goals, funnels, ecommerce, email reports, and API clients
+- Goals, funnels, ecommerce, AI visibility, AI chatbot analytics, email reports, and API clients
 - Self-hosted or managed cloud with EU/US region choice
 
 [Website](https://hitkeep.com) · [Cloud](https://hitkeep.com/cloud) · [Live Demo](https://demo.hitkeep.com/share/7a55968bb42df256512fbe7ff73ab88f29dd45c236eddc818bd66420b4ffbaad) · [Docs](https://hitkeep.com/guides/introduction/) · [API](https://hitkeep.com/api/) · [Releases](https://github.com/PascaleBeier/hitkeep/releases)
@@ -29,6 +29,7 @@ HitKeep is for teams that want product analytics without adopting a full analyti
 - **Efficient write path:** NSQ buffers ingest bursts and DuckDB appender batches smooth out disk-heavy per-row inserts
 - **Privacy-first by default:** cookie-less tracking, Do Not Track support, focused data collection
 - **Useful out of the box:** traffic analytics with countries/languages audience toggles, top/landing/exit page views, custom events, goals, funnels, ecommerce, UTM attribution, and scheduled email reports
+- **Ready for modern discovery:** AI visibility analytics for crawler fetches and downstream AI-referred visits, plus on-site AI chatbot analytics built on structured custom events
 - **Built for teams:** passkeys, TOTP, site and team permissions, API clients, share links, and audit visibility
 - **Flexible deployment:** self-host it yourself or use HitKeep Cloud and still keep the migration path open
 
@@ -99,6 +100,8 @@ Tracker options, ecommerce events, custom events, and advanced tracking examples
 - [Tracking docs](https://hitkeep.com/guides/tracking/)
 - [Custom events](https://hitkeep.com/guides/tracking/custom-events/)
 - [Ecommerce analytics](https://hitkeep.com/guides/analytics/ecommerce/)
+- [AI visibility analytics](https://hitkeep.com/guides/analytics/ai-visibility/)
+- [AI chatbot analytics](https://hitkeep.com/guides/analytics/ai-chatbot-analytics/)
 
 ## Product Tour
 
@@ -119,6 +122,12 @@ Tracker options, ecommerce events, custom events, and advanced tracking examples
 
 ### Ecommerce
 ![HitKeep ecommerce analytics with revenue KPIs, chart, top products, and revenue sources](./.github/assets/analytics-ecommerce.png)
+
+### AI Chatbots
+![HitKeep AI chatbot analytics with KPI cards, conversation activity chart, and chatbot breakdowns](./.github/assets/analytics-ai-chatbots.png)
+
+### AI Visibility
+![HitKeep AI visibility analytics with fetch KPIs, fetch volume chart, and correlation tables](./.github/assets/analytics-ai-visibility.png)
 
 ### Email Reports
 ![HitKeep scheduled email reports](./.github/assets/feature-email-reports.png)

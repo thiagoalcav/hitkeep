@@ -65,6 +65,12 @@ func buildHitFilter(filterType, filterValue, alias string) (string, []any) {
 	case "browser":
 		expr := fmt.Sprintf("hk_browser(%suser_agent)", prefix)
 		return " AND " + expr + " = ?", []any{filterValue}
+	case "ai_bot":
+		expr := fmt.Sprintf("hk_ai_bot(%suser_agent)", prefix)
+		return " AND " + expr + " = ?", []any{filterValue}
+	case "ai_source":
+		expr := fmt.Sprintf("hk_ai_source(%sreferrer)", prefix)
+		return " AND " + expr + " = ?", []any{filterValue}
 	case "language":
 		expr := fmt.Sprintf("CASE WHEN NULLIF(TRIM(%slanguage), '') IS NULL THEN '(Unspecified)' ELSE lower(split_part(TRIM(%slanguage), '-', 1)) END", prefix, prefix)
 		normalized := strings.ToLower(strings.TrimSpace(filterValue))

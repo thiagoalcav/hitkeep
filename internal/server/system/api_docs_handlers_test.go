@@ -151,6 +151,79 @@ func TestOpenAPISpecV1IncludesCloudSignupPaths(t *testing.T) {
 	assertCloudOperation(t, requireMap(t, webhookPath.(map[string]any), "post"))
 }
 
+func TestOpenAPISpecV1IncludesAIFetchCorrelationPath(t *testing.T) {
+	spec := openAPISpecV1("http://localhost:8080")
+	paths := requireMap(t, spec, "paths")
+	components := requireMap(t, spec, "components")
+	schemas := requireMap(t, components, "schemas")
+
+	pathItem := requireMap(t, paths, "/api/sites/{id}/ai-fetch/correlation")
+	getOp := requireMap(t, pathItem, "get")
+	responses := requireMap(t, getOp, "responses")
+	okResp := requireMap(t, responses, "200")
+	content := requireMap(t, okResp, "content")
+	jsonContent := requireMap(t, content, "application/json")
+	schema := requireMap(t, jsonContent, "schema")
+
+	if ref, _ := schema["$ref"].(string); ref != "#/components/schemas/AIFetchCorrelationReport" {
+		t.Fatalf("expected AI fetch correlation schema ref, got %q", ref)
+	}
+	if _, ok := schemas["AIFetchCorrelationReport"]; !ok {
+		t.Fatalf("expected AIFetchCorrelationReport schema to exist")
+	}
+}
+
+func TestOpenAPISpecV1IncludesAIFetchEndpointsAndSchemas(t *testing.T) {
+	spec := openAPISpecV1("http://localhost:8080")
+	paths := requireMap(t, spec, "paths")
+	components := requireMap(t, spec, "components")
+	schemas := requireMap(t, components, "schemas")
+
+	for _, schemaName := range []string{
+		"AIFetch",
+		"AIFetchIngestPayload",
+		"AIFetchOverview",
+		"AIFetchSeriesPoint",
+	} {
+		if _, ok := schemas[schemaName]; !ok {
+			t.Fatalf("expected %s schema to exist", schemaName)
+		}
+	}
+
+	ingestPath := requireMap(t, paths, "/api/sites/{id}/ingest/ai-fetch")
+	postOp := requireMap(t, ingestPath, "post")
+	requestBody := requireMap(t, postOp, "requestBody")
+	content := requireMap(t, requestBody, "content")
+	jsonContent := requireMap(t, content, "application/json")
+	requestSchema := requireMap(t, jsonContent, "schema")
+	if ref, _ := requestSchema["$ref"].(string); ref != "#/components/schemas/AIFetchIngestPayload" {
+		t.Fatalf("expected AI fetch ingest payload schema ref, got %q", ref)
+	}
+
+	overviewPath := requireMap(t, paths, "/api/sites/{id}/ai-fetch/overview")
+	overviewOp := requireMap(t, overviewPath, "get")
+	overviewResponses := requireMap(t, overviewOp, "responses")
+	overviewOK := requireMap(t, overviewResponses, "200")
+	overviewContent := requireMap(t, overviewOK, "content")
+	overviewJSON := requireMap(t, overviewContent, "application/json")
+	overviewSchema := requireMap(t, overviewJSON, "schema")
+	if ref, _ := overviewSchema["$ref"].(string); ref != "#/components/schemas/AIFetchOverview" {
+		t.Fatalf("expected AI fetch overview schema ref, got %q", ref)
+	}
+
+	timeseriesPath := requireMap(t, paths, "/api/sites/{id}/ai-fetch/timeseries")
+	timeseriesOp := requireMap(t, timeseriesPath, "get")
+	timeseriesResponses := requireMap(t, timeseriesOp, "responses")
+	timeseriesOK := requireMap(t, timeseriesResponses, "200")
+	timeseriesContent := requireMap(t, timeseriesOK, "content")
+	timeseriesJSON := requireMap(t, timeseriesContent, "application/json")
+	timeseriesSchema := requireMap(t, timeseriesJSON, "schema")
+	items := requireMap(t, timeseriesSchema, "items")
+	if ref, _ := items["$ref"].(string); ref != "#/components/schemas/AIFetchSeriesPoint" {
+		t.Fatalf("expected AI fetch timeseries item schema ref, got %q", ref)
+	}
+}
+
 func hasFormatParamRef(params []any) bool {
 	for _, p := range params {
 		pm, ok := p.(map[string]any)

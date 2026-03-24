@@ -10,6 +10,10 @@
         "funnelsAria": "Zu den Funnels",
         "eventsAria": "Zu den Events",
         "events": "Events",
+        "aiVisibility": "AI-Sichtbarkeit",
+        "aiVisibilityAria": "Zur AI-Sichtbarkeitsanalyse",
+        "aiChatbots": "AI-Chatbots",
+        "aiChatbotsAria": "Zur AI-Chatbot-Analyse",
         "utmAria": "Zum UTM-Dashboard",
         "utmBuilder": "UTM-Generator",
         "utmBuilderAria": "Zum UTM-Generator",
@@ -1203,6 +1207,128 @@
         },
         "kpis": {
             "totalEvents": "Gesamte Events"
+        }
+    },
+    "aiChatbots": {
+        "title": "AI-Chatbots",
+        "docsAction": "Instrumentierungsleitfaden",
+        "noSiteDescription": "Wähle eine Website aus oder erstelle eine, um AI-Chatbot-Analysen anzuzeigen.",
+        "header": {
+            "title": "On-site-AI-Chatbot-Analyse",
+            "description": "Verfolge Gesprächsstarts, Prompts, Antworten, Eskalationen und unterstützte Conversions aus deiner Chatbot-Instrumentierung."
+        },
+        "filters": {
+            "groupBy": "Umfang",
+            "value": "Wert",
+            "allValues": "Alle Werte",
+            "unfiltered": "Zeigt den gesamten Chatbot-Traffic",
+            "provider": "Anbieter",
+            "botId": "Bot",
+            "surface": "Oberfläche",
+            "model": "Modell"
+        },
+        "kpis": {
+            "conversations": "Gespräche",
+            "prompts": "Prompts",
+            "responses": "Antworten",
+            "assistedConversions": "Unterstützte Conversions",
+            "handoffRate": "Eskalationsrate",
+            "citationCtr": "Zitat-CTR",
+            "handoffs": "Eskalationen"
+        },
+        "chart": {
+            "title": "Gesprächsaktivität",
+            "description": "Sieh, wie sich Chatbot-Sitzungen im Zeitverlauf entwickeln, von der ersten Nachricht bis zur Eskalation und zu unterstützten Ergebnissen.",
+            "emptyTitle": "Keine Chatbot-Aktivität",
+            "emptyDescription": "Erfasse assistant.chat_started und verwandte Events, um diesen Bericht zu füllen."
+        },
+        "breakdowns": {
+            "intents": "Top-Intents",
+            "providers": "Top-Anbieter",
+            "surfaces": "Top-Oberflächen"
+        }
+    },
+    "aiVisibility": {
+        "title": "AI-Sichtbarkeit",
+        "docsAction": "Leitfaden zur AI-Sichtbarkeit",
+        "noSiteDescription": "Wähle eine Website aus oder erstelle eine, um AI-Fetch- und Korrelationsanalysen anzuzeigen.",
+        "header": {
+            "title": "AI-Sichtbarkeitsanalyse",
+            "description": "Verfolge, wie AI-Assistenten deine Inhalte abrufen, wo sich Crawl-Fehler häufen und welche abgerufenen Seiten später AI-vermittelte Besuche erzeugen."
+        },
+        "filters": {
+            "assistant": "Assistent",
+            "family": "Anbieter",
+            "resourceType": "Ressourcentyp",
+            "allAssistants": "Alle Assistenten",
+            "allFamilies": "Alle Anbieter",
+            "allResourceTypes": "Alle Ressourcentypen",
+            "unfiltered": "Alle AI-Fetch-Aktivitäten werden angezeigt"
+        },
+        "kpis": {
+            "totalFetches": "Fetches gesamt",
+            "uniquePaths": "Eindeutige Pfade",
+            "uniqueAssistants": "Eindeutige Assistenten",
+            "errorRate4xx": "4xx-Rate",
+            "errorRate5xx": "5xx-Rate",
+            "medianResponse": "Median-Antwort",
+            "bytesServed": "Ausgelieferte Bytes"
+        },
+        "chart": {
+            "title": "Fetch-Volumen im Zeitverlauf",
+            "description": "Sieh, wann AI-Assistenten deine Inhalte aktiv abrufen und wie sich die Nachfrage im ausgewählten Zeitraum verändert.",
+            "fetches": "Fetches",
+            "emptyTitle": "Keine AI-Fetch-Aktivität",
+            "emptyDescription": "Sende AI-Fetch-Daten an /api/sites/{id}/ingest/ai-fetch, um diesen Bericht zu füllen."
+        },
+        "breakdowns": {
+            "assistants": "Top-Assistenten",
+            "families": "Top-Anbieter",
+            "paths": "Top-abgerufene Pfade",
+            "errorPaths": "Top-Fehlerpfade",
+            "resourceTypes": "Ressourcentypen"
+        },
+        "correlation": {
+            "title": "Fetch-zu-Besuch-Korrelation",
+            "description": "Miss, welche abgerufenen Pfade später AI-vermittelte Besuche anziehen und welche stark abgerufenen Seiten noch keinen Downstream-Traffic erzeugen.",
+            "note": "Filter für Assistent, Anbieter und Ressourcentyp gelten nur für Fetches. Korrelationen bei Besuchen umfassen alle späteren AI-vermittelten Besuche auf demselben Pfad innerhalb des ausgewählten Fensters.",
+            "kpis": {
+                "correlatedPaths": "Korrelierte Pfade",
+                "aiVisits": "AI-vermittelte Besuche",
+                "uncorrelatedFetches": "Nicht korrelierte Fetches"
+            }
+        },
+        "tables": {
+            "citationYield": {
+                "title": "Zitationsausbeute",
+                "description": "Pfade, bei denen AI-Fetches am häufigsten zu späteren AI-vermittelten Besuchen werden.",
+                "empty": "Keine abgerufenen Pfade haben in diesem Zeitraum korrelierte AI-Besuche erzeugt."
+            },
+            "opportunityPages": {
+                "title": "Chancen-Seiten",
+                "description": "Stark abgerufene Seiten mit wenig Downstream-Besuchen oder erhöhtem Fehlerdruck.",
+                "empty": "Keine Chancen-Seiten entsprechen den aktuellen Filtern."
+            },
+            "failureHotspots": {
+                "title": "Fehler-Hotspots",
+                "description": "Assistenten- und Pfadpräfix-Kombinationen mit dem höchsten Fehlerdruck bei Fetches.",
+                "empty": "Keine Fehler-Hotspots entsprechen den aktuellen Filtern."
+            }
+        },
+        "columns": {
+            "path": "Pfad",
+            "assistant": "Assistent",
+            "pathPrefix": "Pfadpräfix",
+            "fetches": "Fetches",
+            "requests": "Anfragen",
+            "aiVisits": "AI-Besuche",
+            "errors": "Fehler",
+            "errorRate": "Fehlerrate",
+            "yield": "Ausbeute"
+        },
+        "exportStatus": {
+            "success": "Export-Download gestartet.",
+            "error": "Export der AI-Fetch-Daten fehlgeschlagen. Bitte erneut versuchen."
         }
     },
     "integration": {

@@ -18,6 +18,7 @@ import (
 	"hitkeep/internal/entitlements"
 	"hitkeep/internal/mailer"
 	"hitkeep/internal/server/admin"
+	"hitkeep/internal/server/aifetch"
 	serverauth "hitkeep/internal/server/auth"
 	cloudhandlers "hitkeep/internal/server/cloud"
 	"hitkeep/internal/server/events"
@@ -202,6 +203,7 @@ func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 	sites.Register(mux, ctx)
 	goals.Register(mux, ctx)
 	events.Register(mux, ctx)
+	aifetch.Register(mux, ctx)
 	takeouthandlers.Register(mux, ctx)
 	sharehandlers.Register(mux, ctx)
 

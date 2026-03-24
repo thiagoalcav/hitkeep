@@ -10,6 +10,10 @@
         "funnelsAria": "Go to funnels",
         "eventsAria": "Go to events",
         "events": "Events",
+        "aiVisibility": "AI Visibility",
+        "aiVisibilityAria": "Go to AI visibility analytics",
+        "aiChatbots": "AI Chatbots",
+        "aiChatbotsAria": "Go to AI chatbot analytics",
         "utmAria": "Go to UTM dashboard",
         "utmBuilder": "UTM Builder",
         "utmBuilderAria": "Go to UTM Builder",
@@ -1203,6 +1207,128 @@
         },
         "kpis": {
             "totalEvents": "Total events"
+        }
+    },
+    "aiChatbots": {
+        "title": "AI Chatbots",
+        "docsAction": "Instrumentation guide",
+        "noSiteDescription": "Select or create a site to view AI chatbot analytics.",
+        "header": {
+            "title": "On-site AI chatbot analytics",
+            "description": "Track conversation starts, prompts, responses, handoffs, and assisted conversions from your chatbot instrumentation."
+        },
+        "filters": {
+            "groupBy": "Scope",
+            "value": "Value",
+            "allValues": "All values",
+            "unfiltered": "Showing all chatbot traffic",
+            "provider": "Provider",
+            "botId": "Bot",
+            "surface": "Surface",
+            "model": "Model"
+        },
+        "kpis": {
+            "conversations": "Conversations",
+            "prompts": "Prompts",
+            "responses": "Responses",
+            "assistedConversions": "Assisted conversions",
+            "handoffRate": "Handoff rate",
+            "citationCtr": "Citation CTR",
+            "handoffs": "Handoffs"
+        },
+        "chart": {
+            "title": "Conversation activity",
+            "description": "See how chatbot sessions progress over time, from the first message to handoff and assisted outcomes.",
+            "emptyTitle": "No chatbot activity",
+            "emptyDescription": "Track assistant.chat_started and related events to populate this report."
+        },
+        "breakdowns": {
+            "intents": "Top intents",
+            "providers": "Top providers",
+            "surfaces": "Top surfaces"
+        }
+    },
+    "aiVisibility": {
+        "title": "AI Visibility",
+        "docsAction": "AI visibility guide",
+        "noSiteDescription": "Select or create a site to view AI fetch and correlation analytics.",
+        "header": {
+            "title": "AI visibility analytics",
+            "description": "Track how AI assistants fetch your content, where crawl errors concentrate, and which fetched pages later attract AI-referred visits."
+        },
+        "filters": {
+            "assistant": "Assistant",
+            "family": "Operator",
+            "resourceType": "Resource type",
+            "allAssistants": "All assistants",
+            "allFamilies": "All operators",
+            "allResourceTypes": "All resource types",
+            "unfiltered": "Showing all AI fetch activity"
+        },
+        "kpis": {
+            "totalFetches": "Total fetches",
+            "uniquePaths": "Unique paths",
+            "uniqueAssistants": "Unique assistants",
+            "errorRate4xx": "4xx rate",
+            "errorRate5xx": "5xx rate",
+            "medianResponse": "Median response",
+            "bytesServed": "Bytes served"
+        },
+        "chart": {
+            "title": "Fetch volume over time",
+            "description": "See when AI assistants are actively crawling your content and how fetch demand changes across the selected period.",
+            "fetches": "Fetches",
+            "emptyTitle": "No AI fetch activity",
+            "emptyDescription": "Send AI fetch records to /api/sites/{id}/ingest/ai-fetch to populate this report."
+        },
+        "breakdowns": {
+            "assistants": "Top assistants",
+            "families": "Top operators",
+            "paths": "Top fetched paths",
+            "errorPaths": "Top error paths",
+            "resourceTypes": "Resource type split"
+        },
+        "correlation": {
+            "title": "Fetch-to-visit correlation",
+            "description": "Measure which fetched paths later attract AI-referred human visits and which high-fetch pages still fail to convert into downstream traffic.",
+            "note": "Assistant, operator, and resource-type filters apply to fetches only. Correlated visits include any later AI-referred human visits on the same path within the selected window.",
+            "kpis": {
+                "correlatedPaths": "Correlated paths",
+                "aiVisits": "AI-referred visits",
+                "uncorrelatedFetches": "Uncorrelated fetches"
+            }
+        },
+        "tables": {
+            "citationYield": {
+                "title": "Citation yield",
+                "description": "Paths where AI fetches most often turn into later AI-referred visits.",
+                "empty": "No fetched paths produced correlated AI visits in this range."
+            },
+            "opportunityPages": {
+                "title": "Opportunity pages",
+                "description": "High-fetch pages with low downstream visits or elevated error pressure.",
+                "empty": "No opportunity pages matched the current filters."
+            },
+            "failureHotspots": {
+                "title": "Failure hotspots",
+                "description": "The assistant and path-prefix combinations with the highest fetch error pressure.",
+                "empty": "No failure hotspots matched the current filters."
+            }
+        },
+        "columns": {
+            "path": "Path",
+            "assistant": "Assistant",
+            "pathPrefix": "Path prefix",
+            "fetches": "Fetches",
+            "requests": "Requests",
+            "aiVisits": "AI visits",
+            "errors": "Errors",
+            "errorRate": "Error rate",
+            "yield": "Yield"
+        },
+        "exportStatus": {
+            "success": "Export download started.",
+            "error": "Failed to export AI fetch data. Please try again."
         }
     },
     "integration": {

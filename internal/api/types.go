@@ -214,12 +214,16 @@ type SiteStats struct {
 	TopDevices         []MetricStat     `json:"top_devices"`
 	TopCountries       []MetricStat     `json:"top_countries"`
 	TopBrowsers        []MetricStat     `json:"top_browsers"`
+	TopAIBots          []MetricStat     `json:"top_ai_bots"`
+	TopAISources       []MetricStat     `json:"top_ai_sources"`
 	TopLanguages       []MetricStat     `json:"top_languages"`
 	TopUTMCampaigns    []MetricStat     `json:"top_utm_campaigns"`
 	TopUTMContents     []MetricStat     `json:"top_utm_contents"`
 	TopUTMMediums      []MetricStat     `json:"top_utm_mediums"`
 	TopUTMSources      []MetricStat     `json:"top_utm_sources"`
 	TopUTMTerms        []MetricStat     `json:"top_utm_terms"`
+	AIBotHits          int              `json:"ai_bot_hits"`
+	AISourceVisits     int              `json:"ai_source_visits"`
 	UTMCampaignHits    int              `json:"utm_campaign_hits"`
 	UTMContentHits     int              `json:"utm_content_hits"`
 	UTMMediumHits      int              `json:"utm_medium_hits"`
@@ -275,6 +279,100 @@ type EventAudience struct {
 type EventSeriesPoint struct {
 	Time  time.Time `json:"time"`
 	Count int       `json:"count"`
+}
+
+type AIFetch struct {
+	ID              uuid.UUID `json:"id"`
+	SiteID          uuid.UUID `json:"site_id"`
+	Timestamp       time.Time `json:"timestamp"`
+	AssistantName   string    `json:"assistant_name"`
+	AssistantFamily string    `json:"assistant_family"`
+	Path            string    `json:"path"`
+	Hostname        *string   `json:"hostname,omitempty"`
+	StatusCode      int       `json:"status_code"`
+	ContentType     *string   `json:"content_type,omitempty"`
+	ResourceType    string    `json:"resource_type"`
+	ResponseMs      *int      `json:"response_ms,omitempty"`
+	BytesServed     *int64    `json:"bytes_served,omitempty"`
+	UserAgent       *string   `json:"user_agent,omitempty"`
+}
+
+type AIFetchQueryParams struct {
+	SiteID          uuid.UUID
+	Start           time.Time
+	End             time.Time
+	AssistantName   string
+	AssistantFamily string
+	ResourceType    string
+}
+
+type AIFetchCorrelationParams struct {
+	SiteID          uuid.UUID
+	Start           time.Time
+	End             time.Time
+	AssistantName   string
+	AssistantFamily string
+	ResourceType    string
+	WindowDays      int
+}
+
+type AIFetchOverview struct {
+	TotalRequests     int64        `json:"total_requests"`
+	UniquePaths       int64        `json:"unique_paths"`
+	UniqueAssistants  int64        `json:"unique_assistants"`
+	ErrorRate4xx      float64      `json:"error_rate_4xx"`
+	ErrorRate5xx      float64      `json:"error_rate_5xx"`
+	MedianResponseMs  int          `json:"median_response_ms"`
+	TotalBytes        int64        `json:"total_bytes"`
+	TopAssistants     []MetricStat `json:"top_assistants"`
+	TopFamilies       []MetricStat `json:"top_families"`
+	TopPaths          []MetricStat `json:"top_paths"`
+	TopErrorPaths     []MetricStat `json:"top_error_paths"`
+	ResourceTypeSplit []MetricStat `json:"resource_type_split"`
+}
+
+type AIFetchSeriesPoint struct {
+	Time  time.Time `json:"time"`
+	Count int       `json:"count"`
+}
+
+type AIFetchCorrelationSummary struct {
+	TotalFetches        int64 `json:"total_fetches"`
+	FetchedPaths        int64 `json:"fetched_paths"`
+	CorrelatedPaths     int64 `json:"correlated_paths"`
+	AIReferredVisits    int64 `json:"ai_referred_visits"`
+	UncorrelatedFetches int64 `json:"uncorrelated_fetches"`
+}
+
+type AIFetchCitationYieldRow struct {
+	Path             string  `json:"path"`
+	AssistantName    string  `json:"assistant_name"`
+	FetchCount       int64   `json:"fetch_count"`
+	AIReferredVisits int64   `json:"ai_referred_visits"`
+	CitationYieldPct float64 `json:"citation_yield_pct"`
+}
+
+type AIFetchOpportunityRow struct {
+	Path             string  `json:"path"`
+	FetchCount       int64   `json:"fetch_count"`
+	AIReferredVisits int64   `json:"ai_referred_visits"`
+	ErrorRequests    int64   `json:"error_requests"`
+	ErrorRatePct     float64 `json:"error_rate_pct"`
+}
+
+type AIFetchFailureHotspot struct {
+	AssistantName string  `json:"assistant_name"`
+	PathPrefix    string  `json:"path_prefix"`
+	TotalRequests int64   `json:"total_requests"`
+	ErrorRequests int64   `json:"error_requests"`
+	ErrorRatePct  float64 `json:"error_rate_pct"`
+}
+
+type AIFetchCorrelationReport struct {
+	Summary          AIFetchCorrelationSummary `json:"summary"`
+	CitationYield    []AIFetchCitationYieldRow `json:"citation_yield"`
+	OpportunityPages []AIFetchOpportunityRow   `json:"opportunity_pages"`
+	FailureHotspots  []AIFetchFailureHotspot   `json:"failure_hotspots"`
 }
 
 type EcommerceParams struct {

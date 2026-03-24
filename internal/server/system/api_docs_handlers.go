@@ -232,6 +232,110 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"value": map[string]any{"type": "integer"},
 					},
 				},
+				"AIFetch": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"id":               map[string]any{"type": "string", "format": "uuid"},
+						"site_id":          map[string]any{"type": "string", "format": "uuid"},
+						"timestamp":        map[string]any{"type": "string", "format": "date-time"},
+						"assistant_name":   map[string]any{"type": "string"},
+						"assistant_family": map[string]any{"type": "string"},
+						"path":             map[string]any{"type": "string"},
+						"hostname":         map[string]any{"type": "string"},
+						"status_code":      map[string]any{"type": "integer"},
+						"content_type":     map[string]any{"type": "string"},
+						"resource_type":    map[string]any{"type": "string", "enum": []string{"html", "document", "image", "other"}},
+						"response_ms":      map[string]any{"type": "integer"},
+						"bytes_served":     map[string]any{"type": "integer"},
+						"user_agent":       map[string]any{"type": "string"},
+					},
+				},
+				"AIFetchIngestPayload": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"path":         map[string]any{"type": "string"},
+						"hostname":     map[string]any{"type": "string"},
+						"status_code":  map[string]any{"type": "integer", "minimum": 100, "maximum": 599},
+						"content_type": map[string]any{"type": "string"},
+						"response_ms":  map[string]any{"type": "integer", "minimum": 0},
+						"bytes_served": map[string]any{"type": "integer", "minimum": 0},
+						"user_agent":   map[string]any{"type": "string"},
+					},
+					"required": []string{"path", "status_code", "user_agent"},
+				},
+				"AIFetchOverview": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"total_requests":      map[string]any{"type": "integer"},
+						"unique_paths":        map[string]any{"type": "integer"},
+						"unique_assistants":   map[string]any{"type": "integer"},
+						"error_rate_4xx":      map[string]any{"type": "number"},
+						"error_rate_5xx":      map[string]any{"type": "number"},
+						"median_response_ms":  map[string]any{"type": "integer"},
+						"total_bytes":         map[string]any{"type": "integer"},
+						"top_assistants":      map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
+						"top_families":        map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
+						"top_paths":           map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
+						"top_error_paths":     map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
+						"resource_type_split": map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
+					},
+				},
+				"AIFetchSeriesPoint": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"time":  map[string]any{"type": "string", "format": "date-time"},
+						"count": map[string]any{"type": "integer"},
+					},
+				},
+				"AIFetchCorrelationSummary": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"total_fetches":        map[string]any{"type": "integer"},
+						"fetched_paths":        map[string]any{"type": "integer"},
+						"correlated_paths":     map[string]any{"type": "integer"},
+						"ai_referred_visits":   map[string]any{"type": "integer"},
+						"uncorrelated_fetches": map[string]any{"type": "integer"},
+					},
+				},
+				"AIFetchCitationYieldRow": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"path":               map[string]any{"type": "string"},
+						"assistant_name":     map[string]any{"type": "string"},
+						"fetch_count":        map[string]any{"type": "integer"},
+						"ai_referred_visits": map[string]any{"type": "integer"},
+						"citation_yield_pct": map[string]any{"type": "number"},
+					},
+				},
+				"AIFetchOpportunityRow": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"path":               map[string]any{"type": "string"},
+						"fetch_count":        map[string]any{"type": "integer"},
+						"ai_referred_visits": map[string]any{"type": "integer"},
+						"error_requests":     map[string]any{"type": "integer"},
+						"error_rate_pct":     map[string]any{"type": "number"},
+					},
+				},
+				"AIFetchFailureHotspot": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"assistant_name": map[string]any{"type": "string"},
+						"path_prefix":    map[string]any{"type": "string"},
+						"total_requests": map[string]any{"type": "integer"},
+						"error_requests": map[string]any{"type": "integer"},
+						"error_rate_pct": map[string]any{"type": "number"},
+					},
+				},
+				"AIFetchCorrelationReport": map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"summary":           map[string]any{"$ref": "#/components/schemas/AIFetchCorrelationSummary"},
+						"citation_yield":    map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/AIFetchCitationYieldRow"}},
+						"opportunity_pages": map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/AIFetchOpportunityRow"}},
+						"failure_hotspots":  map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/AIFetchFailureHotspot"}},
+					},
+				},
 				"ChartDataPoint": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
@@ -266,11 +370,15 @@ func openAPISpecV1(publicURL string) map[string]any {
 						"top_devices":          map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
 						"top_countries":        map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
 						"top_languages":        map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
+						"top_ai_bots":          map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
+						"top_ai_sources":       map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
 						"top_utm_campaigns":    map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
 						"top_utm_contents":     map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
 						"top_utm_mediums":      map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
 						"top_utm_sources":      map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
 						"top_utm_terms":        map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
+						"ai_bot_hits":          map[string]any{"type": "integer"},
+						"ai_source_visits":     map[string]any{"type": "integer"},
 						"utm_campaign_hits":    map[string]any{"type": "integer"},
 						"utm_content_hits":     map[string]any{"type": "integer"},
 						"utm_medium_hits":      map[string]any{"type": "integer"},
@@ -1358,6 +1466,38 @@ func openAPISpecV1(publicURL string) map[string]any {
 					paramRef("#/components/parameters/filter"), paramRef("#/components/parameters/filterType"), paramRef("#/components/parameters/filterValue"),
 					paramRef("#/components/parameters/itemID"), paramRef("#/components/parameters/itemName"), paramRef("#/components/parameters/limit"),
 				}, nil, map[string]any{"200": jsonSchemaResp("Ecommerce sources", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/EcommerceSourceStat"}})}),
+			},
+			"/api/sites/{id}/ingest/ai-fetch": map[string]any{
+				"post": op([]string{"Sites"}, "Record AI fetch", "Accepts a server-side AI crawler fetch record for a site. The user agent must match a known AI bot. Intended for edge or log-forwarded fetch analytics.", secAnyAuth(), []any{
+					paramRef("#/components/parameters/siteID"),
+				}, jsonBody(map[string]any{"$ref": "#/components/schemas/AIFetchIngestPayload"}), map[string]any{
+					"202": desc("Accepted"),
+				}),
+			},
+			"/api/sites/{id}/ai-fetch/overview": map[string]any{
+				"get": op([]string{"Sites"}, "Get AI fetch overview", "Returns aggregate AI fetch metrics for a site including request counts, error rates, response time, assistant breakdowns, and resource type split.", secAnyAuth(), []any{
+					paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to"),
+					map[string]any{"name": "assistant_name", "in": "query", "description": "Optional AI assistant bot name filter.", "schema": map[string]any{"type": "string"}},
+					map[string]any{"name": "assistant_family", "in": "query", "description": "Optional AI assistant family filter.", "schema": map[string]any{"type": "string"}},
+					map[string]any{"name": "resource_type", "in": "query", "description": "Optional AI fetch resource type filter.", "schema": map[string]any{"type": "string", "enum": []string{"html", "document", "image", "other"}}},
+				}, nil, map[string]any{"200": jsonRefResp("AI fetch overview", "#/components/schemas/AIFetchOverview")}),
+			},
+			"/api/sites/{id}/ai-fetch/timeseries": map[string]any{
+				"get": op([]string{"Sites"}, "Get AI fetch timeseries", "Returns AI fetch request counts over time for the selected site and filter set.", secAnyAuth(), []any{
+					paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to"),
+					map[string]any{"name": "assistant_name", "in": "query", "description": "Optional AI assistant bot name filter.", "schema": map[string]any{"type": "string"}},
+					map[string]any{"name": "assistant_family", "in": "query", "description": "Optional AI assistant family filter.", "schema": map[string]any{"type": "string"}},
+					map[string]any{"name": "resource_type", "in": "query", "description": "Optional AI fetch resource type filter.", "schema": map[string]any{"type": "string", "enum": []string{"html", "document", "image", "other"}}},
+				}, nil, map[string]any{"200": jsonSchemaResp("AI fetch timeseries", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/AIFetchSeriesPoint"}})}),
+			},
+			"/api/sites/{id}/ai-fetch/correlation": map[string]any{
+				"get": op([]string{"Sites"}, "Get AI fetch correlation report", "Returns directional AI fetch correlation metrics for a site by matching AI crawler fetches to later AI-referred visits on the same path within a bounded window. Assistant filters apply to the fetch side only; correlated visit counts include any AI assistant referrer that later drove a human visit to the same path.", secAnyAuth(), []any{
+					paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to"),
+					map[string]any{"name": "assistant_name", "in": "query", "description": "Optional AI assistant bot name filter.", "schema": map[string]any{"type": "string"}},
+					map[string]any{"name": "assistant_family", "in": "query", "description": "Optional AI assistant family filter.", "schema": map[string]any{"type": "string"}},
+					map[string]any{"name": "resource_type", "in": "query", "description": "Optional AI fetch resource type filter.", "schema": map[string]any{"type": "string", "enum": []string{"html", "document", "image", "other"}}},
+					map[string]any{"name": "window_days", "in": "query", "description": "Directional correlation window in days. Must be between 1 and 90. Defaults to 30.", "schema": map[string]any{"type": "integer", "minimum": 1, "maximum": 90, "default": 30}},
+				}, nil, map[string]any{"200": jsonRefResp("AI fetch correlation report", "#/components/schemas/AIFetchCorrelationReport")}),
 			},
 			"/api/favicon/{domain}": map[string]any{
 				"get": op([]string{"Sites"}, "Get favicon", "Proxies favicon by domain.", nil, []any{paramRef("#/components/parameters/domain")}, nil, map[string]any{"200": desc("Favicon image")}),

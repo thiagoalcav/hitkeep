@@ -126,7 +126,7 @@ func (w *RetentionWorker) Run(ctx context.Context) error {
 		}
 		db := tenantStore.DB()
 
-		var hitCount, eventCount int64
+		var hitCount, eventCount, fetchCount int64
 		err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM hits WHERE site_id = ? AND timestamp < ?", p.ID, cutoff).Scan(&hitCount)
 		if err != nil {
 			slog.Error("Failed to count hits for retention", "error", err, "site_id", p.ID)
@@ -137,12 +137,17 @@ func (w *RetentionWorker) Run(ctx context.Context) error {
 			slog.Error("Failed to count events for retention", "error", err, "site_id", p.ID)
 			continue
 		}
-
-		if hitCount == 0 && eventCount == 0 {
+		err = db.QueryRowContext(ctx, "SELECT COUNT(*) FROM ai_fetches WHERE site_id = ? AND timestamp < ?", p.ID, cutoff).Scan(&fetchCount)
+		if err != nil {
+			slog.Error("Failed to count ai fetches for retention", "error", err, "site_id", p.ID)
 			continue
 		}
 
-		slog.Info("Archiving old data", "site_id", p.ID, "hits", hitCount, "events", eventCount, "cutoff", cutoff.Format(time.DateOnly))
+		if hitCount == 0 && eventCount == 0 && fetchCount == 0 {
+			continue
+		}
+
+		slog.Info("Archiving old data", "site_id", p.ID, "hits", hitCount, "events", eventCount, "ai_fetches", fetchCount, "cutoff", cutoff.Format(time.DateOnly))
 
 		filename := w.archiveFilename(p.ID, p.TenantID, defaultTenantID)
 		if !IsS3ArchivePath(filename) {
@@ -157,11 +162,13 @@ func (w *RetentionWorker) Run(ctx context.Context) error {
 		//nolint:gosec // DuckDB COPY doesn't support parameterized queries; values are internally generated (UUID, time, escaped filepath)
 		exportQuery := fmt.Sprintf(`
 				COPY (
-					SELECT * FROM hits WHERE site_id = '%s' AND timestamp < '%s'
+					SELECT 'hits' AS _source, * FROM hits WHERE site_id = '%s' AND timestamp < '%s'
 					UNION BY NAME
-					SELECT * FROM events WHERE site_id = '%s' AND timestamp < '%s'
+					SELECT 'events' AS _source, * FROM events WHERE site_id = '%s' AND timestamp < '%s'
+					UNION BY NAME
+					SELECT 'ai_fetches' AS _source, * FROM ai_fetches WHERE site_id = '%s' AND timestamp < '%s'
 				) TO '%s' (FORMAT PARQUET, COMPRESSION 'SNAPPY');
-			`, p.ID, cutoff.Format(time.RFC3339), p.ID, cutoff.Format(time.RFC3339), safeFilename)
+			`, p.ID, cutoff.Format(time.RFC3339), p.ID, cutoff.Format(time.RFC3339), p.ID, cutoff.Format(time.RFC3339), safeFilename)
 
 		err = database.WithDuckDBSession(ctx, db, database.DuckDBSessionOptions{
 			S3: s3ConfigForSession(IsS3ArchivePath(w.path), w.s3Config),
@@ -185,7 +192,7 @@ func (w *RetentionWorker) Run(ctx context.Context) error {
 		if hitCount > 0 {
 			if _, err := tx.ExecContext(ctx, "DELETE FROM hits WHERE site_id = ? AND timestamp < ?", p.ID, cutoff); err != nil {
 				slog.Error("Failed to prune hits", "error", err, "site_id", p.ID)
-				defer func() { _ = tx.Rollback() }()
+				_ = tx.Rollback()
 				continue
 			}
 		}
@@ -193,80 +200,88 @@ func (w *RetentionWorker) Run(ctx context.Context) error {
 		if eventCount > 0 {
 			if _, err := tx.ExecContext(ctx, "DELETE FROM events WHERE site_id = ? AND timestamp < ?", p.ID, cutoff); err != nil {
 				slog.Error("Failed to prune events", "error", err, "site_id", p.ID)
-				defer func() { _ = tx.Rollback() }()
+				_ = tx.Rollback()
+				continue
+			}
+		}
+
+		if fetchCount > 0 {
+			if _, err := tx.ExecContext(ctx, "DELETE FROM ai_fetches WHERE site_id = ? AND timestamp < ?", p.ID, cutoff); err != nil {
+				slog.Error("Failed to prune ai fetches", "error", err, "site_id", p.ID)
+				_ = tx.Rollback()
 				continue
 			}
 		}
 
 		if _, err := tx.ExecContext(ctx, "DELETE FROM hit_rollups_hourly WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
 			slog.Error("Failed to prune hourly rollups", "error", err, "site_id", p.ID)
-			defer func() { _ = tx.Rollback() }()
+			_ = tx.Rollback()
 			continue
 		}
 
 		if _, err := tx.ExecContext(ctx, "DELETE FROM hit_rollups_daily WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
 			slog.Error("Failed to prune daily rollups", "error", err, "site_id", p.ID)
-			defer func() { _ = tx.Rollback() }()
+			_ = tx.Rollback()
 			continue
 		}
 
 		if _, err := tx.ExecContext(ctx, "DELETE FROM hit_rollups_monthly WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
 			slog.Error("Failed to prune monthly rollups", "error", err, "site_id", p.ID)
-			defer func() { _ = tx.Rollback() }()
+			_ = tx.Rollback()
 			continue
 		}
 
 		if _, err := tx.ExecContext(ctx, "DELETE FROM goal_rollups_hourly WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
 			slog.Error("Failed to prune hourly goal rollups", "error", err, "site_id", p.ID)
-			defer func() { _ = tx.Rollback() }()
+			_ = tx.Rollback()
 			continue
 		}
 
 		if _, err := tx.ExecContext(ctx, "DELETE FROM goal_rollups_daily WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
 			slog.Error("Failed to prune daily goal rollups", "error", err, "site_id", p.ID)
-			defer func() { _ = tx.Rollback() }()
+			_ = tx.Rollback()
 			continue
 		}
 
 		if _, err := tx.ExecContext(ctx, "DELETE FROM goal_rollups_monthly WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
 			slog.Error("Failed to prune monthly goal rollups", "error", err, "site_id", p.ID)
-			defer func() { _ = tx.Rollback() }()
+			_ = tx.Rollback()
 			continue
 		}
 
 		if _, err := tx.ExecContext(ctx, "DELETE FROM funnel_rollups_hourly WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
 			slog.Error("Failed to prune hourly funnel rollups", "error", err, "site_id", p.ID)
-			defer func() { _ = tx.Rollback() }()
+			_ = tx.Rollback()
 			continue
 		}
 
 		if _, err := tx.ExecContext(ctx, "DELETE FROM funnel_rollups_daily WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
 			slog.Error("Failed to prune daily funnel rollups", "error", err, "site_id", p.ID)
-			defer func() { _ = tx.Rollback() }()
+			_ = tx.Rollback()
 			continue
 		}
 
 		if _, err := tx.ExecContext(ctx, "DELETE FROM funnel_rollups_monthly WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
 			slog.Error("Failed to prune monthly funnel rollups", "error", err, "site_id", p.ID)
-			defer func() { _ = tx.Rollback() }()
+			_ = tx.Rollback()
 			continue
 		}
 
 		if _, err := tx.ExecContext(ctx, "DELETE FROM session_rollups_hourly WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
 			slog.Error("Failed to prune hourly session rollups", "error", err, "site_id", p.ID)
-			defer func() { _ = tx.Rollback() }()
+			_ = tx.Rollback()
 			continue
 		}
 
 		if _, err := tx.ExecContext(ctx, "DELETE FROM session_rollups_daily WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
 			slog.Error("Failed to prune daily session rollups", "error", err, "site_id", p.ID)
-			defer func() { _ = tx.Rollback() }()
+			_ = tx.Rollback()
 			continue
 		}
 
 		if _, err := tx.ExecContext(ctx, "DELETE FROM session_rollups_monthly WHERE site_id = ? AND bucket < ?", p.ID, cutoff); err != nil {
 			slog.Error("Failed to prune monthly session rollups", "error", err, "site_id", p.ID)
-			defer func() { _ = tx.Rollback() }()
+			_ = tx.Rollback()
 			continue
 		}
 

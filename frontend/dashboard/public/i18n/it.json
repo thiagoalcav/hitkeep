@@ -10,6 +10,10 @@
         "funnelsAria": "Vai ai funnel",
         "eventsAria": "Vai agli eventi",
         "events": "Eventi",
+        "aiVisibility": "Visibilità AI",
+        "aiVisibilityAria": "Vai all’analisi della visibilità AI",
+        "aiChatbots": "Chatbot AI",
+        "aiChatbotsAria": "Vai all’analisi dei chatbot AI",
         "utmAria": "Vai alla dashboard UTM",
         "utmBuilder": "Generatore UTM",
         "utmBuilderAria": "Vai al generatore UTM",
@@ -1203,6 +1207,128 @@
         },
         "kpis": {
             "totalEvents": "Totale eventi"
+        }
+    },
+    "aiChatbots": {
+        "title": "Chatbot AI",
+        "docsAction": "Guida di strumentazione",
+        "noSiteDescription": "Seleziona o crea un sito per visualizzare l’analisi dei chatbot AI.",
+        "header": {
+            "title": "Analisi dei chatbot AI sul sito",
+            "description": "Monitora avvii di conversazione, prompt, risposte, passaggi a un operatore e conversioni assistite dalla strumentazione del tuo chatbot."
+        },
+        "filters": {
+            "groupBy": "Ambito",
+            "value": "Valore",
+            "allValues": "Tutti i valori",
+            "unfiltered": "Mostra tutto il traffico del chatbot",
+            "provider": "Provider",
+            "botId": "Bot",
+            "surface": "Superficie",
+            "model": "Modello"
+        },
+        "kpis": {
+            "conversations": "Conversazioni",
+            "prompts": "Prompt",
+            "responses": "Risposte",
+            "assistedConversions": "Conversioni assistite",
+            "handoffRate": "Tasso di passaggio",
+            "citationCtr": "CTR delle citazioni",
+            "handoffs": "Passaggi"
+        },
+        "chart": {
+            "title": "Attività delle conversazioni",
+            "description": "Osserva come evolvono nel tempo le sessioni del chatbot, dal primo messaggio al passaggio e ai risultati assistiti.",
+            "emptyTitle": "Nessuna attività chatbot",
+            "emptyDescription": "Traccia assistant.chat_started e gli eventi correlati per popolare questo report."
+        },
+        "breakdowns": {
+            "intents": "Intent principali",
+            "providers": "Provider principali",
+            "surfaces": "Superfici principali"
+        }
+    },
+    "aiVisibility": {
+        "title": "Visibilità AI",
+        "docsAction": "Guida alla visibilità AI",
+        "noSiteDescription": "Seleziona o crea un sito per vedere l’analisi dei fetch AI e delle correlazioni.",
+        "header": {
+            "title": "Analisi della visibilità AI",
+            "description": "Monitora come gli assistenti AI recuperano i tuoi contenuti, dove si concentrano gli errori di crawl e quali pagine recuperate attirano poi visite riferite dall’AI."
+        },
+        "filters": {
+            "assistant": "Assistente",
+            "family": "Operatore",
+            "resourceType": "Tipo di risorsa",
+            "allAssistants": "Tutti gli assistenti",
+            "allFamilies": "Tutti gli operatori",
+            "allResourceTypes": "Tutti i tipi di risorsa",
+            "unfiltered": "Mostra tutta l’attività di fetch AI"
+        },
+        "kpis": {
+            "totalFetches": "Fetch totali",
+            "uniquePaths": "Percorsi unici",
+            "uniqueAssistants": "Assistenti unici",
+            "errorRate4xx": "Tasso 4xx",
+            "errorRate5xx": "Tasso 5xx",
+            "medianResponse": "Risposta mediana",
+            "bytesServed": "Byte serviti"
+        },
+        "chart": {
+            "title": "Volume dei fetch nel tempo",
+            "description": "Guarda quando gli assistenti AI stanno recuperando attivamente i tuoi contenuti e come cambia la domanda nel periodo selezionato.",
+            "fetches": "Fetch",
+            "emptyTitle": "Nessuna attività di fetch AI",
+            "emptyDescription": "Invia record a /api/sites/{id}/ingest/ai-fetch per popolare questo report."
+        },
+        "breakdowns": {
+            "assistants": "Assistenti principali",
+            "families": "Operatori principali",
+            "paths": "Percorsi più recuperati",
+            "errorPaths": "Percorsi con errori",
+            "resourceTypes": "Tipi di risorsa"
+        },
+        "correlation": {
+            "title": "Correlazione fetch-visite",
+            "description": "Misura quali percorsi recuperati attirano poi visite umane riferite dall’AI e quali pagine molto richieste non generano ancora traffico a valle.",
+            "note": "I filtri per assistente, operatore e tipo di risorsa si applicano solo al lato fetch. Le visite correlate includono qualsiasi visita umana successiva riferita dall’AI sullo stesso percorso nella finestra selezionata.",
+            "kpis": {
+                "correlatedPaths": "Percorsi correlati",
+                "aiVisits": "Visite riferite dall’AI",
+                "uncorrelatedFetches": "Fetch non correlati"
+            }
+        },
+        "tables": {
+            "citationYield": {
+                "title": "Resa delle citazioni",
+                "description": "Percorsi in cui i fetch AI si trasformano più spesso in visite successive riferite dall’AI.",
+                "empty": "Nessun percorso recuperato ha prodotto visite AI correlate in questo intervallo."
+            },
+            "opportunityPages": {
+                "title": "Pagine opportunità",
+                "description": "Pagine con molti fetch, poche visite successive o pressione elevata di errori.",
+                "empty": "Nessuna pagina opportunità corrisponde ai filtri attuali."
+            },
+            "failureHotspots": {
+                "title": "Hotspot di errore",
+                "description": "Le combinazioni assistente/prefisso di percorso con la maggiore pressione di errori nei fetch.",
+                "empty": "Nessun hotspot di errore corrisponde ai filtri attuali."
+            }
+        },
+        "columns": {
+            "path": "Percorso",
+            "assistant": "Assistente",
+            "pathPrefix": "Prefisso percorso",
+            "fetches": "Fetch",
+            "requests": "Richieste",
+            "aiVisits": "Visite AI",
+            "errors": "Errori",
+            "errorRate": "Tasso di errore",
+            "yield": "Resa"
+        },
+        "exportStatus": {
+            "success": "Download dell'esportazione avviato.",
+            "error": "Esportazione dei dati AI fetch non riuscita. Riprova."
         }
     },
     "integration": {

@@ -53,6 +53,22 @@
                 <i class="pi pi-bolt" aria-hidden="true"></i> <span>{{ "nav.events" | transloco }}</span>
             </a>
             <a
+                [routerLink]="navBase() + '/ai-visibility'"
+                routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
+                class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
+                [attr.aria-label]="'nav.aiVisibilityAria' | transloco"
+            >
+                <i class="pi pi-sparkles" aria-hidden="true"></i> <span>{{ "nav.aiVisibility" | transloco }}</span>
+            </a>
+            <a
+                [routerLink]="navBase() + '/ai-chatbots'"
+                routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
+                class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
+                [attr.aria-label]="'nav.aiChatbotsAria' | transloco"
+            >
+                <i class="pi pi-comments" aria-hidden="true"></i> <span>{{ "nav.aiChatbots" | transloco }}</span>
+            </a>
+            <a
                 [routerLink]="navBase() + '/ecommerce'"
                 routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                 class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -247,7 +263,7 @@
                 <a
                     [routerLink]="navBase() + '/dashboard'"
                     (click)="isMobileDrawerOpen.set(false)"
-                    routerLinkActive="bg-primary-50 text-primary-700"
+                    routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                     class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
                     [attr.aria-label]="'nav.dashboardAria' | transloco"
                 >
@@ -256,7 +272,7 @@
                 <a
                     [routerLink]="navBase() + '/goals'"
                     (click)="isMobileDrawerOpen.set(false)"
-                    routerLinkActive="bg-primary-50 text-primary-700"
+                    routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                     class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
                     [attr.aria-label]="'nav.goalsAria' | transloco"
                 >
@@ -265,7 +281,7 @@
                 <a
                     [routerLink]="navBase() + '/funnels'"
                     (click)="isMobileDrawerOpen.set(false)"
-                    routerLinkActive="bg-primary-50 text-primary-700"
+                    routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                     class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
                     [attr.aria-label]="'nav.funnelsAria' | transloco"
                 >
@@ -274,16 +290,34 @@
                 <a
                     [routerLink]="navBase() + '/events'"
                     (click)="isMobileDrawerOpen.set(false)"
-                    routerLinkActive="bg-primary-50 text-primary-700"
+                    routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                     class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
                     [attr.aria-label]="'nav.eventsAria' | transloco"
                 >
                     <i class="pi pi-bolt" aria-hidden="true"></i> <span>{{ "nav.events" | transloco }}</span>
                 </a>
                 <a
+                    [routerLink]="navBase() + '/ai-visibility'"
+                    (click)="isMobileDrawerOpen.set(false)"
+                    routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
+                    class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
+                    [attr.aria-label]="'nav.aiVisibilityAria' | transloco"
+                >
+                    <i class="pi pi-sparkles" aria-hidden="true"></i> <span>{{ "nav.aiVisibility" | transloco }}</span>
+                </a>
+                <a
+                    [routerLink]="navBase() + '/ai-chatbots'"
+                    (click)="isMobileDrawerOpen.set(false)"
+                    routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
+                    class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
+                    [attr.aria-label]="'nav.aiChatbotsAria' | transloco"
+                >
+                    <i class="pi pi-comments" aria-hidden="true"></i> <span>{{ "nav.aiChatbots" | transloco }}</span>
+                </a>
+                <a
                     [routerLink]="navBase() + '/ecommerce'"
                     (click)="isMobileDrawerOpen.set(false)"
-                    routerLinkActive="bg-primary-50 text-primary-700"
+                    routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                     class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
                     [attr.aria-label]="'nav.ecommerceAria' | transloco"
                 >
@@ -293,7 +327,7 @@
                     [routerLink]="navBase() + '/utm'"
                     [routerLinkActiveOptions]="{ exact: true }"
                     (click)="isMobileDrawerOpen.set(false)"
-                    routerLinkActive="bg-primary-50 text-primary-700"
+                    routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                     class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
                     [attr.aria-label]="'nav.utmAria' | transloco"
                 >
@@ -303,7 +337,7 @@
                 <a
                     routerLink="/utm/builder"
                     (click)="isMobileDrawerOpen.set(false)"
-                    routerLinkActive="bg-primary-50 text-primary-700"
+                    routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                     class="flex items-center gap-3 pl-8 pr-3 py-2 rounded-md text-sm font-medium"
                     [attr.aria-label]="'nav.utmBuilderAria' | transloco"
                 >
@@ -313,7 +347,7 @@
                 <a
                     routerLink="/integration/api-clients"
                     (click)="isMobileDrawerOpen.set(false)"
-                    routerLinkActive="bg-primary-50 text-primary-700"
+                    routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                     class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
                     [attr.aria-label]="'nav.apiClientsAria' | transloco"
                 >
@@ -322,7 +356,7 @@
                 <a
                     routerLink="/integration/api-reference"
                     (click)="isMobileDrawerOpen.set(false)"
-                    routerLinkActive="bg-primary-50 text-primary-700"
+                    routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
                     class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
                     [attr.aria-label]="'nav.apiReferenceAria' | transloco"
                 >

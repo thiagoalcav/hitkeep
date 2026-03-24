@@ -27,6 +27,8 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 		TopDevices:      []api.MetricStat{},
 		TopCountries:    []api.MetricStat{},
 		TopBrowsers:     []api.MetricStat{},
+		TopAIBots:       []api.MetricStat{},
+		TopAISources:    []api.MetricStat{},
 		TopLanguages:    []api.MetricStat{},
 		TopUTMCampaigns: []api.MetricStat{},
 		TopUTMContents:  []api.MetricStat{},
@@ -175,6 +177,9 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 				hk_device(h.viewport_width) AS device,
 				hk_country(h.country_code) AS country,
 				hk_browser(h.user_agent) AS browser,
+				hk_ai_bot(h.user_agent) AS ai_bot,
+				hk_ai_source(h.referrer) AS ai_source,
+				h.session_id AS session_id,
 				CASE
 					WHEN NULLIF(TRIM(h.language), '') IS NULL THEN '(Unspecified)'
 					ELSE lower(split_part(TRIM(h.language), '-', 1))
@@ -195,15 +200,19 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 					WHEN GROUPING(device) = 0 THEN 'device'
 					WHEN GROUPING(country) = 0 THEN 'country'
 					WHEN GROUPING(browser) = 0 THEN 'browser'
+					WHEN GROUPING(ai_bot) = 0 THEN 'ai_bot'
 					WHEN GROUPING(language) = 0 THEN 'language'
 					WHEN GROUPING(utm_campaign) = 0 THEN 'utm_campaign'
 					WHEN GROUPING(utm_content) = 0 THEN 'utm_content'
 					WHEN GROUPING(utm_medium) = 0 THEN 'utm_medium'
 					WHEN GROUPING(utm_source) = 0 THEN 'utm_source'
 					WHEN GROUPING(utm_term) = 0 THEN 'utm_term'
+					ELSE '__summary__'
 				END AS dim,
-				COALESCE(path, referrer, device, country, browser, language, utm_campaign, utm_content, utm_medium, utm_source, utm_term) AS name,
-				COUNT(*) AS val
+				COALESCE(path, referrer, device, country, browser, ai_bot, language, utm_campaign, utm_content, utm_medium, utm_source, utm_term) AS name,
+				COUNT(*) AS val,
+				COUNT(*) FILTER (WHERE ai_bot IS NOT NULL) AS ai_bot_hits,
+				COUNT(DISTINCT session_id) FILTER (WHERE ai_source IS NOT NULL) AS ai_source_visits
 			FROM base
 			GROUP BY GROUPING SETS (
 				(path),
@@ -211,26 +220,46 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 				(device),
 				(country),
 				(browser),
+				(ai_bot),
 				(language),
 				(utm_campaign),
 				(utm_content),
 				(utm_medium),
 				(utm_source),
-				(utm_term)
+				(utm_term),
+				()
 			)
+		),
+		ai_source_agg AS (
+			SELECT
+				'ai_source' AS dim,
+				ai_source AS name,
+				COUNT(DISTINCT session_id) AS val,
+				NULL AS ai_bot_hits,
+				NULL AS ai_source_visits
+			FROM base
+			WHERE ai_source IS NOT NULL
+			GROUP BY ai_source
 		),
 		ranked AS (
 			SELECT
 				dim,
 				name,
 				val,
+				ai_bot_hits,
+				ai_source_visits,
 				ROW_NUMBER() OVER (PARTITION BY dim ORDER BY val DESC) AS rn
-			FROM agg
+			FROM (
+				SELECT dim, name, val, ai_bot_hits, ai_source_visits FROM agg
+				UNION ALL
+				SELECT dim, name, val, ai_bot_hits, ai_source_visits FROM ai_source_agg
+			)
+			WHERE dim = '__summary__' OR name IS NOT NULL
 		)
-		SELECT dim, name, val
+		SELECT dim, name, val, ai_bot_hits, ai_source_visits
 		FROM ranked
-		WHERE rn <= 10
-		ORDER BY dim, val DESC;
+		WHERE dim = '__summary__' OR rn <= 10
+		ORDER BY CASE WHEN dim = '__summary__' THEN 0 ELSE 1 END, dim, val DESC;
 	`, filterSQL)
 
 	topRows, err := s.db.QueryContext(ctx, topQuery, append([]any{params.SiteID, params.Start, params.End}, filterArgs...)...)
@@ -241,9 +270,28 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 
 	for topRows.Next() {
 		var dim string
-		var m api.MetricStat
-		if err := topRows.Scan(&dim, &m.Name, &m.Value); err != nil {
+		var name sql.NullString
+		var value sql.NullInt64
+		var aiBotHits sql.NullInt64
+		var aiSourceVisits sql.NullInt64
+		if err := topRows.Scan(&dim, &name, &value, &aiBotHits, &aiSourceVisits); err != nil {
 			return nil, err
+		}
+		if dim == "__summary__" {
+			if aiBotHits.Valid {
+				stats.AIBotHits = int(aiBotHits.Int64)
+			}
+			if aiSourceVisits.Valid {
+				stats.AISourceVisits = int(aiSourceVisits.Int64)
+			}
+			continue
+		}
+		if !name.Valid || !value.Valid {
+			continue
+		}
+		m := api.MetricStat{
+			Name:  name.String,
+			Value: int(value.Int64),
 		}
 		switch dim {
 		case "path":
@@ -256,6 +304,10 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 			stats.TopCountries = append(stats.TopCountries, m)
 		case "browser":
 			stats.TopBrowsers = append(stats.TopBrowsers, m)
+		case "ai_bot":
+			stats.TopAIBots = append(stats.TopAIBots, m)
+		case "ai_source":
+			stats.TopAISources = append(stats.TopAISources, m)
 		case "language":
 			stats.TopLanguages = append(stats.TopLanguages, m)
 		case "utm_campaign":

@@ -156,6 +156,81 @@ export interface EventSeriesPoint {
     count: number;
 }
 
+export interface AIFetch {
+    id: string;
+    site_id: string;
+    timestamp: string;
+    assistant_name: string;
+    assistant_family: string;
+    path: string;
+    hostname?: string;
+    status_code: number;
+    content_type?: string;
+    resource_type: string;
+    response_ms?: number;
+    bytes_served?: number;
+    user_agent?: string;
+}
+
+export interface AIFetchOverview {
+    total_requests: number;
+    unique_paths: number;
+    unique_assistants: number;
+    error_rate_4xx: number;
+    error_rate_5xx: number;
+    median_response_ms: number;
+    total_bytes: number;
+    top_assistants: MetricStat[];
+    top_families: MetricStat[];
+    top_paths: MetricStat[];
+    top_error_paths: MetricStat[];
+    resource_type_split: MetricStat[];
+}
+
+export interface AIFetchSeriesPoint {
+    time: string;
+    count: number;
+}
+
+export interface AIFetchCorrelationSummary {
+    total_fetches: number;
+    fetched_paths: number;
+    correlated_paths: number;
+    ai_referred_visits: number;
+    uncorrelated_fetches: number;
+}
+
+export interface AIFetchCitationYieldRow {
+    path: string;
+    assistant_name: string;
+    fetch_count: number;
+    ai_referred_visits: number;
+    citation_yield_pct: number;
+}
+
+export interface AIFetchOpportunityRow {
+    path: string;
+    fetch_count: number;
+    ai_referred_visits: number;
+    error_requests: number;
+    error_rate_pct: number;
+}
+
+export interface AIFetchFailureHotspot {
+    assistant_name: string;
+    path_prefix: string;
+    total_requests: number;
+    error_requests: number;
+    error_rate_pct: number;
+}
+
+export interface AIFetchCorrelationReport {
+    summary: AIFetchCorrelationSummary;
+    citation_yield: AIFetchCitationYieldRow[];
+    opportunity_pages: AIFetchOpportunityRow[];
+    failure_hotspots: AIFetchFailureHotspot[];
+}
+
 export interface EventAudience {
     top_pages: MetricStat[];
     top_referrers: MetricStat[];
@@ -231,12 +306,16 @@ export interface SiteStats {
     top_devices: MetricStat[];
     top_countries: MetricStat[];
     top_browsers: MetricStat[];
+    top_ai_bots: MetricStat[];
+    top_ai_sources: MetricStat[];
     top_languages: MetricStat[];
     top_utm_campaigns: MetricStat[];
     top_utm_contents: MetricStat[];
     top_utm_mediums: MetricStat[];
     top_utm_sources: MetricStat[];
     top_utm_terms: MetricStat[];
+    ai_bot_hits: number;
+    ai_source_visits: number;
     utm_campaign_hits: number;
     utm_content_hits: number;
     utm_medium_hits: number;

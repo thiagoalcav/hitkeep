@@ -1,7 +1,21 @@
 import { Injectable, inject } from "@angular/core";
 import { HttpClient, HttpParams } from "@angular/common/http";
 import { Observable } from "rxjs";
-import { GoalSeriesPoint, FunnelSeriesPoint, EventSeriesPoint, EventAudience, EcommerceSummary, EcommerceSeriesPoint, EcommerceProductStat, EcommerceSourceStat, SiteStats as SiteStatsModel, SystemStatus } from "@models/analytics.types";
+import {
+    AIFetchCorrelationReport,
+    AIFetchOverview,
+    AIFetchSeriesPoint,
+    EventAudience,
+    EventSeriesPoint,
+    EcommerceProductStat,
+    EcommerceSeriesPoint,
+    EcommerceSourceStat,
+    EcommerceSummary,
+    FunnelSeriesPoint,
+    GoalSeriesPoint,
+    SiteStats as SiteStatsModel,
+    SystemStatus
+} from "@models/analytics.types";
 
 export interface Site {
     id: string;
@@ -115,6 +129,12 @@ export interface FunnelStats {
     overall_conversion_rate: number;
 }
 
+export interface AIFetchFilters {
+    assistantName?: string | null;
+    assistantFamily?: string | null;
+    resourceType?: string | null;
+}
+
 @Injectable({
     providedIn: "root"
 })
@@ -213,6 +233,26 @@ export class AnalyticsService {
         return this.http.get<EcommerceSourceStat[]>(`/api/sites/${siteId}/ecommerce/sources`, { params });
     }
 
+    getAIFetchOverview(siteId: string, from: string, to: string, filters: AIFetchFilters = {}): Observable<AIFetchOverview> {
+        return this.http.get<AIFetchOverview>(`/api/sites/${siteId}/ai-fetch/overview`, {
+            params: this.buildAIFetchParams(from, to, filters)
+        });
+    }
+
+    getAIFetchTimeseries(siteId: string, from: string, to: string, filters: AIFetchFilters = {}): Observable<AIFetchSeriesPoint[]> {
+        return this.http.get<AIFetchSeriesPoint[]>(`/api/sites/${siteId}/ai-fetch/timeseries`, {
+            params: this.buildAIFetchParams(from, to, filters)
+        });
+    }
+
+    getAIFetchCorrelation(siteId: string, from: string, to: string, filters: AIFetchFilters = {}, windowDays?: number): Observable<AIFetchCorrelationReport> {
+        let params = this.buildAIFetchParams(from, to, filters);
+        if (windowDays) {
+            params = params.set("window_days", windowDays);
+        }
+        return this.http.get<AIFetchCorrelationReport>(`/api/sites/${siteId}/ai-fetch/correlation`, { params });
+    }
+
     /**
      * Fetches raw hits (RESTful nested resource).
      * GET /api/sites/{id}/hits
@@ -257,6 +297,20 @@ export class AnalyticsService {
     // Funnels
     getFunnels(siteId: string): Observable<Funnel[]> {
         return this.http.get<Funnel[]>(`/api/sites/${siteId}/funnels`);
+    }
+
+    private buildAIFetchParams(from: string, to: string, filters: AIFetchFilters): HttpParams {
+        let params = new HttpParams().set("from", from).set("to", to);
+        if (filters.assistantName) {
+            params = params.set("assistant_name", filters.assistantName);
+        }
+        if (filters.assistantFamily) {
+            params = params.set("assistant_family", filters.assistantFamily);
+        }
+        if (filters.resourceType) {
+            params = params.set("resource_type", filters.resourceType);
+        }
+        return params;
     }
 
     private buildEcommerceParams(from: string, to: string, filters: { type: string; value: string }[] = [], itemId?: string | null, itemName?: string | null): HttpParams {

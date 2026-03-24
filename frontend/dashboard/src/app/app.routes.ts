@@ -46,6 +46,14 @@ export const routes: Routes = [
                         loadComponent: () => import("@pages/events/events").then((m) => m.Events)
                     },
                     {
+                        path: "ai-visibility",
+                        loadComponent: () => import("@pages/ai-visibility/ai-visibility").then((m) => m.AIVisibility)
+                    },
+                    {
+                        path: "ai-chatbots",
+                        loadComponent: () => import("@pages/ai-chatbots/ai-chatbots").then((m) => m.AIChatbots)
+                    },
+                    {
                         path: "ecommerce",
                         loadComponent: () => import("@pages/ecommerce/ecommerce").then((m) => m.EcommercePage)
                     },
@@ -79,6 +87,14 @@ export const routes: Routes = [
             {
                 path: "events",
                 loadComponent: () => import("@pages/events/events").then((m) => m.Events)
+            },
+            {
+                path: "ai-visibility",
+                loadComponent: () => import("@pages/ai-visibility/ai-visibility").then((m) => m.AIVisibility)
+            },
+            {
+                path: "ai-chatbots",
+                loadComponent: () => import("@pages/ai-chatbots/ai-chatbots").then((m) => m.AIChatbots)
             },
             {
                 path: "ecommerce",

@@ -120,6 +120,8 @@ var referrers = []weightedEntry[*string]{
 	{new("https://chatgpt.com"), 24},                 // ChatGPT referral
 	{new("https://www.perplexity.ai"), 18},           // Perplexity referral
 	{new("https://claude.ai"), 10},                   // Claude referral
+	{new("https://gemini.google.com"), 8},            // Gemini referral
+	{new("https://chat.deepseek.com"), 6},            // DeepSeek referral
 	{new("https://news.ycombinator.com"), 120},       // HN
 	{new("https://twitter.com"), 80},                 // Twitter/X
 	{new("https://www.reddit.com/r/selfhosted"), 60}, // Reddit
@@ -232,19 +234,22 @@ type aiFetchTarget struct {
 	responseMax int
 	bytesMin    int64
 	bytesMax    int64
+	visitChance float64
+	visitMin    int
+	visitMax    int
 }
 
 var aiFetchTargets = []weightedEntry[aiFetchTarget]{
-	{aiFetchTarget{path: "/", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 90, responseMax: 260, bytesMin: 21_000, bytesMax: 54_000}, 34},
-	{aiFetchTarget{path: "/pricing", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 110, responseMax: 290, bytesMin: 24_000, bytesMax: 60_000}, 26},
-	{aiFetchTarget{path: "/features", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 100, responseMax: 260, bytesMin: 22_000, bytesMax: 52_000}, 20},
-	{aiFetchTarget{path: "/blog/privacy-first-analytics-2025", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 120, responseMax: 320, bytesMin: 19_000, bytesMax: 45_000}, 18},
-	{aiFetchTarget{path: "/blog/replace-google-analytics", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 120, responseMax: 320, bytesMin: 18_000, bytesMax: 43_000}, 18},
-	{aiFetchTarget{path: "/docs/getting-started", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 80, responseMax: 220, bytesMin: 15_000, bytesMax: 36_000}, 28},
-	{aiFetchTarget{path: "/docs/configuration", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 85, responseMax: 240, bytesMin: 17_000, bytesMax: 39_000}, 24},
-	{aiFetchTarget{path: "/docs/api-reference", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 140, responseMax: 360, bytesMin: 27_000, bytesMax: 74_000}, 20},
-	{aiFetchTarget{path: "/docs/api-reference/openapi.json", contentType: "application/json", statusCode: 200, responseMin: 70, responseMax: 180, bytesMin: 70_000, bytesMax: 180_000}, 12},
-	{aiFetchTarget{path: "/guides/ai-visibility.pdf", contentType: "application/pdf", statusCode: 200, responseMin: 150, responseMax: 420, bytesMin: 240_000, bytesMax: 860_000}, 8},
+	{aiFetchTarget{path: "/", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 90, responseMax: 260, bytesMin: 21_000, bytesMax: 54_000, visitChance: 0.14, visitMin: 1, visitMax: 2}, 34},
+	{aiFetchTarget{path: "/pricing", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 110, responseMax: 290, bytesMin: 24_000, bytesMax: 60_000, visitChance: 0.34, visitMin: 1, visitMax: 3}, 26},
+	{aiFetchTarget{path: "/features", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 100, responseMax: 260, bytesMin: 22_000, bytesMax: 52_000, visitChance: 0.24, visitMin: 1, visitMax: 2}, 20},
+	{aiFetchTarget{path: "/blog/privacy-first-analytics-2025", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 120, responseMax: 320, bytesMin: 19_000, bytesMax: 45_000, visitChance: 0.22, visitMin: 1, visitMax: 2}, 18},
+	{aiFetchTarget{path: "/blog/replace-google-analytics", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 120, responseMax: 320, bytesMin: 18_000, bytesMax: 43_000, visitChance: 0.26, visitMin: 1, visitMax: 2}, 18},
+	{aiFetchTarget{path: "/docs/getting-started", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 80, responseMax: 220, bytesMin: 15_000, bytesMax: 36_000, visitChance: 0.42, visitMin: 1, visitMax: 4}, 28},
+	{aiFetchTarget{path: "/docs/configuration", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 85, responseMax: 240, bytesMin: 17_000, bytesMax: 39_000, visitChance: 0.34, visitMin: 1, visitMax: 3}, 24},
+	{aiFetchTarget{path: "/docs/api-reference", contentType: "text/html; charset=utf-8", statusCode: 200, responseMin: 140, responseMax: 360, bytesMin: 27_000, bytesMax: 74_000, visitChance: 0.3, visitMin: 1, visitMax: 3}, 20},
+	{aiFetchTarget{path: "/docs/api-reference/openapi.json", contentType: "application/json", statusCode: 200, responseMin: 70, responseMax: 180, bytesMin: 70_000, bytesMax: 180_000, visitChance: 0.02, visitMin: 1, visitMax: 1}, 12},
+	{aiFetchTarget{path: "/guides/ai-visibility.pdf", contentType: "application/pdf", statusCode: 200, responseMin: 150, responseMax: 420, bytesMin: 240_000, bytesMax: 860_000, visitChance: 0.06, visitMin: 1, visitMax: 1}, 8},
 	{aiFetchTarget{path: "/assets/architecture-diagram.png", contentType: "image/png", statusCode: 200, responseMin: 45, responseMax: 120, bytesMin: 42_000, bytesMax: 280_000}, 6},
 	{aiFetchTarget{path: "/docs/legacy-sdk", contentType: "text/html; charset=utf-8", statusCode: 404, responseMin: 80, responseMax: 160, bytesMin: 4_000, bytesMax: 12_000}, 5},
 	{aiFetchTarget{path: "/blog/ai-overview", contentType: "text/html; charset=utf-8", statusCode: 404, responseMin: 75, responseMax: 150, bytesMin: 3_500, bytesMax: 10_000}, 4},
@@ -406,7 +411,10 @@ func main() {
 
 	slog.Info("Seeding traffic", "days", *days)
 	stats := seedTraffic(ctx, analyticsStore, siteID, goalIDs, *days, rng)
-	stats.aiFetches = seedAIFetches(ctx, analyticsStore, siteID, *days, rng)
+	aiSeedStats := seedAIFetches(ctx, analyticsStore, siteID, *days, rng)
+	stats.aiFetches = aiSeedStats.fetches
+	stats.hits += aiSeedStats.hits
+	stats.sessions += aiSeedStats.sessions
 
 	slog.Info("Running rollup backfill...")
 	rollupWorker := worker.NewRollupBackfillWorker(tenantMgr)
@@ -615,6 +623,12 @@ type seedStats struct {
 	aiFetches int
 }
 
+type aiFetchSeedStats struct {
+	fetches  int
+	hits     int
+	sessions int
+}
+
 func seedTraffic(ctx context.Context, store *database.Store, siteID uuid.UUID, goals goalIDs, numDays int, rng *mrand.Rand) seedStats {
 	now := time.Now().UTC()
 	start := now.AddDate(0, 0, -numDays).Truncate(24 * time.Hour)
@@ -727,10 +741,10 @@ func seedTraffic(ctx context.Context, store *database.Store, siteID uuid.UUID, g
 	return stats
 }
 
-func seedAIFetches(ctx context.Context, store *database.Store, siteID uuid.UUID, numDays int, rng *mrand.Rand) int {
+func seedAIFetches(ctx context.Context, store *database.Store, siteID uuid.UUID, numDays int, rng *mrand.Rand) aiFetchSeedStats {
 	now := time.Now().UTC()
 	start := now.AddDate(0, 0, -numDays).Truncate(24 * time.Hour)
-	count := 0
+	stats := aiFetchSeedStats{}
 
 	for d := range numDays {
 		day := start.Add(time.Duration(d) * 24 * time.Hour)
@@ -770,12 +784,15 @@ func seedAIFetches(ctx context.Context, store *database.Store, siteID uuid.UUID,
 				slog.Error("Failed to insert ai fetch", "assistant", bot.name, "path", target.path, "error", err)
 				continue
 			}
-			count++
+			stats.fetches++
+			sessionCount, hitCount := seedAIReferredVisits(ctx, store, siteID, fetch, target, rng)
+			stats.sessions += sessionCount
+			stats.hits += hitCount
 		}
 	}
 
-	slog.Info("AI fetches seeded", "count", count)
-	return count
+	slog.Info("AI visibility seeded", "fetches", stats.fetches, "ai_referred_sessions", stats.sessions, "ai_referred_hits", stats.hits)
+	return stats
 }
 
 // fireConversionEvents randomly fires zero or more conversion events for a session.
@@ -1436,6 +1453,149 @@ func classifySeedResourceType(contentType string) string {
 		return "image"
 	default:
 		return "other"
+	}
+}
+
+func seedAIReferredVisits(ctx context.Context, store *database.Store, siteID uuid.UUID, fetch *api.AIFetch, target aiFetchTarget, rng *mrand.Rand) (sessions int, hits int) {
+	if fetch == nil || target.visitChance <= 0 || target.visitMax <= 0 {
+		return 0, 0
+	}
+	if fetch.Timestamp.After(time.Now().UTC().Add(-30 * time.Minute)) {
+		return 0, 0
+	}
+	if rng.Float64() >= target.visitChance {
+		return 0, 0
+	}
+
+	visitCount := target.visitMin
+	if target.visitMax > target.visitMin {
+		visitCount += rng.Intn(target.visitMax - target.visitMin + 1)
+	}
+
+	referrer := aiReferrerForFamily(fetch.AssistantFamily, rng)
+	hostname := "acme-analytics.io"
+	isUnique := true
+
+	for range visitCount {
+		sessionID := uuid.New()
+		uaEntry := pickWeighted(rng, userAgents)
+		country := pickWeighted(rng, countries)
+		lang := pickWeighted(rng, languages)
+		vw, vh, sw, sh := pickViewport(rng, uaEntry.kind)
+		sessionStart := randomAIFollowupTime(fetch.Timestamp, rng)
+		sessionLen := 1 + rng.Intn(3)
+
+		for i := range sessionLen {
+			path := fetch.Path
+			if i > 0 {
+				path = nextPageAfterAIEntry(fetch.Path, rng)
+			}
+
+			ts := sessionStart.Add(time.Duration(i*70+rng.Intn(90)) * time.Second)
+			h := &api.Hit{
+				SiteID:         siteID,
+				SessionID:      sessionID,
+				PageID:         uuid.New(),
+				Timestamp:      ts,
+				Path:           path,
+				Hostname:       &hostname,
+				Referrer:       nil,
+				UserAgent:      new(uaEntry.ua),
+				CountryCode:    country,
+				Language:       lang,
+				ViewportWidth:  new(vw),
+				ViewportHeight: new(vh),
+				ScreenWidth:    new(sw),
+				ScreenHeight:   new(sh),
+				IsUnique:       new(i == 0),
+			}
+			if i == 0 {
+				h.Referrer = referrer
+				h.IsUnique = &isUnique
+			}
+
+			if err := store.CreateHit(ctx, h); err != nil {
+				slog.Error("Failed to insert AI-referred hit", "assistant_family", fetch.AssistantFamily, "path", path, "error", err)
+				continue
+			}
+			hits++
+		}
+		sessions++
+	}
+
+	return sessions, hits
+}
+
+func randomAIFollowupTime(fetchTime time.Time, rng *mrand.Rand) time.Time {
+	delayHours := 2 + rng.Intn(72)
+	delayMinutes := rng.Intn(60)
+	followup := fetchTime.Add(time.Duration(delayHours)*time.Hour + time.Duration(delayMinutes)*time.Minute)
+	cutoff := time.Now().UTC().Add(-15 * time.Minute)
+	if followup.After(cutoff) {
+		return cutoff
+	}
+	return followup
+}
+
+func aiReferrerForFamily(family string, rng *mrand.Rand) *string {
+	switch strings.ToLower(strings.TrimSpace(family)) {
+	case "openai":
+		return new(pickWeighted(rng, []weightedEntry[string]{
+			{value: "https://chatgpt.com/c/hitkeep-demo", weight: 7},
+			{value: "https://chat.openai.com/share/hitkeep-demo", weight: 3},
+		}))
+	case "anthropic":
+		return new("https://claude.ai/chat/hitkeep-demo")
+	case "perplexity":
+		return new("https://www.perplexity.ai/page/hitkeep-demo")
+	case "google":
+		return new("https://gemini.google.com/app/hitkeep-demo")
+	case "deepseek":
+		return new("https://chat.deepseek.com/search/hitkeep-demo")
+	default:
+		return new("https://chatgpt.com/c/hitkeep-demo")
+	}
+}
+
+func nextPageAfterAIEntry(entryPath string, rng *mrand.Rand) string {
+	switch entryPath {
+	case "/pricing":
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"/signup", 45},
+			{"/features", 25},
+			{"/docs/getting-started", 20},
+			{"/contact", 10},
+		})
+	case "/features":
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"/pricing", 35},
+			{"/signup", 25},
+			{"/docs/getting-started", 25},
+			{"/contact", 15},
+		})
+	case "/docs/getting-started", "/docs/configuration", "/docs/api-reference":
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"/docs/getting-started", 20},
+			{"/docs/configuration", 25},
+			{"/docs/api-reference", 25},
+			{"/pricing", 20},
+			{"/contact", 10},
+		})
+	case "/blog/privacy-first-analytics-2025", "/blog/replace-google-analytics":
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"/pricing", 30},
+			{"/features", 25},
+			{"/docs/getting-started", 25},
+			{"/signup", 20},
+		})
+	default:
+		return pickWeighted(rng, []weightedEntry[string]{
+			{"/", 20},
+			{"/pricing", 25},
+			{"/features", 20},
+			{"/docs/getting-started", 20},
+			{"/signup", 15},
+		})
 	}
 }
 

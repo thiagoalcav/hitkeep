@@ -4,9 +4,9 @@
             <app-brand size="small" />
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex min-w-0 items-center gap-2">
             <app-site-selector
-                class="flex-1"
+                class="min-w-0 flex-1"
                 [sites]="siteService.sites()"
                 [current]="siteService.activeSite()"
                 [loading]="siteService.isLoading()"

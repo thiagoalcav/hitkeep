@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal, untracked } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, linkedSignal, signal, untracked } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
 import { finalize, forkJoin } from "rxjs";
 import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
@@ -6,6 +7,8 @@ import { TranslocoLocaleService } from "@jsverse/transloco-locale";
 import { SelectModule } from "primeng/select";
 import { ButtonModule } from "primeng/button";
 import { CardModule } from "primeng/card";
+import { SplitButtonModule } from "primeng/splitbutton";
+import { MenuItem } from "primeng/api";
 import { SiteService } from "@features/sites/services/site.service";
 import { AnalyticsService } from "@core/services/analytics.service";
 import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from "@components/range-toolbar/range-toolbar";
@@ -16,6 +19,8 @@ import { KpiCard } from "@features/analytics/components/kpi-card";
 import { MetricList } from "@features/analytics/components/metric-list";
 import { EventAudience, EventSeriesPoint, MetricStat } from "@models/analytics.types";
 import { injectActiveLang } from "@core/i18n/active-lang";
+import { buildTakeoutExportMenuItems, DEFAULT_HITS_EXPORT_FORMAT, TakeoutExportFormat } from "@core/export/export-formats";
+import { TakeoutDownloadService } from "@services/takeout-download.service";
 import { calcDelta, ChatbotMetricKey, ChatbotSeriesState, computeComparisonPeriod, createEmptySeries, safeRate, totalFor } from "@pages/ai-chatbots/ai-chatbots.utils";
 
 type ScopeKey = "provider" | "bot_id" | "surface" | "model";
@@ -40,7 +45,7 @@ const CHATBOT_EVENTS: Record<ChatbotMetricKey, string> = {
 
 @Component({
     selector: "app-ai-chatbots",
-    imports: [FormsModule, TranslocoPipe, SelectModule, ButtonModule, CardModule, RangeToolbar, PageHeader, PageHeaderLeft, PageBreadcrumb, SeriesChart, KpiCard, MetricList],
+    imports: [FormsModule, TranslocoPipe, SelectModule, ButtonModule, CardModule, SplitButtonModule, RangeToolbar, PageHeader, PageHeaderLeft, PageBreadcrumb, SeriesChart, KpiCard, MetricList],
     templateUrl: "./ai-chatbots.html",
     styleUrl: "./ai-chatbots.css",
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -51,6 +56,8 @@ export class AIChatbots {
     private readonly analyticsService = inject(AnalyticsService);
     private readonly localeService = inject(TranslocoLocaleService);
     private readonly transloco = inject(TranslocoService);
+    private readonly takeoutDownloadService = inject(TakeoutDownloadService);
+    private readonly destroyRef = inject(DestroyRef);
     private readonly activeLanguage = injectActiveLang();
 
     protected readonly timeRanges = signal<RangeOption[]>(DEFAULT_RANGE_OPTIONS);
@@ -84,6 +91,8 @@ export class AIChatbots {
     protected readonly isLoadingSeries = signal(false);
     protected readonly isLoadingComparison = signal(false);
     protected readonly isLoadingAudience = signal(false);
+    protected readonly isExporting = signal(false);
+    protected readonly exportState = signal<"idle" | "success" | "error">("idle");
 
     protected readonly activeSite = computed(() => this.siteService.activeSite());
     protected readonly noSite = computed(() => !this.activeSite());
@@ -181,6 +190,26 @@ export class AIChatbots {
         return [{ key: "scope", label: `${keyLabel}: ${value}` }];
     });
 
+    protected readonly exportUrl = computed(() => {
+        const site = this.activeSite();
+        const dates = this.getCurrentDateRange();
+        if (!site || !dates) return "";
+
+        const params = new URLSearchParams({ from: dates.from, to: dates.to });
+        const scopeFilter = this.activeScopeFilter();
+        if (scopeFilter) {
+            params.set("scope_key", scopeFilter.key);
+            params.set("scope_value", scopeFilter.value);
+        }
+
+        return `/api/sites/${site.id}/ai-chatbots/export?${params.toString()}`;
+    });
+
+    protected readonly exportMenuItems = computed<MenuItem[]>(() => {
+        this.activeLanguage();
+        return buildTakeoutExportMenuItems(this.transloco, (format) => this.exportFiltered(format));
+    });
+
     protected readonly totalStarted = computed(() => this.totalFor("started", this.series()));
     protected readonly totalSent = computed(() => this.totalFor("sent", this.series()));
     protected readonly totalRendered = computed(() => this.totalFor("rendered", this.series()));
@@ -262,6 +291,25 @@ export class AIChatbots {
 
     protected clearFilters() {
         this.selectedScopeValue.set(null);
+    }
+
+    protected exportFiltered(format: TakeoutExportFormat = DEFAULT_HITS_EXPORT_FORMAT) {
+        const url = this.buildExportUrl(format);
+        if (!url || this.isExporting()) return;
+
+        this.isExporting.set(true);
+        this.exportState.set("idle");
+
+        this.takeoutDownloadService
+            .downloadFromUrl(url, this.buildExportFilename(format))
+            .pipe(
+                takeUntilDestroyed(this.destroyRef),
+                finalize(() => this.isExporting.set(false))
+            )
+            .subscribe({
+                next: () => this.exportState.set("success"),
+                error: () => this.exportState.set("error")
+            });
     }
 
     private loadPrimaryData(siteId: string, from: string, to: string, scopeFilter: ScopeFilter | null, onSettled?: () => void) {
@@ -412,5 +460,23 @@ export class AIChatbots {
             value,
             delta
         };
+    }
+
+    private buildExportUrl(format: TakeoutExportFormat): string {
+        const baseUrl = this.exportUrl();
+        if (!baseUrl) return "";
+        const url = new URL(baseUrl, window.location.origin);
+        url.searchParams.set("format", format);
+        return url.pathname + `?${url.searchParams.toString()}`;
+    }
+
+    private buildExportFilename(format: TakeoutExportFormat): string {
+        const siteDomain = this.activeSite()?.domain || "site";
+        const safeDomain = siteDomain
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/(^-|-$)/g, "");
+        const dateStamp = new Date().toISOString().slice(0, 10);
+        return `${safeDomain || "site"}-ai-chatbots-${dateStamp}.${format}`;
     }
 }

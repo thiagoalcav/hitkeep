@@ -3,8 +3,12 @@ package events
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,6 +16,7 @@ import (
 	"hitkeep/internal/api"
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/database"
+	"hitkeep/internal/exportfmt"
 	"hitkeep/internal/server/shared"
 )
 
@@ -41,6 +46,10 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		SitePerm:    authcore.PermSiteView,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleGetEventAudience()))
+	mux.HandleFunc("GET /api/sites/{id}/ai-chatbots/export", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleExportAIChatbots()))
 }
 
 func parseSiteAndRange(w http.ResponseWriter, r *http.Request) (uuid.UUID, time.Time, time.Time, bool) {
@@ -213,6 +222,45 @@ type eventQueryParams struct {
 	DimensionValue string
 }
 
+var chatbotExportScopeKeys = map[string]struct{}{
+	"provider": {},
+	"bot_id":   {},
+	"surface":  {},
+	"model":    {},
+}
+
+func parseChatbotExportParams(w http.ResponseWriter, r *http.Request) (api.ChatbotExportParams, bool) {
+	siteID, start, end, ok := parseSiteAndRange(w, r)
+	if !ok {
+		return api.ChatbotExportParams{}, false
+	}
+
+	scopeKey := strings.TrimSpace(r.URL.Query().Get("scope_key"))
+	scopeValue := strings.TrimSpace(r.URL.Query().Get("scope_value"))
+	if scopeKey == "" && scopeValue != "" {
+		http.Error(w, "scope_key is required when scope_value is provided", http.StatusBadRequest)
+		return api.ChatbotExportParams{}, false
+	}
+	if scopeKey != "" {
+		if _, allowed := chatbotExportScopeKeys[scopeKey]; !allowed {
+			http.Error(w, "Invalid scope_key", http.StatusBadRequest)
+			return api.ChatbotExportParams{}, false
+		}
+		if scopeValue == "" {
+			http.Error(w, "scope_value is required when scope_key is provided", http.StatusBadRequest)
+			return api.ChatbotExportParams{}, false
+		}
+	}
+
+	return api.ChatbotExportParams{
+		SiteID:     siteID,
+		Start:      start,
+		End:        end,
+		ScopeKey:   scopeKey,
+		ScopeValue: scopeValue,
+	}, true
+}
+
 func (h *handler) parseEventQueryParams(w http.ResponseWriter, r *http.Request) (eventQueryParams, bool) {
 	if h.ctx.Store == nil {
 		http.Error(w, "Service not available on this node", http.StatusServiceUnavailable)
@@ -249,6 +297,55 @@ func (h *handler) handleGetEventAudience() http.HandlerFunc {
 	})
 }
 
+func (h *handler) handleExportAIChatbots() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := shared.GetUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		params, ok := parseChatbotExportParams(w, r)
+		if !ok {
+			return
+		}
+
+		format := exportfmt.Normalize(r.URL.Query().Get("format"), exportfmt.FormatCSV)
+
+		analyticsStore, err := h.ctx.AnalyticsStore(r.Context(), params.SiteID)
+		if err != nil {
+			slog.Error("Failed to resolve analytics store", "error", err, "site_id", params.SiteID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		if format == exportfmt.FormatCSV {
+			filename := fmt.Sprintf("ai-chatbots_%s_%d.csv", params.SiteID, time.Now().Unix())
+			w.Header().Set("Content-Type", exportfmt.ContentType(exportfmt.FormatCSV))
+			w.Header().Set("Content-Disposition", "attachment; filename="+filename)
+
+			if err := analyticsStore.ExportChatbotEventsCSV(r.Context(), params, w); err != nil {
+				slog.Error("Failed to export chatbot events", "error", err, "site_id", params.SiteID, "user_id", userID)
+			}
+			return
+		}
+
+		filename, err := analyticsStore.ExportChatbotEventsFile(r.Context(), params, format)
+		if err != nil {
+			slog.Error("Failed to export chatbot events", "error", err, "site_id", params.SiteID, "user_id", userID)
+			http.Error(w, "Failed to export chatbot events", http.StatusInternalServerError)
+			return
+		}
+
+		downloadName := fmt.Sprintf("ai-chatbots_%s_%d.%s", params.SiteID, time.Now().Unix(), format)
+		w.Header().Set("Content-Disposition", "attachment; filename="+downloadName)
+		w.Header().Set("Content-Type", exportfmt.ContentType(format))
+		http.ServeFile(w, r, filename)
+
+		go cleanupAIChatbotExportFile(filename)
+	}
+}
+
 func (h *handler) handleGetEventTimeseries() http.HandlerFunc {
 	return h.eventQueryHandler("event timeseries", func(ctx context.Context, store *database.Store, p eventQueryParams) (any, error) {
 		return store.GetEventTimeseries(ctx, api.EventTimeseriesParams(p))
@@ -281,4 +378,25 @@ func (h *handler) eventQueryHandler(label string, query func(context.Context, *d
 			slog.Error("Failed to encode response", "error", err)
 		}
 	}
+}
+
+func cleanupAIChatbotExportFile(filename string) {
+	if filename == "" {
+		return
+	}
+
+	cleaned := filepath.Clean(filename)
+	base := filepath.Base(cleaned)
+	if !strings.HasPrefix(base, "hitkeep_ai_chatbots_") {
+		return
+	}
+
+	tempDir := filepath.Clean(os.TempDir())
+	rel, err := filepath.Rel(tempDir, cleaned)
+	if err != nil || rel == "." || strings.HasPrefix(rel, "..") {
+		return
+	}
+
+	//nolint:gosec // cleaned path is constrained to an app-owned temp export under os.TempDir.
+	_ = os.Remove(cleaned)
 }

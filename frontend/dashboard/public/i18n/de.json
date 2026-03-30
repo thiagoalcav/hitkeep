@@ -1246,6 +1246,10 @@
             "intents": "Top-Intents",
             "providers": "Top-Anbieter",
             "surfaces": "Top-Oberflächen"
+        },
+        "exportStatus": {
+            "success": "Export-Download gestartet.",
+            "error": "Der Export der AI-Chatbot-Daten ist fehlgeschlagen. Bitte versuche es erneut."
         }
     },
     "aiVisibility": {

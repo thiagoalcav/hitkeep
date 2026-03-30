@@ -1246,6 +1246,10 @@
             "intents": "Top intents",
             "providers": "Top providers",
             "surfaces": "Top surfaces"
+        },
+        "exportStatus": {
+            "success": "Export download started.",
+            "error": "Failed to export AI chatbot data. Please try again."
         }
     },
     "aiVisibility": {

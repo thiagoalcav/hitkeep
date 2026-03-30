@@ -99,9 +99,11 @@ func buildTakeoutQuery(whereClause, filename, format string) string {
 		UNION BY NAME
 		SELECT 'event' as record_type, * FROM events WHERE %s
 		UNION BY NAME
+		SELECT 'ai_fetch' as record_type, * FROM ai_fetches WHERE %s
+		UNION BY NAME
 		SELECT 'goal' as record_type, * FROM goals WHERE %s
 		UNION BY NAME
 		SELECT 'funnel' as record_type, * FROM funnels WHERE %s
 	) TO '%s' (FORMAT %s);
-`, whereClause, whereClause, whereClause, whereClause, filename, format)
+`, whereClause, whereClause, whereClause, whereClause, whereClause, filename, format)
 }

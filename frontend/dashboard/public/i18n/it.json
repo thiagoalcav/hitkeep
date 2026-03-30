@@ -1246,6 +1246,10 @@
             "intents": "Intent principali",
             "providers": "Provider principali",
             "surfaces": "Superfici principali"
+        },
+        "exportStatus": {
+            "success": "Download dell’esportazione avviato.",
+            "error": "Impossibile esportare i dati dei chatbot AI. Riprova."
         }
     },
     "aiVisibility": {

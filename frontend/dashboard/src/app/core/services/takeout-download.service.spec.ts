@@ -138,4 +138,49 @@ describe("TakeoutDownloadService", () => {
 
         expect(downloadedFilename).toBe("takeout data.ndjson");
     });
+
+    it("restores the fallback file extension when the header filename omits it", () => {
+        let downloadedFilename = "";
+
+        service.downloadFromUrl("/api/sites/site-1/ai-chatbots/export?format=csv", "site-ai-chatbots.csv").subscribe({
+            next: (filename) => {
+                downloadedFilename = filename;
+            },
+            error: (error: unknown) => fail(`unexpected error: ${String(error)}`)
+        });
+
+        const req = httpMock.expectOne("/api/sites/site-1/ai-chatbots/export?format=csv");
+        req.flush(new Blob(["id,name\n1,test"], { type: "text/csv" }), {
+            headers: new HttpHeaders({
+                "content-disposition": 'attachment; filename="ai-chatbots-export"'
+            })
+        });
+
+        expect(downloadedFilename).toBe("ai-chatbots-export.csv");
+    });
+
+    it("rejects unexpected html responses instead of downloading them", () => {
+        let downloadError: unknown;
+        const objectURLCallsBefore = createObjectURLSpy.mock.calls.length;
+        const clickCallsBefore = clickSpy.mock.calls.length;
+
+        service.downloadFromUrl("/api/sites/site-1/ai-fetch/export?format=csv", "fallback.csv").subscribe({
+            next: () => fail("expected html response to be rejected"),
+            error: (error: unknown) => {
+                downloadError = error;
+            }
+        });
+
+        const req = httpMock.expectOne("/api/sites/site-1/ai-fetch/export?format=csv");
+        req.flush(new Blob(["<html><body>login</body></html>"], { type: "text/html" }), {
+            headers: new HttpHeaders({
+                "content-type": "text/html; charset=utf-8"
+            })
+        });
+
+        expect(downloadError).toBeInstanceOf(Error);
+        expect((downloadError as Error).message).toBe("unexpected_html_download_response");
+        expect(createObjectURLSpy.mock.calls.length).toBe(objectURLCallsBefore);
+        expect(clickSpy.mock.calls.length).toBe(clickCallsBefore);
+    });
 });

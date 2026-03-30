@@ -33,9 +33,18 @@ export class TakeoutDownloadService {
             throw new Error("missing_takeout_download");
         }
 
-        const filename = this.extractFilename(response.headers.get("content-disposition")) ?? fallbackFilename;
+        if (this.isHTMLResponse(response, blob)) {
+            throw new Error("unexpected_html_download_response");
+        }
+
+        const filename = this.ensureFilenameExtension(this.extractFilename(response.headers.get("content-disposition")) ?? fallbackFilename, fallbackFilename);
         this.saveBlob(blob, filename);
         return filename;
+    }
+
+    private isHTMLResponse(response: HttpResponse<Blob>, blob: Blob): boolean {
+        const contentType = (response.headers.get("content-type") ?? blob.type ?? "").toLowerCase();
+        return contentType.includes("text/html") || contentType.includes("application/xhtml+xml");
     }
 
     private saveBlob(blob: Blob, filename: string): void {
@@ -64,6 +73,28 @@ export class TakeoutDownloadService {
 
         const match = header.match(/filename="?([^";]+)"?/i);
         return match?.[1] ?? null;
+    }
+
+    private ensureFilenameExtension(filename: string, fallbackFilename: string): string {
+        if (this.fileExtension(filename)) {
+            return filename;
+        }
+
+        const fallbackExtension = this.fileExtension(fallbackFilename);
+        if (!fallbackExtension) {
+            return filename;
+        }
+
+        return `${filename}.${fallbackExtension}`;
+    }
+
+    private fileExtension(filename: string): string {
+        const trimmed = filename.trim();
+        const lastDot = trimmed.lastIndexOf(".");
+        if (lastDot <= 0 || lastDot === trimmed.length - 1) {
+            return "";
+        }
+        return trimmed.slice(lastDot + 1);
     }
 
     private currentDateStamp(): string {

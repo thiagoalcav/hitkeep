@@ -1499,6 +1499,16 @@ func openAPISpecV1(publicURL string) map[string]any {
 					map[string]any{"name": "window_days", "in": "query", "description": "Directional correlation window in days. Must be between 1 and 90. Defaults to 30.", "schema": map[string]any{"type": "integer", "minimum": 1, "maximum": 90, "default": 30}},
 				}, nil, map[string]any{"200": jsonRefResp("AI fetch correlation report", "#/components/schemas/AIFetchCorrelationReport")}),
 			},
+			"/api/sites/{id}/ai-chatbots/export": map[string]any{
+				"get": op([]string{"Sites"}, "Export AI chatbot events", "Exports AI chatbot instrumentation events for the selected site and date range in csv/xlsx/parquet/json/ndjson. Optional scope filters restrict the export to a single provider, bot, surface, or model.", secAnyAuth(), []any{
+					paramRef("#/components/parameters/siteID"),
+					paramRef("#/components/parameters/from"),
+					paramRef("#/components/parameters/to"),
+					paramRef("#/components/parameters/format"),
+					map[string]any{"name": "scope_key", "in": "query", "description": "Optional chatbot scope filter key.", "schema": map[string]any{"type": "string", "enum": []string{"provider", "bot_id", "surface", "model"}}},
+					map[string]any{"name": "scope_value", "in": "query", "description": "Optional chatbot scope filter value. Requires scope_key.", "schema": map[string]any{"type": "string"}},
+				}, nil, map[string]any{"200": desc("Export file stream")}),
+			},
 			"/api/favicon/{domain}": map[string]any{
 				"get": op([]string{"Sites"}, "Get favicon", "Proxies favicon by domain.", nil, []any{paramRef("#/components/parameters/domain")}, nil, map[string]any{"200": desc("Favicon image")}),
 			},

@@ -269,6 +269,14 @@ type EventAudienceParams struct {
 	DimensionValue string // optional — filter hits to this pre-processed dimension value
 }
 
+type ChatbotExportParams struct {
+	SiteID     uuid.UUID
+	Start      time.Time
+	End        time.Time
+	ScopeKey   string // optional: "provider" | "bot_id" | "surface" | "model"
+	ScopeValue string // optional — requires ScopeKey
+}
+
 type EventAudience struct {
 	TopPages     []MetricStat `json:"top_pages"`
 	TopReferrers []MetricStat `json:"top_referrers"`

@@ -1246,6 +1246,10 @@
             "intents": "Principales intentions",
             "providers": "Principaux fournisseurs",
             "surfaces": "Principales surfaces"
+        },
+        "exportStatus": {
+            "success": "Le téléchargement de l’export a commencé.",
+            "error": "Échec de l’export des données des chatbots IA. Veuillez réessayer."
         }
     },
     "aiVisibility": {

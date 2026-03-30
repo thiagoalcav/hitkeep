@@ -123,6 +123,64 @@ func TestExportSiteDataCSVIncludesUTMFields(t *testing.T) {
 	}
 }
 
+func TestExportSiteDataCSVIncludesAIFetchesAndAIChatbotEvents(t *testing.T) {
+	ctx, store, service, _, siteID := setupTakeoutFixture(t)
+	t.Cleanup(func() { _ = store.Close() })
+
+	filename, err := service.ExportSiteData(ctx, siteID, "csv")
+	if err != nil {
+		t.Fatalf("export site data: %v", err)
+	}
+
+	f, err := os.Open(filename)
+	if err != nil {
+		t.Fatalf("open export file: %v", err)
+	}
+	defer f.Close()
+
+	rows, err := csv.NewReader(f).ReadAll()
+	if err != nil {
+		t.Fatalf("read csv: %v", err)
+	}
+	if len(rows) < 2 {
+		t.Fatalf("expected at least header and one row, got %d rows", len(rows))
+	}
+
+	header := rows[0]
+	index := make(map[string]int, len(header))
+	for i, name := range header {
+		index[name] = i
+	}
+
+	for _, col := range []string{"assistant_name", "assistant_family", "resource_type", "status_code", "name", "properties"} {
+		if _, ok := index[col]; !ok {
+			t.Fatalf("expected column %q in takeout export header", col)
+		}
+	}
+
+	var foundAIFetch bool
+	var foundChatbotEvent bool
+	for _, row := range rows[1:] {
+		switch row[index["record_type"]] {
+		case "ai_fetch":
+			if row[index["assistant_name"]] == "GPTBot" && row[index["resource_type"]] == "html" && row[index["status_code"]] == "200" {
+				foundAIFetch = true
+			}
+		case "event":
+			if row[index["name"]] == "assistant.chat_started" && strings.Contains(row[index["properties"]], "\"provider\":\"openai\"") {
+				foundChatbotEvent = true
+			}
+		}
+	}
+
+	if !foundAIFetch {
+		t.Fatalf("expected ai_fetch row in site takeout")
+	}
+	if !foundChatbotEvent {
+		t.Fatalf("expected chatbot event row in site takeout")
+	}
+}
+
 func TestExportSiteDataNDJSONIncludesUTMFields(t *testing.T) {
 	ctx := context.Background()
 	dbPath := filepath.Join(t.TempDir(), "takeout.db")
@@ -376,6 +434,59 @@ func TestExportSiteDataJSONIncludesUTMFields(t *testing.T) {
 	}
 }
 
+func TestExportUserDataJSONIncludesAIFetchesAndAIChatbotEvents(t *testing.T) {
+	ctx, store, service, userID, _ := setupTakeoutFixture(t)
+	t.Cleanup(func() { _ = store.Close() })
+
+	filename, err := service.ExportUserData(ctx, userID, "json")
+	if err != nil {
+		t.Fatalf("export user data json: %v", err)
+	}
+
+	f, err := os.Open(filename)
+	if err != nil {
+		t.Fatalf("open export file: %v", err)
+	}
+	defer f.Close()
+
+	var rows []map[string]any
+	if err := json.NewDecoder(f).Decode(&rows); err != nil {
+		t.Fatalf("decode json export: %v", err)
+	}
+	if len(rows) == 0 {
+		t.Fatalf("expected at least one row in json export")
+	}
+
+	var foundAIFetch bool
+	var foundChatbotEvent bool
+	for _, row := range rows {
+		recordType, _ := row["record_type"].(string)
+		switch recordType {
+		case "ai_fetch":
+			if assistantName, _ := row["assistant_name"].(string); assistantName == "GPTBot" {
+				if resourceType, _ := row["resource_type"].(string); resourceType == "html" {
+					foundAIFetch = true
+				}
+			}
+		case "event":
+			if name, _ := row["name"].(string); name == "assistant.chat_started" {
+				if properties, ok := row["properties"].(map[string]any); ok {
+					if provider, _ := properties["provider"].(string); provider == "openai" {
+						foundChatbotEvent = true
+					}
+				}
+			}
+		}
+	}
+
+	if !foundAIFetch {
+		t.Fatalf("expected ai_fetch row in user takeout")
+	}
+	if !foundChatbotEvent {
+		t.Fatalf("expected chatbot event row in user takeout")
+	}
+}
+
 func setupTakeoutFixture(t *testing.T) (context.Context, *database.Store, *TakeoutService, uuid.UUID, uuid.UUID) {
 	t.Helper()
 
@@ -402,9 +513,10 @@ func setupTakeoutFixture(t *testing.T) (context.Context, *database.Store, *Takeo
 
 	now := time.Now().UTC()
 	isUnique := true
+	sessionID := uuid.New()
 	if err := store.CreateHit(ctx, &api.Hit{
 		SiteID:      site.ID,
-		SessionID:   uuid.New(),
+		SessionID:   sessionID,
 		PageID:      uuid.New(),
 		Timestamp:   now,
 		Path:        "/utm",
@@ -416,6 +528,41 @@ func setupTakeoutFixture(t *testing.T) (context.Context, *database.Store, *Takeo
 		IsUnique:    &isUnique,
 	}); err != nil {
 		t.Fatalf("create hit: %v", err)
+	}
+
+	if err := store.CreateEvent(ctx, &api.Event{
+		SiteID:    site.ID,
+		SessionID: sessionID,
+		Name:      "assistant.chat_started",
+		Properties: map[string]any{
+			"provider": "openai",
+			"bot_id":   "support-bot",
+			"surface":  "pricing-assistant",
+			"model":    "gpt-4.1-mini",
+		},
+		Timestamp: now,
+	}); err != nil {
+		t.Fatalf("create chatbot event: %v", err)
+	}
+
+	htmlType := "text/html; charset=utf-8"
+	responseMs := 180
+	bytesServed := int64(4096)
+	userAgent := "Mozilla/5.0 (compatible; GPTBot/1.0; +https://openai.com/gptbot)"
+	if err := store.CreateAIFetch(ctx, &api.AIFetch{
+		SiteID:          site.ID,
+		Timestamp:       now,
+		AssistantName:   "GPTBot",
+		AssistantFamily: "OpenAI",
+		Path:            "/pricing",
+		StatusCode:      200,
+		ContentType:     &htmlType,
+		ResourceType:    "html",
+		ResponseMs:      &responseMs,
+		BytesServed:     &bytesServed,
+		UserAgent:       &userAgent,
+	}); err != nil {
+		t.Fatalf("create ai fetch: %v", err)
 	}
 
 	service := NewTakeoutService(store, exportDir)

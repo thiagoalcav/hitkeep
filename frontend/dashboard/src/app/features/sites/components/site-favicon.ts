@@ -6,9 +6,7 @@ import { Site } from "@models/analytics.types";
     standalone: true,
     imports: [NgOptimizedImage],
     changeDetection: ChangeDetectionStrategy.OnPush,
-    template: `
-        <img [ngSrc]="faviconUrl()" class="size-5 max-w-5 rounded-full" [width]="20" [height]="20" loading="lazy" [alt]="site()?.domain" />
-    `
+    template: ` <img [ngSrc]="faviconUrl()" class="size-5 max-w-5 rounded-full" [width]="20" [height]="20" loading="lazy" [alt]="site()?.domain" /> `
 })
 export class SiteFavicon {
     site = input.required<Site | null>();

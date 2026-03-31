@@ -1,0 +1,9 @@
+{
+    "builders": {
+        "run": {
+            "implementation": "./index.js",
+            "schema": "./schema.json",
+            "description": "Run the dashboard end-to-end test command through ng e2e"
+        }
+    }
+}

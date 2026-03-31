@@ -27,6 +27,7 @@ describe("Login", () => {
         finishPasskeyLogin: ReturnType<typeof vi.fn>;
         verifyMfaTotp: ReturnType<typeof vi.fn>;
         verifyMfaRecoveryCode: ReturnType<typeof vi.fn>;
+        requestMfaEmailLink: ReturnType<typeof vi.fn>;
     } = {
         status: () => "unknown",
         login: vi.fn(() => of({ status: "ok" as const })),
@@ -43,7 +44,8 @@ describe("Login", () => {
         ),
         finishPasskeyLogin: vi.fn(() => of(void 0)),
         verifyMfaTotp: vi.fn(() => of(void 0)),
-        verifyMfaRecoveryCode: vi.fn(() => of(void 0))
+        verifyMfaRecoveryCode: vi.fn(() => of(void 0)),
+        requestMfaEmailLink: vi.fn(() => of(void 0))
     };
 
     beforeEach(async () => {
@@ -136,6 +138,23 @@ describe("Login", () => {
         expect(component["mfaHasTotp"]()).toBe(false);
     });
 
+    it("stores email-link MFA state from the login response", () => {
+        authMock.login.mockReturnValueOnce(
+            of({
+                status: "mfa_required" as const,
+                challenge_token: "challenge-email",
+                factors: ["email_link" as const]
+            })
+        );
+
+        component["loginForm"].email().control().setValue("user@example.com");
+        component["loginForm"].password().control().setValue("password123");
+        component.onSubmit();
+
+        expect(component["mfaChallengeToken"]()).toBe("challenge-email");
+        expect(component["mfaHasEmailLink"]()).toBe(true);
+    });
+
     it("verifies recovery code MFA with the current challenge token", () => {
         component["mfaChallengeToken"].set("challenge-456");
         component["mfaFactors"].set(["recovery_code"]);
@@ -144,6 +163,17 @@ describe("Login", () => {
         component["verifyRecoveryCodeMfa"]();
 
         expect(authMock.verifyMfaRecoveryCode).toHaveBeenCalledWith("challenge-456", "ABCD-EFGH");
+    });
+
+    it("requests an MFA email link with the current challenge token and return url", () => {
+        returnUrl = "/events?range=30d";
+        component["mfaChallengeToken"].set("challenge-789");
+        component["mfaFactors"].set(["email_link"]);
+
+        component["requestEmailLinkMfa"]();
+
+        expect(authMock.requestMfaEmailLink).toHaveBeenCalledWith("challenge-789", "/events?range=30d");
+        expect(component["infoMessage"]()).toBe("login.emailLinkSent");
     });
 
     it("builds region-aware signup URLs for hosted cloud", () => {

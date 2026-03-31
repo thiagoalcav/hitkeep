@@ -21,7 +21,7 @@ import { AnalyticsService } from "@services/analytics.service";
 import { UserPreferencesService } from "@services/user-preferences.service";
 import { toAssertionResponseJson, toPublicKeyRequestOptions } from "@core/utils/webauthn";
 
-type MfaFactor = "totp" | "passkey" | "recovery_code";
+type MfaFactor = "totp" | "passkey" | "recovery_code" | "email_link";
 
 @Component({
     selector: "app-login",
@@ -48,6 +48,7 @@ export class Login {
     protected isLoading = signal(false);
     protected isPasskeyLoading = signal(false);
     protected errorMessage = signal<string | null>(null);
+    protected infoMessage = signal<string | null>(null);
     protected currentYear = new Date().getFullYear();
     protected readonly isPasskeySupported = signal(typeof window !== "undefined" && typeof navigator !== "undefined" && Boolean(window.PublicKeyCredential) && Boolean(navigator.credentials));
     protected readonly mfaChallengeToken = signal<string | null>(null);
@@ -58,6 +59,7 @@ export class Login {
     protected readonly mfaHasTotp = computed(() => this.mfaFactors().includes("totp"));
     protected readonly mfaHasRecoveryCode = computed(() => this.mfaFactors().includes("recovery_code"));
     protected readonly mfaHasPasskey = computed(() => this.mfaFactors().includes("passkey"));
+    protected readonly mfaHasEmailLink = computed(() => this.mfaFactors().includes("email_link"));
     protected readonly showSignupLink = computed(() => Boolean(this.cloudStatus()?.hosted && this.cloudStatus()?.signup_enabled));
     protected readonly currentJurisdiction = computed(() => this.normalizeJurisdiction(this.cloudStatus()?.jurisdiction) ?? this.inferJurisdictionFromHost());
     protected readonly alternateJurisdiction = computed(() => (this.currentJurisdiction() === "EU" ? "US" : "EU"));
@@ -83,6 +85,11 @@ export class Login {
                     console.error("Failed to load cloud status for login", err);
                 }
             });
+
+        const authError = this.route.snapshot.queryParamMap.get("error")?.trim();
+        if (authError === "mfa_link_invalid") {
+            this.errorMessage.set("login.errors.mfaEmailLinkInvalid");
+        }
 
         if (this.shouldAttemptConditionalPasskey()) {
             void this.startConditionalPasskeyLogin();
@@ -119,6 +126,7 @@ export class Login {
         this.abortConditionalPasskeyPrompt();
         this.isLoading.set(true);
         this.errorMessage.set(null);
+        this.infoMessage.set(null);
 
         const email = this.loginForm.email().value();
         const password = this.loginForm.password().value();
@@ -209,6 +217,7 @@ export class Login {
         this.mfaPasskeyOptions.set(null);
         this.loginForm.mfaCode().control().reset("");
         this.loginForm.recoveryCode().control().reset("");
+        this.infoMessage.set(null);
     }
 
     private redirectAfterLogin() {
@@ -243,6 +252,7 @@ export class Login {
         this.loginForm.mfaCode().control().reset("");
         this.loginForm.recoveryCode().control().reset("");
         this.errorMessage.set(null);
+        this.infoMessage.set(null);
     }
 
     private verifyTotpMfa(): void {
@@ -259,6 +269,7 @@ export class Login {
 
         this.isLoading.set(true);
         this.errorMessage.set(null);
+        this.infoMessage.set(null);
         this.auth
             .verifyMfaTotp(challengeToken, this.loginForm.mfaCode().value())
             .pipe(finalize(() => this.isLoading.set(false)))
@@ -291,6 +302,7 @@ export class Login {
 
         this.isLoading.set(true);
         this.errorMessage.set(null);
+        this.infoMessage.set(null);
         this.auth
             .verifyMfaRecoveryCode(challengeToken, this.loginForm.recoveryCode().value())
             .pipe(finalize(() => this.isLoading.set(false)))
@@ -305,6 +317,30 @@ export class Login {
                     } else {
                         this.errorMessage.set("login.errors.unexpected");
                     }
+                }
+            });
+    }
+
+    protected requestEmailLinkMfa(): void {
+        this.abortConditionalPasskeyPrompt();
+        const challengeToken = this.mfaChallengeToken();
+        if (!challengeToken) {
+            this.errorMessage.set("login.errors.unexpected");
+            return;
+        }
+
+        this.isLoading.set(true);
+        this.errorMessage.set(null);
+        this.infoMessage.set(null);
+        this.auth
+            .requestMfaEmailLink(challengeToken, this.resolveReturnUrl())
+            .pipe(finalize(() => this.isLoading.set(false)))
+            .subscribe({
+                next: () => {
+                    this.infoMessage.set("login.emailLinkSent");
+                },
+                error: () => {
+                    this.errorMessage.set("login.errors.emailLinkFailed");
                 }
             });
     }

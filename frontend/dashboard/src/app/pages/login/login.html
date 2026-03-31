@@ -13,6 +13,11 @@
                     <i class="pi pi-exclamation-circle mt-0.5" aria-hidden="true"></i>
                     <span class="text-sm font-medium">{{ errorMessageKey | transloco }}</span>
                 </div>
+                } @if (infoMessage(); as infoMessageKey) {
+                <div class="hk-auth-alert hk-auth-alert-success" role="status" aria-live="polite">
+                    <i class="pi pi-envelope mt-0.5" aria-hidden="true"></i>
+                    <span class="text-sm font-medium">{{ infoMessageKey | transloco }}</span>
+                </div>
                 } @if (!isMfaRequired()) {
                 <div class="hk-auth-field">
                     <label for="email" class="hk-auth-field-label">{{ "login.emailLabel" | transloco }}</label>
@@ -128,6 +133,22 @@
                         [loading]="isPasskeyLoading()"
                         [disabled]="isLoading() || isPasskeyLoading()"
                         (onClick)="onPasskeyLogin()"
+                    />
+                </div>
+                } @if (mfaHasEmailLink()) { @if (mfaHasTotp() || mfaHasRecoveryCode() || (isPasskeySupported() && mfaHasPasskey())) {
+                <div class="hk-auth-divider">{{ "login.or" | transloco }}</div>
+                }
+
+                <div class="hk-auth-actions-center">
+                    <p-button
+                        [label]="'login.sendEmailLink' | transloco"
+                        type="button"
+                        icon="pi pi-envelope"
+                        severity="secondary"
+                        [outlined]="true"
+                        [loading]="isLoading()"
+                        [disabled]="isLoading() || isPasskeyLoading()"
+                        (onClick)="requestEmailLinkMfa()"
                     />
                 </div>
                 } }

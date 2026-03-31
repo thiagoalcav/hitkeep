@@ -29,3 +29,33 @@ func (m *PasswordReset) Data() any {
 }
 
 func (m *PasswordReset) Locale() string { return m.LocaleCode }
+
+type MFAMagicLink struct {
+	LocaleCode       string
+	Link             string
+	ExpiresInMinutes int
+}
+
+func NewMFAMagicLink(link, locale string, expiresInMinutes int) mailer.Mailable {
+	return &MFAMagicLink{Link: link, LocaleCode: locale, ExpiresInMinutes: expiresInMinutes}
+}
+
+func (m *MFAMagicLink) Subject() string {
+	return mailer.Translate(m.LocaleCode, "subject.magic_link")
+}
+
+func (m *MFAMagicLink) Template() string {
+	return "mfa_magic_link.mjml"
+}
+
+func (m *MFAMagicLink) Data() any {
+	return struct {
+		Link             string
+		ExpiresInMinutes int
+	}{
+		Link:             m.Link,
+		ExpiresInMinutes: m.ExpiresInMinutes,
+	}
+}
+
+func (m *MFAMagicLink) Locale() string { return m.LocaleCode }

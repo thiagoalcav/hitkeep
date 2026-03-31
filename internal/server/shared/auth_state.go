@@ -31,9 +31,16 @@ type PasskeyRegistrationChallenge struct {
 	Session       *webauthn.SessionData
 }
 
+type MFAEmailLink struct {
+	ChallengeID uuid.UUID
+	ReturnPath  string
+	ExpiresAt   time.Time
+}
+
 type AuthStateStore struct {
 	pendingTOTP          *lru.LRU[uuid.UUID, PendingTOTPSetup]
 	passkeyRegistrations *lru.LRU[uuid.UUID, PasskeyRegistrationChallenge]
+	mfaEmailLinks        *lru.LRU[uuid.UUID, MFAEmailLink]
 
 	loginChallengesMu       sync.Mutex
 	loginChallenges         *lru.LRU[uuid.UUID, database.LoginChallenge]
@@ -44,6 +51,7 @@ func NewAuthStateStore() *AuthStateStore {
 	return &AuthStateStore{
 		pendingTOTP:          lru.NewLRU[uuid.UUID, PendingTOTPSetup](authStateCacheSize, nil, pendingTOTPSetupTTL),
 		passkeyRegistrations: lru.NewLRU[uuid.UUID, PasskeyRegistrationChallenge](authStateCacheSize, nil, passkeyRegistrationTTL),
+		mfaEmailLinks:        lru.NewLRU[uuid.UUID, MFAEmailLink](authStateCacheSize, nil, passkeyLoginChallengeTTL),
 		loginChallenges:      lru.NewLRU[uuid.UUID, database.LoginChallenge](authStateCacheSize, nil, passkeyLoginChallengeTTL),
 		loginChallengeIDsByUser: lru.NewLRU[uuid.UUID, map[uuid.UUID]struct{}](
 			authStateCacheSize,
@@ -168,6 +176,38 @@ func (s *AuthStateStore) DeletePasskeyChallenge(userID uuid.UUID) {
 		return
 	}
 	s.passkeyRegistrations.Remove(userID)
+}
+
+func (s *AuthStateStore) CreateMFAEmailLink(challengeID uuid.UUID, returnPath string, expiresAt time.Time) uuid.UUID {
+	tokenID := uuid.New()
+	if s == nil {
+		return tokenID
+	}
+
+	s.mfaEmailLinks.Add(tokenID, MFAEmailLink{
+		ChallengeID: challengeID,
+		ReturnPath:  strings.TrimSpace(returnPath),
+		ExpiresAt:   expiresAt.UTC(),
+	})
+	return tokenID
+}
+
+func (s *AuthStateStore) ConsumeMFAEmailLink(tokenID uuid.UUID) (MFAEmailLink, bool) {
+	if s == nil || tokenID == uuid.Nil {
+		return MFAEmailLink{}, false
+	}
+
+	entry, ok := s.mfaEmailLinks.Get(tokenID)
+	if !ok {
+		return MFAEmailLink{}, false
+	}
+	if isExpired(entry.ExpiresAt) {
+		s.mfaEmailLinks.Remove(tokenID)
+		return MFAEmailLink{}, false
+	}
+
+	s.mfaEmailLinks.Remove(tokenID)
+	return entry, true
 }
 
 func (s *AuthStateStore) CreatePasskeyLoginChallenge(challenge string, input database.CreateLoginChallengeInput, expiresAt time.Time, session *webauthn.SessionData) uuid.UUID {

@@ -1,0 +1,12 @@
+{{ define "content" -}}
+{{ t "auth.magic_link.heading" }}
+==================
+
+{{ t "common.hello" }}
+
+{{ t "auth.magic_link.body" }}
+
+{{ t "auth.magic_link.button" }}: {{ .Link }}
+
+{{ tf "auth.magic_link.expires" .ExpiresInMinutes }}
+{{- end }}

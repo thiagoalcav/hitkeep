@@ -20,7 +20,7 @@ export interface PasskeyLoginFinishRequest {
 export interface LoginResponse {
     status: "ok" | "mfa_required";
     challenge_token?: string;
-    factors?: ("totp" | "passkey" | "recovery_code")[];
+    factors?: ("totp" | "passkey" | "recovery_code" | "email_link")[];
     passkey?: PasskeyLoginStartResponse["publicKey"];
 }
 
@@ -83,6 +83,13 @@ export class AuthService {
                 code
             })
             .pipe(tap(() => this.status.set("authenticated")));
+    }
+
+    requestMfaEmailLink(challengeToken: string, returnUrl: string): Observable<void> {
+        return this.http.post<void>("/api/auth/mfa/email-link/request", {
+            challenge_token: challengeToken,
+            return_url: returnUrl
+        });
     }
 
     markAuthenticated() {

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,10 +16,26 @@ import (
 	"hitkeep/internal/auth"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
+	"hitkeep/internal/mailer"
 	"hitkeep/internal/security"
 	"hitkeep/internal/server/shared"
 	"hitkeep/internal/testutil"
 )
+
+type authTestMailDriver struct {
+	subject  string
+	htmlBody string
+	textBody string
+}
+
+func (d *authTestMailDriver) Send(_ []string, subject, htmlBody, textBody string) error {
+	d.subject = subject
+	d.htmlBody = htmlBody
+	d.textBody = textBody
+	return nil
+}
+
+func (d *authTestMailDriver) Close() error { return nil }
 
 func setupAuthTestEnv(t *testing.T) (*handler, *database.Store) {
 	t.Helper()
@@ -291,6 +308,43 @@ func TestHandleLogout(t *testing.T) {
 	}
 	if validatedUser != uuid.Nil {
 		t.Fatalf("expected remember me token to be deleted")
+	}
+}
+
+func TestHandleForgotPasswordFallsBackToAcceptLanguageLocale(t *testing.T) {
+	h, store := setupAuthTestEnv(t)
+	defer store.Close()
+
+	hashed, err := HashPassword("password123")
+	if err != nil {
+		t.Fatalf("failed to hash password: %v", err)
+	}
+	if _, err := store.CreateUser(context.Background(), "reset@example.com", hashed); err != nil {
+		t.Fatalf("failed to create user: %v", err)
+	}
+
+	drv := &authTestMailDriver{}
+	h.ctx.Mailer = mailer.NewWithDriver(drv, h.ctx.Config)
+
+	body, err := json.Marshal(map[string]string{"email": "reset@example.com"})
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/forgot-password", bytes.NewReader(body))
+	req.Header.Set("Accept-Language", "de-DE,de;q=0.9,en;q=0.8")
+	w := httptest.NewRecorder()
+
+	h.handleForgotPassword().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	if !strings.Contains(drv.subject, "Setze dein HitKeep-Passwort zurück") {
+		t.Fatalf("expected localized German subject, got %q", drv.subject)
+	}
+	if !strings.Contains(drv.textBody, "Passwort zurücksetzen") {
+		t.Fatalf("expected localized German email body, got:\n%s", drv.textBody)
 	}
 }
 

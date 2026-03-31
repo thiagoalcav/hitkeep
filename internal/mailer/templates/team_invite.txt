@@ -1,14 +1,14 @@
 {{ define "content" -}}
-You're invited to join a team
+{{ t "invite.team.heading" }}
 =============================
 
-Hello,
+{{ t "common.hello" }}
 
-{{ .Inviter }} has invited you to join {{ .TeamName }} on HitKeep as a {{ .Role }}.
+{{ tf "invite.team.body1" .Inviter .TeamName (roleLabel .Role) }}
 {{ if .RequiresAccountSetup }}
-You'll need to create a password to activate your account before you can access the team.
+{{ t "invite.team.requires_setup" }}
 {{ end }}
-{{ .HelpText }}
+{{ if .RequiresAccountSetup }}{{ t "invite.team.help_new" }}{{ else }}{{ t "invite.team.help_existing" }}{{ end }}
 
-{{ .ActionLabel }}: {{ .Link }}
+{{ if .RequiresAccountSetup }}{{ t "invite.team.button_new" }}{{ else }}{{ t "invite.team.button_existing" }}{{ end }}: {{ .Link }}
 {{- end }}

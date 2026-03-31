@@ -11,3 +11,9 @@ type Mailable interface {
 	// Data returns the struct or map to be injected into the template.
 	Data() any
 }
+
+// LocalizedMailable optionally exposes the recipient locale for template rendering.
+type LocalizedMailable interface {
+	Mailable
+	Locale() string
+}

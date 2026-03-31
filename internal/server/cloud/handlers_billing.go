@@ -240,7 +240,7 @@ func (h *handler) handleSignup() http.HandlerFunc {
 		}
 
 		verifyLink := strings.TrimRight(h.ctx.Config.PublicURL, "/") + "/api/cloud/signup/verify?token=" + token
-		if err := h.ctx.Mailer.Send(req.Email, mailables.NewEmailVerification(verifyLink, req.TeamName)); err != nil {
+		if err := h.ctx.Mailer.Send(req.Email, mailables.NewEmailVerification(verifyLink, req.TeamName, req.Locale)); err != nil {
 			slog.Error("Failed to send verification email", "error", err, "email", req.Email)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return

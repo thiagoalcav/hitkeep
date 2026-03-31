@@ -15,10 +15,11 @@ var ErrSiteAccessRequired = errors.New("site access required")
 
 // PendingSiteReport holds the data needed to send a per-site report email.
 type PendingSiteReport struct {
-	UserID    uuid.UUID
-	UserEmail string
-	SiteID    uuid.UUID
-	Domain    string
+	UserID     uuid.UUID
+	UserEmail  string
+	UserLocale string
+	SiteID     uuid.UUID
+	Domain     string
 }
 
 // DigestSite is a single site entry within a PendingDigest.
@@ -29,9 +30,10 @@ type DigestSite struct {
 
 // PendingDigest holds the data needed to send a consolidated digest email.
 type PendingDigest struct {
-	UserID    uuid.UUID
-	UserEmail string
-	Sites     []DigestSite
+	UserID     uuid.UUID
+	UserEmail  string
+	UserLocale string
+	Sites      []DigestSite
 }
 
 func (s *Store) listReportAccessibleSites(ctx context.Context, userID uuid.UUID) ([]DigestSite, error) {
@@ -219,9 +221,10 @@ func (s *Store) GetPendingSiteReports(ctx context.Context, freq api.ReportFreque
 	}
 
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT srs.user_id, u.email, srs.site_id, si.domain
+		SELECT srs.user_id, u.email, COALESCE(up.default_locale, 'en'), srs.site_id, si.domain
 		FROM site_report_subscriptions srs
 		JOIN users u ON u.id = srs.user_id
+		LEFT JOIN user_preferences up ON up.user_id = srs.user_id
 		JOIN sites si ON si.id = srs.site_id
 		LEFT JOIN site_tenants st ON st.site_id = si.id
 		JOIN tenant_members tm ON tm.tenant_id = COALESCE(st.tenant_id, ?) AND tm.user_id = srs.user_id
@@ -240,7 +243,7 @@ func (s *Store) GetPendingSiteReports(ctx context.Context, freq api.ReportFreque
 	var result []PendingSiteReport
 	for rows.Next() {
 		var r PendingSiteReport
-		if err := rows.Scan(&r.UserID, &r.UserEmail, &r.SiteID, &r.Domain); err != nil {
+		if err := rows.Scan(&r.UserID, &r.UserEmail, &r.UserLocale, &r.SiteID, &r.Domain); err != nil {
 			return nil, err
 		}
 		result = append(result, r)
@@ -287,9 +290,10 @@ func (s *Store) GetDailyPageviewsForPeriod(ctx context.Context, siteID uuid.UUID
 func (s *Store) GetPendingDigests(ctx context.Context, freq api.ReportFrequency) ([]PendingDigest, error) {
 	// Get subscribed users.
 	userRows, err := s.db.QueryContext(ctx, `
-		SELECT ds.user_id, u.email
+		SELECT ds.user_id, u.email, COALESCE(up.default_locale, 'en')
 		FROM digest_subscriptions ds
 		JOIN users u ON u.id = ds.user_id
+		LEFT JOIN user_preferences up ON up.user_id = ds.user_id
 		WHERE ds.frequency = ? AND ds.enabled = true
 	`, string(freq))
 	if err != nil {
@@ -300,11 +304,12 @@ func (s *Store) GetPendingDigests(ctx context.Context, freq api.ReportFrequency)
 	type subscribedUser struct {
 		userID uuid.UUID
 		email  string
+		locale string
 	}
 	var users []subscribedUser
 	for userRows.Next() {
 		var su subscribedUser
-		if err := userRows.Scan(&su.userID, &su.email); err != nil {
+		if err := userRows.Scan(&su.userID, &su.email, &su.locale); err != nil {
 			return nil, err
 		}
 		users = append(users, su)
@@ -323,9 +328,10 @@ func (s *Store) GetPendingDigests(ctx context.Context, freq api.ReportFrequency)
 
 		if len(sites) > 0 {
 			result = append(result, PendingDigest{
-				UserID:    u.userID,
-				UserEmail: u.email,
-				Sites:     sites,
+				UserID:     u.userID,
+				UserEmail:  u.email,
+				UserLocale: u.locale,
+				Sites:      sites,
 			})
 		}
 	}

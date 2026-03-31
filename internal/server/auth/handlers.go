@@ -18,16 +18,35 @@ import (
 	webauthnlib "github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/argon2"
+	"golang.org/x/text/language"
 
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/database"
 	"hitkeep/internal/mailables"
+	"hitkeep/internal/mailer"
 	"hitkeep/internal/security"
 	"hitkeep/internal/server/shared"
 )
 
 type handler struct {
 	ctx *shared.Context
+}
+
+func fallbackMailLocale(acceptLanguage string) string {
+	tags, _, err := language.ParseAcceptLanguage(strings.TrimSpace(acceptLanguage))
+	if err != nil {
+		return "en"
+	}
+
+	for _, tag := range tags {
+		base, _ := tag.Base()
+		if base.String() == language.Und.String() || base.String() == "" {
+			continue
+		}
+		return mailer.NormalizeLocale(base.String())
+	}
+
+	return "en"
 }
 
 func Register(mux *http.ServeMux, ctx *shared.Context) {
@@ -453,8 +472,15 @@ func (h *handler) handleForgotPassword() http.HandlerFunc {
 		}
 
 		resetLink := fmt.Sprintf("%s/reset-password?token=%s", h.ctx.Config.PublicURL, token)
+		locale := fallbackMailLocale(r.Header.Get("Accept-Language"))
+		prefs, err := h.ctx.Store.GetUserPreferences(r.Context(), user.ID)
+		if err != nil {
+			slog.Warn("Failed to load user preferences for password reset", "error", err, "user_id", user.ID)
+		} else if prefs != nil && strings.TrimSpace(prefs.DefaultLocale) != "" {
+			locale = mailer.NormalizeLocale(prefs.DefaultLocale)
+		}
 
-		err = h.ctx.Mailer.Send(user.Email, mailables.NewPasswordReset(resetLink))
+		err = h.ctx.Mailer.Send(user.Email, mailables.NewPasswordReset(resetLink, locale))
 		if err != nil {
 			slog.Error("Failed to send password reset email", "error", err, "email", user.Email)
 			// Here we actually return an error because if the mailer fails, the user is stuck.

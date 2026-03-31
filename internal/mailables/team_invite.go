@@ -6,6 +6,7 @@ import (
 
 // TeamInvite implements the mailer.Mailable interface for team membership invites.
 type TeamInvite struct {
+	LocaleCode           string
 	Link                 string
 	TeamName             string
 	Inviter              string
@@ -13,8 +14,9 @@ type TeamInvite struct {
 	RequiresAccountSetup bool
 }
 
-func NewTeamInvite(link, teamName, inviter, role string, requiresAccountSetup bool) mailer.Mailable {
+func NewTeamInvite(link, teamName, inviter, role string, requiresAccountSetup bool, locale string) mailer.Mailable {
 	return &TeamInvite{
+		LocaleCode:           locale,
 		Link:                 link,
 		TeamName:             teamName,
 		Inviter:              inviter,
@@ -25,9 +27,9 @@ func NewTeamInvite(link, teamName, inviter, role string, requiresAccountSetup bo
 
 func (m *TeamInvite) Subject() string {
 	if m.RequiresAccountSetup {
-		return "You're invited to join " + m.TeamName + " on HitKeep"
+		return mailer.Translatef(m.LocaleCode, "subject.team_invite_new", m.TeamName)
 	}
-	return "You've been added to " + m.TeamName + " on HitKeep"
+	return mailer.Translatef(m.LocaleCode, "subject.team_invite_existing", m.TeamName)
 }
 
 func (m *TeamInvite) Template() string {
@@ -35,28 +37,19 @@ func (m *TeamInvite) Template() string {
 }
 
 func (m *TeamInvite) Data() any {
-	actionLabel := "Open HitKeep"
-	helpText := "Sign in to access your team workspace."
-	if m.RequiresAccountSetup {
-		actionLabel = "Set Password & Join Team"
-		helpText = "Create your password to activate your account and join this team."
-	}
-
 	return struct {
 		Link                 string
 		TeamName             string
 		Inviter              string
 		Role                 string
-		ActionLabel          string
-		HelpText             string
 		RequiresAccountSetup bool
 	}{
 		Link:                 m.Link,
 		TeamName:             m.TeamName,
 		Inviter:              m.Inviter,
 		Role:                 m.Role,
-		ActionLabel:          actionLabel,
-		HelpText:             helpText,
 		RequiresAccountSetup: m.RequiresAccountSetup,
 	}
 }
+
+func (m *TeamInvite) Locale() string { return m.LocaleCode }

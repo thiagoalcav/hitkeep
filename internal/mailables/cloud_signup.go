@@ -5,16 +5,17 @@ package mailables
 import "hitkeep/internal/mailer"
 
 type EmailVerification struct {
-	Link     string
-	TeamName string
+	LocaleCode string
+	Link       string
+	TeamName   string
 }
 
-func NewEmailVerification(link, teamName string) mailer.Mailable {
-	return &EmailVerification{Link: link, TeamName: teamName}
+func NewEmailVerification(link, teamName, locale string) mailer.Mailable {
+	return &EmailVerification{Link: link, TeamName: teamName, LocaleCode: locale}
 }
 
 func (m *EmailVerification) Subject() string {
-	return "Verify your email — HitKeep"
+	return mailer.Translate(m.LocaleCode, "subject.email_verification")
 }
 
 func (m *EmailVerification) Template() string {
@@ -30,3 +31,5 @@ func (m *EmailVerification) Data() any {
 		TeamName: m.TeamName,
 	}
 }
+
+func (m *EmailVerification) Locale() string { return m.LocaleCode }

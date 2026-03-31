@@ -149,14 +149,14 @@
     <mj-section padding-top="20px" padding-bottom="40px">
       <mj-column>
         <mj-text align="center" css-class="footer-text" font-size="12px">
-          Powered by
+          {{ t "footer.powered_by" }}
           <a
             href="https://hitkeep.com"
             style="color: #33d399; text-decoration: none; font-weight: 600"
             >HitKeep</a
           >
           <br />
-          The privacy-first, single-binary analytics platform.
+          {{ t "footer.tagline" }}
         </mj-text>
       </mj-column>
     </mj-section>

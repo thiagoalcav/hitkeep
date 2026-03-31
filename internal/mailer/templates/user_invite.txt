@@ -1,12 +1,12 @@
 {{ define "content" -}}
-You've been invited!
+{{ t "invite.user.heading" }}
 ====================
 
-Hello,
+{{ t "common.hello" }}
 
-{{ .Inviter }} has invited you to join {{ .SiteName }} on HitKeep.
+{{ tf "invite.user.body1" .Inviter .SiteName }}
 
-Click the link below to accept the invitation and set up your account.
+{{ t "invite.user.body2" }}
 
-Accept invitation: {{ .Link }}
+{{ t "invite.user.button" }}: {{ .Link }}
 {{- end }}

@@ -104,8 +104,6 @@ func (w *ReportWorker) processSiteReports(ctx context.Context, freq api.ReportFr
 	}
 
 	start, end, prevStart, prevEnd := periodBounds(freq, now)
-	freqLabel := freqLabelFor(freq)
-	periodLabel := reportPeriodLabel(freq, start, end)
 	curStatsEnd := inclusivePeriodEnd(start, end)
 	prevStatsEnd := inclusivePeriodEnd(prevStart, prevEnd)
 
@@ -114,6 +112,9 @@ func (w *ReportWorker) processSiteReports(ctx context.Context, freq api.ReportFr
 			slog.Warn("ReportWorker: context cancelled, halting site reports")
 			return
 		}
+
+		freqLabel := mailables.LocalizedFrequencyLabel(p.UserLocale, string(freq))
+		periodLabel := reportPeriodLabel(p.UserLocale, freq, start, end)
 
 		curParams := api.AnalyticsParams{
 			SiteID: p.SiteID,
@@ -177,7 +178,7 @@ func (w *ReportWorker) processSiteReports(ctx context.Context, freq api.ReportFr
 
 		dashURL := fmt.Sprintf("%s/dashboard", w.pubURL)
 		settingsURL := fmt.Sprintf("%s/settings", w.pubURL)
-		report := mailables.NewSiteAnalyticsReport(p.Domain, periodLabel, freqLabel, dashURL, settingsURL, cur, prev, dailyPVs)
+		report := mailables.NewSiteAnalyticsReport(p.UserLocale, p.Domain, periodLabel, freqLabel, dashURL, settingsURL, cur, prev, dailyPVs)
 
 		if err := w.mailer.Send(p.UserEmail, report); err != nil {
 			slog.Error("ReportWorker: failed to send site report", "email", p.UserEmail, "site", p.Domain, "error", err)
@@ -195,8 +196,6 @@ func (w *ReportWorker) processDigests(ctx context.Context, freq api.ReportFreque
 	}
 
 	start, end, prevStart, prevEnd := periodBounds(freq, now)
-	freqLabel := freqLabelFor(freq)
-	periodLabel := reportPeriodLabel(freq, start, end)
 	curStatsEnd := inclusivePeriodEnd(start, end)
 	prevStatsEnd := inclusivePeriodEnd(prevStart, prevEnd)
 
@@ -205,6 +204,9 @@ func (w *ReportWorker) processDigests(ctx context.Context, freq api.ReportFreque
 			slog.Warn("ReportWorker: context cancelled, halting site reports")
 			return
 		}
+
+		freqLabel := mailables.LocalizedFrequencyLabel(p.UserLocale, string(freq))
+		periodLabel := reportPeriodLabel(p.UserLocale, freq, start, end)
 
 		var entries []mailables.DigestSiteEntry
 
@@ -256,7 +258,7 @@ func (w *ReportWorker) processDigests(ctx context.Context, freq api.ReportFreque
 
 		dashURL := fmt.Sprintf("%s/dashboard", w.pubURL)
 		settingsURL := fmt.Sprintf("%s/settings", w.pubURL)
-		digest := mailables.NewAnalyticsDigest(periodLabel, freqLabel, dashURL, settingsURL, entries)
+		digest := mailables.NewAnalyticsDigest(p.UserLocale, periodLabel, freqLabel, dashURL, settingsURL, entries)
 
 		if err := w.mailer.Send(p.UserEmail, digest); err != nil {
 			slog.Error("ReportWorker: failed to send digest", "email", p.UserEmail, "error", err)
@@ -302,33 +304,20 @@ func periodBounds(freq api.ReportFrequency, now time.Time) (start, end, prevStar
 	return
 }
 
-func freqLabelFor(freq api.ReportFrequency) string {
-	switch freq {
-	case api.ReportFrequencyDaily:
-		return "Daily"
-	case api.ReportFrequencyWeekly:
-		return "Weekly"
-	case api.ReportFrequencyMonthly:
-		return "Monthly"
-	default:
-		return string(freq)
-	}
-}
-
-func reportPeriodLabel(freq api.ReportFrequency, start time.Time, endExclusive time.Time) string {
+func reportPeriodLabel(locale string, freq api.ReportFrequency, start time.Time, endExclusive time.Time) string {
 	if !endExclusive.After(start) {
-		return mailables.FormatPeriodLabel(start, start)
+		return mailables.FormatPeriodLabelForLocale(locale, start, start)
 	}
 
 	endInclusive := endExclusive.Add(-time.Second)
 	if freq == api.ReportFrequencyDaily {
-		return endInclusive.Format("Jan 2, 2006")
+		return mailables.FormatSingleDayLabel(locale, endInclusive)
 	}
 	if freq == api.ReportFrequencyMonthly {
-		return endInclusive.Format("January 2006")
+		return mailables.FormatMonthYearLabel(locale, endInclusive)
 	}
 
-	return mailables.FormatPeriodLabel(start, endInclusive)
+	return mailables.FormatPeriodLabelForLocale(locale, start, endInclusive)
 }
 
 func inclusivePeriodEnd(start time.Time, endExclusive time.Time) time.Time {

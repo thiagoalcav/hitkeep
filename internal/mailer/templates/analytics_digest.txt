@@ -1,14 +1,14 @@
-{{ define "content" }}{{ .FreqLabel }} Analytics Digest
+{{ define "content" }}{{ tf "reports.digest_title" .FreqLabel }}
 {{ .PeriodLabel }}
 
-YOUR SITES
+{{ t "digest.site" }}
 ----------
-{{ range .Sites }}{{ .Domain }}: {{ .Pageviews }} pageviews ({{ percentChange .Pageviews .PrevPageviews }})
-  Dashboard: {{ .DashURL }}
+{{ range .Sites }}{{ .Domain }}: {{ .Pageviews }} {{ t "digest.pageviews" }} ({{ percentChange .Pageviews .PrevPageviews }})
+  {{ t "digest.dashboard" }}: {{ .DashURL }}
 {{ end }}
-View Dashboard: {{ .DashURL }}
+{{ t "reports.view_dashboard" }}: {{ .DashURL }}
 
 ---
-You received this email because you have analytics reports enabled.
-Manage preferences: {{ .SettingsURL }}
+{{ t "reports.received_because" }}
+{{ t "reports.manage_preferences" }}: {{ .SettingsURL }}
 {{ end }}

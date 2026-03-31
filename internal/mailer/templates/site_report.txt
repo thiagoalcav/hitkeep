@@ -1,34 +1,34 @@
-{{ define "content" }}{{ .FreqLabel }} Analytics Report
+{{ define "content" }}{{ tf "reports.title" .FreqLabel }}
 {{ .SiteDomain }} · {{ .PeriodLabel }}
 
-METRICS
+{{ t "reports.metrics_section" }}
 -------
-Pageviews:    {{ .Current.Pageviews }} ({{ percentChange .Current.Pageviews .Previous.Pageviews }})
-Visitors:     {{ .Current.Visitors }} ({{ percentChange .Current.Visitors .Previous.Visitors }})
-Bounce Rate:  {{ printf "%.1f" .Current.BounceRate }}%
-Avg Duration: {{ formatDuration .Current.AvgSessionDuration }}
+{{ t "reports.pageviews" }}:    {{ .Current.Pageviews }} ({{ percentChange .Current.Pageviews .Previous.Pageviews }})
+{{ t "reports.visitors" }}:     {{ .Current.Visitors }} ({{ percentChange .Current.Visitors .Previous.Visitors }})
+{{ t "reports.bounce_rate" }}:  {{ printf "%.1f" .Current.BounceRate }}%
+{{ t "reports.avg_duration" }}: {{ formatDuration .Current.AvgSessionDuration }}
 
 {{ if .Current.TopPages }}
-TOP PAGES
+{{ t "reports.top_pages" }}
 ---------
 {{ range $i, $p := .Current.TopPages }}{{ if lt $i 5 }}{{ $p.Name }}: {{ $p.Value }}
 {{ end }}{{ end }}
 {{ end }}
 {{ if .Current.TopReferrers }}
-TOP REFERRERS
+{{ t "reports.top_referrers" }}
 -------------
 {{ range $i, $r := .Current.TopReferrers }}{{ if lt $i 5 }}{{ $r.Name }}: {{ $r.Value }}
 {{ end }}{{ end }}
 {{ end }}
 {{ if .Current.Goals }}
-GOAL COMPLETIONS
+{{ t "reports.goal_completions" }}
 ----------------
 {{ range .Current.Goals }}{{ .Name }}: {{ .Conversions }}
 {{ end }}
 {{ end }}
-View full dashboard: {{ .DashURL }}
+{{ t "reports.view_full_dashboard" }}: {{ .DashURL }}
 
 ---
-You received this email because you have analytics reports enabled.
-Manage preferences: {{ .SettingsURL }}
+{{ t "reports.received_because" }}
+{{ t "reports.manage_preferences" }}: {{ .SettingsURL }}
 {{ end }}

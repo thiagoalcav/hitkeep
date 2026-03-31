@@ -153,9 +153,19 @@ func (h *handler) sendTeamInviteEmail(r *http.Request, teamID, actorID uuid.UUID
 	if inviter, err := h.ctx.Store.GetUserByID(r.Context(), actorID); err == nil && inviter != nil {
 		inviterName = inviter.Email
 	}
+	locale := "en"
+	if recipient, err := h.ctx.Store.GetUserByEmail(r.Context(), invite.Email); err == nil && recipient != nil {
+		if resolvedLocale, err := h.ctx.Store.GetUserLocale(r.Context(), recipient.ID); err == nil {
+			locale = resolvedLocale
+		}
+	} else if actorID != uuid.Nil {
+		if resolvedLocale, err := h.ctx.Store.GetUserLocale(r.Context(), actorID); err == nil && strings.TrimSpace(resolvedLocale) != "" {
+			locale = resolvedLocale
+		}
+	}
 
 	inviteLink := strings.TrimRight(h.ctx.Config.PublicURL, "/") + "/accept-invite?token=" + inviteToken
-	if err := h.ctx.Mailer.Send(invite.Email, mailables.NewTeamInvite(inviteLink, teamName, inviterName, invite.Role, true)); err != nil {
+	if err := h.ctx.Mailer.Send(invite.Email, mailables.NewTeamInvite(inviteLink, teamName, inviterName, invite.Role, true, locale)); err != nil {
 		slog.Warn("Failed to send team invite email", "error", err, "email", invite.Email, "team_id", teamID)
 	}
 }

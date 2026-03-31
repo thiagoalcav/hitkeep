@@ -4,12 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
 )
+
+const defaultUserLocale = "en"
 
 // GetUserPreferences returns stored preferences or nil if none exist.
 func (s *Store) GetUserPreferences(ctx context.Context, userID uuid.UUID) (*api.UserPreferences, error) {
@@ -30,6 +33,17 @@ func (s *Store) GetUserPreferences(ctx context.Context, userID uuid.UUID) (*api.
 	return &api.UserPreferences{
 		DefaultLocale: defaultLocale.String,
 	}, nil
+}
+
+func (s *Store) GetUserLocale(ctx context.Context, userID uuid.UUID) (string, error) {
+	prefs, err := s.GetUserPreferences(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	if prefs == nil || strings.TrimSpace(prefs.DefaultLocale) == "" {
+		return defaultUserLocale, nil
+	}
+	return prefs.DefaultLocale, nil
 }
 
 // UpsertUserPreferences inserts or updates user preferences.

@@ -693,8 +693,15 @@ func (h *handler) handleAddSiteMember() http.HandlerFunc {
 				inviterName = inviter.Email
 			}
 
+			locale := "en"
+			if actorID != uuid.Nil {
+				if resolvedLocale, err := h.ctx.Store.GetUserLocale(r.Context(), actorID); err == nil && strings.TrimSpace(resolvedLocale) != "" {
+					locale = resolvedLocale
+				}
+			}
+
 			inviteLink := h.ctx.Config.PublicURL + "/accept-invite?token=" + inviteToken
-			err = h.ctx.Mailer.Send(req.Email, mailables.NewUserInvite(inviteLink, siteName, inviterName))
+			err = h.ctx.Mailer.Send(req.Email, mailables.NewUserInvite(inviteLink, siteName, inviterName, locale))
 			if err != nil {
 				slog.Warn("Failed to send invite email", "error", err, "email", req.Email)
 				// Don't fail the request, just log warning

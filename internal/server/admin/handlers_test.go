@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -15,8 +16,24 @@ import (
 	"hitkeep/internal/auth"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
+	"hitkeep/internal/mailer"
 	"hitkeep/internal/server/shared"
 )
+
+type adminTestMailDriver struct {
+	subject  string
+	htmlBody string
+	textBody string
+}
+
+func (d *adminTestMailDriver) Send(_ []string, subject, htmlBody, textBody string) error {
+	d.subject = subject
+	d.htmlBody = htmlBody
+	d.textBody = textBody
+	return nil
+}
+
+func (d *adminTestMailDriver) Close() error { return nil }
 
 func setupAdminTestEnv(t *testing.T) (*handler, *database.Store, *database.TenantStoreManager, string, uuid.UUID, uuid.UUID) {
 	t.Helper()
@@ -270,5 +287,42 @@ func TestHandleDeleteTeamRequiresArchiveFirst(t *testing.T) {
 	h.handleAdminDeleteTeam().ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusBadRequest, w.Code, w.Body.String())
+	}
+}
+
+func TestHandleAddSiteMemberUsesInviterLocaleForNewUserInvite(t *testing.T) {
+	h, store, _, _, actorUserID, _ := setupAdminTestEnv(t)
+	ctx := context.Background()
+
+	if err := store.UpsertUserPreferences(ctx, actorUserID, api.UserPreferences{DefaultLocale: "de"}); err != nil {
+		t.Fatalf("set actor locale: %v", err)
+	}
+
+	site, err := store.CreateSite(ctx, actorUserID, "beispiel.de")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	drv := &adminTestMailDriver{}
+	h.ctx.Mailer = mailer.NewWithDriver(drv, h.ctx.Config)
+
+	body := strings.NewReader(`{"email":"new-user@example.com","role":"viewer"}`)
+	req := withAdminTestUser(httptest.NewRequest(http.MethodPost, "/api/admin/sites/"+site.ID.String()+"/members", body), actorUserID)
+	req.SetPathValue("id", site.ID.String())
+	w := httptest.NewRecorder()
+
+	h.handleAddSiteMember().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	if !strings.Contains(drv.subject, "Du wurdest eingeladen") {
+		t.Fatalf("expected localized German subject, got %q", drv.subject)
+	}
+	if !strings.Contains(drv.textBody, "Du wurdest eingeladen!") {
+		t.Fatalf("expected localized German text body, got:\n%s", drv.textBody)
+	}
+	if !strings.Contains(drv.textBody, "Einladung annehmen") {
+		t.Fatalf("expected localized German CTA, got:\n%s", drv.textBody)
 	}
 }

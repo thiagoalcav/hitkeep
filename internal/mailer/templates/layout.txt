@@ -1,6 +1,6 @@
 {{ template "content" .Data }}
 
 --
-Powered by HitKeep
-The privacy-first, single-binary analytics platform.
+{{ t "footer.powered_by" }} HitKeep
+{{ t "footer.tagline" }}
 https://hitkeep.com

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,7 +14,23 @@ import (
 
 	"hitkeep/internal/api"
 	"hitkeep/internal/database"
+	"hitkeep/internal/mailer"
 )
+
+type teamTestMailDriver struct {
+	subject  string
+	htmlBody string
+	textBody string
+}
+
+func (d *teamTestMailDriver) Send(_ []string, subject, htmlBody, textBody string) error {
+	d.subject = subject
+	d.htmlBody = htmlBody
+	d.textBody = textBody
+	return nil
+}
+
+func (d *teamTestMailDriver) Close() error { return nil }
 
 func TestHandleGetTeams(t *testing.T) {
 	h, store, userID := setupUserSecurityTestEnv(t)
@@ -264,6 +281,42 @@ func TestHandleUpdateTeamEmptyNameRejected(t *testing.T) {
 	h.handleUpdateTeam().ServeHTTP(w, req)
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestSendTeamInviteEmailFallsBackToInviterLocaleForNewRecipient(t *testing.T) {
+	h, store, ownerID := setupUserSecurityTestEnv(t)
+	defer store.Close()
+
+	ctx := context.Background()
+	if err := store.UpsertUserPreferences(ctx, ownerID, api.UserPreferences{DefaultLocale: "de"}); err != nil {
+		t.Fatalf("set owner locale: %v", err)
+	}
+
+	teamID, err := store.GetActiveTenantID(ctx, ownerID)
+	if err != nil {
+		t.Fatalf("get active team: %v", err)
+	}
+
+	invite, err := store.CreateTeamInvite(ctx, teamID, "neu@example.com", database.TenantRoleMember, nil, ownerID)
+	if err != nil {
+		t.Fatalf("create team invite: %v", err)
+	}
+
+	drv := &teamTestMailDriver{}
+	h.ctx.Mailer = mailer.NewWithDriver(drv, h.ctx.Config)
+
+	req := withTestUser(httptest.NewRequest(http.MethodPost, "/api/user/teams/"+teamID.String()+"/members", nil), ownerID)
+	h.sendTeamInviteEmail(req, teamID, ownerID, invite)
+
+	if !strings.Contains(drv.subject, "Du wurdest eingeladen") {
+		t.Fatalf("expected localized German subject, got %q", drv.subject)
+	}
+	if !strings.Contains(drv.textBody, "Du wurdest zu einem Team eingeladen") {
+		t.Fatalf("expected localized German text body, got:\n%s", drv.textBody)
+	}
+	if !strings.Contains(drv.textBody, "Passwort festlegen und Team beitreten") {
+		t.Fatalf("expected localized German CTA, got:\n%s", drv.textBody)
 	}
 }
 

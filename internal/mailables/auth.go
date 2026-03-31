@@ -4,15 +4,16 @@ import "hitkeep/internal/mailer"
 
 // PasswordReset implements the mailer.Mailable interface
 type PasswordReset struct {
-	Link string
+	LocaleCode string
+	Link       string
 }
 
-func NewPasswordReset(link string) mailer.Mailable {
-	return &PasswordReset{Link: link}
+func NewPasswordReset(link, locale string) mailer.Mailable {
+	return &PasswordReset{Link: link, LocaleCode: locale}
 }
 
 func (m *PasswordReset) Subject() string {
-	return "Reset your HitKeep Password"
+	return mailer.Translate(m.LocaleCode, "subject.password_reset")
 }
 
 func (m *PasswordReset) Template() string {
@@ -26,3 +27,5 @@ func (m *PasswordReset) Data() any {
 		Link: m.Link,
 	}
 }
+
+func (m *PasswordReset) Locale() string { return m.LocaleCode }

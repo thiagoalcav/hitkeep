@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 )
 
 // mockDriver captures every argument passed to Send.
@@ -30,17 +31,117 @@ type stubMailable struct {
 	subject  string
 	template string
 	data     any
+	locale   string
 }
 
 func (m *stubMailable) Subject() string  { return m.subject }
 func (m *stubMailable) Template() string { return m.template }
 func (m *stubMailable) Data() any        { return m.data }
+func (m *stubMailable) Locale() string   { return m.locale }
 
 func newPasswordResetMailable(link string) *stubMailable {
 	return &stubMailable{
 		subject:  "Reset your HitKeep Password",
 		template: "password_reset.mjml",
 		data:     struct{ Link string }{Link: link},
+	}
+}
+
+func newLocalizedPasswordResetMailable(link, locale string) *stubMailable {
+	return &stubMailable{
+		subject:  Translate(locale, "subject.password_reset"),
+		template: "password_reset.mjml",
+		data:     struct{ Link string }{Link: link},
+		locale:   locale,
+	}
+}
+
+func newLocalizedSiteReportMailable(locale string) *stubMailable {
+	type reportStats struct {
+		Pageviews          int
+		Visitors           int
+		BounceRate         float64
+		AvgSessionDuration float64
+		TopPages           []struct {
+			Name  string
+			Value int
+		}
+		TopReferrers []struct {
+			Name  string
+			Value int
+		}
+		Goals []struct {
+			Name        string
+			Conversions int
+		}
+	}
+
+	return &stubMailable{
+		subject:  Translatef(locale, "subject.site_report", Translate(locale, "freq.daily"), "example.com", "31. März 2026"),
+		template: "site_report.mjml",
+		locale:   locale,
+		data: struct {
+			SiteDomain     string
+			PeriodLabel    string
+			FreqLabel      string
+			DashURL        string
+			SettingsURL    string
+			Current        reportStats
+			Previous       reportStats
+			DailyPageviews []int
+		}{
+			SiteDomain:  "example.com",
+			PeriodLabel: "31. März 2026",
+			FreqLabel:   Translate(locale, "freq.daily"),
+			DashURL:     "https://example.com/dashboard",
+			SettingsURL: "https://example.com/settings",
+			Current: reportStats{
+				Pageviews:          12,
+				Visitors:           4,
+				BounceRate:         12.5,
+				AvgSessionDuration: 65,
+			},
+			Previous: reportStats{
+				Pageviews: 10,
+				Visitors:  3,
+			},
+			DailyPageviews: []int{3, 4, 5},
+		},
+	}
+}
+
+func newLocalizedDigestMailable(locale string) *stubMailable {
+	type digestSite struct {
+		Domain        string
+		DashURL       string
+		Pageviews     int
+		PrevPageviews int
+	}
+
+	return &stubMailable{
+		subject:  Translatef(locale, "subject.analytics_digest", Translate(locale, "freq.weekly"), "23–29 mars 2026"),
+		template: "analytics_digest.mjml",
+		locale:   locale,
+		data: struct {
+			PeriodLabel string
+			FreqLabel   string
+			DashURL     string
+			SettingsURL string
+			Sites       []digestSite
+		}{
+			PeriodLabel: "23–29 mars 2026",
+			FreqLabel:   Translate(locale, "freq.weekly"),
+			DashURL:     "https://example.com/dashboard",
+			SettingsURL: "https://example.com/settings",
+			Sites: []digestSite{
+				{
+					Domain:        "example.com",
+					DashURL:       "https://example.com/dashboard",
+					Pageviews:     24,
+					PrevPageviews: 20,
+				},
+			},
+		},
 	}
 }
 
@@ -306,6 +407,81 @@ func TestSendPlainTextPasswordReset(t *testing.T) {
 	}
 	if strings.Contains(drv.textBody, "<") {
 		t.Fatalf("plain-text body must not contain HTML tags, got:\n%s", drv.textBody)
+	}
+}
+
+func TestSendLocalizedPasswordResetUsesRecipientLocale(t *testing.T) {
+	drv := &mockDriver{}
+	m := &Mailer{driver: drv}
+
+	link := "https://example.com/reset/de"
+	err := m.Send("user@example.com", newLocalizedPasswordResetMailable(link, "de"))
+	if err != nil {
+		t.Fatalf("Send() error = %v", err)
+	}
+
+	for _, want := range []string{"Passwort zurücksetzen", "Hallo", link} {
+		if !strings.Contains(drv.htmlBody, want) {
+			t.Fatalf("expected localized HTML to contain %q, got:\n%s", want, drv.htmlBody)
+		}
+		if !strings.Contains(drv.textBody, want) {
+			t.Fatalf("expected localized text to contain %q, got:\n%s", want, drv.textBody)
+		}
+	}
+	if drv.subject != "Setze dein HitKeep-Passwort zurück" {
+		t.Fatalf("expected localized subject, got %q", drv.subject)
+	}
+}
+
+func TestSendLocalizedSiteReportUsesUTF8TextLabels(t *testing.T) {
+	drv := &mockDriver{}
+	m := &Mailer{driver: drv}
+
+	err := m.Send("user@example.com", newLocalizedSiteReportMailable("de"))
+	if err != nil {
+		t.Fatalf("Send() error = %v", err)
+	}
+
+	for _, want := range []string{"Kennzahlen", "Seitenaufrufe", "31. März 2026"} {
+		if !strings.Contains(drv.textBody, want) {
+			t.Fatalf("expected localized report text to contain %q, got:\n%s", want, drv.textBody)
+		}
+	}
+}
+
+func TestSendLocalizedDigestUsesTranslatedTextLabels(t *testing.T) {
+	drv := &mockDriver{}
+	m := &Mailer{driver: drv}
+
+	err := m.Send("user@example.com", newLocalizedDigestMailable("fr"))
+	if err != nil {
+		t.Fatalf("Send() error = %v", err)
+	}
+
+	for _, want := range []string{"Résumé d'analytique", "Tableau de bord:", "Évolution"} {
+		if !strings.Contains(drv.textBody, want) && !strings.Contains(drv.htmlBody, want) {
+			t.Fatalf("expected localized digest output to contain %q", want)
+		}
+	}
+	if strings.Contains(drv.textBody, "Dashboard:") {
+		t.Fatalf("expected digest text template to avoid hardcoded English label, got:\n%s", drv.textBody)
+	}
+}
+
+func TestMonthNameUsesUTF8LocaleData(t *testing.T) {
+	if got := MonthName("de", time.March, false); got != "März" {
+		t.Fatalf("expected German March to be März, got %q", got)
+	}
+	if got := MonthName("fr", time.August, false); got != "août" {
+		t.Fatalf("expected French August to be août, got %q", got)
+	}
+}
+
+func TestSupportedLocalesAreStable(t *testing.T) {
+	want := []string{"de", "en", "es", "fr", "it"}
+	got := SupportedLocales()
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("expected supported locales %v, got %v", want, got)
 	}
 }
 

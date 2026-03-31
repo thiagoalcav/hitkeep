@@ -105,7 +105,9 @@ func (w *ReportWorker) processSiteReports(ctx context.Context, freq api.ReportFr
 
 	start, end, prevStart, prevEnd := periodBounds(freq, now)
 	freqLabel := freqLabelFor(freq)
-	periodLabel := mailables.FormatPeriodLabel(start, end.Add(-time.Second))
+	periodLabel := reportPeriodLabel(freq, start, end)
+	curStatsEnd := inclusivePeriodEnd(start, end)
+	prevStatsEnd := inclusivePeriodEnd(prevStart, prevEnd)
 
 	for _, p := range pending {
 		if ctx.Err() != nil {
@@ -117,13 +119,13 @@ func (w *ReportWorker) processSiteReports(ctx context.Context, freq api.ReportFr
 			SiteID: p.SiteID,
 			UserID: p.UserID,
 			Start:  start,
-			End:    end,
+			End:    curStatsEnd,
 		}
 		prevParams := api.AnalyticsParams{
 			SiteID: p.SiteID,
 			UserID: p.UserID,
 			Start:  prevStart,
-			End:    prevEnd,
+			End:    prevStatsEnd,
 		}
 
 		analyticsStore, err := w.resolveAnalyticsStore(ctx, p.SiteID)
@@ -194,7 +196,9 @@ func (w *ReportWorker) processDigests(ctx context.Context, freq api.ReportFreque
 
 	start, end, prevStart, prevEnd := periodBounds(freq, now)
 	freqLabel := freqLabelFor(freq)
-	periodLabel := mailables.FormatPeriodLabel(start, end.Add(-time.Second))
+	periodLabel := reportPeriodLabel(freq, start, end)
+	curStatsEnd := inclusivePeriodEnd(start, end)
+	prevStatsEnd := inclusivePeriodEnd(prevStart, prevEnd)
 
 	for _, p := range pending {
 		if ctx.Err() != nil {
@@ -209,13 +213,13 @@ func (w *ReportWorker) processDigests(ctx context.Context, freq api.ReportFreque
 				SiteID: site.SiteID,
 				UserID: p.UserID,
 				Start:  start,
-				End:    end,
+				End:    curStatsEnd,
 			}
 			prevParams := api.AnalyticsParams{
 				SiteID: site.SiteID,
 				UserID: p.UserID,
 				Start:  prevStart,
-				End:    prevEnd,
+				End:    prevStatsEnd,
 			}
 
 			analyticsStore, err := w.resolveAnalyticsStore(ctx, site.SiteID)
@@ -309,4 +313,27 @@ func freqLabelFor(freq api.ReportFrequency) string {
 	default:
 		return string(freq)
 	}
+}
+
+func reportPeriodLabel(freq api.ReportFrequency, start time.Time, endExclusive time.Time) string {
+	if !endExclusive.After(start) {
+		return mailables.FormatPeriodLabel(start, start)
+	}
+
+	endInclusive := endExclusive.Add(-time.Second)
+	if freq == api.ReportFrequencyDaily {
+		return endInclusive.Format("Jan 2, 2006")
+	}
+	if freq == api.ReportFrequencyMonthly {
+		return endInclusive.Format("January 2006")
+	}
+
+	return mailables.FormatPeriodLabel(start, endInclusive)
+}
+
+func inclusivePeriodEnd(start time.Time, endExclusive time.Time) time.Time {
+	if !endExclusive.After(start) {
+		return endExclusive
+	}
+	return endExclusive.Add(-time.Nanosecond)
 }

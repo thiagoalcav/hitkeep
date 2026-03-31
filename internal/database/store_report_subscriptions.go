@@ -251,6 +251,14 @@ func (s *Store) GetPendingSiteReports(ctx context.Context, freq api.ReportFreque
 // GetDailyPageviewsForPeriod returns daily pageview counts from hit_rollups_daily
 // for the given site over [start, end), ordered oldest-first.
 func (s *Store) GetDailyPageviewsForPeriod(ctx context.Context, siteID uuid.UUID, start, end time.Time) ([]int, error) {
+	refreshEnd := end
+	if end.After(start) {
+		refreshEnd = end.Add(-time.Nanosecond)
+	}
+	if err := s.refreshDirtyRollupsInRange(ctx, siteID, dirtyRollupHit, rollupDaily, start, refreshEnd); err != nil {
+		return nil, fmt.Errorf("refresh daily hit rollups: %w", err)
+	}
+
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT pageviews
 		FROM hit_rollups_daily

@@ -1088,7 +1088,9 @@
         "or": "o",
         "signInWithPasskey": "Iniciar sesión con passkey",
         "mfaTitle": "Verificación en dos pasos",
-        "mfaSubtitle": "Completa el acceso con tu código del autenticador, un código de recuperación o una passkey.",
+        "mfaSubtitle": "Completa el acceso con tu código del autenticador, un código de recuperación, un enlace de acceso o una passkey.",
+        "sendEmailLink": "Enviarme un enlace de acceso",
+        "emailLinkSent": "Enviamos un enlace de acceso a tu correo electrónico.",
         "totpCodeLabel": "Código del autenticador",
         "recoveryCodeLabel": "Código de recuperación",
         "recoveryCodePlaceholder": "ABCD-EFGH",
@@ -1101,6 +1103,8 @@
             "passkeyFailed": "Error al iniciar sesión con passkey. Inténtalo de nuevo.",
             "invalidTotp": "Código del autenticador no válido.",
             "invalidRecoveryCode": "Código de recuperación no válido.",
+            "emailLinkFailed": "No pudimos enviar tu enlace de acceso. Inténtalo de nuevo.",
+            "mfaEmailLinkInvalid": "Este enlace de acceso no es válido o ha caducado. Solicita uno nuevo para continuar.",
             "unexpected": "Ocurrió un error inesperado. Inténtalo de nuevo."
         }
     },

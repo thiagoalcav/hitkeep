@@ -1,7 +1,9 @@
 @import "@fontsource-variable/lexend";
-@import "tailwindcss";
+@import "tailwindcss" source(none);
 @import "tailwindcss-primeui";
 @custom-variant dark (&:where(.p-dark, .p-dark *));
+@source "./app";
+@source "./index.html";
 
 @theme {
     --font-sans: "Lexend Variable", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";

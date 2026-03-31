@@ -1088,7 +1088,9 @@
         "or": "ou",
         "signInWithPasskey": "Se connecter avec une passkey",
         "mfaTitle": "Vérification à deux facteurs",
-        "mfaSubtitle": "Terminez la connexion avec votre code d'authentification, un code de récupération ou une passkey.",
+        "mfaSubtitle": "Terminez la connexion avec votre code d'authentification, un code de récupération, un lien de connexion ou une passkey.",
+        "sendEmailLink": "M'envoyer un lien de connexion",
+        "emailLinkSent": "Nous avons envoyé un lien de connexion à votre adresse e-mail.",
         "totpCodeLabel": "Code d'authentification",
         "recoveryCodeLabel": "Code de récupération",
         "recoveryCodePlaceholder": "ABCD-EFGH",
@@ -1101,6 +1103,8 @@
             "passkeyFailed": "Échec de la connexion par passkey. Veuillez réessayer.",
             "invalidTotp": "Code d'authentification invalide.",
             "invalidRecoveryCode": "Code de récupération invalide.",
+            "emailLinkFailed": "Nous n'avons pas pu envoyer votre lien de connexion. Veuillez réessayer.",
+            "mfaEmailLinkInvalid": "Ce lien de connexion est invalide ou expiré. Demandez-en un nouveau pour continuer.",
             "unexpected": "Une erreur inattendue est survenue. Veuillez réessayer."
         }
     },

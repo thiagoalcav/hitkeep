@@ -836,7 +836,7 @@ func openAPISpecV1(publicURL string) map[string]any {
 					"properties": map[string]any{
 						"status":          map[string]any{"type": "string"},
 						"challenge_token": map[string]any{"type": "string"},
-						"factors":         map[string]any{"type": "array", "items": map[string]any{"type": "string", "enum": []string{"totp", "passkey", "recovery_code"}}},
+						"factors":         map[string]any{"type": "array", "items": map[string]any{"type": "string", "enum": []string{"totp", "passkey", "recovery_code", "email_link"}}},
 						"passkey":         map[string]any{"type": "object", "additionalProperties": true},
 					},
 				},
@@ -938,6 +938,24 @@ func openAPISpecV1(publicURL string) map[string]any {
 				"post": op([]string{"Auth"}, "Verify MFA TOTP", "Verifies TOTP code for pending MFA challenge.", nil, nil,
 					jsonBody(map[string]any{"type": "object", "properties": map[string]any{"challenge_token": map[string]any{"type": "string", "format": "uuid"}, "code": map[string]any{"type": "string"}}, "required": []string{"challenge_token", "code"}}),
 					map[string]any{"200": jsonRefResp("Status", "#/components/schemas/Status")}),
+			},
+			"/api/auth/mfa/email-link/request": map[string]any{
+				"post": op([]string{"Auth"}, "Request MFA email sign-in link", "Sends a one-time email link for an active MFA challenge.", nil, nil,
+					jsonBody(map[string]any{
+						"type": "object",
+						"properties": map[string]any{
+							"challenge_token": map[string]any{"type": "string", "format": "uuid"},
+							"return_url":      map[string]any{"type": "string"},
+						},
+						"required": []string{"challenge_token"},
+					}),
+					map[string]any{"200": jsonRefResp("Status", "#/components/schemas/Status"), "502": errResp("Failed to send email sign-in link")}),
+			},
+			"/api/auth/mfa/email-link/verify": map[string]any{
+				"get": op([]string{"Auth"}, "Verify MFA email sign-in link", "Consumes a one-time MFA email link and completes the pending sign-in session.", nil,
+					[]any{map[string]any{"name": "token", "in": "query", "required": true, "schema": map[string]any{"type": "string", "format": "uuid"}}},
+					nil,
+					map[string]any{"303": desc("Redirects to the requested return URL after a successful sign-in"), "503": errResp("Service not available")}),
 			},
 			"/api/auth/mfa/recovery-code/verify": map[string]any{
 				"post": op([]string{"Auth"}, "Verify MFA recovery code", "Consumes a recovery code for a pending MFA challenge.", nil, nil,
@@ -1498,6 +1516,17 @@ func openAPISpecV1(publicURL string) map[string]any {
 					map[string]any{"name": "resource_type", "in": "query", "description": "Optional AI fetch resource type filter.", "schema": map[string]any{"type": "string", "enum": []string{"html", "document", "image", "other"}}},
 					map[string]any{"name": "window_days", "in": "query", "description": "Directional correlation window in days. Must be between 1 and 90. Defaults to 30.", "schema": map[string]any{"type": "integer", "minimum": 1, "maximum": 90, "default": 30}},
 				}, nil, map[string]any{"200": jsonRefResp("AI fetch correlation report", "#/components/schemas/AIFetchCorrelationReport")}),
+			},
+			"/api/sites/{id}/ai-fetch/export": map[string]any{
+				"get": op([]string{"Sites"}, "Export AI fetch records", "Exports AI fetch records for the selected site and date range in csv/xlsx/parquet/json/ndjson. Optional assistant and resource filters restrict the export to a subset of crawler traffic.", secAnyAuth(), []any{
+					paramRef("#/components/parameters/siteID"),
+					paramRef("#/components/parameters/from"),
+					paramRef("#/components/parameters/to"),
+					paramRef("#/components/parameters/format"),
+					map[string]any{"name": "assistant_name", "in": "query", "description": "Optional AI assistant bot name filter.", "schema": map[string]any{"type": "string"}},
+					map[string]any{"name": "assistant_family", "in": "query", "description": "Optional AI assistant family filter.", "schema": map[string]any{"type": "string"}},
+					map[string]any{"name": "resource_type", "in": "query", "description": "Optional AI fetch resource type filter.", "schema": map[string]any{"type": "string", "enum": []string{"html", "document", "image", "other"}}},
+				}, nil, map[string]any{"200": desc("Export file stream")}),
 			},
 			"/api/sites/{id}/ai-chatbots/export": map[string]any{
 				"get": op([]string{"Sites"}, "Export AI chatbot events", "Exports AI chatbot instrumentation events for the selected site and date range in csv/xlsx/parquet/json/ndjson. Optional scope filters restrict the export to a single provider, bot, surface, or model.", secAnyAuth(), []any{

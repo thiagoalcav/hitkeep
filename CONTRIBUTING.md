@@ -54,7 +54,7 @@ sudo apt-get install -y gcc g++ make
 # Air
 go install github.com/air-verse/air@latest
 
-# Node.js (via fnm)
+# Node.js (via fnm or nvm)
 curl -fsSL https://fnm.vercel.app/install | bash
 fnm install 24 && fnm use 24
 ```
@@ -83,6 +83,14 @@ This runs two processes in parallel:
 The backend serves the API on `:8080`. The Angular dev server proxies `/api/*` and `/ingest` to `:8080` automatically.
 
 Open `http://localhost:4200` in your browser.
+
+If you want a local instance with realistic demo content, use:
+
+```bash
+make dev-seed
+```
+
+That starts the same development stack and seeds a fresh local database so analytics, ecommerce, AI visibility, and auth flows have usable data immediately.
 
 ---
 
@@ -123,11 +131,50 @@ The binary embeds the `public/` directory, so the build order matters.
 ### Running Tests
 
 ```bash
-# Go tests
+# Go checks
+go test ./...
+go test -race ./...
+golangci-lint run
+
+# Angular checks
+cd frontend/dashboard && npm run fmt:check
+cd frontend/dashboard && npm run lint
+cd frontend/dashboard && npm run test -- --watch=false --no-progress
+
+# Seeded end-to-end tests
+cd frontend/dashboard && npx playwright install --with-deps chromium
+cd frontend/dashboard && npm run e2e
+```
+
+Notes:
+
+- `npm run e2e` is the preferred entrypoint for browser end-to-end tests. It runs `ng e2e`, which delegates to the seeded Playwright suite used in CI.
+- The e2e launcher builds the dashboard, builds the Go binary, seeds demo data, and starts a disposable local HitKeep instance automatically.
+- `npm run test:e2e` is still available as the lower-level Playwright command, but contributor docs and CI standardize on `ng e2e` / `npm run e2e`.
+
+If you are making a change that touches frontend behavior, try to run the relevant browser coverage before opening a PR:
+
+```bash
+# Full seeded suite
+cd frontend/dashboard && npm run e2e
+
+# Or a focused spec while iterating
+cd frontend/dashboard && npm run test:e2e -- e2e/auth.seeded.spec.js --workers=1
+```
+
+### Suggested Verification Before a PR
+
+```bash
+# Backend
 go test ./...
 
-# Angular unit tests
-cd frontend/dashboard && npm test
+# Frontend
+cd frontend/dashboard && npm run fmt:check
+cd frontend/dashboard && npm run lint
+cd frontend/dashboard && npm run test -- --watch=false --no-progress
+
+# Browser coverage for UI changes
+cd frontend/dashboard && npm run e2e
 ```
 
 ### Cleanup
@@ -207,6 +254,10 @@ BREAKING CHANGE: The /api/login endpoint now requires 2FA if enabled.
 3. **Test your changes:**
    ```bash
    go test ./...
+   cd frontend/dashboard && npm run fmt:check
+   cd frontend/dashboard && npm run lint
+   cd frontend/dashboard && npm run test -- --watch=false --no-progress
+   cd frontend/dashboard && npm run e2e
    ```
 
 4. **Commit** using Conventional Commits format.

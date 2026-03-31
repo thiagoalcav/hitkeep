@@ -9,3 +9,5 @@ hitkeep.db
 !/charts/hitkeep/
 !/charts/hitkeep/**
 scripts
+!scripts/dev.sh
+!scripts/update-default-spam-filter.sh

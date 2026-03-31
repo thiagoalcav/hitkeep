@@ -1088,7 +1088,9 @@
         "or": "or",
         "signInWithPasskey": "Sign in with passkey",
         "mfaTitle": "Two-factor verification",
-        "mfaSubtitle": "Complete sign-in with your authenticator code, a recovery code, or a passkey.",
+        "mfaSubtitle": "Complete sign-in with your authenticator code, a recovery code, a sign-in link, or a passkey.",
+        "sendEmailLink": "Email me a sign-in link",
+        "emailLinkSent": "We sent a sign-in link to your email address.",
         "totpCodeLabel": "Authenticator code",
         "recoveryCodeLabel": "Recovery code",
         "recoveryCodePlaceholder": "ABCD-EFGH",
@@ -1101,6 +1103,8 @@
             "passkeyFailed": "Passkey login failed. Please try again.",
             "invalidTotp": "Invalid authenticator code.",
             "invalidRecoveryCode": "Invalid recovery code.",
+            "emailLinkFailed": "We could not send your sign-in link. Please try again.",
+            "mfaEmailLinkInvalid": "This sign-in link is invalid or has expired. Request a new one to continue.",
             "unexpected": "An unexpected error occurred. Please try again."
         }
     },

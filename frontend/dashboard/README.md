@@ -1,6 +1,6 @@
 # Dashboard
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.9.
+HitKeep's dashboard is an Angular 21 application that also builds the lightweight tracking snippet (`hk.js`).
 
 ## Development server
 
@@ -11,6 +11,8 @@ ng serve
 ```
 
 Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+
+From the repo root, `make dev` starts both the Go backend and this dashboard together. `make dev-seed` does the same with seeded demo data.
 
 ## Code scaffolding
 
@@ -28,7 +30,7 @@ ng generate --help
 
 ## Building
 
-To build the project run:
+To build the dashboard only, run:
 
 ```bash
 ng build
@@ -36,11 +38,17 @@ ng build
 
 This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
 
+To build the production dashboard bundle, optimize translations, rebuild `hk.js`, and sync the result into the Go app's embedded `public/` directory, run:
+
+```bash
+npm run build:prod
+```
+
 The Scalar API Reference runtime (`vendor/scalar/standalone.js`) is copied into the build output from `node_modules/@scalar/api-reference/dist/browser/standalone.js` via Angular assets configuration, so it always matches the installed npm package version.
 
 ## Running unit tests
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+To execute unit tests, use:
 
 ```bash
 ng test
@@ -48,13 +56,31 @@ ng test
 
 ## Running end-to-end tests
 
-For end-to-end (e2e) testing, run:
+For the real seeded end-to-end suite, run:
 
 ```bash
 ng e2e
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+This workspace wires `ng e2e` to the Playwright suite that CI uses. The launcher:
+
+- builds the production dashboard bundle
+- builds the Go binary
+- seeds realistic demo data
+- starts a disposable local HitKeep instance
+- runs the browser journeys against the real app
+
+If you want to call Playwright directly while iterating on a focused spec, use:
+
+```bash
+npm run test:e2e -- e2e/auth.seeded.spec.js --workers=1
+```
+
+On a fresh machine, install the browser dependency first:
+
+```bash
+npx playwright install --with-deps chromium
+```
 
 ## Additional Resources
 

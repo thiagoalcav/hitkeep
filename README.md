@@ -127,7 +127,10 @@ Tracker options, ecommerce events, custom events, and advanced tracking examples
 ![HitKeep AI chatbot analytics with KPI cards, conversation activity chart, and chatbot breakdowns](./.github/assets/analytics-ai-chatbots.png)
 
 ### AI Visibility
-![HitKeep AI visibility analytics with fetch KPIs, fetch volume chart, and correlation tables](./.github/assets/analytics-ai-visibility.png)
+![HitKeep AI visibility analytics with fetch KPIs, assistant filters, and fetch volume chart](./.github/assets/analytics-ai-visibility.png)
+
+### AI Visibility Correlation
+![HitKeep AI visibility correlation with summary KPIs and tabbed citation yield, opportunity pages, and failure hotspots tables](./.github/assets/analytics-ai-visibility-correlation.png)
 
 ### Email Reports
 ![HitKeep scheduled email reports](./.github/assets/feature-email-reports.png)
@@ -176,6 +179,7 @@ Prerequisites:
 - Go 1.26+
 - Node.js 24+
 - Make
+- A working C toolchain for DuckDB builds
 
 Build from source:
 
@@ -186,9 +190,24 @@ make build
 ./hitkeep
 ```
 
-Contributor docs and project guides:
+For day-to-day development:
 
-- [Development docs](https://hitkeep.com/guides/development/)
+```bash
+make dev
+```
+
+This starts the Go backend with live reload and the Angular dashboard on `http://localhost:4200`.
+
+For a seeded local workspace with demo data:
+
+```bash
+make dev-seed
+```
+
+Contributor docs and local development guides:
+
+- [Contributing guide](./CONTRIBUTING.md)
+- [Dashboard development notes](./frontend/dashboard/README.md)
 - [Changelog](./CHANGELOG.md)
 
 ## License

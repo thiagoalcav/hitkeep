@@ -15,6 +15,7 @@ func FetchMetadataMiddleware(publicURL string, next http.Handler) http.Handler {
 		path := r.URL.Path
 		isStripeWebhook := path == "/api/cloud/webhooks/stripe"
 		isSignupVerify := path == "/api/cloud/signup/verify"
+		isMFAEmailLinkVerify := path == "/api/auth/mfa/email-link/verify"
 
 		if secFetchSite == "" {
 			// Older/limited browsers fallback: for state-changing API requests, enforce
@@ -34,7 +35,7 @@ func FetchMetadataMiddleware(publicURL string, next http.Handler) http.Handler {
 			return
 		}
 
-		if strings.HasPrefix(path, "/api/") && secFetchSite != "same-origin" && !isStripeWebhook && !isSignupVerify {
+		if strings.HasPrefix(path, "/api/") && secFetchSite != "same-origin" && !isStripeWebhook && !isSignupVerify && !isMFAEmailLinkVerify {
 			http.Error(w, "Not found", http.StatusNotFound)
 			return
 		}

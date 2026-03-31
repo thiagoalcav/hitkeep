@@ -176,6 +176,27 @@ func TestFetchMetadataMiddleware_AllowsSignupVerifyFromEmail(t *testing.T) {
 	}
 }
 
+func TestFetchMetadataMiddleware_AllowsMFAEmailLinkVerifyFromEmail(t *testing.T) {
+	handler := FetchMetadataMiddleware("https://hitkeep.example", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	// Browsers navigating from an email link send Sec-Fetch-Site: cross-site or none.
+	for _, site := range []string{"cross-site", "none"} {
+		t.Run(site, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, "/api/auth/mfa/email-link/verify?token=abc123", nil)
+			req.Header.Set("Sec-Fetch-Site", site)
+			req.Header.Set("Sec-Fetch-Mode", "navigate")
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusNoContent {
+				t.Fatalf("Sec-Fetch-Site=%s: expected status %d, got %d", site, http.StatusNoContent, rec.Code)
+			}
+		})
+	}
+}
+
 func TestCanonicalOrigin_NormalizesDefaultPortsAndIPv6(t *testing.T) {
 	tests := []struct {
 		name string

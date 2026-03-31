@@ -239,6 +239,21 @@ func TestOpenAPISpecV1IncludesAIChatbotExportPath(t *testing.T) {
 	}
 }
 
+func TestOpenAPISpecV1IncludesAIFetchExportPath(t *testing.T) {
+	spec := openAPISpecV1("http://localhost:8080")
+	paths := requireMap(t, spec, "paths")
+
+	exportPath := requireMap(t, paths, "/api/sites/{id}/ai-fetch/export")
+	getOp := requireMap(t, exportPath, "get")
+	params, ok := getOp["parameters"].([]any)
+	if !ok {
+		t.Fatalf("expected parameters slice on AI fetch export path")
+	}
+	if !hasFormatParamRef(params) {
+		t.Fatalf("expected AI fetch export path to include shared format parameter")
+	}
+}
+
 func hasFormatParamRef(params []any) bool {
 	for _, p := range params {
 		pm, ok := p.(map[string]any)

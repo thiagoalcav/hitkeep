@@ -1088,7 +1088,9 @@
         "or": "oder",
         "signInWithPasskey": "Mit Passkey anmelden",
         "mfaTitle": "Zwei-Faktor-Verifizierung",
-        "mfaSubtitle": "Schließe die Anmeldung mit deinem Authenticator-Code, einem Wiederherstellungscode oder einem Passkey ab.",
+        "mfaSubtitle": "Schließe die Anmeldung mit deinem Authenticator-Code, einem Wiederherstellungscode, einem Anmeldelink oder einem Passkey ab.",
+        "sendEmailLink": "Anmeldelink per E-Mail senden",
+        "emailLinkSent": "Wir haben einen Anmeldelink an deine E-Mail-Adresse gesendet.",
         "totpCodeLabel": "Authenticator-Code",
         "recoveryCodeLabel": "Wiederherstellungscode",
         "recoveryCodePlaceholder": "ABCD-EFGH",
@@ -1101,6 +1103,8 @@
             "passkeyFailed": "Passkey-Anmeldung fehlgeschlagen. Bitte versuche es erneut.",
             "invalidTotp": "Ungültiger Authenticator-Code.",
             "invalidRecoveryCode": "Ungültiger Wiederherstellungscode.",
+            "emailLinkFailed": "Der Anmeldelink konnte nicht gesendet werden. Bitte versuche es erneut.",
+            "mfaEmailLinkInvalid": "Dieser Anmeldelink ist ungültig oder abgelaufen. Fordere einen neuen Link an, um fortzufahren.",
             "unexpected": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es erneut."
         }
     },

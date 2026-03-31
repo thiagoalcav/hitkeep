@@ -8,7 +8,10 @@ import { ButtonModule } from "primeng/button";
 import { CardModule } from "primeng/card";
 import { SelectModule } from "primeng/select";
 import { SplitButtonModule } from "primeng/splitbutton";
+import { TabsModule } from "primeng/tabs";
+import { TagModule } from "primeng/tag";
 import { TableModule } from "primeng/table";
+import { TooltipModule } from "primeng/tooltip";
 import { MenuItem } from "primeng/api";
 import { SiteService } from "@features/sites/services/site.service";
 import { AIFetchFilters, AnalyticsService } from "@core/services/analytics.service";
@@ -25,10 +28,38 @@ import { TakeoutDownloadService } from "@services/takeout-download.service";
 import { AIFilterChip, formatBytes, formatResponseMs, mapAIFetchSeries } from "@pages/ai-visibility/ai-visibility.utils";
 
 type FilterKey = "assistantName" | "assistantFamily" | "resourceType";
+type CorrelationTabValue = "citationYield" | "opportunityPages" | "failureHotspots";
+
+interface CorrelationTableTab {
+    value: CorrelationTabValue;
+    label: string;
+    description: string;
+    count: number;
+    icon: string;
+}
 
 @Component({
     selector: "app-ai-visibility",
-    imports: [FormsModule, TranslocoPipe, TranslocoDecimalPipe, ButtonModule, CardModule, SelectModule, SplitButtonModule, TableModule, RangeToolbar, PageHeader, PageHeaderLeft, PageBreadcrumb, SeriesChart, KpiCard, MetricList],
+    imports: [
+        FormsModule,
+        TranslocoPipe,
+        TranslocoDecimalPipe,
+        ButtonModule,
+        CardModule,
+        SelectModule,
+        SplitButtonModule,
+        TabsModule,
+        TagModule,
+        TableModule,
+        TooltipModule,
+        RangeToolbar,
+        PageHeader,
+        PageHeaderLeft,
+        PageBreadcrumb,
+        SeriesChart,
+        KpiCard,
+        MetricList
+    ],
     templateUrl: "./ai-visibility.html",
     styleUrl: "./ai-visibility.css",
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -54,6 +85,7 @@ export class AIVisibility {
     protected readonly customRangeDates = signal<Date[] | null>(null);
 
     protected readonly filters = signal<AIFetchFilters>({});
+    protected readonly activeCorrelationTab = signal<CorrelationTabValue>("citationYield");
 
     protected readonly overview = signal<AIFetchOverview | null>(null);
     protected readonly correlation = signal<AIFetchCorrelationReport | null>(null);
@@ -162,6 +194,35 @@ export class AIVisibility {
     protected readonly citationYieldRows = computed(() => this.correlation()?.citation_yield ?? []);
     protected readonly opportunityRows = computed(() => this.correlation()?.opportunity_pages ?? []);
     protected readonly failureHotspotRows = computed(() => this.correlation()?.failure_hotspots ?? []);
+    protected readonly citationYieldMaxFetches = computed(() => this.maxMetricValue(this.citationYieldRows().map((row) => row.fetch_count)));
+    protected readonly opportunityPageMaxFetches = computed(() => this.maxMetricValue(this.opportunityRows().map((row) => row.fetch_count)));
+    protected readonly failureHotspotMaxRequests = computed(() => this.maxMetricValue(this.failureHotspotRows().map((row) => row.total_requests)));
+    protected readonly correlationTabs = computed<CorrelationTableTab[]>(() => {
+        this.activeLanguage();
+        return [
+            {
+                value: "citationYield",
+                label: this.transloco.translate("aiVisibility.tables.citationYield.title"),
+                description: this.transloco.translate("aiVisibility.tables.citationYield.description"),
+                count: this.citationYieldRows().length,
+                icon: "pi pi-chart-line"
+            },
+            {
+                value: "opportunityPages",
+                label: this.transloco.translate("aiVisibility.tables.opportunityPages.title"),
+                description: this.transloco.translate("aiVisibility.tables.opportunityPages.description"),
+                count: this.opportunityRows().length,
+                icon: "pi pi-compass"
+            },
+            {
+                value: "failureHotspots",
+                label: this.transloco.translate("aiVisibility.tables.failureHotspots.title"),
+                description: this.transloco.translate("aiVisibility.tables.failureHotspots.description"),
+                count: this.failureHotspotRows().length,
+                icon: "pi pi-exclamation-circle"
+            }
+        ];
+    });
 
     protected readonly exportUrl = computed(() => {
         const site = this.activeSite();
@@ -231,6 +292,21 @@ export class AIVisibility {
 
     protected formatPercent(value: number): string {
         return `${value.toFixed(1)}%`;
+    }
+
+    protected metricBarWidth(value: number, max: number): number {
+        if (value <= 0 || max <= 0) return 0;
+        return Math.min(100, Math.max(12, (value / max) * 100));
+    }
+
+    protected errorRateSeverity(value: number): "secondary" | "warn" | "danger" {
+        if (value <= 0) return "secondary";
+        if (value < 5) return "warn";
+        return "danger";
+    }
+
+    protected tooltipText(value: string): string | undefined {
+        return value.length > 36 ? value : undefined;
     }
 
     protected formatBytes(value: number): string {
@@ -343,6 +419,11 @@ export class AIVisibility {
 
     private toOptions(items: MetricStat[]) {
         return items.map((item) => ({ label: item.name, value: item.name }));
+    }
+
+    private maxMetricValue(values: number[]): number {
+        if (values.length === 0) return 0;
+        return Math.max(...values, 0);
     }
 
     private localeTag(): string {

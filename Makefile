@@ -14,17 +14,23 @@ frontend-dashboard-build:
 	@echo "Copying dashboard to public directory..."
 	@cp -r frontend/dashboard/dist/dashboard/browser/* public/
 
+DEV_ARGS ?=
+
 dev:
-	@echo "Starting development environment..."
-	@if ! command -v air > /dev/null; then \
-		echo "Air is not installed. Installing..."; \
-		go install github.com/air-verse/air@latest; \
-	fi
-	@make -j2 dev-backend dev-frontend
+	@bash ./scripts/dev.sh $(DEV_ARGS)
+
+dev-seed:
+	@bash ./scripts/dev.sh --seed
 
 dev-backend:
 	@echo "Starting Backend with Live Reload..."
-	@HITKEEP_JWT_SECRET=$${HITKEEP_JWT_SECRET:-hitkeep-dev-jwt-secret} air
+	@HITKEEP_JWT_SECRET=$${HITKEEP_JWT_SECRET:-hitkeep-dev-jwt-secret} \
+		HITKEEP_PUBLIC_URL=$${HITKEEP_PUBLIC_URL:-http://localhost:4200} \
+		HITKEEP_MAIL_DRIVER=$${HITKEEP_MAIL_DRIVER:-smtp} \
+		HITKEEP_MAIL_HOST=$${HITKEEP_MAIL_HOST:-localhost} \
+		HITKEEP_MAIL_PORT=$${HITKEEP_MAIL_PORT:-1025} \
+		HITKEEP_MAIL_ENCRYPTION=$${HITKEEP_MAIL_ENCRYPTION:-none} \
+		air
 
 dev-frontend:
 	@echo "Starting Angular with Hot Reload..."
@@ -36,7 +42,6 @@ run: build
 clean:
 	@echo "Cleaning up..."
 	@rm -f ./hitkeep
-	@rm -rf public
 	@rm -rf frontend/dashboard/dist frontend/dashboard/node_modules
 
 build-docker:
@@ -66,7 +71,8 @@ dev-cloud:
 
 dev-cloud-backend:
 	@echo "Starting Backend with Live Reload (billing tags)..."
-	@HITKEEP_JWT_SECRET=$${HITKEEP_JWT_SECRET:-hitkeep-dev-jwt-secret} air -c .air-cloud.toml
+	@HITKEEP_JWT_SECRET=$${HITKEEP_JWT_SECRET:-hitkeep-dev-jwt-secret} \
+		HITKEEP_PUBLIC_URL=$${HITKEEP_PUBLIC_URL:-http://localhost:4200} \
+		air -c .air-cloud.toml
 
-
-.PHONY: all build go-build frontend-build frontend-dashboard-build run clean update-default-spam-filter
+.PHONY: all build go-build frontend-build frontend-dashboard-build run clean update-default-spam-filter dev dev-seed dev-backend dev-frontend dev-cloud dev-cloud-backend

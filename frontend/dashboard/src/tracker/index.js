@@ -66,6 +66,13 @@
             return trimmed.length > 0 ? trimmed : null;
         };
 
+        const currentReferrer = () => {
+            if (lastPath !== location.pathname) {
+                return `${location.origin}${lastPath}`;
+            }
+            return initialReferrer || null;
+        };
+
         const sendPageView = () => {
             const currentPath = location.pathname;
             const searchParams = new URLSearchParams(location.search);
@@ -74,10 +81,7 @@
                 sessionStorage.setItem(SESSION_KEY, `${sessionId}|${Date.now()}`);
             } catch (e) {}
 
-            let referrer = initialReferrer;
-            if (lastPath !== currentPath) {
-                referrer = `${location.origin}${lastPath}`;
-            }
+            const referrer = currentReferrer();
 
             const isUnique = lastPath === currentPath && referrer && new URL(referrer).hostname !== initialHost;
 
@@ -151,6 +155,7 @@
             const payload = {
                 n: name,
                 p: properties || {},
+                r: currentReferrer(),
                 sid: sessionId
             };
 

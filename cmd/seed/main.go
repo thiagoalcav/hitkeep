@@ -34,7 +34,6 @@ import (
 	"log/slog"
 	mrand "math/rand"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -330,7 +329,11 @@ var chatbotBots = []weightedEntry[chatbotBot]{
 
 func main() {
 	dbPath := flag.String("db", "hitkeep.db", "Path to hitkeep.db")
-	dataPath := flag.String("data-path", "", "Base directory for per-tenant data files (default: directory containing -db)")
+	defaultDataPath := os.Getenv("HITKEEP_DATA_PATH")
+	if strings.TrimSpace(defaultDataPath) == "" {
+		defaultDataPath = "data"
+	}
+	dataPath := flag.String("data-path", defaultDataPath, "Base directory for per-tenant data files")
 	email := flag.String("email", "demo@example.com", "Demo user email")
 	password := flag.String("password", "demo1234", "Demo user password")
 	days := flag.Int("days", 90, "Days of demo traffic to generate")
@@ -355,9 +358,6 @@ func main() {
 		os.Exit(1)
 	}
 	tenantBasePath := strings.TrimSpace(*dataPath)
-	if tenantBasePath == "" {
-		tenantBasePath = filepath.Dir(*dbPath)
-	}
 
 	tenantMgr := database.NewTenantStoreManager(store, tenantBasePath)
 	defer tenantMgr.Close()
@@ -410,8 +410,16 @@ func main() {
 	createFunnels(ctx, analyticsStore, siteID)
 
 	slog.Info("Seeding traffic", "days", *days)
-	stats := seedTraffic(ctx, analyticsStore, siteID, goalIDs, *days, rng)
-	aiSeedStats := seedAIFetches(ctx, analyticsStore, siteID, *days, rng)
+	stats, err := seedTraffic(ctx, analyticsStore, siteID, goalIDs, *days, rng)
+	if err != nil {
+		slog.Error("Failed to seed traffic", "error", err)
+		os.Exit(1)
+	}
+	aiSeedStats, err := seedAIFetches(ctx, analyticsStore, siteID, *days, rng)
+	if err != nil {
+		slog.Error("Failed to seed AI visibility", "error", err)
+		os.Exit(1)
+	}
 	stats.aiFetches = aiSeedStats.fetches
 	stats.hits += aiSeedStats.hits
 	stats.sessions += aiSeedStats.sessions
@@ -629,11 +637,58 @@ type aiFetchSeedStats struct {
 	sessions int
 }
 
-func seedTraffic(ctx context.Context, store *database.Store, siteID uuid.UUID, goals goalIDs, numDays int, rng *mrand.Rand) seedStats {
+type seedWriteBatch struct {
+	hits      []*api.Hit
+	events    []*api.Event
+	aiFetches []*api.AIFetch
+}
+
+func (b *seedWriteBatch) addHit(hit *api.Hit) {
+	if hit != nil {
+		b.hits = append(b.hits, hit)
+	}
+}
+
+func (b *seedWriteBatch) addEvent(event *api.Event) {
+	if event != nil {
+		b.events = append(b.events, event)
+	}
+}
+
+func (b *seedWriteBatch) addAIFetch(fetch *api.AIFetch) {
+	if fetch != nil {
+		b.aiFetches = append(b.aiFetches, fetch)
+	}
+}
+
+func (b *seedWriteBatch) flush(ctx context.Context, store *database.Store) error {
+	if len(b.hits) > 0 {
+		if err := store.CreateHitsBulk(ctx, b.hits); err != nil {
+			return fmt.Errorf("insert %d hits: %w", len(b.hits), err)
+		}
+		b.hits = b.hits[:0]
+	}
+	if len(b.events) > 0 {
+		if err := store.CreateEventsBulk(ctx, b.events); err != nil {
+			return fmt.Errorf("insert %d events: %w", len(b.events), err)
+		}
+		b.events = b.events[:0]
+	}
+	if len(b.aiFetches) > 0 {
+		if err := store.CreateAIFetchesBulk(ctx, b.aiFetches); err != nil {
+			return fmt.Errorf("insert %d ai fetches: %w", len(b.aiFetches), err)
+		}
+		b.aiFetches = b.aiFetches[:0]
+	}
+	return nil
+}
+
+func seedTraffic(ctx context.Context, store *database.Store, siteID uuid.UUID, goals goalIDs, numDays int, rng *mrand.Rand) (seedStats, error) {
 	now := time.Now().UTC()
 	start := now.AddDate(0, 0, -numDays).Truncate(24 * time.Hour)
 
 	var stats seedStats
+	var batch seedWriteBatch
 
 	for d := range numDays {
 		day := start.Add(time.Duration(d) * 24 * time.Hour)
@@ -721,16 +776,17 @@ func seedTraffic(ctx context.Context, store *database.Store, siteID uuid.UUID, g
 					h.UTMContent = utmEntry.content
 				}
 
-				if err := store.CreateHit(ctx, h); err != nil {
-					slog.Error("Failed to insert hit", "error", err)
-					continue
-				}
+				batch.addHit(h)
 				stats.hits++
 			}
 
 			// Maybe fire a conversion event at the end of the session.
-			events := fireConversionEvents(ctx, store, siteID, sessionID, goals, rng, sessionStart.Add(time.Duration(sessionLen*90+30)*time.Second), entryPage, utmEntry)
+			events := fireConversionEvents(&batch, siteID, sessionID, goals, rng, sessionStart.Add(time.Duration(sessionLen*90+30)*time.Second), entryPage, utmEntry)
 			stats.events += events
+		}
+
+		if err := batch.flush(ctx, store); err != nil {
+			return stats, fmt.Errorf("flush traffic batch for %s: %w", day.Format("2006-01-02"), err)
 		}
 
 		if d%10 == 0 || d == numDays-1 {
@@ -738,13 +794,14 @@ func seedTraffic(ctx context.Context, store *database.Store, siteID uuid.UUID, g
 		}
 	}
 
-	return stats
+	return stats, nil
 }
 
-func seedAIFetches(ctx context.Context, store *database.Store, siteID uuid.UUID, numDays int, rng *mrand.Rand) aiFetchSeedStats {
+func seedAIFetches(ctx context.Context, store *database.Store, siteID uuid.UUID, numDays int, rng *mrand.Rand) (aiFetchSeedStats, error) {
 	now := time.Now().UTC()
 	start := now.AddDate(0, 0, -numDays).Truncate(24 * time.Hour)
 	stats := aiFetchSeedStats{}
+	var batch seedWriteBatch
 
 	for d := range numDays {
 		day := start.Add(time.Duration(d) * 24 * time.Hour)
@@ -780,23 +837,24 @@ func seedAIFetches(ctx context.Context, store *database.Store, siteID uuid.UUID,
 				UserAgent:       &userAgent,
 			}
 
-			if err := store.CreateAIFetch(ctx, fetch); err != nil {
-				slog.Error("Failed to insert ai fetch", "assistant", bot.name, "path", target.path, "error", err)
-				continue
-			}
+			batch.addAIFetch(fetch)
 			stats.fetches++
-			sessionCount, hitCount := seedAIReferredVisits(ctx, store, siteID, fetch, target, rng)
+			sessionCount, hitCount := seedAIReferredVisits(&batch, siteID, fetch, target, rng)
 			stats.sessions += sessionCount
 			stats.hits += hitCount
+		}
+
+		if err := batch.flush(ctx, store); err != nil {
+			return stats, fmt.Errorf("flush ai visibility batch for %s: %w", day.Format("2006-01-02"), err)
 		}
 	}
 
 	slog.Info("AI visibility seeded", "fetches", stats.fetches, "ai_referred_sessions", stats.sessions, "ai_referred_hits", stats.hits)
-	return stats
+	return stats, nil
 }
 
 // fireConversionEvents randomly fires zero or more conversion events for a session.
-func fireConversionEvents(ctx context.Context, store *database.Store, siteID, sessionID uuid.UUID, goals goalIDs, rng *mrand.Rand, ts time.Time, entryPage string, utm *utmParams) int {
+func fireConversionEvents(batch *seedWriteBatch, siteID, sessionID uuid.UUID, goals goalIDs, rng *mrand.Rand, ts time.Time, entryPage string, utm *utmParams) int {
 	_ = goals // goalIDs are used for reference, events use the same string values
 	count := 0
 
@@ -831,19 +889,16 @@ func fireConversionEvents(ctx context.Context, store *database.Store, siteID, se
 				Properties: c.props,
 				Timestamp:  ts,
 			}
-			if err := store.CreateEvent(ctx, ev); err != nil {
-				slog.Error("Failed to insert event", "name", c.name, "error", err)
-				continue
-			}
+			batch.addEvent(ev)
 			count++
 		}
 	}
-	count += fireEcommerceEvents(ctx, store, siteID, sessionID, rng, ts, entryPage, utm)
-	count += fireAIChatbotEvents(ctx, store, siteID, sessionID, rng, ts, entryPage, utm)
+	count += fireEcommerceEvents(batch, siteID, sessionID, rng, ts, entryPage, utm)
+	count += fireAIChatbotEvents(batch, siteID, sessionID, rng, ts, entryPage, utm)
 	return count
 }
 
-func fireEcommerceEvents(ctx context.Context, store *database.Store, siteID, sessionID uuid.UUID, rng *mrand.Rand, ts time.Time, entryPage string, utm *utmParams) int {
+func fireEcommerceEvents(batch *seedWriteBatch, siteID, sessionID uuid.UUID, rng *mrand.Rand, ts time.Time, entryPage string, utm *utmParams) int {
 	product := pickWeighted(rng, ecommerceProducts)
 	viewProb := 0.16
 	cartProb := 0.42
@@ -884,7 +939,7 @@ func fireEcommerceEvents(ctx context.Context, store *database.Store, siteID, ses
 	currency := "USD"
 
 	viewProps := buildCatalogEventProps(items[0], currency)
-	if insertSeedEvent(ctx, store, &api.Event{
+	if insertSeedEvent(batch, &api.Event{
 		SiteID:     siteID,
 		SessionID:  sessionID,
 		Name:       "view_item",
@@ -901,7 +956,7 @@ func fireEcommerceEvents(ctx context.Context, store *database.Store, siteID, ses
 	cartProps := buildCatalogEventProps(items[0], currency)
 	cartProps["quantity"] = items[0]["quantity"]
 	cartProps["items"] = items
-	if insertSeedEvent(ctx, store, &api.Event{
+	if insertSeedEvent(batch, &api.Event{
 		SiteID:     siteID,
 		SessionID:  sessionID,
 		Name:       "add_to_cart",
@@ -923,7 +978,7 @@ func fireEcommerceEvents(ctx context.Context, store *database.Store, siteID, ses
 		"coupon":      coupon,
 		"items":       items,
 	}
-	if insertSeedEvent(ctx, store, &api.Event{
+	if insertSeedEvent(batch, &api.Event{
 		SiteID:     siteID,
 		SessionID:  sessionID,
 		Name:       "begin_checkout",
@@ -951,7 +1006,7 @@ func fireEcommerceEvents(ctx context.Context, store *database.Store, siteID, ses
 		"coupon":         coupon,
 		"items":          items,
 	}
-	if insertSeedEvent(ctx, store, &api.Event{
+	if insertSeedEvent(batch, &api.Event{
 		SiteID:     siteID,
 		SessionID:  sessionID,
 		Name:       "purchase",
@@ -970,7 +1025,7 @@ func fireEcommerceEvents(ctx context.Context, store *database.Store, siteID, ses
 	if coupon != "" {
 		legacyPurchaseProps["coupon"] = coupon
 	}
-	if insertSeedEvent(ctx, store, &api.Event{
+	if insertSeedEvent(batch, &api.Event{
 		SiteID:     siteID,
 		SessionID:  sessionID,
 		Name:       "purchase_completed",
@@ -983,15 +1038,12 @@ func fireEcommerceEvents(ctx context.Context, store *database.Store, siteID, ses
 	return count
 }
 
-func insertSeedEvent(ctx context.Context, store *database.Store, event *api.Event) bool {
-	if err := store.CreateEvent(ctx, event); err != nil {
-		slog.Error("Failed to insert event", "name", event.Name, "error", err)
-		return false
-	}
+func insertSeedEvent(batch *seedWriteBatch, event *api.Event) bool {
+	batch.addEvent(event)
 	return true
 }
 
-func fireAIChatbotEvents(ctx context.Context, store *database.Store, siteID, sessionID uuid.UUID, rng *mrand.Rand, ts time.Time, entryPage string, utm *utmParams) int {
+func fireAIChatbotEvents(batch *seedWriteBatch, siteID, sessionID uuid.UUID, rng *mrand.Rand, ts time.Time, entryPage string, utm *utmParams) int {
 	startProb := 0.05
 	switch entryPage {
 	case "/docs/getting-started", "/docs/configuration", "/docs/api-reference":
@@ -1031,7 +1083,7 @@ func fireAIChatbotEvents(ctx context.Context, store *database.Store, siteID, ses
 		messageCount++
 	}
 
-	if insertSeedEvent(ctx, store, &api.Event{
+	if insertSeedEvent(batch, &api.Event{
 		SiteID:    siteID,
 		SessionID: sessionID,
 		Name:      "assistant.chat_started",
@@ -1062,7 +1114,7 @@ func fireAIChatbotEvents(ctx context.Context, store *database.Store, siteID, ses
 		}
 		citationCount += currentCitations
 
-		if insertSeedEvent(ctx, store, &api.Event{
+		if insertSeedEvent(batch, &api.Event{
 			SiteID:    siteID,
 			SessionID: sessionID,
 			Name:      "assistant.message_sent",
@@ -1076,7 +1128,7 @@ func fireAIChatbotEvents(ctx context.Context, store *database.Store, siteID, ses
 			count++
 		}
 
-		if insertSeedEvent(ctx, store, &api.Event{
+		if insertSeedEvent(batch, &api.Event{
 			SiteID:    siteID,
 			SessionID: sessionID,
 			Name:      "assistant.response_rendered",
@@ -1093,7 +1145,7 @@ func fireAIChatbotEvents(ctx context.Context, store *database.Store, siteID, ses
 		}
 
 		if currentCitations > 0 && rng.Float64() < 0.34 {
-			if insertSeedEvent(ctx, store, &api.Event{
+			if insertSeedEvent(batch, &api.Event{
 				SiteID:    siteID,
 				SessionID: sessionID,
 				Name:      "assistant.citation_clicked",
@@ -1110,7 +1162,7 @@ func fireAIChatbotEvents(ctx context.Context, store *database.Store, siteID, ses
 	}
 
 	if rng.Float64() < 0.16 {
-		if insertSeedEvent(ctx, store, &api.Event{
+		if insertSeedEvent(batch, &api.Event{
 			SiteID:    siteID,
 			SessionID: sessionID,
 			Name:      "assistant.handoff_requested",
@@ -1127,7 +1179,7 @@ func fireAIChatbotEvents(ctx context.Context, store *database.Store, siteID, ses
 
 	if rng.Float64() < assistedGoalProbability(entryPage) {
 		goalName := randomChatbotGoalName(entryPage, rng)
-		if insertSeedEvent(ctx, store, &api.Event{
+		if insertSeedEvent(batch, &api.Event{
 			SiteID:    siteID,
 			SessionID: sessionID,
 			Name:      "assistant.goal_assisted",
@@ -1456,7 +1508,7 @@ func classifySeedResourceType(contentType string) string {
 	}
 }
 
-func seedAIReferredVisits(ctx context.Context, store *database.Store, siteID uuid.UUID, fetch *api.AIFetch, target aiFetchTarget, rng *mrand.Rand) (sessions int, hits int) {
+func seedAIReferredVisits(batch *seedWriteBatch, siteID uuid.UUID, fetch *api.AIFetch, target aiFetchTarget, rng *mrand.Rand) (sessions int, hits int) {
 	if fetch == nil || target.visitChance <= 0 || target.visitMax <= 0 {
 		return 0, 0
 	}
@@ -1514,10 +1566,7 @@ func seedAIReferredVisits(ctx context.Context, store *database.Store, siteID uui
 				h.IsUnique = &isUnique
 			}
 
-			if err := store.CreateHit(ctx, h); err != nil {
-				slog.Error("Failed to insert AI-referred hit", "assistant_family", fetch.AssistantFamily, "path", path, "error", err)
-				continue
-			}
+			batch.addHit(h)
 			hits++
 		}
 		sessions++

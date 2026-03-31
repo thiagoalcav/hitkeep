@@ -28,16 +28,28 @@ func (s *Store) CreateHitsBulk(ctx context.Context, hits []*api.Hit) error {
 		return nil
 	}
 
-	return s.withAppender(ctx, "hits", func(appender rowAppender) error {
+	dirtyBuckets := make([]dirtyRollupBucket, 0, len(hits)*6)
+	for _, hit := range hits {
+		if hit == nil {
+			continue
+		}
+		if hit.ID == uuid.Nil {
+			hit.ID = uuid.New()
+		}
+		if hit.Timestamp.IsZero() {
+			hit.Timestamp = time.Now()
+		}
+		dirtyBuckets = append(dirtyBuckets, dirtyBucketsForHit(hit)...)
+	}
+
+	if err := s.markDirtyRollupBuckets(ctx, dirtyBuckets); err != nil {
+		return fmt.Errorf("mark dirty rollups before hit insert: %w", err)
+	}
+
+	if err := s.withAppender(ctx, "hits", func(appender rowAppender) error {
 		for _, hit := range hits {
 			if hit == nil {
 				continue
-			}
-			if hit.ID == uuid.Nil {
-				hit.ID = uuid.New()
-			}
-			if hit.Timestamp.IsZero() {
-				hit.Timestamp = time.Now()
 			}
 
 			if err := appender.AppendRow(
@@ -68,7 +80,11 @@ func (s *Store) CreateHitsBulk(ctx context.Context, hits []*api.Hit) error {
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // GetHits returns paginated, sorted, and filtered hits.

@@ -102,28 +102,8 @@ func (s *Store) GetSiteStats(ctx context.Context, params api.AnalyticsParams) (*
 	}
 
 	if useRollups {
-		switch rollupKind {
-		case rollupHourly:
-			if err := s.ensureHourlyRollups(ctx, params.SiteID, gridStart, gridEnd); err != nil {
-				return nil, fmt.Errorf("failed to update hourly rollups: %w", err)
-			}
-			if err := s.ensureHourlySessionRollups(ctx, params.SiteID, gridStart, gridEnd); err != nil {
-				return nil, fmt.Errorf("failed to update hourly session rollups: %w", err)
-			}
-		case rollupDaily:
-			if err := s.ensureDailyRollups(ctx, params.SiteID, gridStart, gridEnd); err != nil {
-				return nil, fmt.Errorf("failed to update daily rollups: %w", err)
-			}
-			if err := s.ensureDailySessionRollups(ctx, params.SiteID, gridStart, gridEnd); err != nil {
-				return nil, fmt.Errorf("failed to update daily session rollups: %w", err)
-			}
-		case rollupMonthly:
-			if err := s.ensureMonthlyRollups(ctx, params.SiteID, gridStart, gridEnd); err != nil {
-				return nil, fmt.Errorf("failed to update monthly rollups: %w", err)
-			}
-			if err := s.ensureMonthlySessionRollups(ctx, params.SiteID, gridStart, gridEnd); err != nil {
-				return nil, fmt.Errorf("failed to update monthly session rollups: %w", err)
-			}
+		if err := s.refreshDirtyRollupsInRange(ctx, params.SiteID, dirtyRollupSession, rollupKind, gridStart, gridEnd); err != nil {
+			return nil, fmt.Errorf("failed to refresh session rollups: %w", err)
 		}
 	}
 
@@ -649,46 +629,42 @@ func (s *Store) queryKpis(
 	avgDuration *float64,
 	pagesPerSession *float64,
 ) error {
-	if useRollups {
-		table := "session_rollups_hourly"
-		switch kind {
-		case rollupDaily:
-			table = "session_rollups_daily"
-		case rollupMonthly:
-			table = "session_rollups_monthly"
-		case rollupHourly:
-			table = "session_rollups_hourly"
-		}
+	_ = useRollups
+	_ = kind
 
-		query := fmt.Sprintf(`
-			SELECT
-				COALESCE(SUM(pageviews), 0) as total_pageviews,
-				COALESCE(SUM(sessions), 0) as unique_sessions,
-				CASE
-					WHEN COALESCE(SUM(sessions), 0) = 0 THEN 0
-					ELSE CAST(SUM(bounced_sessions) AS FLOAT) / SUM(sessions) * 100
-				END as bounce_rate,
-				CASE
-					WHEN COALESCE(SUM(sessions), 0) = 0 THEN 0
-					ELSE COALESCE(SUM(duration_sum_seconds), 0) / SUM(sessions)
-				END as avg_duration_seconds,
-				CASE
-					WHEN COALESCE(SUM(sessions), 0) = 0 THEN 0
-					ELSE CAST(SUM(pageviews) AS FLOAT) / SUM(sessions)
-				END as pages_per_session
-			FROM %s
-			WHERE site_id = ? AND bucket >= ? AND bucket <= ?
-		`, table)
-
-		return s.db.QueryRowContext(ctx, query, params.SiteID, params.Start, params.End).Scan(
-			totalPageviews,
-			uniqueSessions,
-			bounceRate,
-			avgDuration,
-			pagesPerSession,
-		)
+	totals, err := s.queryRawSessionKpis(ctx, params, filterSQL, filterArgs)
+	if err != nil {
+		return err
 	}
 
+	*totalPageviews = totals.TotalPageviews
+	*uniqueSessions = totals.UniqueSessions
+	if totals.UniqueSessions == 0 {
+		*bounceRate = 0
+		*avgDuration = 0
+		*pagesPerSession = 0
+		return nil
+	}
+
+	*bounceRate = (float64(totals.BouncedSessions) / float64(totals.UniqueSessions)) * 100
+	*avgDuration = totals.DurationSumSeconds / float64(totals.UniqueSessions)
+	*pagesPerSession = float64(totals.TotalPageviews) / float64(totals.UniqueSessions)
+	return nil
+}
+
+type sessionKpiTotals struct {
+	TotalPageviews     int
+	UniqueSessions     int
+	BouncedSessions    int
+	DurationSumSeconds float64
+}
+
+func (s *Store) queryRawSessionKpis(
+	ctx context.Context,
+	params api.AnalyticsParams,
+	filterSQL string,
+	filterArgs []any,
+) (sessionKpiTotals, error) {
 	//nolint:gosec // filterSQL is derived from a fixed allowlist
 	kpiQuery := fmt.Sprintf(`
 	WITH session_metrics AS (
@@ -703,22 +679,19 @@ func (s *Store) queryKpis(
 	SELECT 
 		COALESCE(SUM(pvs), 0) as total_pageviews,
 		COUNT(session_id) as unique_sessions,
-		CASE 
-			WHEN COUNT(session_id) = 0 THEN 0 
-			ELSE CAST(COUNT(CASE WHEN pvs = 1 THEN 1 END) AS FLOAT) / COUNT(session_id) * 100 
-		END as bounce_rate,
-		COALESCE(AVG(EXTRACT('epoch' FROM duration)), 0) as avg_duration_seconds,
-		COALESCE(AVG(pvs), 0) as pages_per_session
+		COALESCE(SUM(CASE WHEN pvs = 1 THEN 1 ELSE 0 END), 0) as bounced_sessions,
+		COALESCE(SUM(EXTRACT('epoch' FROM duration)), 0) as duration_sum_seconds
 	FROM session_metrics;
 	`, filterSQL)
 
-	return s.db.QueryRowContext(ctx, kpiQuery, append([]any{params.SiteID, params.Start, params.End}, filterArgs...)...).Scan(
-		totalPageviews,
-		uniqueSessions,
-		bounceRate,
-		avgDuration,
-		pagesPerSession,
+	var totals sessionKpiTotals
+	err := s.db.QueryRowContext(ctx, kpiQuery, append([]any{params.SiteID, params.Start, params.End}, filterArgs...)...).Scan(
+		&totals.TotalPageviews,
+		&totals.UniqueSessions,
+		&totals.BouncedSessions,
+		&totals.DurationSumSeconds,
 	)
+	return totals, err
 }
 
 func (s *Store) queryUTMKpis(

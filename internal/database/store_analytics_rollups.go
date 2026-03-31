@@ -465,6 +465,9 @@ func (s *Store) insertHourlyRollups(ctx context.Context, siteID uuid.UUID, start
 		FROM hits
 		WHERE site_id = ? AND timestamp >= ? AND timestamp < ?
 		GROUP BY site_id, bucket
+		ON CONFLICT (site_id, bucket) DO UPDATE SET
+			pageviews = EXCLUDED.pageviews,
+			visitors = EXCLUDED.visitors
 	`, siteID, start, endExclusive)
 	if err != nil {
 		return fmt.Errorf("failed to insert rollups: %w", err)
@@ -492,6 +495,9 @@ func (s *Store) insertDailyRollups(ctx context.Context, siteID uuid.UUID, start 
 		FROM hits
 		WHERE site_id = ? AND timestamp >= ? AND timestamp < ?
 		GROUP BY site_id, bucket
+		ON CONFLICT (site_id, bucket) DO UPDATE SET
+			pageviews = EXCLUDED.pageviews,
+			visitors = EXCLUDED.visitors
 	`, siteID, start, endExclusive)
 	if err != nil {
 		return fmt.Errorf("failed to insert daily rollups: %w", err)
@@ -561,6 +567,11 @@ func (s *Store) insertHourlySessionRollups(ctx context.Context, siteID uuid.UUID
 			COALESCE(SUM(pvs), 0) as pageviews
 		FROM session_metrics
 		GROUP BY site_id, bucket
+		ON CONFLICT (site_id, bucket) DO UPDATE SET
+			sessions = EXCLUDED.sessions,
+			bounced_sessions = EXCLUDED.bounced_sessions,
+			duration_sum_seconds = EXCLUDED.duration_sum_seconds,
+			pageviews = EXCLUDED.pageviews
 	`, siteID, start, endExclusive)
 	if err != nil {
 		return fmt.Errorf("failed to insert hourly session rollups: %w", err)
@@ -600,6 +611,11 @@ func (s *Store) insertDailySessionRollups(ctx context.Context, siteID uuid.UUID,
 			COALESCE(SUM(pvs), 0) as pageviews
 		FROM session_metrics
 		GROUP BY site_id, bucket
+		ON CONFLICT (site_id, bucket) DO UPDATE SET
+			sessions = EXCLUDED.sessions,
+			bounced_sessions = EXCLUDED.bounced_sessions,
+			duration_sum_seconds = EXCLUDED.duration_sum_seconds,
+			pageviews = EXCLUDED.pageviews
 	`, siteID, start, endExclusive)
 	if err != nil {
 		return fmt.Errorf("failed to insert daily session rollups: %w", err)
@@ -639,6 +655,11 @@ func (s *Store) insertMonthlySessionRollups(ctx context.Context, siteID uuid.UUI
 			COALESCE(SUM(pvs), 0) as pageviews
 		FROM session_metrics
 		GROUP BY site_id, bucket
+		ON CONFLICT (site_id, bucket) DO UPDATE SET
+			sessions = EXCLUDED.sessions,
+			bounced_sessions = EXCLUDED.bounced_sessions,
+			duration_sum_seconds = EXCLUDED.duration_sum_seconds,
+			pageviews = EXCLUDED.pageviews
 	`, siteID, start, endExclusive)
 	if err != nil {
 		return fmt.Errorf("failed to insert monthly session rollups: %w", err)
@@ -660,31 +681,7 @@ func (s *Store) ensureMonthlyRollup(
 		return nil
 	}
 
-	var minBucket sql.NullTime
-	var maxBucket sql.NullTime
-	//nolint:gosec // table is selected from fixed allowlist
-	query := fmt.Sprintf("SELECT MIN(bucket), MAX(bucket) FROM %s WHERE site_id = ?", table)
-	if err := s.db.QueryRowContext(ctx, query, siteID).Scan(&minBucket, &maxBucket); err != nil {
-		return err
-	}
-
-	if !minBucket.Valid || !maxBucket.Valid {
-		return insertFn(ctx, siteID, startBucket, endBucket)
-	}
-
-	if startBucket.Before(minBucket.Time) {
-		if err := insertFn(ctx, siteID, startBucket, minBucket.Time.AddDate(0, -1, 0)); err != nil {
-			return err
-		}
-	}
-
-	if endBucket.After(maxBucket.Time) {
-		if err := insertFn(ctx, siteID, maxBucket.Time.AddDate(0, 1, 0), endBucket); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return insertFn(ctx, siteID, startBucket, endBucket)
 }
 
 func (s *Store) ensureDailyRollup(
@@ -701,31 +698,7 @@ func (s *Store) ensureDailyRollup(
 		return nil
 	}
 
-	var minBucket sql.NullTime
-	var maxBucket sql.NullTime
-	//nolint:gosec // table is selected from fixed allowlist
-	query := fmt.Sprintf("SELECT MIN(bucket), MAX(bucket) FROM %s WHERE site_id = ?", table)
-	if err := s.db.QueryRowContext(ctx, query, siteID).Scan(&minBucket, &maxBucket); err != nil {
-		return err
-	}
-
-	if !minBucket.Valid || !maxBucket.Valid {
-		return insertFn(ctx, siteID, startBucket, endBucket)
-	}
-
-	if startBucket.Before(minBucket.Time) {
-		if err := insertFn(ctx, siteID, startBucket, minBucket.Time.AddDate(0, 0, -1)); err != nil {
-			return err
-		}
-	}
-
-	if endBucket.After(maxBucket.Time) {
-		if err := insertFn(ctx, siteID, maxBucket.Time.AddDate(0, 0, 1), endBucket); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return insertFn(ctx, siteID, startBucket, endBucket)
 }
 
 func (s *Store) ensureHourlyRollup(
@@ -742,31 +715,7 @@ func (s *Store) ensureHourlyRollup(
 		return nil
 	}
 
-	var minBucket sql.NullTime
-	var maxBucket sql.NullTime
-	//nolint:gosec // table is selected from fixed allowlist
-	query := fmt.Sprintf("SELECT MIN(bucket), MAX(bucket) FROM %s WHERE site_id = ?", table)
-	if err := s.db.QueryRowContext(ctx, query, siteID).Scan(&minBucket, &maxBucket); err != nil {
-		return err
-	}
-
-	if !minBucket.Valid || !maxBucket.Valid {
-		return insertFn(ctx, siteID, startBucket, endBucket)
-	}
-
-	if startBucket.Before(minBucket.Time) {
-		if err := insertFn(ctx, siteID, startBucket, minBucket.Time.Add(-time.Hour)); err != nil {
-			return err
-		}
-	}
-
-	if endBucket.After(maxBucket.Time) {
-		if err := insertFn(ctx, siteID, maxBucket.Time.Add(time.Hour), endBucket); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return insertFn(ctx, siteID, startBucket, endBucket)
 }
 
 func (s *Store) BackfillRollups(ctx context.Context, siteID uuid.UUID) error {
@@ -841,6 +790,9 @@ func (s *Store) insertMonthlyRollups(ctx context.Context, siteID uuid.UUID, star
 		FROM hits
 		WHERE site_id = ? AND timestamp >= ? AND timestamp < ?
 		GROUP BY site_id, bucket
+		ON CONFLICT (site_id, bucket) DO UPDATE SET
+			pageviews = EXCLUDED.pageviews,
+			visitors = EXCLUDED.visitors
 	`, siteID, start, endExclusive)
 	if err != nil {
 		return fmt.Errorf("failed to insert monthly rollups: %w", err)
@@ -875,6 +827,8 @@ func (s *Store) insertHourlyGoalRollups(ctx context.Context, siteID uuid.UUID, s
 		JOIN events e ON e.site_id = g.site_id AND g.type = 'event' AND e.name = g.value
 		WHERE g.site_id = ? AND e.timestamp >= ? AND e.timestamp < ?
 		GROUP BY g.site_id, g.id, bucket
+		ON CONFLICT (site_id, goal_id, bucket) DO UPDATE SET
+			conversions = EXCLUDED.conversions
 	`, siteID, start, endExclusive, siteID, start, endExclusive)
 	if err != nil {
 		return fmt.Errorf("failed to insert hourly goal rollups: %w", err)
@@ -909,6 +863,8 @@ func (s *Store) insertDailyGoalRollups(ctx context.Context, siteID uuid.UUID, st
 		JOIN events e ON e.site_id = g.site_id AND g.type = 'event' AND e.name = g.value
 		WHERE g.site_id = ? AND e.timestamp >= ? AND e.timestamp < ?
 		GROUP BY g.site_id, g.id, bucket
+		ON CONFLICT (site_id, goal_id, bucket) DO UPDATE SET
+			conversions = EXCLUDED.conversions
 	`, siteID, start, endExclusive, siteID, start, endExclusive)
 	if err != nil {
 		return fmt.Errorf("failed to insert daily goal rollups: %w", err)
@@ -943,6 +899,8 @@ func (s *Store) insertMonthlyGoalRollups(ctx context.Context, siteID uuid.UUID, 
 		JOIN events e ON e.site_id = g.site_id AND g.type = 'event' AND e.name = g.value
 		WHERE g.site_id = ? AND e.timestamp >= ? AND e.timestamp < ?
 		GROUP BY g.site_id, g.id, bucket
+		ON CONFLICT (site_id, goal_id, bucket) DO UPDATE SET
+			conversions = EXCLUDED.conversions
 	`, siteID, start, endExclusive, siteID, start, endExclusive)
 	if err != nil {
 		return fmt.Errorf("failed to insert monthly goal rollups: %w", err)
@@ -985,7 +943,9 @@ func (s *Store) insertFunnelRollups(ctx context.Context, table string, truncUnit
 	stmt, err := tx.PrepareContext(ctx, fmt.Sprintf(`
 		INSERT INTO %s (site_id, funnel_id, bucket, entries, completions)
 		VALUES (?, ?, ?, ?, ?)
-		ON CONFLICT (site_id, funnel_id, bucket) DO NOTHING
+		ON CONFLICT (site_id, funnel_id, bucket) DO UPDATE SET
+			entries = EXCLUDED.entries,
+			completions = EXCLUDED.completions
 	`, table))
 	if err != nil {
 		return err
@@ -1314,7 +1274,7 @@ func (s *Store) queryHybridChartData(ctx context.Context, params api.AnalyticsPa
 	counts := make(map[time.Time]api.ChartDataPoint)
 
 	if window.UseRollup {
-		if err := s.ensureHitRollups(ctx, rollupKind, params.SiteID, window.FullStart, window.FullEnd); err != nil {
+		if err := s.refreshDirtyRollupsInRange(ctx, params.SiteID, dirtyRollupHit, rollupKind, window.FullStart, window.FullEnd); err != nil {
 			return nil, err
 		}
 		rollupCounts, err := s.queryHitRollupCounts(ctx, rollupKind, params.SiteID, window.FullStart, window.FullEnd)
@@ -1373,19 +1333,6 @@ func mergeChartPoint(base api.ChartDataPoint, next api.ChartDataPoint) api.Chart
 		Time:      base.Time,
 		Pageviews: base.Pageviews + next.Pageviews,
 		Visitors:  base.Visitors + next.Visitors,
-	}
-}
-
-func (s *Store) ensureHitRollups(ctx context.Context, kind rollupKind, siteID uuid.UUID, start time.Time, end time.Time) error {
-	switch kind {
-	case rollupHourly:
-		return s.ensureHourlyRollups(ctx, siteID, start, end)
-	case rollupDaily:
-		return s.ensureDailyRollups(ctx, siteID, start, end)
-	case rollupMonthly:
-		return s.ensureMonthlyRollups(ctx, siteID, start, end)
-	default:
-		return s.ensureDailyRollups(ctx, siteID, start, end)
 	}
 }
 

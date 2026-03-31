@@ -28,14 +28,20 @@ func (w *RollupBackfillWorker) Start(ctx context.Context) {
 		}
 	}()
 
-	ticker := time.NewTicker(24 * time.Hour)
-	defer ticker.Stop()
+	dirtyTicker := time.NewTicker(time.Minute)
+	defer dirtyTicker.Stop()
+	fullTicker := time.NewTicker(24 * time.Hour)
+	defer fullTicker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
+		case <-dirtyTicker.C:
+			if err := w.RunDirty(ctx); err != nil {
+				slog.Error("Rollup dirty refresh failed", "error", err)
+			}
+		case <-fullTicker.C:
 			if err := w.Run(ctx); err != nil {
 				slog.Error("Rollup backfill failed", "error", err)
 			}
@@ -67,6 +73,36 @@ func (w *RollupBackfillWorker) Run(ctx context.Context) error {
 
 		if err := tenantStore.BackfillRollups(ctx, siteID); err != nil {
 			slog.Warn("Rollup backfill failed for site", "error", err, "site_id", siteID)
+		}
+	}
+
+	return rows.Err()
+}
+
+func (w *RollupBackfillWorker) RunDirty(ctx context.Context) error {
+	shared := w.tenantMgr.Shared()
+
+	rows, err := shared.DB().QueryContext(ctx, "SELECT id FROM sites")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var siteID uuid.UUID
+		if err := rows.Scan(&siteID); err != nil {
+			slog.Warn("Failed to scan site for dirty rollup refresh", "error", err)
+			continue
+		}
+
+		tenantStore, _, err := w.tenantMgr.ResolveSiteStore(ctx, siteID)
+		if err != nil {
+			slog.Warn("Failed to resolve tenant store for dirty rollup refresh", "error", err, "site_id", siteID)
+			continue
+		}
+
+		if err := tenantStore.ProcessDirtyRollups(ctx, siteID); err != nil {
+			slog.Warn("Dirty rollup refresh failed for site", "error", err, "site_id", siteID)
 		}
 	}
 

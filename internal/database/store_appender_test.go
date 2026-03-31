@@ -151,3 +151,65 @@ func TestCreateEventsBulk(t *testing.T) {
 		t.Fatalf("expected marshaled properties to contain plan value, got %q", props)
 	}
 }
+
+func TestCreateAIFetchesBulk(t *testing.T) {
+	store, _, site := setupAppenderStore(t)
+	ctx := context.Background()
+
+	hostname := "appender.example.com"
+	contentType := "text/html; charset=utf-8"
+	responseMs := 123
+	bytesServed := int64(4567)
+	userAgent := "GPTBot/1.0"
+
+	fetches := []*api.AIFetch{
+		{
+			SiteID:          site.ID,
+			Timestamp:       time.Now().Add(-2 * time.Minute),
+			AssistantName:   "GPTBot",
+			AssistantFamily: "OpenAI",
+			Path:            "/pricing",
+			Hostname:        &hostname,
+			StatusCode:      200,
+			ContentType:     &contentType,
+			ResourceType:    "html",
+			ResponseMs:      &responseMs,
+			BytesServed:     &bytesServed,
+			UserAgent:       &userAgent,
+		},
+		{
+			SiteID:          site.ID,
+			AssistantName:   "PerplexityBot",
+			AssistantFamily: "Perplexity",
+			Path:            "/docs/getting-started",
+			StatusCode:      404,
+			ResourceType:    "html",
+		},
+	}
+
+	if err := store.CreateAIFetchesBulk(ctx, fetches); err != nil {
+		t.Fatalf("CreateAIFetchesBulk: %v", err)
+	}
+	if fetches[1].Timestamp.IsZero() {
+		t.Fatalf("expected bulk insert to assign zero timestamp")
+	}
+	if fetches[1].ID == uuid.Nil {
+		t.Fatalf("expected bulk insert to assign zero id")
+	}
+
+	var count int
+	if err := store.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM ai_fetches WHERE site_id = ?", site.ID).Scan(&count); err != nil {
+		t.Fatalf("count ai fetches: %v", err)
+	}
+	if count != 2 {
+		t.Fatalf("expected 2 ai fetches, got %d", count)
+	}
+
+	var storedPath string
+	if err := store.DB().QueryRowContext(ctx, "SELECT path FROM ai_fetches WHERE site_id = ? AND assistant_name = ?", site.ID, "GPTBot").Scan(&storedPath); err != nil {
+		t.Fatalf("load ai fetch path: %v", err)
+	}
+	if storedPath != "/pricing" {
+		t.Fatalf("expected stored path /pricing, got %q", storedPath)
+	}
+}

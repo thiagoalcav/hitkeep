@@ -49,6 +49,41 @@ func fallbackMailLocale(acceptLanguage string) string {
 	return "en"
 }
 
+func (h *handler) preferredMailLocale(r *http.Request, userID uuid.UUID) string {
+	locale := fallbackMailLocale(r.Header.Get("Accept-Language"))
+	prefs, err := h.ctx.Store.GetUserPreferences(r.Context(), userID)
+	if err != nil {
+		slog.Warn("Failed to load user preferences for auth mail", "error", err, "user_id", userID)
+		return locale
+	}
+	if prefs != nil && strings.TrimSpace(prefs.DefaultLocale) != "" {
+		return mailer.NormalizeLocale(prefs.DefaultLocale)
+	}
+	return locale
+}
+
+func sanitizeAuthReturnPath(raw string) string {
+	value := strings.TrimSpace(raw)
+	if value == "" {
+		return "/dashboard"
+	}
+	if !strings.HasPrefix(value, "/") || strings.HasPrefix(value, "//") {
+		return "/dashboard"
+	}
+	if strings.HasPrefix(value, "/login") || strings.HasPrefix(value, "/setup") {
+		return "/dashboard"
+	}
+	return value
+}
+
+func (h *handler) publicRedirectURL(relativePath string) string {
+	return strings.TrimRight(h.ctx.Config.PublicURL, "/") + sanitizeAuthReturnPath(relativePath)
+}
+
+func (h *handler) loginErrorRedirectURL(code string) string {
+	return strings.TrimRight(h.ctx.Config.PublicURL, "/") + "/login?error=" + code
+}
+
 func Register(mux *http.ServeMux, ctx *shared.Context) {
 	h := &handler{ctx: ctx}
 	mux.HandleFunc("POST /api/initial-user", ctx.Handler(shared.HandlerConfig{
@@ -78,6 +113,12 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 	mux.HandleFunc("POST /api/auth/mfa/totp/verify", ctx.Handler(shared.HandlerConfig{
 		RateLimiter: ctx.AuthLimiter,
 	}, h.handleMFATOTPVerify()))
+	mux.HandleFunc("POST /api/auth/mfa/email-link/request", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleMFAEmailLinkRequest()))
+	mux.HandleFunc("GET /api/auth/mfa/email-link/verify", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.AuthLimiter,
+	}, h.handleMFAEmailLinkVerify()))
 	mux.HandleFunc("POST /api/auth/mfa/recovery-code/verify", ctx.Handler(shared.HandlerConfig{
 		RateLimiter: ctx.AuthLimiter,
 	}, h.handleMFARecoveryCodeVerify()))
@@ -297,6 +338,9 @@ func (h *handler) handleLogin() http.HandlerFunc {
 			if hasRecoveryCode {
 				factors = append(factors, "recovery_code")
 			}
+			if h.ctx.Mailer != nil {
+				factors = append(factors, "email_link")
+			}
 			resp := loginResponse{
 				Status:         "mfa_required",
 				ChallengeToken: challengeID.String(),
@@ -472,13 +516,7 @@ func (h *handler) handleForgotPassword() http.HandlerFunc {
 		}
 
 		resetLink := fmt.Sprintf("%s/reset-password?token=%s", h.ctx.Config.PublicURL, token)
-		locale := fallbackMailLocale(r.Header.Get("Accept-Language"))
-		prefs, err := h.ctx.Store.GetUserPreferences(r.Context(), user.ID)
-		if err != nil {
-			slog.Warn("Failed to load user preferences for password reset", "error", err, "user_id", user.ID)
-		} else if prefs != nil && strings.TrimSpace(prefs.DefaultLocale) != "" {
-			locale = mailer.NormalizeLocale(prefs.DefaultLocale)
-		}
+		locale := h.preferredMailLocale(r, user.ID)
 
 		err = h.ctx.Mailer.Send(user.Email, mailables.NewPasswordReset(resetLink, locale))
 		if err != nil {

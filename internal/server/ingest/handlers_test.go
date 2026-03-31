@@ -148,6 +148,61 @@ func TestHandleIngestLeaderAllowsSameSiteReferrerToContinueToPublish(t *testing.
 	}
 }
 
+func TestHandleIngestEventLeaderDropsBlockedReferrerBeforePublish(t *testing.T) {
+	h, cleanup := setupIngestHandler(t, func(ctx *shared.Context) {
+		filter := mustNewTestSpamFilter(t, blocking.SpamFeedData{
+			ReferrerHostDenylist: []string{"buttons-for-website.example"},
+		})
+		ctx.SpamFilter = filter
+	})
+	defer cleanup()
+
+	req := newIngestEventRequest(t, "https://example.com", "198.51.100.22:1234", map[string]any{
+		"n":   "signup",
+		"p":   map[string]any{"plan": "pro"},
+		"r":   "https://www.buttons-for-website.example/landing",
+		"sid": uuid.New(),
+	})
+
+	rec := httptest.NewRecorder()
+	h.handleIngestEventLeader(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("expected status %d, got %d", http.StatusAccepted, rec.Code)
+	}
+}
+
+func TestHandleIngestEventLeaderAllowsSameSiteReferrerToContinueToPublish(t *testing.T) {
+	producer, err := newTestProducer()
+	if err != nil {
+		t.Fatalf("create nsq producer: %v", err)
+	}
+	defer producer.Stop()
+
+	h, cleanup := setupIngestHandler(t, func(ctx *shared.Context) {
+		filter := mustNewTestSpamFilter(t, blocking.SpamFeedData{
+			ReferrerHostDenylist: []string{"example.com"},
+		})
+		ctx.SpamFilter = filter
+		ctx.Producer = producer
+	})
+	defer cleanup()
+
+	req := newIngestEventRequest(t, "https://www.example.com", "198.51.100.33:1234", map[string]any{
+		"n":   "signup",
+		"p":   map[string]any{"plan": "pro"},
+		"r":   "https://www.example.com/blog/post",
+		"sid": uuid.New(),
+	})
+
+	rec := httptest.NewRecorder()
+	h.handleIngestEventLeader(rec, req)
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("expected publish attempt to fail with status %d, got %d", http.StatusInternalServerError, rec.Code)
+	}
+}
+
 func setupIngestHandler(t *testing.T, mutateCtx func(*shared.Context)) (*handler, func()) {
 	t.Helper()
 
@@ -189,6 +244,21 @@ func newIngestRequest(t *testing.T, origin, remoteAddr string, payload map[strin
 	}
 
 	req := httptest.NewRequest(http.MethodPost, "/ingest", bytes.NewReader(body))
+	req.Header.Set("Origin", origin)
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = remoteAddr
+	return req
+}
+
+func newIngestEventRequest(t *testing.T, origin, remoteAddr string, payload map[string]any) *http.Request {
+	t.Helper()
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/ingest/event", bytes.NewReader(body))
 	req.Header.Set("Origin", origin)
 	req.Header.Set("Content-Type", "application/json")
 	req.RemoteAddr = remoteAddr

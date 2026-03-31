@@ -14,6 +14,7 @@ import (
 
 	"hitkeep/internal/api"
 	"hitkeep/internal/auth"
+	"hitkeep/internal/blocking"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
 	"hitkeep/internal/server/shared"
@@ -193,6 +194,93 @@ func TestHandleCreateAIFetchRejectsOversizedBody(t *testing.T) {
 	}
 }
 
+func TestHandleCreateAIFetchDropsBlockedSiteExclusion(t *testing.T) {
+	store, ctx, userID, siteID, token := setupAIFetchTestEnv(t)
+
+	if _, err := store.CreateSiteExclusion(context.Background(), siteID, "198.51.100.0/24", "blocked", userID); err != nil {
+		t.Fatalf("CreateSiteExclusion: %v", err)
+	}
+	ipFilter := blocking.NewIPFilter(store)
+	if err := ipFilter.Refresh(context.Background()); err != nil {
+		t.Fatalf("Refresh ip filter: %v", err)
+	}
+	ctx.IPFilter = ipFilter
+
+	mux := http.NewServeMux()
+	Register(mux, ctx)
+
+	body := map[string]any{
+		"path":        "/docs",
+		"status_code": 200,
+		"user_agent":  "Mozilla/5.0 (compatible; GPTBot/1.0; +https://openai.com/gptbot)",
+	}
+	payload, _ := json.Marshal(body)
+	req := httptest.NewRequest(http.MethodPost, "/api/sites/"+siteID.String()+"/ingest/ai-fetch", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", token)
+	req.RemoteAddr = "198.51.100.42:1234"
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("expected %d, got %d body=%s", http.StatusAccepted, rec.Code, rec.Body.String())
+	}
+
+	overview, err := store.GetAIFetchOverview(context.Background(), api.AIFetchQueryParams{
+		SiteID: siteID,
+		Start:  time.Now().UTC().Add(-time.Hour),
+		End:    time.Now().UTC().Add(time.Hour),
+	})
+	if err != nil {
+		t.Fatalf("GetAIFetchOverview: %v", err)
+	}
+	if overview.TotalRequests != 0 {
+		t.Fatalf("expected 0 stored fetches, got %d", overview.TotalRequests)
+	}
+}
+
+func TestHandleCreateAIFetchDropsSpamNetwork(t *testing.T) {
+	store, ctx, _, siteID, token := setupAIFetchTestEnv(t)
+
+	ctx.SpamFilter = mustNewAIFetchSpamFilter(t, blocking.SpamFeedData{
+		NetworkDenylist: []string{"203.0.113.0/24"},
+	})
+
+	mux := http.NewServeMux()
+	Register(mux, ctx)
+
+	body := map[string]any{
+		"path":        "/docs",
+		"status_code": 200,
+		"user_agent":  "Mozilla/5.0 (compatible; GPTBot/1.0; +https://openai.com/gptbot)",
+	}
+	payload, _ := json.Marshal(body)
+	req := httptest.NewRequest(http.MethodPost, "/api/sites/"+siteID.String()+"/ingest/ai-fetch", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", token)
+	req.RemoteAddr = "203.0.113.42:1234"
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("expected %d, got %d body=%s", http.StatusAccepted, rec.Code, rec.Body.String())
+	}
+
+	overview, err := store.GetAIFetchOverview(context.Background(), api.AIFetchQueryParams{
+		SiteID: siteID,
+		Start:  time.Now().UTC().Add(-time.Hour),
+		End:    time.Now().UTC().Add(time.Hour),
+	})
+	if err != nil {
+		t.Fatalf("GetAIFetchOverview: %v", err)
+	}
+	if overview.TotalRequests != 0 {
+		t.Fatalf("expected 0 stored fetches, got %d", overview.TotalRequests)
+	}
+}
+
 func TestHandleGetOverviewAndTimeseries(t *testing.T) {
 	store, ctx, _, siteID, token := setupAIFetchTestEnv(t)
 
@@ -320,4 +408,20 @@ func containsMetric(metrics []api.MetricStat, name string, value int) bool {
 		}
 	}
 	return false
+}
+
+func mustNewAIFetchSpamFilter(t *testing.T, data blocking.SpamFeedData) *blocking.SpamFilter {
+	t.Helper()
+
+	path := t.TempDir() + "/spam-filter.json"
+	if err := blocking.SaveSpamFeedData(path, data); err != nil {
+		t.Fatalf("save spam filter data: %v", err)
+	}
+
+	filter := blocking.NewSpamFilter(path)
+	if err := filter.RefreshFromDisk(); err != nil {
+		t.Fatalf("refresh spam filter from disk: %v", err)
+	}
+
+	return filter
 }

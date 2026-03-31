@@ -145,6 +145,20 @@ func (h *handler) handleCreateAIFetch() http.HandlerFunc {
 			return
 		}
 
+		userIP := shared.GetRealIP(r, h.ctx.Config.GetTrustedProxyNetworks())
+		if h.ctx.IPFilter != nil && h.ctx.IPFilter.IsBlocked(site.ID, userIP) {
+			w.WriteHeader(http.StatusAccepted)
+			return
+		}
+		if h.ctx.SpamFilter != nil {
+			decision := h.ctx.SpamFilter.Evaluate(site.Domain, userIP, nil)
+			if decision.Blocked {
+				slog.Info("Dropped spam ai fetch", "site_id", site.ID, "reason", decision.Reason)
+				w.WriteHeader(http.StatusAccepted)
+				return
+			}
+		}
+
 		r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
 		var payload ingestPayload
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {

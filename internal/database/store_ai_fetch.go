@@ -18,35 +18,47 @@ func (s *Store) CreateAIFetch(ctx context.Context, fetch *api.AIFetch) error {
 	if fetch == nil {
 		return fmt.Errorf("ai fetch is required")
 	}
+	return s.CreateAIFetchesBulk(ctx, []*api.AIFetch{fetch})
+}
 
-	if fetch.ID == uuid.Nil {
-		id, err := uuid.NewV7()
-		if err != nil {
-			return fmt.Errorf("generate ai fetch id: %w", err)
-		}
-		fetch.ID = id
-	}
-	if fetch.Timestamp.IsZero() {
-		fetch.Timestamp = time.Now().UTC()
+func (s *Store) CreateAIFetchesBulk(ctx context.Context, fetches []*api.AIFetch) error {
+	if len(fetches) == 0 {
+		return nil
 	}
 
 	return s.withAppender(ctx, "ai_fetches", func(appender rowAppender) error {
-		if err := appender.AppendRow(
-			duckdb.UUID(fetch.ID),
-			duckdb.UUID(fetch.SiteID),
-			fetch.Timestamp,
-			fetch.AssistantName,
-			fetch.AssistantFamily,
-			fetch.Path,
-			nullableStringPtr(fetch.Hostname),
-			fetch.StatusCode,
-			nullableStringPtr(fetch.ContentType),
-			fetch.ResourceType,
-			nullableIntPtr(fetch.ResponseMs),
-			nullableInt64Ptr(fetch.BytesServed),
-			nullableStringPtr(fetch.UserAgent),
-		); err != nil {
-			return fmt.Errorf("append ai fetch row: %w", err)
+		for _, fetch := range fetches {
+			if fetch == nil {
+				continue
+			}
+			if fetch.ID == uuid.Nil {
+				id, err := uuid.NewV7()
+				if err != nil {
+					return fmt.Errorf("generate ai fetch id: %w", err)
+				}
+				fetch.ID = id
+			}
+			if fetch.Timestamp.IsZero() {
+				fetch.Timestamp = time.Now().UTC()
+			}
+
+			if err := appender.AppendRow(
+				duckdb.UUID(fetch.ID),
+				duckdb.UUID(fetch.SiteID),
+				fetch.Timestamp,
+				fetch.AssistantName,
+				fetch.AssistantFamily,
+				fetch.Path,
+				nullableStringPtr(fetch.Hostname),
+				fetch.StatusCode,
+				nullableStringPtr(fetch.ContentType),
+				fetch.ResourceType,
+				nullableIntPtr(fetch.ResponseMs),
+				nullableInt64Ptr(fetch.BytesServed),
+				nullableStringPtr(fetch.UserAgent),
+			); err != nil {
+				return fmt.Errorf("append ai fetch row: %w", err)
+			}
 		}
 		return nil
 	})

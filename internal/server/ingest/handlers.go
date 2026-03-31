@@ -244,18 +244,10 @@ func (h *handler) handleIngestEventLeader(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if h.ctx.SpamFilter != nil {
-		decision := h.ctx.SpamFilter.Evaluate(site.Domain, userIP, nil)
-		if decision.Blocked {
-			slog.Info("Dropped spam event", "site_id", site.ID, "reason", decision.Reason)
-			w.WriteHeader(http.StatusAccepted)
-			return
-		}
-	}
-
 	type eventPayload struct {
 		Name       string         `json:"n"`
 		Properties map[string]any `json:"p"`
+		Referrer   *string        `json:"r"`
 		SessionID  uuid.UUID      `json:"sid"`
 	}
 
@@ -263,6 +255,15 @@ func (h *handler) handleIngestEventLeader(w http.ResponseWriter, r *http.Request
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "Bad request body", http.StatusBadRequest)
 		return
+	}
+
+	if h.ctx.SpamFilter != nil {
+		decision := h.ctx.SpamFilter.Evaluate(site.Domain, userIP, payload.Referrer)
+		if decision.Blocked {
+			slog.Info("Dropped spam event", "site_id", site.ID, "reason", decision.Reason)
+			w.WriteHeader(http.StatusAccepted)
+			return
+		}
 	}
 
 	event := api.Event{

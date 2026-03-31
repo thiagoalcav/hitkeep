@@ -75,3 +75,38 @@ jobs:
       - name: Test dashboard
         working-directory: frontend/dashboard
         run: npm run test -- --watch=false --no-progress
+
+  e2e-dashboard:
+    name: E2E Dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/dashboard/package-lock.json
+      - name: Install dashboard dependencies
+        working-directory: frontend/dashboard
+        run: npm ci --no-audit --no-fund
+      - name: Install Playwright Browsers
+        working-directory: frontend/dashboard
+        run: npx playwright install --with-deps chromium
+      - name: Run seeded e2e suite
+        working-directory: frontend/dashboard
+        run: npm run e2e
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report
+          path: |
+            frontend/dashboard/playwright-report
+            frontend/dashboard/test-results
+          if-no-files-found: ignore

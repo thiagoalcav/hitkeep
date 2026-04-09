@@ -29,10 +29,10 @@ jobs:
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.11
+      - name: Vet API
+        run: go vet ./...
       - name: Test API
-        run: |
-          go vet ./...
-          go test -race ./...
+        run: go test -race ./...
 
   lint-dashboard:
     name: Lint Dashboard (Angular)

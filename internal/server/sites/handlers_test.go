@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -519,7 +520,9 @@ func TestHandleGetSiteEcommerceSummary(t *testing.T) {
 		t.Fatalf("create purchase: %v", err)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/sites/"+site.ID.String()+"/ecommerce", nil)
+	from := timestamp.Add(-time.Hour).Format(time.RFC3339)
+	to := timestamp.Add(24 * time.Hour).Format(time.RFC3339)
+	req := httptest.NewRequest(http.MethodGet, "/api/sites/"+site.ID.String()+"/ecommerce?from="+url.QueryEscape(from)+"&to="+url.QueryEscape(to), nil)
 	req.SetPathValue("id", site.ID.String())
 	req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, userID))
 
@@ -583,7 +586,9 @@ func TestHandleGetSiteEcommerceProductsSupportsItemFilter(t *testing.T) {
 		t.Fatalf("create purchase: %v", err)
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/sites/"+site.ID.String()+"/ecommerce/products?item_id=addon", nil)
+	from := timestamp.Add(-time.Hour).Format(time.RFC3339)
+	to := timestamp.Add(24 * time.Hour).Format(time.RFC3339)
+	req := httptest.NewRequest(http.MethodGet, "/api/sites/"+site.ID.String()+"/ecommerce/products?item_id=addon&from="+url.QueryEscape(from)+"&to="+url.QueryEscape(to), nil)
 	req.SetPathValue("id", site.ID.String())
 	req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, userID))
 

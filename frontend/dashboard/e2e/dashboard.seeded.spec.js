@@ -72,11 +72,11 @@ test("ai visibility page shows correlation insights", async ({ page }) => {
     await login(page, "/ai-visibility");
     await page.waitForTimeout(CHART_SETTLE_MS);
 
-    await expect(page.getByText("Fetch volume over time")).toBeVisible();
-    await expect(page.getByText("Fetch-to-visit correlation")).toBeVisible();
-    await expect(page.getByText("Citation yield")).toBeVisible();
-    await expect(page.getByText("Opportunity pages")).toBeVisible();
-    await expect(page.getByText("Failure hotspots")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Fetch volume over time" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Fetch-to-visit correlation" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Citation yield" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Opportunity pages" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Failure hotspots" })).toBeVisible();
     await expect(page.getByText("GPTBot").first()).toBeVisible();
 });
 

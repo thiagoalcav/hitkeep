@@ -57,7 +57,7 @@ docker buildx build \
   --build-arg "VERSION=${VERSION}" \
   --output "type=local,dest=$ROOT_DIR/.build-output" \
   -f - "$ROOT_DIR" <<'DOCKERFILE'
-ARG GO_VERSION=1.26.1
+ARG GO_VERSION=1.26.2
 
 FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bookworm AS builder
 

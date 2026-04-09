@@ -3,7 +3,7 @@
 > Privacy-first web analytics you can self-host or run in managed EU/US cloud.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Go Version](https://img.shields.io/badge/Go-1.26.1-00ADD8?logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.26.2-00ADD8?logo=go)](https://go.dev/)
 [![Docker Image (GHCR)](https://img.shields.io/badge/Docker-ghcr.io-blue?logo=docker)](https://github.com/pascalebeier/hitkeep/pkgs/container/hitkeep)
 [![Docker Image (Hub)](https://img.shields.io/badge/Docker-Docker_Hub-2496ED?logo=docker)](https://hub.docker.com/r/pascalebeier/hitkeep)
 [![Documentation](https://img.shields.io/badge/Docs-hitkeep.com-0ea5e9)](https://hitkeep.com)

@@ -8,6 +8,6 @@ hitkeep.db
 !/charts/
 !/charts/hitkeep/
 !/charts/hitkeep/**
-scripts
-!scripts/dev.sh
-!scripts/update-default-spam-filter.sh
+/scripts
+!/scripts/dev.sh
+!/scripts/update-default-spam-filter.sh

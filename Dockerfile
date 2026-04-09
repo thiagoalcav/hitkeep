@@ -21,7 +21,7 @@ COPY --from=builder --chown=nonroot:nonroot /var/lib/hitkeep/data /var/lib/hitke
 
 WORKDIR /app
 
-COPY hitkeep-linux-${TARGETARCH} /usr/local/bin/hitkeep
+COPY --chmod=755 hitkeep-linux-${TARGETARCH} /usr/local/bin/hitkeep
 
 ENV HITKEEP_DB_PATH="/var/lib/hitkeep/data/hitkeep.db"
 ENV HITKEEP_ARCHIVE_PATH="/var/lib/hitkeep/data/archive"

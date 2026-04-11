@@ -16,6 +16,30 @@ import (
 	"hitkeep/internal/api"
 )
 
+var hitAppenderColumns = []string{
+	"id",
+	"site_id",
+	"session_id",
+	"page_id",
+	"timestamp",
+	"path",
+	"hostname",
+	"referrer",
+	"user_agent",
+	"viewport_width",
+	"viewport_height",
+	"screen_width",
+	"screen_height",
+	"language",
+	"is_unique",
+	"country_code",
+	"utm_source",
+	"utm_medium",
+	"utm_campaign",
+	"utm_term",
+	"utm_content",
+}
+
 func (s *Store) CreateHit(ctx context.Context, hit *api.Hit) error {
 	if hit == nil {
 		return fmt.Errorf("hit is required")
@@ -46,7 +70,7 @@ func (s *Store) CreateHitsBulk(ctx context.Context, hits []*api.Hit) error {
 		return fmt.Errorf("mark dirty rollups before hit insert: %w", err)
 	}
 
-	if err := s.withAppender(ctx, "hits", func(appender rowAppender) error {
+	if err := s.withAppenderColumns(ctx, "hits", hitAppenderColumns, func(appender rowAppender) error {
 		for _, hit := range hits {
 			if hit == nil {
 				continue

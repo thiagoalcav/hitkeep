@@ -14,6 +14,10 @@ type rowAppender interface {
 }
 
 func (s *Store) withAppender(ctx context.Context, table string, fn func(rowAppender) error) error {
+	return s.withAppenderColumns(ctx, table, nil, fn)
+}
+
+func (s *Store) withAppenderColumns(ctx context.Context, table string, columns []string, fn func(rowAppender) error) error {
 	return s.WithDuckDBSession(ctx, DuckDBSessionOptions{}, func(conn *sql.Conn) error {
 		return conn.Raw(func(driverConn any) error {
 			rawConn, ok := driverConn.(driver.Conn)
@@ -21,7 +25,15 @@ func (s *Store) withAppender(ctx context.Context, table string, fn func(rowAppen
 				return fmt.Errorf("unexpected duckdb driver connection type %T", driverConn)
 			}
 
-			appender, err := duckdb.NewAppenderFromConn(rawConn, "", table)
+			var (
+				appender *duckdb.Appender
+				err      error
+			)
+			if len(columns) == 0 {
+				appender, err = duckdb.NewAppenderFromConn(rawConn, "", table)
+			} else {
+				appender, err = duckdb.NewAppenderWithColumns(rawConn, "", "", table, columns)
+			}
 			if err != nil {
 				return fmt.Errorf("create appender for %s: %w", table, err)
 			}

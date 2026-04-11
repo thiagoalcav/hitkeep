@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"testing"
 	"time"
@@ -106,6 +107,139 @@ func TestCreateHitsBulk(t *testing.T) {
 		if got.CountryCode == nil || *got.CountryCode != country {
 			t.Fatalf("expected country %q, got %+v", country, got.CountryCode)
 		}
+	}
+}
+
+func TestCreateHitsBulkWithLegacyHostnameColumnOrder(t *testing.T) {
+	ctx := context.Background()
+
+	store := NewStore(":memory:")
+	if err := store.Connect(); err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+
+	if _, err := store.DB().ExecContext(ctx, `
+		CREATE TABLE hits (
+			id              UUID        PRIMARY KEY,
+			site_id         UUID        NOT NULL,
+			session_id      UUID        NOT NULL,
+			page_id         UUID        NOT NULL,
+			timestamp       TIMESTAMPTZ NOT NULL,
+			path            VARCHAR     NOT NULL,
+			referrer        VARCHAR,
+			user_agent      VARCHAR,
+			viewport_width  INT,
+			viewport_height INT,
+			screen_width    INT,
+			screen_height   INT,
+			language        VARCHAR,
+			is_unique       BOOLEAN,
+			country_code    VARCHAR,
+			utm_source      VARCHAR,
+			utm_medium      VARCHAR,
+			utm_campaign    VARCHAR,
+			utm_term        VARCHAR,
+			utm_content     VARCHAR,
+			hostname        VARCHAR
+		)
+	`); err != nil {
+		t.Fatalf("create legacy hits table: %v", err)
+	}
+	if _, err := store.DB().ExecContext(ctx, `
+		CREATE TABLE rollup_dirty_buckets (
+			site_id     UUID        NOT NULL,
+			rollup_type VARCHAR     NOT NULL,
+			bucket_unit VARCHAR     NOT NULL,
+			bucket      TIMESTAMPTZ NOT NULL,
+			updated_at  TIMESTAMPTZ NOT NULL,
+			PRIMARY KEY (site_id, rollup_type, bucket_unit, bucket)
+		)
+	`); err != nil {
+		t.Fatalf("create rollup_dirty_buckets table: %v", err)
+	}
+
+	siteID := uuid.New()
+	sessionID := uuid.New()
+	pageID := uuid.New()
+	hostname := "legacy.example.com"
+	referrer := "https://ref.example.com/post"
+	userAgent := "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
+	language := "de-DE"
+	country := "DE"
+	viewportWidth := 1440
+	viewportHeight := 900
+	screenWidth := 1728
+	screenHeight := 1117
+	isUnique := true
+
+	hit := &api.Hit{
+		SiteID:         siteID,
+		SessionID:      sessionID,
+		PageID:         pageID,
+		Timestamp:      time.Now().UTC(),
+		Path:           "/legacy-order",
+		Hostname:       &hostname,
+		Referrer:       &referrer,
+		UserAgent:      &userAgent,
+		ViewportWidth:  &viewportWidth,
+		ViewportHeight: &viewportHeight,
+		ScreenWidth:    &screenWidth,
+		ScreenHeight:   &screenHeight,
+		Language:       &language,
+		CountryCode:    &country,
+		IsUnique:       &isUnique,
+	}
+
+	if err := store.CreateHit(ctx, hit); err != nil {
+		t.Fatalf("CreateHit with legacy schema: %v", err)
+	}
+
+	var (
+		gotHostname       sql.NullString
+		gotReferrer       sql.NullString
+		gotUserAgent      sql.NullString
+		gotViewportWidth  sql.NullInt32
+		gotViewportHeight sql.NullInt32
+		gotScreenWidth    sql.NullInt32
+		gotScreenHeight   sql.NullInt32
+	)
+	if err := store.DB().QueryRowContext(ctx, `
+		SELECT hostname, referrer, user_agent, viewport_width, viewport_height, screen_width, screen_height
+		FROM hits
+		WHERE site_id = ?
+	`, siteID).Scan(
+		&gotHostname,
+		&gotReferrer,
+		&gotUserAgent,
+		&gotViewportWidth,
+		&gotViewportHeight,
+		&gotScreenWidth,
+		&gotScreenHeight,
+	); err != nil {
+		t.Fatalf("load stored hit: %v", err)
+	}
+
+	if gotHostname.String != hostname {
+		t.Fatalf("expected hostname %q, got %+v", hostname, gotHostname)
+	}
+	if gotReferrer.String != referrer {
+		t.Fatalf("expected referrer %q, got %+v", referrer, gotReferrer)
+	}
+	if gotUserAgent.String != userAgent {
+		t.Fatalf("expected user agent %q, got %+v", userAgent, gotUserAgent)
+	}
+	if gotViewportWidth.Int32 != int32(viewportWidth) {
+		t.Fatalf("expected viewport width %d, got %+v", viewportWidth, gotViewportWidth)
+	}
+	if gotViewportHeight.Int32 != int32(viewportHeight) {
+		t.Fatalf("expected viewport height %d, got %+v", viewportHeight, gotViewportHeight)
+	}
+	if gotScreenWidth.Int32 != int32(screenWidth) {
+		t.Fatalf("expected screen width %d, got %+v", screenWidth, gotScreenWidth)
+	}
+	if gotScreenHeight.Int32 != int32(screenHeight) {
+		t.Fatalf("expected screen height %d, got %+v", screenHeight, gotScreenHeight)
 	}
 }
 

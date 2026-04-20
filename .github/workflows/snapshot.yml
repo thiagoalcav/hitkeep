@@ -24,7 +24,9 @@ jobs:
         type=ref,event=branch
         type=ref,event=pr
         type=sha,prefix=sha-,format=short
-      upload_to_release: false
+      upload_to_release: ${{ github.event_name == 'push' }}
+      release_prerelease: ${{ github.event_name == 'push' }}
+      release_tag_name: snapshot-${{ github.sha }}
     secrets:
       token: ${{ secrets.GHT }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}

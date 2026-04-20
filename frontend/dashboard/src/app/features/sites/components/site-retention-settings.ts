@@ -1,17 +1,17 @@
-import { Component, inject, signal, effect, input } from "@angular/core";
+import { Component, inject, signal, effect, input } from '@angular/core';
 
-import { FormControl, ReactiveFormsModule } from "@angular/forms";
-import { compatForm } from "@angular/forms/signals/compat";
-import { TranslocoPipe } from "@jsverse/transloco";
-import { ButtonModule } from "primeng/button";
-import { InputNumberModule } from "primeng/inputnumber";
-import { MessageModule } from "primeng/message";
-import { SiteService } from "@features/sites/services/site.service";
-import { AnalyticsService } from "@services/analytics.service";
-import { Site } from "@models/analytics.types";
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { TranslocoPipe } from '@jsverse/transloco';
+import { ButtonModule } from 'primeng/button';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { MessageModule } from 'primeng/message';
+import { SiteService } from '@features/sites/services/site.service';
+import { AnalyticsService } from '@services/analytics.service';
+import { Site } from '@models/analytics.types';
 
 @Component({
-    selector: "app-site-retention-settings",
+    selector: 'app-site-retention-settings',
     standalone: true,
     imports: [ReactiveFormsModule, ButtonModule, InputNumberModule, MessageModule, TranslocoPipe],
     template: `

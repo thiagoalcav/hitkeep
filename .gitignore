@@ -11,3 +11,4 @@ hitkeep.db
 /scripts
 !/scripts/dev.sh
 !/scripts/update-default-spam-filter.sh
+frontend/dashboard/test-results

@@ -1,14 +1,14 @@
-import { inject, provideAppInitializer } from "@angular/core";
-import { TranslocoService } from "@jsverse/transloco";
-import { firstValueFrom } from "rxjs";
-import { getBaseLanguage, getLocaleDirection, normalizeLocaleTag } from "@core/i18n/locale-utils";
-import { UserPreferencesService } from "@services/user-preferences.service";
+import { inject, provideAppInitializer } from '@angular/core';
+import { TranslocoService } from '@jsverse/transloco';
+import { firstValueFrom } from 'rxjs';
+import { getBaseLanguage, getLocaleDirection, normalizeLocaleTag } from '@core/i18n/locale-utils';
+import { UserPreferencesService } from '@services/user-preferences.service';
 
 type AvailableLang = string | { id: string; label: string };
 
 function availableLangIds(transloco: TranslocoService): string[] {
     return (transloco.getAvailableLangs() as AvailableLang[])
-        .map((entry) => (typeof entry === "string" ? entry : entry.id))
+        .map((entry) => (typeof entry === 'string' ? entry : entry.id))
         .map((entry) => normalizeLocaleTag(entry))
         .filter((entry): entry is string => Boolean(entry));
 }
@@ -26,13 +26,13 @@ function resolveTranslationLang(locale: string, available: string[], fallback: s
 }
 
 function browserLocaleCandidates(): string[] {
-    if (typeof navigator === "undefined") return [];
+    if (typeof navigator === 'undefined') return [];
     const candidates = [...(navigator.languages ?? []), navigator.language];
-    return Array.from(new Set(candidates.map((entry) => normalizeLocaleTag(entry ?? "")).filter((entry): entry is string => Boolean(entry))));
+    return Array.from(new Set(candidates.map((entry) => normalizeLocaleTag(entry ?? '')).filter((entry): entry is string => Boolean(entry))));
 }
 
 function applyDocumentLocale(locale: string): void {
-    if (typeof document === "undefined") return;
+    if (typeof document === 'undefined') return;
     const normalized = normalizeLocaleTag(locale);
     if (!normalized) return;
     document.documentElement.lang = normalized;
@@ -53,7 +53,7 @@ export function preloadUserLang() {
 
     return (async () => {
         const available = availableLangIds(transloco);
-        const defaultLang = resolveTranslationLang(transloco.getDefaultLang(), available, "en");
+        const defaultLang = resolveTranslationLang(transloco.getDefaultLang(), available, 'en');
 
         const browserLocale = browserLocaleCandidates()[0] ?? defaultLang;
         const browserLang = resolveTranslationLang(browserLocale, available, defaultLang);

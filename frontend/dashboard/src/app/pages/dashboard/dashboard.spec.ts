@@ -1,17 +1,17 @@
-import { ComponentFixture, TestBed } from "@angular/core/testing";
-import { provideHttpClient } from "@angular/common/http";
-import { provideRouter } from "@angular/router";
-import { TranslocoTestingModule } from "@jsverse/transloco";
-import { provideTranslocoLocale } from "@jsverse/transloco-locale";
-import { vi } from "vitest";
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+import { TranslocoTestingModule } from '@jsverse/transloco';
+import { provideTranslocoLocale } from '@jsverse/transloco-locale';
+import { vi } from 'vitest';
 
-import { Dashboard } from "@pages/dashboard/dashboard";
-import { SiteService } from "@features/sites/services/site.service";
-import { StatsService } from "@features/analytics/services/stats.service";
-import { HitService } from "@features/hits/services/hit.service";
-import { TeamService } from "@services/team.service";
+import { Dashboard } from '@pages/dashboard/dashboard';
+import { SiteService } from '@features/sites/services/site.service';
+import { StatsService } from '@features/analytics/services/stats.service';
+import { HitService } from '@features/hits/services/hit.service';
+import { TeamService } from '@services/team.service';
 
-describe("Dashboard", () => {
+describe('Dashboard', () => {
     let component: Dashboard;
     let fixture: ComponentFixture<Dashboard>;
 
@@ -22,8 +22,8 @@ describe("Dashboard", () => {
                 TranslocoTestingModule.forRoot({
                     langs: { en: {} },
                     translocoConfig: {
-                        availableLangs: ["en"],
-                        defaultLang: "en"
+                        availableLangs: ['en'],
+                        defaultLang: 'en'
                     },
                     preloadLangs: true
                 })
@@ -32,10 +32,10 @@ describe("Dashboard", () => {
                 provideHttpClient(),
                 provideRouter([]),
                 provideTranslocoLocale({
-                    defaultLocale: "en-US",
+                    defaultLocale: 'en-US',
                     langToLocaleMapping: {
-                        en: "en-US",
-                        "en-US": "en-US"
+                        en: 'en-US',
+                        'en-US': 'en-US'
                     }
                 })
             ]
@@ -46,11 +46,11 @@ describe("Dashboard", () => {
         fixture.detectChanges();
     });
 
-    it("should create", () => {
+    it('should create', () => {
         expect(component).toBeTruthy();
     });
 
-    it("should show team onboarding copy when the active team has no sites", () => {
+    it('should show team onboarding copy when the active team has no sites', () => {
         const siteService = TestBed.inject(SiteService);
         const teamService = TestBed.inject(TeamService);
 
@@ -58,33 +58,33 @@ describe("Dashboard", () => {
         siteService.activeSite.set(null);
         teamService.teams.set([
             {
-                id: "team-1",
-                name: "Acme Growth",
-                logo_url: "",
-                role: "owner",
-                created_at: "2026-01-01T00:00:00Z"
+                id: 'team-1',
+                name: 'Acme Growth',
+                logo_url: '',
+                role: 'owner',
+                created_at: '2026-01-01T00:00:00Z'
             }
         ]);
-        teamService.activeTeamId.set("team-1");
+        teamService.activeTeamId.set('team-1');
 
         fixture.detectChanges();
 
-        expect(fixture.nativeElement.textContent).toContain("dashboard.empty.teamTitle");
+        expect(fixture.nativeElement.textContent).toContain('dashboard.empty.teamTitle');
     });
 
-    it("should switch the pages card data between top, landing, and exit pages", () => {
+    it('should switch the pages card data between top, landing, and exit pages', () => {
         const siteService = TestBed.inject(SiteService);
         const statsService = TestBed.inject(StatsService);
         const hitService = TestBed.inject(HitService);
 
-        vi.spyOn(statsService, "loadStats").mockImplementation(() => undefined);
-        vi.spyOn(hitService, "loadHits").mockImplementation(() => undefined);
+        vi.spyOn(statsService, 'loadStats').mockImplementation(() => undefined);
+        vi.spyOn(hitService, 'loadHits').mockImplementation(() => undefined);
 
         siteService.activeSite.set({
-            id: "site-1",
-            user_id: "user-1",
-            domain: "example.com",
-            created_at: "2026-01-01T00:00:00Z"
+            id: 'site-1',
+            user_id: 'user-1',
+            domain: 'example.com',
+            created_at: '2026-01-01T00:00:00Z'
         });
 
         statsService.stats.set({
@@ -95,16 +95,16 @@ describe("Dashboard", () => {
             avg_session_duration: 12,
             pages_per_session: 2,
             chart_data: [],
-            top_pages: [{ name: "/pricing", value: 4 }],
-            top_landing_pages: [{ name: "/blog", value: 3 }],
-            top_exit_pages: [{ name: "/signup", value: 2 }],
+            top_pages: [{ name: '/pricing', value: 4 }],
+            top_landing_pages: [{ name: '/blog', value: 3 }],
+            top_exit_pages: [{ name: '/signup', value: 2 }],
             top_referrers: [],
             top_devices: [],
             top_countries: [],
             top_browsers: [],
             top_ai_bots: [],
             top_ai_sources: [],
-            top_languages: [{ name: "de", value: 4 }],
+            top_languages: [{ name: 'de', value: 4 }],
             top_utm_campaigns: [],
             top_utm_contents: [],
             top_utm_mediums: [],
@@ -121,28 +121,28 @@ describe("Dashboard", () => {
             funnels: []
         });
 
-        expect((component as unknown as { pageMetricData: () => { name: string; value: number }[] }).pageMetricData()).toEqual([{ name: "/pricing", value: 4 }]);
+        expect((component as unknown as { pageMetricData: () => { name: string; value: number }[] }).pageMetricData()).toEqual([{ name: '/pricing', value: 4 }]);
 
-        (component as unknown as { onPageMetricModeChange: (mode: string) => void }).onPageMetricModeChange("top_landing_pages");
-        expect((component as unknown as { pageMetricData: () => { name: string; value: number }[] }).pageMetricData()).toEqual([{ name: "/blog", value: 3 }]);
+        (component as unknown as { onPageMetricModeChange: (mode: string) => void }).onPageMetricModeChange('top_landing_pages');
+        expect((component as unknown as { pageMetricData: () => { name: string; value: number }[] }).pageMetricData()).toEqual([{ name: '/blog', value: 3 }]);
 
-        (component as unknown as { onPageMetricModeChange: (mode: string) => void }).onPageMetricModeChange("top_exit_pages");
-        expect((component as unknown as { pageMetricData: () => { name: string; value: number }[] }).pageMetricData()).toEqual([{ name: "/signup", value: 2 }]);
+        (component as unknown as { onPageMetricModeChange: (mode: string) => void }).onPageMetricModeChange('top_exit_pages');
+        expect((component as unknown as { pageMetricData: () => { name: string; value: number }[] }).pageMetricData()).toEqual([{ name: '/signup', value: 2 }]);
     });
 
-    it("should expose countries and languages from stats as separate data sources", () => {
+    it('should expose countries and languages from stats as separate data sources', () => {
         const siteService = TestBed.inject(SiteService);
         const statsService = TestBed.inject(StatsService);
         const hitService = TestBed.inject(HitService);
 
-        vi.spyOn(statsService, "loadStats").mockImplementation(() => undefined);
-        vi.spyOn(hitService, "loadHits").mockImplementation(() => undefined);
+        vi.spyOn(statsService, 'loadStats').mockImplementation(() => undefined);
+        vi.spyOn(hitService, 'loadHits').mockImplementation(() => undefined);
 
         siteService.activeSite.set({
-            id: "site-1",
-            user_id: "user-1",
-            domain: "example.com",
-            created_at: "2026-01-01T00:00:00Z"
+            id: 'site-1',
+            user_id: 'user-1',
+            domain: 'example.com',
+            created_at: '2026-01-01T00:00:00Z'
         });
 
         statsService.stats.set({
@@ -159,10 +159,10 @@ describe("Dashboard", () => {
             top_referrers: [],
             top_devices: [],
             top_browsers: [],
-            top_countries: [{ name: "DE", value: 4 }],
+            top_countries: [{ name: 'DE', value: 4 }],
             top_ai_bots: [],
             top_ai_sources: [],
-            top_languages: [{ name: "de", value: 3 }],
+            top_languages: [{ name: 'de', value: 3 }],
             top_utm_campaigns: [],
             top_utm_contents: [],
             top_utm_mediums: [],
@@ -179,7 +179,7 @@ describe("Dashboard", () => {
             funnels: []
         });
 
-        expect(statsService.stats()?.top_countries).toEqual([{ name: "DE", value: 4 }]);
-        expect(statsService.stats()?.top_languages).toEqual([{ name: "de", value: 3 }]);
+        expect(statsService.stats()?.top_countries).toEqual([{ name: 'DE', value: 4 }]);
+        expect(statsService.stats()?.top_languages).toEqual([{ name: 'de', value: 3 }]);
     });
 });

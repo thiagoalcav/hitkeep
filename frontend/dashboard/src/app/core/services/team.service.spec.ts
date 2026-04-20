@@ -1,9 +1,9 @@
-import { TestBed } from "@angular/core/testing";
-import { HttpTestingController, provideHttpClientTesting } from "@angular/common/http/testing";
-import { provideHttpClient } from "@angular/common/http";
-import { TeamService } from "@services/team.service";
+import { TestBed } from '@angular/core/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { TeamService } from '@services/team.service';
 
-describe("TeamService", () => {
+describe('TeamService', () => {
     let service: TeamService;
     let httpMock: HttpTestingController;
 
@@ -20,198 +20,198 @@ describe("TeamService", () => {
         httpMock.verify();
     });
 
-    it("should be created", () => {
+    it('should be created', () => {
         expect(service).toBeTruthy();
     });
 
-    it("should load teams and set active team", () => {
+    it('should load teams and set active team', () => {
         service.loadTeams().subscribe();
 
-        const req = httpMock.expectOne("/api/user/teams");
-        expect(req.request.method).toBe("GET");
+        const req = httpMock.expectOne('/api/user/teams');
+        expect(req.request.method).toBe('GET');
         req.flush({
-            active_team_id: "00000000-0000-0000-0000-000000000002",
+            active_team_id: '00000000-0000-0000-0000-000000000002',
             teams: [
                 {
-                    id: "00000000-0000-0000-0000-000000000001",
-                    name: "Alpha",
-                    logo_url: "",
-                    role: "owner",
-                    created_at: "2026-01-01T00:00:00Z"
+                    id: '00000000-0000-0000-0000-000000000001',
+                    name: 'Alpha',
+                    logo_url: '',
+                    role: 'owner',
+                    created_at: '2026-01-01T00:00:00Z'
                 },
                 {
-                    id: "00000000-0000-0000-0000-000000000002",
-                    name: "Bravo",
-                    logo_url: "",
-                    role: "admin",
-                    created_at: "2026-01-02T00:00:00Z"
+                    id: '00000000-0000-0000-0000-000000000002',
+                    name: 'Bravo',
+                    logo_url: '',
+                    role: 'admin',
+                    created_at: '2026-01-02T00:00:00Z'
                 }
             ]
         });
 
         expect(service.teams().length).toBe(2);
-        expect(service.activeTeamId()).toBe("00000000-0000-0000-0000-000000000002");
-        expect(service.activeTeam()?.name).toBe("Bravo");
+        expect(service.activeTeamId()).toBe('00000000-0000-0000-0000-000000000002');
+        expect(service.activeTeam()?.name).toBe('Bravo');
         expect(service.hasMultipleTeams()).toBe(true);
     });
 
-    it("should switch active team", () => {
+    it('should switch active team', () => {
         service.teams.set([
-            { id: "00000000-0000-0000-0000-000000000001", name: "Alpha", logo_url: "", role: "owner", created_at: "2026-01-01T00:00:00Z" },
-            { id: "00000000-0000-0000-0000-000000000002", name: "Bravo", logo_url: "", role: "admin", created_at: "2026-01-02T00:00:00Z" }
+            { id: '00000000-0000-0000-0000-000000000001', name: 'Alpha', logo_url: '', role: 'owner', created_at: '2026-01-01T00:00:00Z' },
+            { id: '00000000-0000-0000-0000-000000000002', name: 'Bravo', logo_url: '', role: 'admin', created_at: '2026-01-02T00:00:00Z' }
         ]);
-        service.activeTeamId.set("00000000-0000-0000-0000-000000000001");
+        service.activeTeamId.set('00000000-0000-0000-0000-000000000001');
 
-        service.setActiveTeam("00000000-0000-0000-0000-000000000002").subscribe();
+        service.setActiveTeam('00000000-0000-0000-0000-000000000002').subscribe();
 
-        const req = httpMock.expectOne("/api/user/teams/active");
-        expect(req.request.method).toBe("PUT");
-        expect(req.request.body).toEqual({ team_id: "00000000-0000-0000-0000-000000000002" });
+        const req = httpMock.expectOne('/api/user/teams/active');
+        expect(req.request.method).toBe('PUT');
+        expect(req.request.body).toEqual({ team_id: '00000000-0000-0000-0000-000000000002' });
         req.flush({
-            status: "ok",
-            active_team_id: "00000000-0000-0000-0000-000000000002"
+            status: 'ok',
+            active_team_id: '00000000-0000-0000-0000-000000000002'
         });
 
-        expect(service.activeTeamId()).toBe("00000000-0000-0000-0000-000000000002");
+        expect(service.activeTeamId()).toBe('00000000-0000-0000-0000-000000000002');
     });
 
-    it("should skip request when selecting current team", () => {
-        service.activeTeamId.set("00000000-0000-0000-0000-000000000001");
+    it('should skip request when selecting current team', () => {
+        service.activeTeamId.set('00000000-0000-0000-0000-000000000001');
 
-        service.setActiveTeam("00000000-0000-0000-0000-000000000001").subscribe((response) => {
-            expect(response.active_team_id).toBe("00000000-0000-0000-0000-000000000001");
+        service.setActiveTeam('00000000-0000-0000-0000-000000000001').subscribe((response) => {
+            expect(response.active_team_id).toBe('00000000-0000-0000-0000-000000000001');
         });
 
-        httpMock.expectNone("/api/user/teams/active");
+        httpMock.expectNone('/api/user/teams/active');
     });
 
-    it("should list team members", () => {
-        service.listTeamMembers("team-id").subscribe((members) => {
+    it('should list team members', () => {
+        service.listTeamMembers('team-id').subscribe((members) => {
             expect(members.length).toBe(1);
-            expect(members[0].email).toBe("member@example.com");
+            expect(members[0].email).toBe('member@example.com');
         });
 
-        const req = httpMock.expectOne("/api/user/teams/team-id/members");
-        expect(req.request.method).toBe("GET");
+        const req = httpMock.expectOne('/api/user/teams/team-id/members');
+        expect(req.request.method).toBe('GET');
         req.flush([
             {
-                id: "member-row-id",
-                user_id: "user-id",
-                email: "member@example.com",
-                role: "member",
-                added_at: "2026-01-03T00:00:00Z"
+                id: 'member-row-id',
+                user_id: 'user-id',
+                email: 'member@example.com',
+                role: 'member',
+                added_at: '2026-01-03T00:00:00Z'
             }
         ]);
     });
 
-    it("should list pending team invites", () => {
-        service.listTeamInvites("team-id").subscribe((invites) => {
+    it('should list pending team invites', () => {
+        service.listTeamInvites('team-id').subscribe((invites) => {
             expect(invites.length).toBe(1);
-            expect(invites[0].email).toBe("invitee@example.com");
+            expect(invites[0].email).toBe('invitee@example.com');
         });
 
-        const req = httpMock.expectOne("/api/user/teams/team-id/invites");
-        expect(req.request.method).toBe("GET");
+        const req = httpMock.expectOne('/api/user/teams/team-id/invites');
+        expect(req.request.method).toBe('GET');
         req.flush([
             {
-                id: "invite-id",
-                team_id: "team-id",
-                email: "invitee@example.com",
-                role: "admin",
-                status: "pending",
-                created_at: "2026-01-03T00:00:00Z",
-                expires_at: "2026-01-10T00:00:00Z"
+                id: 'invite-id',
+                team_id: 'team-id',
+                email: 'invitee@example.com',
+                role: 'admin',
+                status: 'pending',
+                created_at: '2026-01-03T00:00:00Z',
+                expires_at: '2026-01-10T00:00:00Z'
             }
         ]);
     });
 
-    it("should upsert team member", () => {
+    it('should upsert team member', () => {
         service
-            .upsertTeamMember("team-id", {
-                email: "new@example.com",
-                role: "admin"
+            .upsertTeamMember('team-id', {
+                email: 'new@example.com',
+                role: 'admin'
             })
             .subscribe((response) => {
-                expect(response.status).toBe("ok");
+                expect(response.status).toBe('ok');
             });
 
-        const req = httpMock.expectOne("/api/user/teams/team-id/members");
-        expect(req.request.method).toBe("POST");
+        const req = httpMock.expectOne('/api/user/teams/team-id/members');
+        expect(req.request.method).toBe('POST');
         expect(req.request.body).toEqual({
-            email: "new@example.com",
-            role: "admin"
+            email: 'new@example.com',
+            role: 'admin'
         });
         req.flush({
-            status: "ok",
+            status: 'ok',
             is_invite: true
         });
     });
 
-    it("should resend team invite", () => {
-        service.resendTeamInvite("team-id", "invite-id").subscribe((response) => {
-            expect(response.status).toBe("ok");
-            expect(response.invite.id).toBe("invite-id");
+    it('should resend team invite', () => {
+        service.resendTeamInvite('team-id', 'invite-id').subscribe((response) => {
+            expect(response.status).toBe('ok');
+            expect(response.invite.id).toBe('invite-id');
         });
 
-        const req = httpMock.expectOne("/api/user/teams/team-id/invites/invite-id/resend");
-        expect(req.request.method).toBe("POST");
+        const req = httpMock.expectOne('/api/user/teams/team-id/invites/invite-id/resend');
+        expect(req.request.method).toBe('POST');
         expect(req.request.body).toEqual({});
         req.flush({
-            status: "ok",
+            status: 'ok',
             invite: {
-                id: "invite-id",
-                team_id: "team-id",
-                email: "invitee@example.com",
-                role: "member",
-                status: "pending",
-                created_at: "2026-01-03T00:00:00Z",
-                expires_at: "2026-01-10T00:00:00Z"
+                id: 'invite-id',
+                team_id: 'team-id',
+                email: 'invitee@example.com',
+                role: 'member',
+                status: 'pending',
+                created_at: '2026-01-03T00:00:00Z',
+                expires_at: '2026-01-10T00:00:00Z'
             }
         });
     });
 
-    it("should revoke team invite", () => {
-        service.revokeTeamInvite("team-id", "invite-id").subscribe((response) => {
-            expect(response.status).toBe("ok");
+    it('should revoke team invite', () => {
+        service.revokeTeamInvite('team-id', 'invite-id').subscribe((response) => {
+            expect(response.status).toBe('ok');
         });
 
-        const req = httpMock.expectOne("/api/user/teams/team-id/invites/invite-id");
-        expect(req.request.method).toBe("DELETE");
+        const req = httpMock.expectOne('/api/user/teams/team-id/invites/invite-id');
+        expect(req.request.method).toBe('DELETE');
         req.flush({
-            status: "ok"
+            status: 'ok'
         });
     });
 
-    it("should remove team member", () => {
-        service.removeTeamMember("team-id", "user-id").subscribe((response) => {
-            expect(response.status).toBe("ok");
+    it('should remove team member', () => {
+        service.removeTeamMember('team-id', 'user-id').subscribe((response) => {
+            expect(response.status).toBe('ok');
         });
 
-        const req = httpMock.expectOne("/api/user/teams/team-id/members/user-id");
-        expect(req.request.method).toBe("DELETE");
+        const req = httpMock.expectOne('/api/user/teams/team-id/members/user-id');
+        expect(req.request.method).toBe('DELETE');
         req.flush({
-            status: "ok"
+            status: 'ok'
         });
     });
 
-    it("should list team audit entries", () => {
-        service.listTeamAudit("team-id").subscribe((response) => {
+    it('should list team audit entries', () => {
+        service.listTeamAudit('team-id').subscribe((response) => {
             expect(response.entries.length).toBe(1);
-            expect(response.entries[0].action).toBe("member.role_updated");
+            expect(response.entries[0].action).toBe('member.role_updated');
         });
 
-        const req = httpMock.expectOne("/api/user/teams/team-id/audit");
-        expect(req.request.method).toBe("GET");
+        const req = httpMock.expectOne('/api/user/teams/team-id/audit');
+        expect(req.request.method).toBe('GET');
         req.flush({
             entries: [
                 {
-                    id: "audit-1",
-                    team_id: "team-id",
-                    action: "member.role_updated",
-                    details: "Role changed from member to admin",
-                    actor_email: "owner@example.com",
-                    target_email: "member@example.com",
-                    created_at: "2026-01-04T00:00:00Z"
+                    id: 'audit-1',
+                    team_id: 'team-id',
+                    action: 'member.role_updated',
+                    details: 'Role changed from member to admin',
+                    actor_email: 'owner@example.com',
+                    target_email: 'member@example.com',
+                    created_at: '2026-01-04T00:00:00Z'
                 }
             ],
             total: 1,
@@ -221,59 +221,59 @@ describe("TeamService", () => {
         });
     });
 
-    it("should transfer team ownership", () => {
-        service.transferTeamOwnership("team-id", "user-id").subscribe((response) => {
-            expect(response.status).toBe("ok");
+    it('should transfer team ownership', () => {
+        service.transferTeamOwnership('team-id', 'user-id').subscribe((response) => {
+            expect(response.status).toBe('ok');
         });
 
-        const req = httpMock.expectOne("/api/user/teams/team-id/transfer-ownership");
-        expect(req.request.method).toBe("POST");
-        expect(req.request.body).toEqual({ target_user_id: "user-id" });
-        req.flush({ status: "ok" });
+        const req = httpMock.expectOne('/api/user/teams/team-id/transfer-ownership');
+        expect(req.request.method).toBe('POST');
+        expect(req.request.body).toEqual({ target_user_id: 'user-id' });
+        req.flush({ status: 'ok' });
     });
 
-    it("should leave team and update local state", () => {
+    it('should leave team and update local state', () => {
         service.teams.set([
-            { id: "team-a", name: "Team A", logo_url: "", role: "owner", created_at: "2026-01-01T00:00:00Z" },
-            { id: "team-b", name: "Team B", logo_url: "", role: "admin", created_at: "2026-01-02T00:00:00Z" }
+            { id: 'team-a', name: 'Team A', logo_url: '', role: 'owner', created_at: '2026-01-01T00:00:00Z' },
+            { id: 'team-b', name: 'Team B', logo_url: '', role: 'admin', created_at: '2026-01-02T00:00:00Z' }
         ]);
-        service.activeTeamId.set("team-b");
+        service.activeTeamId.set('team-b');
 
-        service.leaveTeam("team-b").subscribe((response) => {
-            expect(response.status).toBe("ok");
+        service.leaveTeam('team-b').subscribe((response) => {
+            expect(response.status).toBe('ok');
         });
 
-        const req = httpMock.expectOne("/api/user/teams/team-b/leave");
-        expect(req.request.method).toBe("DELETE");
+        const req = httpMock.expectOne('/api/user/teams/team-b/leave');
+        expect(req.request.method).toBe('DELETE');
         req.flush({
-            status: "ok",
-            active_team_id: "team-a"
+            status: 'ok',
+            active_team_id: 'team-a'
         });
 
-        expect(service.activeTeamId()).toBe("team-a");
-        expect(service.teams().map((team) => team.id)).toEqual(["team-a"]);
+        expect(service.activeTeamId()).toBe('team-a');
+        expect(service.teams().map((team) => team.id)).toEqual(['team-a']);
     });
 
-    it("should archive team and update local state", () => {
+    it('should archive team and update local state', () => {
         service.teams.set([
-            { id: "team-a", name: "Team A", logo_url: "", role: "owner", created_at: "2026-01-01T00:00:00Z" },
-            { id: "team-b", name: "Team B", logo_url: "", role: "owner", created_at: "2026-01-02T00:00:00Z" }
+            { id: 'team-a', name: 'Team A', logo_url: '', role: 'owner', created_at: '2026-01-01T00:00:00Z' },
+            { id: 'team-b', name: 'Team B', logo_url: '', role: 'owner', created_at: '2026-01-02T00:00:00Z' }
         ]);
-        service.activeTeamId.set("team-b");
+        service.activeTeamId.set('team-b');
 
-        service.archiveTeam("team-b").subscribe((response) => {
-            expect(response.status).toBe("ok");
+        service.archiveTeam('team-b').subscribe((response) => {
+            expect(response.status).toBe('ok');
         });
 
-        const req = httpMock.expectOne("/api/user/teams/team-b/archive");
-        expect(req.request.method).toBe("POST");
+        const req = httpMock.expectOne('/api/user/teams/team-b/archive');
+        expect(req.request.method).toBe('POST');
         expect(req.request.body).toEqual({});
         req.flush({
-            status: "ok",
-            active_team_id: "team-a"
+            status: 'ok',
+            active_team_id: 'team-a'
         });
 
-        expect(service.activeTeamId()).toBe("team-a");
-        expect(service.teams().map((team) => team.id)).toEqual(["team-a"]);
+        expect(service.activeTeamId()).toBe('team-a');
+        expect(service.teams().map((team) => team.id)).toEqual(['team-a']);
     });
 });

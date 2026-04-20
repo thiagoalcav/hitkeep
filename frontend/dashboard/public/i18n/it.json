@@ -839,12 +839,20 @@
             }
         },
         "tracking": {
-            "description": "Copia e incolla il codice qui sotto nell'HTML del tuo sito.",
+            "description": "Copia e incolla il codice qui sotto nell'HTML del tuo sito. Il tracciamento automatico di clic in uscita, download e invii di moduli è attivo per impostazione predefinita.",
             "trackingCodeConfiguration": "Configurazione codice di tracciamento",
             "collectDntLabel": "Raccogli DNT",
             "collectDntDescription": "Traccia gli utenti anche se \"Do Not Track\" è attivo nel browser.",
             "disableBeaconLabel": "Disabilita sendBeacon",
             "disableBeaconDescription": "Usa richieste fetch standard invece di navigator.sendBeacon.",
+            "autoTrackingTitle": "Tracciamento automatico degli eventi",
+            "autoTrackingDescription": "HitKeep può inviare automaticamente eventi outbound_click, file_download e form_submit con metadati rispettosi della privacy da hk.js.",
+            "outboundTrackingLabel": "Traccia i clic in uscita",
+            "outboundTrackingDescription": "Invia outbound_click quando i visitatori seguono link verso un hostname diverso.",
+            "downloadTrackingLabel": "Traccia i download di file",
+            "downloadTrackingDescription": "Invia file_download per link con attributo download o estensioni di file note.",
+            "formTrackingLabel": "Traccia gli invii dei moduli",
+            "formTrackingDescription": "Invia form_submit per gli invii di moduli osservati dal browser senza acquisire i valori del modulo.",
             "htmlLabel": "HTML",
             "copyCode": "Copia codice"
         }
@@ -1192,12 +1200,22 @@
     },
     "events": {
         "title": "Eventi",
-        "docsAction": "Aggiungi eventi",
+        "docsAction": "Guida al tracciamento automatico",
         "noSiteDescription": "Seleziona o crea un sito per visualizzare le analisi degli eventi.",
         "eventNameLabel": "Evento",
         "eventNamePlaceholder": "Seleziona un evento",
         "propertyKeyLabel": "Suddividi per",
         "propertyKeyPlaceholder": "Seleziona una proprietà",
+        "automatic": {
+            "title": "Eventi automatici",
+            "description": "Vai direttamente agli eventi integrati del tracker quando questo sito registra clic in uscita, download o invii di moduli.",
+            "badge": "Auto",
+            "quickPicks": {
+                "outboundClick": "Clic in uscita",
+                "fileDownload": "Download di file",
+                "formSubmit": "Invii di moduli"
+            }
+        },
         "series": {
             "title": "Attività degli eventi",
             "description": "Occorrenze di eventi nel periodo selezionato.",
@@ -1260,9 +1278,16 @@
         "title": "Visibilità AI",
         "docsAction": "Guida alla visibilità AI",
         "noSiteDescription": "Seleziona o crea un sito per vedere l’analisi dei fetch AI e delle correlazioni.",
+        "setup": {
+            "title": "Acquisizione server-side richiesta",
+            "badge": "Setup richiesto",
+            "description": "Questa pagina monitora i fetch dei crawler AI solo dopo che li inoltri a HitKeep tramite ingestione edge o dai log.",
+            "detail": "Installare solo hk.js non cattura i fetch dei bot. Le visite riferite dall’AI da ChatGPT, Gemini, Perplexity e assistenti simili possono comunque apparire altrove nelle analytics tramite il referrer.",
+            "action": "Apri la guida di configurazione"
+        },
         "header": {
             "title": "Analisi della visibilità AI",
-            "description": "Monitora come gli assistenti AI recuperano i tuoi contenuti, dove si concentrano gli errori di crawl e quali pagine recuperate attirano poi visite riferite dall’AI."
+            "description": "Monitora i fetch server-side dei crawler AI, dove si concentrano gli errori di crawl e quali pagine recuperate attirano poi visite riferite dall’AI."
         },
         "filters": {
             "assistant": "Assistente",
@@ -1284,10 +1309,10 @@
         },
         "chart": {
             "title": "Volume dei fetch nel tempo",
-            "description": "Guarda quando gli assistenti AI stanno recuperando attivamente i tuoi contenuti e come cambia la domanda nel periodo selezionato.",
+            "description": "Guarda quando i fetch inoltrati dei crawler AI raggiungono i tuoi contenuti e come cambia la domanda nel periodo selezionato.",
             "fetches": "Fetch",
             "emptyTitle": "Nessuna attività di fetch AI",
-            "emptyDescription": "Invia record a /api/sites/{id}/ingest/ai-fetch per popolare questo report."
+            "emptyDescription": "Inoltra record a /api/sites/{id}/ingest/ai-fetch per popolare questo report. hk.js da solo non registra i fetch dei crawler."
         },
         "breakdowns": {
             "assistants": "Assistenti principali",

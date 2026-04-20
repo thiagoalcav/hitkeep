@@ -1,34 +1,34 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, linkedSignal, signal } from "@angular/core";
-import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { FormsModule } from "@angular/forms";
-import { finalize, forkJoin } from "rxjs";
-import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { TranslocoDecimalPipe, TranslocoLocaleService } from "@jsverse/transloco-locale";
-import { ButtonModule } from "primeng/button";
-import { CardModule } from "primeng/card";
-import { SelectModule } from "primeng/select";
-import { SplitButtonModule } from "primeng/splitbutton";
-import { TabsModule } from "primeng/tabs";
-import { TagModule } from "primeng/tag";
-import { TableModule } from "primeng/table";
-import { TooltipModule } from "primeng/tooltip";
-import { MenuItem } from "primeng/api";
-import { SiteService } from "@features/sites/services/site.service";
-import { AIFetchFilters, AnalyticsService } from "@core/services/analytics.service";
-import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from "@components/range-toolbar/range-toolbar";
-import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
-import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
-import { SeriesChart, SeriesChartPoint, SeriesDefinition } from "@features/analytics/components/series-chart";
-import { KpiCard } from "@features/analytics/components/kpi-card";
-import { MetricList } from "@features/analytics/components/metric-list";
-import { AIFetchCorrelationReport, AIFetchOverview, MetricStat } from "@models/analytics.types";
-import { injectActiveLang } from "@core/i18n/active-lang";
-import { buildTakeoutExportMenuItems, DEFAULT_HITS_EXPORT_FORMAT, TakeoutExportFormat } from "@core/export/export-formats";
-import { TakeoutDownloadService } from "@services/takeout-download.service";
-import { AIFilterChip, formatBytes, formatResponseMs, mapAIFetchSeries } from "@pages/ai-visibility/ai-visibility.utils";
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, linkedSignal, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
+import { finalize, forkJoin } from 'rxjs';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoDecimalPipe, TranslocoLocaleService } from '@jsverse/transloco-locale';
+import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
+import { SelectModule } from 'primeng/select';
+import { SplitButtonModule } from 'primeng/splitbutton';
+import { TabsModule } from 'primeng/tabs';
+import { TagModule } from 'primeng/tag';
+import { TableModule } from 'primeng/table';
+import { TooltipModule } from 'primeng/tooltip';
+import { MenuItem } from 'primeng/api';
+import { SiteService } from '@features/sites/services/site.service';
+import { AIFetchFilters, AnalyticsService } from '@core/services/analytics.service';
+import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from '@components/range-toolbar/range-toolbar';
+import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
+import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
+import { SeriesChart, SeriesChartPoint, SeriesDefinition } from '@features/analytics/components/series-chart';
+import { KpiCard } from '@features/analytics/components/kpi-card';
+import { MetricList } from '@features/analytics/components/metric-list';
+import { AIFetchCorrelationReport, AIFetchOverview, MetricStat } from '@models/analytics.types';
+import { injectActiveLang } from '@core/i18n/active-lang';
+import { buildTakeoutExportMenuItems, DEFAULT_HITS_EXPORT_FORMAT, TakeoutExportFormat } from '@core/export/export-formats';
+import { TakeoutDownloadService } from '@services/takeout-download.service';
+import { AIFilterChip, formatBytes, formatResponseMs, mapAIFetchSeries } from '@pages/ai-visibility/ai-visibility.utils';
 
-type FilterKey = "assistantName" | "assistantFamily" | "resourceType";
-type CorrelationTabValue = "citationYield" | "opportunityPages" | "failureHotspots";
+type FilterKey = 'assistantName' | 'assistantFamily' | 'resourceType';
+type CorrelationTabValue = 'citationYield' | 'opportunityPages' | 'failureHotspots';
 
 interface CorrelationTableTab {
     value: CorrelationTabValue;
@@ -39,7 +39,7 @@ interface CorrelationTableTab {
 }
 
 @Component({
-    selector: "app-ai-visibility",
+    selector: 'app-ai-visibility',
     imports: [
         FormsModule,
         TranslocoPipe,
@@ -60,12 +60,12 @@ interface CorrelationTableTab {
         KpiCard,
         MetricList
     ],
-    templateUrl: "./ai-visibility.html",
-    styleUrl: "./ai-visibility.css",
+    templateUrl: './ai-visibility.html',
+    styleUrl: './ai-visibility.css',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AIVisibility {
-    protected readonly docsUrl = "https://hitkeep.com/guides/analytics/ai-visibility/";
+    protected readonly docsUrl = 'https://hitkeep.com/guides/analytics/ai-visibility/';
     private readonly siteService = inject(SiteService);
     private readonly analyticsService = inject(AnalyticsService);
     private readonly transloco = inject(TranslocoService);
@@ -78,14 +78,14 @@ export class AIVisibility {
     protected readonly selectedRange = linkedSignal<RangeOption[], RangeOption>({
         source: this.timeRanges,
         computation: (ranges, previous) => {
-            const value = previous?.value.value ?? "30d";
+            const value = previous?.value.value ?? '30d';
             return ranges.find((range) => range.value === value) ?? ranges[2]!;
         }
     });
     protected readonly customRangeDates = signal<Date[] | null>(null);
 
     protected readonly filters = signal<AIFetchFilters>({});
-    protected readonly activeCorrelationTab = signal<CorrelationTabValue>("citationYield");
+    protected readonly activeCorrelationTab = signal<CorrelationTabValue>('citationYield');
 
     protected readonly overview = signal<AIFetchOverview | null>(null);
     protected readonly correlation = signal<AIFetchCorrelationReport | null>(null);
@@ -95,9 +95,13 @@ export class AIVisibility {
     protected readonly isLoadingSeries = signal(false);
     protected readonly isLoadingCorrelation = signal(false);
     protected readonly isLoading = computed(() => this.isLoadingOverview() || this.isLoadingSeries() || this.isLoadingCorrelation());
+    protected readonly showSetupNotice = computed(() => {
+        if (!this.activeSite() || this.isLoadingOverview()) return false;
+        return (this.overview()?.total_requests ?? 0) === 0;
+    });
 
     protected readonly isExporting = signal(false);
-    protected readonly exportState = signal<"idle" | "success" | "error">("idle");
+    protected readonly exportState = signal<'idle' | 'success' | 'error'>('idle');
 
     protected readonly activeSite = computed(() => this.siteService.activeSite());
     protected readonly noSite = computed(() => !this.activeSite());
@@ -105,17 +109,17 @@ export class AIVisibility {
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         this.activeLanguage();
         const site = this.activeSite();
-        if (!site) return [{ label: this.transloco.translate("aiVisibility.title"), isCurrent: true }];
+        if (!site) return [{ label: this.transloco.translate('aiVisibility.title'), isCurrent: true }];
         return [
-            { label: site.domain, favicon: site, routerLink: "/dashboard" },
-            { label: this.transloco.translate("aiVisibility.title"), isCurrent: true }
+            { label: site.domain, favicon: site, routerLink: '/dashboard' },
+            { label: this.transloco.translate('aiVisibility.title'), isCurrent: true }
         ];
     });
 
     protected readonly isShortRange = computed(() => {
-        if (this.selectedRange().value === "24h") return true;
+        if (this.selectedRange().value === '24h') return true;
         const dates = this.customRangeDates();
-        if (this.selectedRange().value === "custom" && dates && dates.length === 2 && dates[0] && dates[1]) {
+        if (this.selectedRange().value === 'custom' && dates && dates.length === 2 && dates[0] && dates[1]) {
             return dates[1].getTime() - dates[0].getTime() < 48 * 60 * 60 * 1000;
         }
         return false;
@@ -124,7 +128,7 @@ export class AIVisibility {
     protected readonly assistantOptions = computed(() => this.toOptions(this.overview()?.top_assistants ?? []));
     protected readonly familyOptions = computed(() => this.toOptions(this.overview()?.top_families ?? []));
     protected readonly resourceTypeOptions = computed(() => {
-        const values = new Set(["html", "document", "image", "other", ...(this.overview()?.resource_type_split ?? []).map((item) => item.name)]);
+        const values = new Set(['html', 'document', 'image', 'other', ...(this.overview()?.resource_type_split ?? []).map((item) => item.name)]);
         return [...values].filter(Boolean).map((value) => ({ label: value, value }));
     });
 
@@ -133,13 +137,13 @@ export class AIVisibility {
         const filters = this.filters();
         const chips: AIFilterChip[] = [];
         if (filters.assistantName) {
-            chips.push({ key: "assistantName", label: `${this.transloco.translate("aiVisibility.filters.assistant")}: ${filters.assistantName}` });
+            chips.push({ key: 'assistantName', label: `${this.transloco.translate('aiVisibility.filters.assistant')}: ${filters.assistantName}` });
         }
         if (filters.assistantFamily) {
-            chips.push({ key: "assistantFamily", label: `${this.transloco.translate("aiVisibility.filters.family")}: ${filters.assistantFamily}` });
+            chips.push({ key: 'assistantFamily', label: `${this.transloco.translate('aiVisibility.filters.family')}: ${filters.assistantFamily}` });
         }
         if (filters.resourceType) {
-            chips.push({ key: "resourceType", label: `${this.transloco.translate("aiVisibility.filters.resourceType")}: ${filters.resourceType}` });
+            chips.push({ key: 'resourceType', label: `${this.transloco.translate('aiVisibility.filters.resourceType')}: ${filters.resourceType}` });
         }
         return chips;
     });
@@ -148,11 +152,11 @@ export class AIVisibility {
         this.activeLanguage();
         return [
             {
-                key: "count",
-                label: this.transloco.translate("aiVisibility.chart.fetches"),
-                color: "#0f766e",
-                gradientFrom: "rgba(15, 118, 110, 0.4)",
-                gradientTo: "rgba(15, 118, 110, 0.0)"
+                key: 'count',
+                label: this.transloco.translate('aiVisibility.chart.fetches'),
+                color: '#0f766e',
+                gradientFrom: 'rgba(15, 118, 110, 0.4)',
+                gradientTo: 'rgba(15, 118, 110, 0.0)'
             }
         ];
     });
@@ -162,10 +166,10 @@ export class AIVisibility {
         const overview = this.overview();
         const loading = this.isLoadingOverview();
         return [
-            { label: this.transloco.translate("aiVisibility.kpis.totalFetches"), value: overview?.total_requests ?? 0, loading },
-            { label: this.transloco.translate("aiVisibility.kpis.uniquePaths"), value: overview?.unique_paths ?? 0, loading },
-            { label: this.transloco.translate("aiVisibility.kpis.uniqueAssistants"), value: overview?.unique_assistants ?? 0, loading },
-            { label: this.transloco.translate("aiVisibility.kpis.errorRate4xx"), value: `${(overview?.error_rate_4xx ?? 0).toFixed(1)}%`, loading }
+            { label: this.transloco.translate('aiVisibility.kpis.totalFetches'), value: overview?.total_requests ?? 0, loading },
+            { label: this.transloco.translate('aiVisibility.kpis.uniquePaths'), value: overview?.unique_paths ?? 0, loading },
+            { label: this.transloco.translate('aiVisibility.kpis.uniqueAssistants'), value: overview?.unique_assistants ?? 0, loading },
+            { label: this.transloco.translate('aiVisibility.kpis.errorRate4xx'), value: `${(overview?.error_rate_4xx ?? 0).toFixed(1)}%`, loading }
         ];
     });
 
@@ -174,9 +178,9 @@ export class AIVisibility {
         const overview = this.overview();
         const loading = this.isLoadingOverview();
         return [
-            { label: this.transloco.translate("aiVisibility.kpis.errorRate5xx"), value: `${(overview?.error_rate_5xx ?? 0).toFixed(1)}%`, loading },
-            { label: this.transloco.translate("aiVisibility.kpis.medianResponse"), value: this.formatResponse(overview?.median_response_ms ?? 0), loading },
-            { label: this.transloco.translate("aiVisibility.kpis.bytesServed"), value: this.formatBytes(overview?.total_bytes ?? 0), loading }
+            { label: this.transloco.translate('aiVisibility.kpis.errorRate5xx'), value: `${(overview?.error_rate_5xx ?? 0).toFixed(1)}%`, loading },
+            { label: this.transloco.translate('aiVisibility.kpis.medianResponse'), value: this.formatResponse(overview?.median_response_ms ?? 0), loading },
+            { label: this.transloco.translate('aiVisibility.kpis.bytesServed'), value: this.formatBytes(overview?.total_bytes ?? 0), loading }
         ];
     });
 
@@ -185,9 +189,9 @@ export class AIVisibility {
         const summary = this.correlation()?.summary;
         const loading = this.isLoadingCorrelation();
         return [
-            { label: this.transloco.translate("aiVisibility.correlation.kpis.correlatedPaths"), value: summary?.correlated_paths ?? 0, loading },
-            { label: this.transloco.translate("aiVisibility.correlation.kpis.aiVisits"), value: summary?.ai_referred_visits ?? 0, loading },
-            { label: this.transloco.translate("aiVisibility.correlation.kpis.uncorrelatedFetches"), value: summary?.uncorrelated_fetches ?? 0, loading }
+            { label: this.transloco.translate('aiVisibility.correlation.kpis.correlatedPaths'), value: summary?.correlated_paths ?? 0, loading },
+            { label: this.transloco.translate('aiVisibility.correlation.kpis.aiVisits'), value: summary?.ai_referred_visits ?? 0, loading },
+            { label: this.transloco.translate('aiVisibility.correlation.kpis.uncorrelatedFetches'), value: summary?.uncorrelated_fetches ?? 0, loading }
         ];
     });
 
@@ -201,25 +205,25 @@ export class AIVisibility {
         this.activeLanguage();
         return [
             {
-                value: "citationYield",
-                label: this.transloco.translate("aiVisibility.tables.citationYield.title"),
-                description: this.transloco.translate("aiVisibility.tables.citationYield.description"),
+                value: 'citationYield',
+                label: this.transloco.translate('aiVisibility.tables.citationYield.title'),
+                description: this.transloco.translate('aiVisibility.tables.citationYield.description'),
                 count: this.citationYieldRows().length,
-                icon: "pi pi-chart-line"
+                icon: 'pi pi-chart-line'
             },
             {
-                value: "opportunityPages",
-                label: this.transloco.translate("aiVisibility.tables.opportunityPages.title"),
-                description: this.transloco.translate("aiVisibility.tables.opportunityPages.description"),
+                value: 'opportunityPages',
+                label: this.transloco.translate('aiVisibility.tables.opportunityPages.title'),
+                description: this.transloco.translate('aiVisibility.tables.opportunityPages.description'),
                 count: this.opportunityRows().length,
-                icon: "pi pi-compass"
+                icon: 'pi pi-compass'
             },
             {
-                value: "failureHotspots",
-                label: this.transloco.translate("aiVisibility.tables.failureHotspots.title"),
-                description: this.transloco.translate("aiVisibility.tables.failureHotspots.description"),
+                value: 'failureHotspots',
+                label: this.transloco.translate('aiVisibility.tables.failureHotspots.title'),
+                description: this.transloco.translate('aiVisibility.tables.failureHotspots.description'),
                 count: this.failureHotspotRows().length,
-                icon: "pi pi-exclamation-circle"
+                icon: 'pi pi-exclamation-circle'
             }
         ];
     });
@@ -227,13 +231,13 @@ export class AIVisibility {
     protected readonly exportUrl = computed(() => {
         const site = this.activeSite();
         const dates = this.getCurrentDateRange();
-        if (!site || !dates) return "";
+        if (!site || !dates) return '';
 
         const params = new URLSearchParams({ from: dates.from, to: dates.to });
         const filters = this.filters();
-        if (filters.assistantName) params.set("assistant_name", filters.assistantName);
-        if (filters.assistantFamily) params.set("assistant_family", filters.assistantFamily);
-        if (filters.resourceType) params.set("resource_type", filters.resourceType);
+        if (filters.assistantName) params.set('assistant_name', filters.assistantName);
+        if (filters.assistantFamily) params.set('assistant_family', filters.assistantFamily);
+        if (filters.resourceType) params.set('resource_type', filters.resourceType);
         return `/api/sites/${site.id}/ai-fetch/export?${params.toString()}`;
     });
 
@@ -299,10 +303,10 @@ export class AIVisibility {
         return Math.min(100, Math.max(12, (value / max) * 100));
     }
 
-    protected errorRateSeverity(value: number): "secondary" | "warn" | "danger" {
-        if (value <= 0) return "secondary";
-        if (value < 5) return "warn";
-        return "danger";
+    protected errorRateSeverity(value: number): 'secondary' | 'warn' | 'danger' {
+        if (value <= 0) return 'secondary';
+        if (value < 5) return 'warn';
+        return 'danger';
     }
 
     protected tooltipText(value: string): string | undefined {
@@ -322,7 +326,7 @@ export class AIVisibility {
         if (!url || this.isExporting()) return;
 
         this.isExporting.set(true);
-        this.exportState.set("idle");
+        this.exportState.set('idle');
 
         this.takeoutDownloadService
             .downloadFromUrl(url, this.buildExportFilename(format))
@@ -331,8 +335,8 @@ export class AIVisibility {
                 finalize(() => this.isExporting.set(false))
             )
             .subscribe({
-                next: () => this.exportState.set("success"),
-                error: () => this.exportState.set("error")
+                next: () => this.exportState.set('success'),
+                error: () => this.exportState.set('error')
             });
     }
 
@@ -387,7 +391,7 @@ export class AIVisibility {
         const range = this.selectedRange().value;
         const now = new Date();
 
-        if (range === "custom") {
+        if (range === 'custom') {
             const dates = this.customRangeDates();
             if (!dates || dates.length !== 2 || !dates[0] || !dates[1]) return null;
             return {
@@ -398,16 +402,16 @@ export class AIVisibility {
 
         const from = new Date(now);
         switch (range) {
-            case "24h":
+            case '24h':
                 from.setHours(now.getHours() - 24);
                 break;
-            case "7d":
+            case '7d':
                 from.setDate(now.getDate() - 7);
                 break;
-            case "30d":
+            case '30d':
                 from.setDate(now.getDate() - 30);
                 break;
-            case "90d":
+            case '90d':
                 from.setDate(now.getDate() - 90);
                 break;
             default:
@@ -428,7 +432,7 @@ export class AIVisibility {
 
     private localeTag(): string {
         const locale = this.localeService.getLocale();
-        if (typeof locale === "string" && locale.trim()) {
+        if (typeof locale === 'string' && locale.trim()) {
             return locale;
         }
         return this.activeLanguage();
@@ -436,19 +440,19 @@ export class AIVisibility {
 
     private buildExportUrl(format: TakeoutExportFormat): string {
         const baseUrl = this.exportUrl();
-        if (!baseUrl) return "";
+        if (!baseUrl) return '';
         const url = new URL(baseUrl, window.location.origin);
-        url.searchParams.set("format", format);
+        url.searchParams.set('format', format);
         return url.pathname + `?${url.searchParams.toString()}`;
     }
 
     private buildExportFilename(format: TakeoutExportFormat): string {
-        const siteDomain = this.activeSite()?.domain || "site";
+        const siteDomain = this.activeSite()?.domain || 'site';
         const safeDomain = siteDomain
             .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/(^-|-$)/g, "");
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)/g, '');
         const dateStamp = new Date().toISOString().slice(0, 10);
-        return `${safeDomain || "site"}-ai-fetches-${dateStamp}.${format}`;
+        return `${safeDomain || 'site'}-ai-fetches-${dateStamp}.${format}`;
     }
 }

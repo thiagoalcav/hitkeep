@@ -155,7 +155,11 @@ async function prepareEventBreakdown(page) {
   const eventSelector = "#event-name-select";
   const propertySelector = "#property-key-select";
 
-  if (!(await selectFirstVisibleOption(page, eventSelector))) {
+  const automaticQuickPick = page.getByRole("button", { name: /outbound clicks/i }).first();
+  if (await automaticQuickPick.count()) {
+    await automaticQuickPick.click();
+    await page.waitForTimeout(TABLE_SETTLE);
+  } else if (!(await selectFirstVisibleOption(page, eventSelector))) {
     console.warn("    ! Event selector could not pick a value");
     return false;
   }
@@ -351,6 +355,10 @@ async function run() {
     if (await siteSettingsBtn.count()) {
       await siteSettingsBtn.click();
       await page.getByRole("heading", { name: /site settings/i }).waitFor({ state: "visible", timeout: 8_000 });
+      if (await clickTab(page, "tracking", FORM_SETTLE)) {
+        await page.getByText(/automatic event tracking/i).first().waitFor({ state: "visible", timeout: 8_000 });
+        record("feature-site-tracking", await shoot(page, "feature-site-tracking"));
+      }
       if (await clickTab(page, "team", FORM_SETTLE)) {
         await page.getByRole("heading", { name: /transfer site/i }).waitFor({ state: "visible", timeout: 8_000 });
         record("feature-site-transfer", await shoot(page, "feature-site-transfer"));

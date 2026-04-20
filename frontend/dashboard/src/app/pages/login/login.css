@@ -8,3 +8,9 @@ to fill the container width
 :host ::ng-deep .p-password input {
     width: 100%;
 }
+
+.hk-auth-actions-stack {
+    align-items: center;
+    flex-direction: column;
+    gap: 0.75rem;
+}

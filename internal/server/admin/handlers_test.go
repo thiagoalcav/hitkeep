@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -134,6 +135,73 @@ func TestHandleDeleteUserDeletesWhenTeamHasAnotherOwner(t *testing.T) {
 	}
 	if user != nil {
 		t.Fatalf("expected user to be deleted, got %+v", user)
+	}
+}
+
+func TestHandleDeleteUserRemovesTenantLocalOwnedSites(t *testing.T) {
+	h, store, tenantStores, _, actorUserID, targetUserID := setupAdminTestEnv(t)
+	ctx := context.Background()
+
+	team, err := store.CreateTenant(ctx, targetUserID, "Tenant Local Cleanup", "")
+	if err != nil {
+		t.Fatalf("create team: %v", err)
+	}
+	defaultTenantID, err := store.GetDefaultTenantID(ctx)
+	if err != nil {
+		t.Fatalf("get default tenant: %v", err)
+	}
+	if err := store.AddTeamMember(ctx, defaultTenantID, actorUserID, database.TenantRoleOwner, targetUserID); err != nil {
+		t.Fatalf("promote actor to default owner: %v", err)
+	}
+	if err := store.AddTeamMember(ctx, team.ID, actorUserID, database.TenantRoleOwner, targetUserID); err != nil {
+		t.Fatalf("add actor as team owner: %v", err)
+	}
+	if err := store.SetActiveTenantID(ctx, targetUserID, team.ID); err != nil {
+		t.Fatalf("set target active team: %v", err)
+	}
+
+	site, err := store.CreateSite(ctx, targetUserID, "tenant-local-delete.test")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+	if err := tenantStores.SyncSite(ctx, site.ID); err != nil {
+		t.Fatalf("sync tenant site: %v", err)
+	}
+	tenantStore, err := tenantStores.ForTenant(ctx, team.ID)
+	if err != nil {
+		t.Fatalf("open tenant store: %v", err)
+	}
+	now := time.Now().UTC()
+	if _, err := tenantStore.DB().ExecContext(ctx,
+		"INSERT INTO hits (id, site_id, session_id, page_id, timestamp, path) VALUES (?, ?, ?, ?, ?, ?)",
+		uuid.New(), site.ID, uuid.New(), uuid.New(), now, "/",
+	); err != nil {
+		t.Fatalf("insert tenant hit: %v", err)
+	}
+
+	req := withAdminTestUser(httptest.NewRequest(http.MethodDelete, "/api/admin/users/"+targetUserID.String(), nil), actorUserID)
+	req.SetPathValue("id", targetUserID.String())
+	w := httptest.NewRecorder()
+
+	h.handleDeleteUser().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var hitCount int
+	if err := tenantStore.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM hits WHERE site_id = ?", site.ID).Scan(&hitCount); err != nil {
+		t.Fatalf("count tenant hit rows: %v", err)
+	}
+	if hitCount != 0 {
+		t.Fatalf("expected tenant hit rows to be deleted, got %d", hitCount)
+	}
+
+	var siteCount int
+	if err := tenantStore.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM sites WHERE id = ?", site.ID).Scan(&siteCount); err != nil {
+		t.Fatalf("count tenant site rows: %v", err)
+	}
+	if siteCount != 0 {
+		t.Fatalf("expected tenant site rows to be deleted, got %d", siteCount)
 	}
 }
 

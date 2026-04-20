@@ -357,7 +357,7 @@ func (s *Store) DeleteUser(ctx context.Context, id uuid.UUID) error {
 		return &UserOwnsTeamsError{Teams: blockingTeams}
 	}
 
-	siteIDs, err := s.listUserSiteIDs(ctx, id)
+	siteIDs, err := s.ListUserSiteIDs(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -391,7 +391,7 @@ func (s *Store) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (s *Store) listUserSiteIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+func (s *Store) ListUserSiteIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := s.db.QueryContext(ctx, "SELECT id FROM sites WHERE user_id = ?", userID)
 	if err != nil {
 		return nil, fmt.Errorf("could not list user sites: %w", err)
@@ -413,64 +413,87 @@ func (s *Store) listUserSiteIDs(ctx context.Context, userID uuid.UUID) ([]uuid.U
 }
 
 func cleanupUserRows(ctx context.Context, tx *sql.Tx, userID uuid.UUID) error {
-	if _, err := tx.ExecContext(ctx, "UPDATE share_links SET created_by = NULL WHERE created_by = ?", userID); err != nil {
+	tables, err := listTables(ctx, tx)
+	if err != nil {
+		return err
+	}
+	execIfTableExists := func(table string, query string, args ...any) error {
+		if _, ok := tables[table]; !ok {
+			return nil
+		}
+		if _, err := tx.ExecContext(ctx, query, args...); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if err := execIfTableExists("share_links", "UPDATE share_links SET created_by = NULL WHERE created_by = ?", userID); err != nil {
 		return fmt.Errorf("could not null share link owner: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "UPDATE team_invites SET created_by = NULL WHERE created_by = ?", userID); err != nil {
+	if err := execIfTableExists("team_invites", "UPDATE team_invites SET created_by = NULL WHERE created_by = ?", userID); err != nil {
 		return fmt.Errorf("could not null team invite created_by: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "UPDATE team_invites SET invited_user_id = NULL WHERE invited_user_id = ?", userID); err != nil {
+	if err := execIfTableExists("team_invites", "UPDATE team_invites SET invited_user_id = NULL WHERE invited_user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not null team invite invited_user_id: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "UPDATE team_audit_log SET actor_id = NULL WHERE actor_id = ?", userID); err != nil {
+	if err := execIfTableExists("team_audit_log", "UPDATE team_audit_log SET actor_id = NULL WHERE actor_id = ?", userID); err != nil {
 		return fmt.Errorf("could not null team audit actor_id: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "UPDATE team_audit_log SET target_user_id = NULL WHERE target_user_id = ?", userID); err != nil {
+	if err := execIfTableExists("team_audit_log", "UPDATE team_audit_log SET target_user_id = NULL WHERE target_user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not null team audit target_user_id: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM site_members WHERE user_id = ?", userID); err != nil {
+	if err := execIfTableExists("site_members", "DELETE FROM site_members WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete user site memberships: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM tenant_members WHERE user_id = ?", userID); err != nil {
+	if err := execIfTableExists("tenant_members", "DELETE FROM tenant_members WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete user tenant memberships: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM instance_roles WHERE user_id = ?", userID); err != nil {
+	if err := execIfTableExists("instance_roles", "DELETE FROM instance_roles WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete instance role: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "UPDATE site_members SET added_by = NULL WHERE added_by = ?", userID); err != nil {
+	if err := execIfTableExists("site_members", "UPDATE site_members SET added_by = NULL WHERE added_by = ?", userID); err != nil {
 		return fmt.Errorf("could not null site member added_by: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "UPDATE tenant_members SET added_by = NULL WHERE added_by = ?", userID); err != nil {
+	if err := execIfTableExists("tenant_members", "UPDATE tenant_members SET added_by = NULL WHERE added_by = ?", userID); err != nil {
 		return fmt.Errorf("could not null tenant member added_by: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "UPDATE instance_roles SET granted_by = NULL WHERE granted_by = ?", userID); err != nil {
+	if err := execIfTableExists("instance_roles", "UPDATE instance_roles SET granted_by = NULL WHERE granted_by = ?", userID); err != nil {
 		return fmt.Errorf("could not null instance role granted_by: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM api_client_site_roles WHERE api_client_id IN (SELECT id FROM api_clients WHERE user_id = ?)", userID); err != nil {
+	if err := execIfTableExists("api_client_site_roles", "DELETE FROM api_client_site_roles WHERE api_client_id IN (SELECT id FROM api_clients WHERE user_id = ?)", userID); err != nil {
 		return fmt.Errorf("could not delete user api client site roles: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM api_clients WHERE user_id = ?", userID); err != nil {
+	if err := execIfTableExists("api_clients", "DELETE FROM api_clients WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete user api clients: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM site_report_subscriptions WHERE user_id = ?", userID); err != nil {
+	if err := execIfTableExists("site_report_subscriptions", "DELETE FROM site_report_subscriptions WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete user site report subscriptions: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM digest_subscriptions WHERE user_id = ?", userID); err != nil {
+	if err := execIfTableExists("digest_subscriptions", "DELETE FROM digest_subscriptions WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete user digest subscriptions: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM remember_me_tokens WHERE user_id = ?", userID); err != nil {
+	if err := execIfTableExists("remember_me_tokens", "DELETE FROM remember_me_tokens WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete remember tokens: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM user_passkeys WHERE user_id = ?", userID); err != nil {
+	if err := execIfTableExists("user_passkey_challenges", "DELETE FROM user_passkey_challenges WHERE user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not delete pending user passkey challenges: %w", err)
+	}
+	if err := execIfTableExists("passkey_login_challenges", "DELETE FROM passkey_login_challenges WHERE user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not delete passkey login challenges: %w", err)
+	}
+	if err := execIfTableExists("user_passkeys", "DELETE FROM user_passkeys WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete user passkeys: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM user_totp_factors WHERE user_id = ?", userID); err != nil {
+	if err := execIfTableExists("user_totp_pending_setup", "DELETE FROM user_totp_pending_setup WHERE user_id = ?", userID); err != nil {
+		return fmt.Errorf("could not delete pending user totp setup: %w", err)
+	}
+	if err := execIfTableExists("user_totp_factors", "DELETE FROM user_totp_factors WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete user totp factors: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM user_recovery_codes WHERE user_id = ?", userID); err != nil {
+	if err := execIfTableExists("user_recovery_codes", "DELETE FROM user_recovery_codes WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete user recovery codes: %w", err)
 	}
-	if _, err := tx.ExecContext(ctx, "DELETE FROM user_preferences WHERE user_id = ?", userID); err != nil {
+	if err := execIfTableExists("user_preferences", "DELETE FROM user_preferences WHERE user_id = ?", userID); err != nil {
 		return fmt.Errorf("could not delete user preferences: %w", err)
 	}
 	return nil

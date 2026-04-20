@@ -1,14 +1,14 @@
-import { Injectable, inject } from "@angular/core";
-import { HttpClient } from "@angular/common/http";
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 
-import { CurrentIP, IPExclusion } from "@models/analytics.types";
+import { CurrentIP, IPExclusion } from '@models/analytics.types';
 
 interface CreateExclusionPayload {
     cidr: string;
     description?: string;
 }
 
-@Injectable({ providedIn: "root" })
+@Injectable({ providedIn: 'root' })
 export class ExclusionsService {
     private http = inject(HttpClient);
 
@@ -25,11 +25,11 @@ export class ExclusionsService {
     }
 
     listInstanceExclusions() {
-        return this.http.get<IPExclusion[]>("/api/admin/exclusions");
+        return this.http.get<IPExclusion[]>('/api/admin/exclusions');
     }
 
     createInstanceExclusion(payload: CreateExclusionPayload) {
-        return this.http.post<IPExclusion>("/api/admin/exclusions", payload);
+        return this.http.post<IPExclusion>('/api/admin/exclusions', payload);
     }
 
     deleteInstanceExclusion(ruleID: string) {
@@ -37,6 +37,6 @@ export class ExclusionsService {
     }
 
     getCurrentIP() {
-        return this.http.get<CurrentIP>("/api/user/current-ip");
+        return this.http.get<CurrentIP>('/api/user/current-ip');
     }
 }

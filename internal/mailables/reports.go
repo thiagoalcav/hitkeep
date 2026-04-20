@@ -72,27 +72,37 @@ type DigestSiteEntry struct {
 
 // AnalyticsDigest implements mailer.Mailable for consolidated multi-site digests.
 type AnalyticsDigest struct {
-	LocaleCode  string
-	PeriodLabel string
-	FreqLabel   string
-	DashURL     string
-	SettingsURL string
-	Sites       []DigestSiteEntry
+	LocaleCode       string
+	PeriodLabel      string
+	FreqLabel        string
+	SubjectFreqLabel string
+	DashURL          string
+	SettingsURL      string
+	Sites            []DigestSiteEntry
 }
 
 func NewAnalyticsDigest(locale, periodLabel, freqLabel, dashURL, settingsURL string, sites []DigestSiteEntry) mailer.Mailable {
+	return NewAnalyticsDigestWithSubjectLabel(locale, periodLabel, freqLabel, freqLabel, dashURL, settingsURL, sites)
+}
+
+func NewAnalyticsDigestWithSubjectLabel(locale, periodLabel, freqLabel, subjectFreqLabel, dashURL, settingsURL string, sites []DigestSiteEntry) mailer.Mailable {
 	return &AnalyticsDigest{
-		LocaleCode:  locale,
-		PeriodLabel: periodLabel,
-		FreqLabel:   freqLabel,
-		DashURL:     dashURL,
-		SettingsURL: settingsURL,
-		Sites:       sites,
+		LocaleCode:       locale,
+		PeriodLabel:      periodLabel,
+		FreqLabel:        freqLabel,
+		SubjectFreqLabel: subjectFreqLabel,
+		DashURL:          dashURL,
+		SettingsURL:      settingsURL,
+		Sites:            sites,
 	}
 }
 
 func (m *AnalyticsDigest) Subject() string {
-	return mailer.Translatef(m.LocaleCode, "subject.analytics_digest", m.FreqLabel, m.PeriodLabel)
+	freqLabel := m.SubjectFreqLabel
+	if freqLabel == "" {
+		freqLabel = m.FreqLabel
+	}
+	return mailer.Translatef(m.LocaleCode, "subject.analytics_digest", freqLabel, m.PeriodLabel)
 }
 
 func (m *AnalyticsDigest) Template() string { return "analytics_digest.mjml" }
@@ -115,6 +125,18 @@ func FormatPeriodLabel(start, end time.Time) string {
 
 func LocalizedFrequencyLabel(locale string, freq string) string {
 	return mailer.Translate(locale, "freq."+freq)
+}
+
+func LocalizedReportFrequencyLabel(locale string, freq string) string {
+	return mailer.Translate(locale, "freq.report."+freq)
+}
+
+func LocalizedDigestFrequencyLabel(locale string, freq string) string {
+	return mailer.Translate(locale, "freq.digest."+freq)
+}
+
+func LocalizedDigestSubjectFrequencyLabel(locale string, freq string) string {
+	return mailer.Translate(locale, "freq.digest_subject."+freq)
 }
 
 func FormatPeriodLabelForLocale(locale string, start, end time.Time) string {

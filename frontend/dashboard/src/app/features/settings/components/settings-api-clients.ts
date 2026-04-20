@@ -1,21 +1,21 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 
-import { toSignal } from "@angular/core/rxjs-interop";
-import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from "@angular/forms";
-import { finalize, forkJoin } from "rxjs";
-import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
+import { toSignal } from '@angular/core/rxjs-interop';
+import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
+import { finalize, forkJoin } from 'rxjs';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
-import { ConfirmationService } from "primeng/api";
-import { ButtonModule } from "primeng/button";
-import { ConfirmPopupModule } from "primeng/confirmpopup";
-import { InputTextModule } from "primeng/inputtext";
-import { SelectModule } from "primeng/select";
-import { TableModule } from "primeng/table";
+import { ConfirmationService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { ConfirmPopupModule } from 'primeng/confirmpopup';
+import { InputTextModule } from 'primeng/inputtext';
+import { SelectModule } from 'primeng/select';
+import { TableModule } from 'primeng/table';
 
-import { SettingsCard } from "@features/settings/components/settings-card";
-import { RelativeDateTime } from "@components/relative-date-time/relative-date-time";
-import { APIClient, APIClientSiteRole, APIClientsService, CreateAPIClientRequest, InstanceRole, SiteRole } from "@services/api-clients.service";
-import { PermissionService } from "@services/permission.service";
+import { SettingsCard } from '@features/settings/components/settings-card';
+import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
+import { APIClient, APIClientSiteRole, APIClientsService, CreateAPIClientRequest, InstanceRole, SiteRole } from '@services/api-clients.service';
+import { PermissionService } from '@services/permission.service';
 
 interface SelectOption<TValue extends string> {
     label: string;
@@ -49,10 +49,10 @@ const expiresAtNotPastValidator = (): ValidatorFn => {
 };
 
 @Component({
-    selector: "app-settings-api-clients",
+    selector: 'app-settings-api-clients',
     imports: [ReactiveFormsModule, ButtonModule, ConfirmPopupModule, InputTextModule, SelectModule, TableModule, SettingsCard, RelativeDateTime, TranslocoPipe],
-    templateUrl: "./settings-api-clients.html",
-    styleUrl: "./settings-api-clients.css",
+    templateUrl: './settings-api-clients.html',
+    styleUrl: './settings-api-clients.css',
     changeDetection: ChangeDetectionStrategy.OnPush,
     providers: [ConfirmationService]
 })
@@ -63,7 +63,7 @@ export class SettingsAPIClients {
     private readonly transloco = inject(TranslocoService);
     private readonly activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
-    readonly scope = input<"personal" | "team">("personal");
+    readonly scope = input<'personal' | 'team'>('personal');
     readonly teamId = input<string | null>(null);
 
     protected readonly isLoading = signal(false);
@@ -78,63 +78,63 @@ export class SettingsAPIClients {
     protected readonly selectedSiteRoles = signal<APIClientSiteRole[]>([]);
 
     protected readonly form = new FormGroup({
-        name: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.maxLength(120)] }),
-        description: new FormControl("", { nonNullable: true, validators: [Validators.maxLength(500)] }),
-        instanceRole: new FormControl<InstanceRole>("user", { nonNullable: true, validators: [Validators.required] }),
+        name: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(120)] }),
+        description: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(500)] }),
+        instanceRole: new FormControl<InstanceRole>('user', { nonNullable: true, validators: [Validators.required] }),
         expiresAt: new FormControl<string | null>(null, { validators: [expiresAtNotPastValidator()] })
     });
 
     protected readonly siteRoleForm = new FormGroup({
         siteID: new FormControl<string | null>(null, { validators: [Validators.required] }),
-        role: new FormControl<SiteRole>("viewer", { nonNullable: true, validators: [Validators.required] })
+        role: new FormControl<SiteRole>('viewer', { nonNullable: true, validators: [Validators.required] })
     });
 
     protected readonly maxInstanceRole = computed<InstanceRole>(() => {
         const current = this.perms.permissions()?.instance_role;
-        if (current === "owner" || current === "admin" || current === "user") {
+        if (current === 'owner' || current === 'admin' || current === 'user') {
             return current;
         }
-        return "user";
+        return 'user';
     });
 
     protected readonly instanceRoleOptions = computed<SelectOption<InstanceRole>[]>(() => {
         this.activeLanguage();
         const all: SelectOption<InstanceRole>[] = [
-            { label: this.transloco.translate("admin.roles.instanceOwner"), value: "owner" },
-            { label: this.transloco.translate("admin.roles.instanceAdmin"), value: "admin" },
-            { label: this.transloco.translate("admin.roles.user"), value: "user" }
+            { label: this.transloco.translate('admin.roles.instanceOwner'), value: 'owner' },
+            { label: this.transloco.translate('admin.roles.instanceAdmin'), value: 'admin' },
+            { label: this.transloco.translate('admin.roles.user'), value: 'user' }
         ];
 
         switch (this.maxInstanceRole()) {
-            case "owner":
+            case 'owner':
                 return all;
-            case "admin":
-                return all.filter((entry) => entry.value !== "owner");
+            case 'admin':
+                return all.filter((entry) => entry.value !== 'owner');
             default:
-                return all.filter((entry) => entry.value === "user");
+                return all.filter((entry) => entry.value === 'user');
         }
     });
 
     protected readonly siteRoleOptions = computed<SelectOption<SiteRole>[]>(() => {
         this.activeLanguage();
         return [
-            { label: this.transloco.translate("roles.owner"), value: "owner" },
-            { label: this.transloco.translate("roles.admin"), value: "admin" },
-            { label: this.transloco.translate("roles.editor"), value: "editor" },
-            { label: this.transloco.translate("roles.viewer"), value: "viewer" }
+            { label: this.transloco.translate('roles.owner'), value: 'owner' },
+            { label: this.transloco.translate('roles.admin'), value: 'admin' },
+            { label: this.transloco.translate('roles.editor'), value: 'editor' },
+            { label: this.transloco.translate('roles.viewer'), value: 'viewer' }
         ];
     });
 
     protected readonly siteOptions = computed<SelectOption<string>[]>(() => {
         return this.sites()
             .map((site) => ({ label: site.domain, value: site.id }))
-            .sort((a, b) => a.label.localeCompare(b.label, "en", { sensitivity: "base" }));
+            .sort((a, b) => a.label.localeCompare(b.label, 'en', { sensitivity: 'base' }));
     });
 
     protected readonly isEditing = computed(() => this.editingClientID() !== null);
-    protected readonly isTeamScope = computed(() => this.scope() === "team");
-    protected readonly titleKey = computed(() => (this.isTeamScope() ? "settings.apiClients.teamTitle" : "settings.apiClients.title"));
-    protected readonly descriptionKey = computed(() => (this.isTeamScope() ? "settings.apiClients.teamDescription" : "settings.apiClients.description"));
+    protected readonly isTeamScope = computed(() => this.scope() === 'team');
+    protected readonly titleKey = computed(() => (this.isTeamScope() ? 'settings.apiClients.teamTitle' : 'settings.apiClients.title'));
+    protected readonly descriptionKey = computed(() => (this.isTeamScope() ? 'settings.apiClients.teamDescription' : 'settings.apiClients.description'));
 
     constructor() {
         effect(() => {
@@ -159,7 +159,7 @@ export class SettingsAPIClients {
                     this.sites.set(sites);
                 },
                 error: () => {
-                    this.error.set("settings.apiClients.errors.loadFailed");
+                    this.error.set('settings.apiClients.errors.loadFailed');
                 }
             });
     }
@@ -175,7 +175,7 @@ export class SettingsAPIClients {
 
         const payload = this.buildPayload();
         if (!payload) {
-            this.error.set("settings.apiClients.errors.invalidExpiration");
+            this.error.set('settings.apiClients.errors.invalidExpiration');
             return;
         }
 
@@ -192,11 +192,11 @@ export class SettingsAPIClients {
                     next: (resp) => {
                         this.clients.update((current) => [resp.client, ...current]);
                         this.createdToken.set(resp.token);
-                        this.success.set("settings.apiClients.messages.created");
+                        this.success.set('settings.apiClients.messages.created');
                         this.resetForm();
                     },
                     error: () => {
-                        this.error.set("settings.apiClients.errors.createFailed");
+                        this.error.set('settings.apiClients.errors.createFailed');
                     }
                 });
             return;
@@ -205,7 +205,7 @@ export class SettingsAPIClients {
         const existing = this.clients().find((client) => client.id === editingClientID);
         if (!existing) {
             this.isSaving.set(false);
-            this.error.set("settings.apiClients.errors.notFound");
+            this.error.set('settings.apiClients.errors.notFound');
             return;
         }
 
@@ -222,12 +222,12 @@ export class SettingsAPIClients {
             .subscribe({
                 next: (updated) => {
                     this.clients.update((current) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
-                    this.success.set("settings.apiClients.messages.updated");
+                    this.success.set('settings.apiClients.messages.updated');
                     this.createdToken.set(null);
                     this.resetForm();
                 },
                 error: () => {
-                    this.error.set("settings.apiClients.errors.updateFailed");
+                    this.error.set('settings.apiClients.errors.updateFailed');
                 }
             });
     }
@@ -239,11 +239,11 @@ export class SettingsAPIClients {
         this.createdToken.set(null);
 
         this.form.controls.name.setValue(client.name);
-        this.form.controls.description.setValue(client.description ?? "");
+        this.form.controls.description.setValue(client.description ?? '');
         this.form.controls.instanceRole.setValue(this.resolveEditableInstanceRole(client.instance_role));
         this.form.controls.expiresAt.setValue(this.toDateTimeLocal(client.expires_at));
         this.selectedSiteRoles.set((client.site_roles ?? []).map((entry) => ({ ...entry })));
-        this.siteRoleForm.reset({ siteID: null, role: "viewer" });
+        this.siteRoleForm.reset({ siteID: null, role: 'viewer' });
     }
 
     protected cancelEdit(): void {
@@ -254,18 +254,18 @@ export class SettingsAPIClients {
 
     protected confirmDeleteClient(event: Event, client: APIClient): void {
         this.confirmationService.confirm({
-            key: "api-client-delete",
+            key: 'api-client-delete',
             target: event.currentTarget as EventTarget,
-            message: this.transloco.translate("settings.apiClients.confirmDelete", { name: client.name }),
-            icon: "pi pi-exclamation-triangle",
+            message: this.transloco.translate('settings.apiClients.confirmDelete', { name: client.name }),
+            icon: 'pi pi-exclamation-triangle',
             rejectButtonProps: {
-                label: this.transloco.translate("common.actions.cancel"),
-                severity: "secondary",
+                label: this.transloco.translate('common.actions.cancel'),
+                severity: 'secondary',
                 outlined: true
             },
             acceptButtonProps: {
-                label: this.transloco.translate("settings.apiClients.actions.delete"),
-                severity: "danger"
+                label: this.transloco.translate('settings.apiClients.actions.delete'),
+                severity: 'danger'
             },
             accept: () => this.deleteClient(client)
         });
@@ -281,13 +281,13 @@ export class SettingsAPIClients {
             .subscribe({
                 next: () => {
                     this.clients.update((current) => current.filter((entry) => entry.id !== client.id));
-                    this.success.set("settings.apiClients.messages.deleted");
+                    this.success.set('settings.apiClients.messages.deleted');
                     if (this.editingClientID() === client.id) {
                         this.resetForm();
                     }
                 },
                 error: () => {
-                    this.error.set("settings.apiClients.errors.deleteFailed");
+                    this.error.set('settings.apiClients.errors.deleteFailed');
                 }
             });
     }
@@ -302,7 +302,7 @@ export class SettingsAPIClients {
                 client.id,
                 {
                     name: client.name,
-                    description: client.description ?? "",
+                    description: client.description ?? '',
                     instance_role: this.resolveEditableInstanceRole(client.instance_role),
                     expires_at: client.expires_at ?? null,
                     revoked: !client.revoked_at,
@@ -314,10 +314,10 @@ export class SettingsAPIClients {
             .subscribe({
                 next: (updated) => {
                     this.clients.update((current) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
-                    this.success.set(updated.revoked_at ? "settings.apiClients.messages.revoked" : "settings.apiClients.messages.reactivated");
+                    this.success.set(updated.revoked_at ? 'settings.apiClients.messages.revoked' : 'settings.apiClients.messages.reactivated');
                 },
                 error: () => {
-                    this.error.set("settings.apiClients.errors.updateFailed");
+                    this.error.set('settings.apiClients.errors.updateFailed');
                 }
             });
     }
@@ -344,7 +344,7 @@ export class SettingsAPIClients {
             return [...current, { site_id: siteID, role }];
         });
 
-        this.siteRoleForm.reset({ siteID: null, role: "viewer" });
+        this.siteRoleForm.reset({ siteID: null, role: 'viewer' });
     }
 
     protected removeSiteScope(siteID: string): void {
@@ -357,7 +357,7 @@ export class SettingsAPIClients {
 
     protected copyCreatedToken(): void {
         const token = this.createdToken();
-        if (!token || typeof navigator === "undefined" || !navigator.clipboard) {
+        if (!token || typeof navigator === 'undefined' || !navigator.clipboard) {
             return;
         }
 
@@ -365,7 +365,7 @@ export class SettingsAPIClients {
     }
 
     protected expiresAtMin(): string {
-        return this.toDateTimeLocal(new Date().toISOString()) ?? "";
+        return this.toDateTimeLocal(new Date().toISOString()) ?? '';
     }
 
     private buildPayload(): CreateAPIClientRequest | null {
@@ -381,11 +381,11 @@ export class SettingsAPIClients {
         }
 
         const role = this.form.controls.instanceRole.value;
-        const resolvedRole = this.isTeamScope() ? "user" : this.resolveEditableInstanceRole(role);
+        const resolvedRole = this.isTeamScope() ? 'user' : this.resolveEditableInstanceRole(role);
 
         return {
-            name: (this.form.controls.name.value ?? "").trim(),
-            description: (this.form.controls.description.value ?? "").trim(),
+            name: (this.form.controls.name.value ?? '').trim(),
+            description: (this.form.controls.description.value ?? '').trim(),
             instance_role: resolvedRole,
             expires_at: expiresAt,
             site_roles: [...this.selectedSiteRoles()]
@@ -394,11 +394,11 @@ export class SettingsAPIClients {
 
     private resolveEditableInstanceRole(role: string | null | undefined): InstanceRole {
         if (this.isTeamScope()) {
-            return "user";
+            return 'user';
         }
         const options = this.instanceRoleOptions().map((entry) => entry.value);
-        const fallback = options[options.length - 1] ?? "user";
-        if (role === "owner" || role === "admin" || role === "user") {
+        const fallback = options[options.length - 1] ?? 'user';
+        if (role === 'owner' || role === 'admin' || role === 'user') {
             return options.includes(role) ? role : fallback;
         }
         return fallback;
@@ -408,19 +408,19 @@ export class SettingsAPIClients {
         this.editingClientID.set(null);
         this.selectedSiteRoles.set([]);
         this.form.reset({
-            name: "",
-            description: "",
+            name: '',
+            description: '',
             instanceRole: this.resolveEditableInstanceRole(this.maxInstanceRole()),
             expiresAt: null
         });
-        this.siteRoleForm.reset({ siteID: null, role: "viewer" });
+        this.siteRoleForm.reset({ siteID: null, role: 'viewer' });
     }
 
     private toDateTimeLocal(value: string | null | undefined): string | null {
         if (!value) return null;
         const parsed = new Date(value);
         if (Number.isNaN(parsed.getTime())) return null;
-        const pad = (n: number) => `${n}`.padStart(2, "0");
+        const pad = (n: number) => `${n}`.padStart(2, '0');
         const year = parsed.getFullYear();
         const month = pad(parsed.getMonth() + 1);
         const day = pad(parsed.getDate());

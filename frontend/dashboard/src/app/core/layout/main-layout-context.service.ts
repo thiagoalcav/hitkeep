@@ -1,15 +1,15 @@
-import { Injectable, TemplateRef, computed, effect, inject, signal } from "@angular/core";
-import { Router } from "@angular/router";
-import { TranslocoService } from "@jsverse/transloco";
-import { Team } from "@models/analytics.types";
-import { PermissionService } from "@services/permission.service";
-import { ShareService } from "@services/share.service";
-import { SiteSettingsService } from "@services/site-settings.service";
-import { TeamService } from "@services/team.service";
-import { UserPreferencesService } from "@services/user-preferences.service";
-import { UserProfileService } from "@services/user-profile.service";
-import { SiteService } from "@features/sites/services/site.service";
-import { AnalyticsService } from "@services/analytics.service";
+import { Injectable, TemplateRef, computed, effect, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
+import { TranslocoService } from '@jsverse/transloco';
+import { Team } from '@models/analytics.types';
+import { PermissionService } from '@services/permission.service';
+import { ShareService } from '@services/share.service';
+import { SiteSettingsService } from '@services/site-settings.service';
+import { TeamService } from '@services/team.service';
+import { UserPreferencesService } from '@services/user-preferences.service';
+import { UserProfileService } from '@services/user-profile.service';
+import { SiteService } from '@features/sites/services/site.service';
+import { AnalyticsService } from '@services/analytics.service';
 
 @Injectable()
 export class MainLayoutContextService {
@@ -25,18 +25,18 @@ export class MainLayoutContextService {
     private readonly transloco = inject(TranslocoService);
 
     readonly cloudHosted = signal(false);
-    readonly cloudSupportUrl = signal("");
+    readonly cloudSupportUrl = signal('');
     readonly canCreateTeams = computed(() => !this.cloudHosted());
     readonly isTeamAdmin = computed(() => {
         const role = this.teamService.activeTeam()?.role;
-        return role === "owner" || role === "admin";
+        return role === 'owner' || role === 'admin';
     });
 
     readonly isMobileDrawerOpen = signal(false);
     readonly isAddSiteVisible = signal(false);
     readonly isCreateTeamVisible = signal(false);
     readonly isSiteSettingsVisible = signal(false);
-    readonly siteSettingsTab = signal("0");
+    readonly siteSettingsTab = signal('0');
     readonly pageHeaderLeft = signal<TemplateRef<unknown> | null>(null);
     readonly pageHeaderRight = signal<TemplateRef<unknown> | null>(null);
     readonly hasPageHeader = computed(() => this.pageHeaderLeft() !== null);
@@ -45,7 +45,7 @@ export class MainLayoutContextService {
         if (!this.isSiteSettingsVisible()) {
             return true;
         }
-        const proceed = window.confirm(this.transloco.translate("sites.settings.unsavedChangesConfirm"));
+        const proceed = window.confirm(this.transloco.translate('sites.settings.unsavedChangesConfirm'));
         if (!proceed) {
             return false;
         }
@@ -63,7 +63,7 @@ export class MainLayoutContextService {
         this.initialized = true;
 
         const currentUrl = this.router.routerState.snapshot.url;
-        if (currentUrl.startsWith("/share") || this.shareService.isShareMode()) {
+        if (currentUrl.startsWith('/share') || this.shareService.isShareMode()) {
             return;
         }
 
@@ -71,11 +71,11 @@ export class MainLayoutContextService {
         this.analytics.getSystemStatus().subscribe({
             next: (status) => {
                 this.cloudHosted.set(Boolean(status.cloud?.hosted));
-                this.cloudSupportUrl.set(status.cloud?.support_url?.trim() ?? "");
+                this.cloudSupportUrl.set(status.cloud?.support_url?.trim() ?? '');
             },
             error: () => {
                 this.cloudHosted.set(false);
-                this.cloudSupportUrl.set("");
+                this.cloudSupportUrl.set('');
             }
         });
         this.siteService.loadSites();
@@ -93,7 +93,7 @@ export class MainLayoutContextService {
         });
     }
 
-    openSiteSettings(tab = "0") {
+    openSiteSettings(tab = '0') {
         if (this.siteService.activeSite()) {
             this.siteSettingsTab.set(tab);
             this.isSiteSettingsVisible.set(true);
@@ -143,8 +143,8 @@ export class MainLayoutContextService {
     }
 
     private redirectIfTeamAdminAccessWasLost() {
-        if (this.router.routerState.snapshot.url.startsWith("/admin/team") && !this.isTeamAdmin()) {
-            this.router.navigateByUrl("/dashboard");
+        if (this.router.routerState.snapshot.url.startsWith('/admin/team') && !this.isTeamAdmin()) {
+            this.router.navigateByUrl('/dashboard');
         }
     }
 }

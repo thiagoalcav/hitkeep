@@ -1,7 +1,7 @@
-import { inject } from "@angular/core";
-import { CanActivateFn, Router, UrlTree } from "@angular/router";
-import { PermissionService } from "@services/permission.service";
-import { map, of, switchMap } from "rxjs";
+import { inject } from '@angular/core';
+import { CanActivateFn, Router, UrlTree } from '@angular/router';
+import { PermissionService } from '@services/permission.service';
+import { map, of, switchMap } from 'rxjs';
 
 export const adminGuard: CanActivateFn = () => {
     const perms = inject(PermissionService);
@@ -11,7 +11,7 @@ export const adminGuard: CanActivateFn = () => {
         if (perms.isInstanceAdmin()) {
             return true;
         }
-        return router.createUrlTree(["/dashboard"]);
+        return router.createUrlTree(['/dashboard']);
     };
 
     if (perms.permissions()) {

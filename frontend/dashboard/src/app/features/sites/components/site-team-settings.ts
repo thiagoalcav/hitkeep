@@ -1,20 +1,20 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from "@angular/core";
-import { toSignal } from "@angular/core/rxjs-interop";
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
-import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
-import { compatForm } from "@angular/forms/signals/compat";
-import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { RelativeDateTime } from "@components/relative-date-time/relative-date-time";
-import { Site } from "@models/analytics.types";
-import { TeamService } from "@services/team.service";
-import { SiteService } from "@features/sites/services/site.service";
-import { ConfirmationService } from "primeng/api";
-import { ButtonModule } from "primeng/button";
-import { ConfirmPopupModule } from "primeng/confirmpopup";
-import { InputTextModule } from "primeng/inputtext";
-import { MessageModule } from "primeng/message";
-import { SelectModule } from "primeng/select";
-import { TableModule } from "primeng/table";
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
+import { Site } from '@models/analytics.types';
+import { TeamService } from '@services/team.service';
+import { SiteService } from '@features/sites/services/site.service';
+import { ConfirmationService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { ConfirmPopupModule } from 'primeng/confirmpopup';
+import { InputTextModule } from 'primeng/inputtext';
+import { MessageModule } from 'primeng/message';
+import { SelectModule } from 'primeng/select';
+import { TableModule } from 'primeng/table';
 
 interface SiteMember {
     id: string;
@@ -25,7 +25,7 @@ interface SiteMember {
 }
 
 @Component({
-    selector: "app-site-team-settings",
+    selector: 'app-site-team-settings',
     imports: [ReactiveFormsModule, ConfirmPopupModule, TableModule, ButtonModule, SelectModule, InputTextModule, MessageModule, RelativeDateTime, TranslocoPipe],
     providers: [ConfirmationService],
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -141,22 +141,22 @@ export class SiteTeamSettings {
     protected transferSuccessKey = signal<string | null>(null);
 
     private readonly memberFormModel = signal({
-        email: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.email] }),
-        role: new FormControl("viewer", { nonNullable: true, validators: [Validators.required] })
+        email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
+        role: new FormControl('viewer', { nonNullable: true, validators: [Validators.required] })
     });
     protected readonly memberForm = compatForm(this.memberFormModel);
     private readonly transferFormModel = signal({
-        teamId: new FormControl("", { nonNullable: true, validators: [Validators.required] })
+        teamId: new FormControl('', { nonNullable: true, validators: [Validators.required] })
     });
     protected readonly transferForm = compatForm(this.transferFormModel);
 
     protected roleOptions = computed(() => {
         this.activeLanguage();
         return [
-            { label: this.transloco.translate("roles.owner"), value: "owner" },
-            { label: this.transloco.translate("roles.admin"), value: "admin" },
-            { label: this.transloco.translate("roles.editor"), value: "editor" },
-            { label: this.transloco.translate("roles.viewer"), value: "viewer" }
+            { label: this.transloco.translate('roles.owner'), value: 'owner' },
+            { label: this.transloco.translate('roles.admin'), value: 'admin' },
+            { label: this.transloco.translate('roles.editor'), value: 'editor' },
+            { label: this.transloco.translate('roles.viewer'), value: 'viewer' }
         ];
     });
     protected readonly availableTransferTeams = computed(() => {
@@ -164,7 +164,7 @@ export class SiteTeamSettings {
         const currentTeamId = this.teamService.activeTeamId();
         return this.teamService
             .teams()
-            .filter((team) => team.id !== currentTeamId && (team.role === "owner" || team.role === "admin"))
+            .filter((team) => team.id !== currentTeamId && (team.role === 'owner' || team.role === 'admin'))
             .map((team) => ({
                 label: team.name,
                 value: team.id
@@ -191,7 +191,7 @@ export class SiteTeamSettings {
                 this.isLoading.set(false);
             },
             error: (err) => {
-                console.error("Failed to load members", err);
+                console.error('Failed to load members', err);
                 this.isLoading.set(false);
             }
         });
@@ -211,14 +211,14 @@ export class SiteTeamSettings {
             })
             .subscribe({
                 next: () => {
-                    this.memberForm.email().control().reset("");
+                    this.memberForm.email().control().reset('');
                     this.isAdding.set(false);
                     this.loadMembers(siteId);
                 },
                 error: (err) => {
-                    console.error("Failed to add member", err);
+                    console.error('Failed to add member', err);
                     this.isAdding.set(false);
-                    alert(this.transloco.translate("sites.team.errors.addFailed"));
+                    alert(this.transloco.translate('sites.team.errors.addFailed'));
                 }
             });
     }
@@ -238,8 +238,8 @@ export class SiteTeamSettings {
             })
             .subscribe({
                 next: () => {
-                    this.transferForm.teamId().control().reset("");
-                    this.transferSuccessKey.set("sites.team.transfer.success");
+                    this.transferForm.teamId().control().reset('');
+                    this.transferSuccessKey.set('sites.team.transfer.success');
                     this.siteService.sites.update((sites) => sites.filter((site) => site.id !== siteId));
                     if (this.siteService.activeSite()?.id === siteId) {
                         this.siteService.activeSite.set(null);
@@ -249,9 +249,9 @@ export class SiteTeamSettings {
                 },
                 error: (error: unknown) => {
                     if (error instanceof HttpErrorResponse && error.status === 403) {
-                        this.transferErrorKey.set("sites.team.transfer.errors.forbidden");
+                        this.transferErrorKey.set('sites.team.transfer.errors.forbidden');
                     } else {
-                        this.transferErrorKey.set("sites.team.transfer.errors.generic");
+                        this.transferErrorKey.set('sites.team.transfer.errors.generic');
                     }
                     this.isTransferring.set(false);
                 }
@@ -263,24 +263,24 @@ export class SiteTeamSettings {
         if (!siteId) return;
 
         this.confirmationService.confirm({
-            key: "site-member-remove",
+            key: 'site-member-remove',
             target: event.currentTarget as EventTarget,
-            message: this.transloco.translate("sites.team.confirmRemove", { email: member.email }),
-            icon: "pi pi-exclamation-triangle",
+            message: this.transloco.translate('sites.team.confirmRemove', { email: member.email }),
+            icon: 'pi pi-exclamation-triangle',
             rejectButtonProps: {
-                label: this.transloco.translate("common.actions.cancel"),
-                severity: "secondary",
+                label: this.transloco.translate('common.actions.cancel'),
+                severity: 'secondary',
                 outlined: true
             },
             acceptButtonProps: {
-                label: this.transloco.translate("teams.management.removeAction"),
-                severity: "danger"
+                label: this.transloco.translate('teams.management.removeAction'),
+                severity: 'danger'
             },
             accept: () => {
                 this.http.delete(`/api/sites/${siteId}/members/${member.user_id}`).subscribe({
                     next: () => this.loadMembers(siteId),
                     error: (err) => {
-                        console.error("Failed to remove member", err);
+                        console.error('Failed to remove member', err);
                     }
                 });
             }
@@ -293,16 +293,16 @@ export class SiteTeamSettings {
 
     getRoleBadgeClass(role: string): string {
         switch (role) {
-            case "owner":
-                return "bg-red-100 text-red-700";
-            case "admin":
-                return "bg-purple-100 text-purple-700";
-            case "editor":
-                return "bg-blue-100 text-blue-700";
-            case "viewer":
-                return "bg-gray-100 text-gray-700";
+            case 'owner':
+                return 'bg-red-100 text-red-700';
+            case 'admin':
+                return 'bg-purple-100 text-purple-700';
+            case 'editor':
+                return 'bg-blue-100 text-blue-700';
+            case 'viewer':
+                return 'bg-gray-100 text-gray-700';
             default:
-                return "bg-gray-100 text-gray-700";
+                return 'bg-gray-100 text-gray-700';
         }
     }
 }

@@ -1,57 +1,57 @@
-import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, linkedSignal, signal, untracked } from "@angular/core";
-import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { FormsModule } from "@angular/forms";
-import { finalize, forkJoin } from "rxjs";
-import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { TranslocoLocaleService } from "@jsverse/transloco-locale";
-import { SelectModule } from "primeng/select";
-import { ButtonModule } from "primeng/button";
-import { CardModule } from "primeng/card";
-import { SplitButtonModule } from "primeng/splitbutton";
-import { MenuItem } from "primeng/api";
-import { SiteService } from "@features/sites/services/site.service";
-import { AnalyticsService } from "@core/services/analytics.service";
-import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from "@components/range-toolbar/range-toolbar";
-import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
-import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
-import { SeriesChart, SeriesChartPoint, SeriesDefinition } from "@features/analytics/components/series-chart";
-import { KpiCard } from "@features/analytics/components/kpi-card";
-import { MetricList } from "@features/analytics/components/metric-list";
-import { EventAudience, EventSeriesPoint, MetricStat } from "@models/analytics.types";
-import { injectActiveLang } from "@core/i18n/active-lang";
-import { buildTakeoutExportMenuItems, DEFAULT_HITS_EXPORT_FORMAT, TakeoutExportFormat } from "@core/export/export-formats";
-import { TakeoutDownloadService } from "@services/takeout-download.service";
-import { calcDelta, ChatbotMetricKey, ChatbotSeriesState, computeComparisonPeriod, createEmptySeries, safeRate, totalFor } from "@pages/ai-chatbots/ai-chatbots.utils";
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
+import { finalize, forkJoin } from 'rxjs';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoLocaleService } from '@jsverse/transloco-locale';
+import { SelectModule } from 'primeng/select';
+import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
+import { SplitButtonModule } from 'primeng/splitbutton';
+import { MenuItem } from 'primeng/api';
+import { SiteService } from '@features/sites/services/site.service';
+import { AnalyticsService } from '@core/services/analytics.service';
+import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from '@components/range-toolbar/range-toolbar';
+import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
+import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
+import { SeriesChart, SeriesChartPoint, SeriesDefinition } from '@features/analytics/components/series-chart';
+import { KpiCard } from '@features/analytics/components/kpi-card';
+import { MetricList } from '@features/analytics/components/metric-list';
+import { EventAudience, EventSeriesPoint, MetricStat } from '@models/analytics.types';
+import { injectActiveLang } from '@core/i18n/active-lang';
+import { buildTakeoutExportMenuItems, DEFAULT_HITS_EXPORT_FORMAT, TakeoutExportFormat } from '@core/export/export-formats';
+import { TakeoutDownloadService } from '@services/takeout-download.service';
+import { calcDelta, ChatbotMetricKey, ChatbotSeriesState, computeComparisonPeriod, createEmptySeries, safeRate, totalFor } from '@pages/ai-chatbots/ai-chatbots.utils';
 
-type ScopeKey = "provider" | "bot_id" | "surface" | "model";
+type ScopeKey = 'provider' | 'bot_id' | 'surface' | 'model';
 interface ScopeFilter {
     key: ScopeKey;
     value: string;
 }
 
 interface FilterChip {
-    key: "scope";
+    key: 'scope';
     label: string;
 }
 
 const CHATBOT_EVENTS: Record<ChatbotMetricKey, string> = {
-    started: "assistant.chat_started",
-    sent: "assistant.message_sent",
-    rendered: "assistant.response_rendered",
-    clicked: "assistant.citation_clicked",
-    handoff: "assistant.handoff_requested",
-    assisted: "assistant.goal_assisted"
+    started: 'assistant.chat_started',
+    sent: 'assistant.message_sent',
+    rendered: 'assistant.response_rendered',
+    clicked: 'assistant.citation_clicked',
+    handoff: 'assistant.handoff_requested',
+    assisted: 'assistant.goal_assisted'
 };
 
 @Component({
-    selector: "app-ai-chatbots",
+    selector: 'app-ai-chatbots',
     imports: [FormsModule, TranslocoPipe, SelectModule, ButtonModule, CardModule, SplitButtonModule, RangeToolbar, PageHeader, PageHeaderLeft, PageBreadcrumb, SeriesChart, KpiCard, MetricList],
-    templateUrl: "./ai-chatbots.html",
-    styleUrl: "./ai-chatbots.css",
+    templateUrl: './ai-chatbots.html',
+    styleUrl: './ai-chatbots.css',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AIChatbots {
-    protected readonly docsUrl = "https://hitkeep.com/guides/analytics/ai-chatbot-analytics/";
+    protected readonly docsUrl = 'https://hitkeep.com/guides/analytics/ai-chatbot-analytics/';
     private readonly siteService = inject(SiteService);
     private readonly analyticsService = inject(AnalyticsService);
     private readonly localeService = inject(TranslocoLocaleService);
@@ -64,14 +64,14 @@ export class AIChatbots {
     protected readonly selectedRange = linkedSignal<RangeOption[], RangeOption>({
         source: this.timeRanges,
         computation: (ranges, previous) => {
-            const value = previous?.value.value ?? "30d";
+            const value = previous?.value.value ?? '30d';
             return ranges.find((r) => r.value === value) ?? ranges[2]!;
         }
     });
     protected readonly customRangeDates = signal<Date[] | null>(null);
     protected readonly comparisonRange = signal<{ from: string; to: string } | null>(null);
 
-    protected readonly selectedScopeKey = signal<ScopeKey>("provider");
+    protected readonly selectedScopeKey = signal<ScopeKey>('provider');
     protected readonly selectedScopeValue = signal<string | null>(null);
     protected readonly activeScopeFilter = computed<ScopeFilter | null>(() => {
         const value = this.selectedScopeValue();
@@ -92,7 +92,7 @@ export class AIChatbots {
     protected readonly isLoadingComparison = signal(false);
     protected readonly isLoadingAudience = signal(false);
     protected readonly isExporting = signal(false);
-    protected readonly exportState = signal<"idle" | "success" | "error">("idle");
+    protected readonly exportState = signal<'idle' | 'success' | 'error'>('idle');
 
     protected readonly activeSite = computed(() => this.siteService.activeSite());
     protected readonly noSite = computed(() => !this.activeSite());
@@ -101,10 +101,10 @@ export class AIChatbots {
     protected readonly scopeKeyOptions = computed(() => {
         this.activeLanguage();
         return [
-            { label: this.transloco.translate("aiChatbots.filters.provider"), value: "provider" },
-            { label: this.transloco.translate("aiChatbots.filters.botId"), value: "bot_id" },
-            { label: this.transloco.translate("aiChatbots.filters.surface"), value: "surface" },
-            { label: this.transloco.translate("aiChatbots.filters.model"), value: "model" }
+            { label: this.transloco.translate('aiChatbots.filters.provider'), value: 'provider' },
+            { label: this.transloco.translate('aiChatbots.filters.botId'), value: 'bot_id' },
+            { label: this.transloco.translate('aiChatbots.filters.surface'), value: 'surface' },
+            { label: this.transloco.translate('aiChatbots.filters.model'), value: 'model' }
         ] satisfies { label: string; value: ScopeKey }[];
     });
     protected readonly scopeValueOptions = computed(() => this.scopeValues().map((item) => ({ label: item.name, value: item.name })));
@@ -112,17 +112,17 @@ export class AIChatbots {
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         this.activeLanguage();
         const site = this.activeSite();
-        if (!site) return [{ label: this.transloco.translate("aiChatbots.title"), isCurrent: true }];
+        if (!site) return [{ label: this.transloco.translate('aiChatbots.title'), isCurrent: true }];
         return [
-            { label: site.domain, favicon: site, routerLink: "/dashboard" },
-            { label: this.transloco.translate("aiChatbots.title"), isCurrent: true }
+            { label: site.domain, favicon: site, routerLink: '/dashboard' },
+            { label: this.transloco.translate('aiChatbots.title'), isCurrent: true }
         ];
     });
 
     protected readonly isShortRange = computed(() => {
-        if (this.selectedRange().value === "24h") return true;
+        if (this.selectedRange().value === '24h') return true;
         const dates = this.customRangeDates();
-        if (this.selectedRange().value === "custom" && dates && dates.length === 2 && dates[0] && dates[1]) {
+        if (this.selectedRange().value === 'custom' && dates && dates.length === 2 && dates[0] && dates[1]) {
             return dates[1].getTime() - dates[0].getTime() < 48 * 60 * 60 * 1000;
         }
         return false;
@@ -138,10 +138,10 @@ export class AIChatbots {
                 byTime.set(point.time, current);
             }
         };
-        merge(state.started, "started");
-        merge(state.rendered, "rendered");
-        merge(state.handoff, "handoff");
-        merge(state.assisted, "assisted");
+        merge(state.started, 'started');
+        merge(state.rendered, 'rendered');
+        merge(state.handoff, 'handoff');
+        merge(state.assisted, 'assisted');
         return [...byTime.values()].sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
     });
 
@@ -155,29 +155,29 @@ export class AIChatbots {
                 byTime.set(point.time, current);
             }
         };
-        merge(state.started, "started");
-        merge(state.rendered, "rendered");
-        merge(state.handoff, "handoff");
-        merge(state.assisted, "assisted");
+        merge(state.started, 'started');
+        merge(state.rendered, 'rendered');
+        merge(state.handoff, 'handoff');
+        merge(state.assisted, 'assisted');
         return [...byTime.values()].sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
     });
 
     protected readonly chartConfig = computed<SeriesDefinition[]>(() => {
         this.activeLanguage();
         return [
-            { key: "started", label: this.transloco.translate("aiChatbots.kpis.conversations"), color: "#0f766e", gradientFrom: "rgba(15, 118, 110, 0.4)", gradientTo: "rgba(15, 118, 110, 0.0)" },
-            { key: "rendered", label: this.transloco.translate("aiChatbots.kpis.responses"), color: "#2563eb", gradientFrom: "rgba(37, 99, 235, 0.35)", gradientTo: "rgba(37, 99, 235, 0.0)" },
-            { key: "handoff", label: this.transloco.translate("aiChatbots.kpis.handoffs"), color: "#dc2626", gradientFrom: "rgba(220, 38, 38, 0.3)", gradientTo: "rgba(220, 38, 38, 0.0)" },
-            { key: "assisted", label: this.transloco.translate("aiChatbots.kpis.assistedConversions"), color: "#a16207", gradientFrom: "rgba(161, 98, 7, 0.3)", gradientTo: "rgba(161, 98, 7, 0.0)" }
+            { key: 'started', label: this.transloco.translate('aiChatbots.kpis.conversations'), color: '#0f766e', gradientFrom: 'rgba(15, 118, 110, 0.4)', gradientTo: 'rgba(15, 118, 110, 0.0)' },
+            { key: 'rendered', label: this.transloco.translate('aiChatbots.kpis.responses'), color: '#2563eb', gradientFrom: 'rgba(37, 99, 235, 0.35)', gradientTo: 'rgba(37, 99, 235, 0.0)' },
+            { key: 'handoff', label: this.transloco.translate('aiChatbots.kpis.handoffs'), color: '#dc2626', gradientFrom: 'rgba(220, 38, 38, 0.3)', gradientTo: 'rgba(220, 38, 38, 0.0)' },
+            { key: 'assisted', label: this.transloco.translate('aiChatbots.kpis.assistedConversions'), color: '#a16207', gradientFrom: 'rgba(161, 98, 7, 0.3)', gradientTo: 'rgba(161, 98, 7, 0.0)' }
         ];
     });
 
     protected readonly comparisonLabel = computed(() => {
         this.activeLanguage();
         const range = this.comparisonRange();
-        if (!range) return "";
+        if (!range) return '';
         const showYear = new Date(range.from).getFullYear() !== new Date().getFullYear();
-        const options = showYear ? ({ month: "short", day: "numeric", year: "numeric" } as const) : ({ month: "short", day: "numeric" } as const);
+        const options = showYear ? ({ month: 'short', day: 'numeric', year: 'numeric' } as const) : ({ month: 'short', day: 'numeric' } as const);
         const format = (value: string) => this.localeService.localizeDate(new Date(value), undefined, options);
         return `${format(range.from)} – ${format(range.to)}`;
     });
@@ -187,19 +187,19 @@ export class AIChatbots {
         if (!value) return [];
         this.activeLanguage();
         const keyLabel = this.scopeKeyOptions().find((item) => item.value === this.selectedScopeKey())?.label ?? this.selectedScopeKey();
-        return [{ key: "scope", label: `${keyLabel}: ${value}` }];
+        return [{ key: 'scope', label: `${keyLabel}: ${value}` }];
     });
 
     protected readonly exportUrl = computed(() => {
         const site = this.activeSite();
         const dates = this.getCurrentDateRange();
-        if (!site || !dates) return "";
+        if (!site || !dates) return '';
 
         const params = new URLSearchParams({ from: dates.from, to: dates.to });
         const scopeFilter = this.activeScopeFilter();
         if (scopeFilter) {
-            params.set("scope_key", scopeFilter.key);
-            params.set("scope_value", scopeFilter.value);
+            params.set('scope_key', scopeFilter.key);
+            params.set('scope_value', scopeFilter.value);
         }
 
         return `/api/sites/${site.id}/ai-chatbots/export?${params.toString()}`;
@@ -210,19 +210,19 @@ export class AIChatbots {
         return buildTakeoutExportMenuItems(this.transloco, (format) => this.exportFiltered(format));
     });
 
-    protected readonly totalStarted = computed(() => this.totalFor("started", this.series()));
-    protected readonly totalSent = computed(() => this.totalFor("sent", this.series()));
-    protected readonly totalRendered = computed(() => this.totalFor("rendered", this.series()));
-    protected readonly totalClicked = computed(() => this.totalFor("clicked", this.series()));
-    protected readonly totalHandoff = computed(() => this.totalFor("handoff", this.series()));
-    protected readonly totalAssisted = computed(() => this.totalFor("assisted", this.series()));
+    protected readonly totalStarted = computed(() => this.totalFor('started', this.series()));
+    protected readonly totalSent = computed(() => this.totalFor('sent', this.series()));
+    protected readonly totalRendered = computed(() => this.totalFor('rendered', this.series()));
+    protected readonly totalClicked = computed(() => this.totalFor('clicked', this.series()));
+    protected readonly totalHandoff = computed(() => this.totalFor('handoff', this.series()));
+    protected readonly totalAssisted = computed(() => this.totalFor('assisted', this.series()));
 
-    protected readonly comparisonStarted = computed(() => this.totalFor("started", this.comparisonSeries()));
-    protected readonly comparisonSent = computed(() => this.totalFor("sent", this.comparisonSeries()));
-    protected readonly comparisonRendered = computed(() => this.totalFor("rendered", this.comparisonSeries()));
-    protected readonly comparisonClicked = computed(() => this.totalFor("clicked", this.comparisonSeries()));
-    protected readonly comparisonHandoff = computed(() => this.totalFor("handoff", this.comparisonSeries()));
-    protected readonly comparisonAssisted = computed(() => this.totalFor("assisted", this.comparisonSeries()));
+    protected readonly comparisonStarted = computed(() => this.totalFor('started', this.comparisonSeries()));
+    protected readonly comparisonSent = computed(() => this.totalFor('sent', this.comparisonSeries()));
+    protected readonly comparisonRendered = computed(() => this.totalFor('rendered', this.comparisonSeries()));
+    protected readonly comparisonClicked = computed(() => this.totalFor('clicked', this.comparisonSeries()));
+    protected readonly comparisonHandoff = computed(() => this.totalFor('handoff', this.comparisonSeries()));
+    protected readonly comparisonAssisted = computed(() => this.totalFor('assisted', this.comparisonSeries()));
 
     protected readonly handoffRate = computed(() => this.safeRate(this.totalHandoff(), this.totalStarted()));
     protected readonly comparisonHandoffRate = computed(() => this.safeRate(this.comparisonHandoff(), this.comparisonStarted()));
@@ -232,12 +232,12 @@ export class AIChatbots {
     protected readonly kpiCards = computed(() => {
         this.activeLanguage();
         return [
-            this.kpi(this.transloco.translate("aiChatbots.kpis.conversations"), this.totalStarted(), this.calcDelta(this.totalStarted(), this.comparisonStarted())),
-            this.kpi(this.transloco.translate("aiChatbots.kpis.prompts"), this.totalSent(), this.calcDelta(this.totalSent(), this.comparisonSent())),
-            this.kpi(this.transloco.translate("aiChatbots.kpis.responses"), this.totalRendered(), this.calcDelta(this.totalRendered(), this.comparisonRendered())),
-            this.kpi(this.transloco.translate("aiChatbots.kpis.assistedConversions"), this.totalAssisted(), this.calcDelta(this.totalAssisted(), this.comparisonAssisted())),
-            this.kpi(this.transloco.translate("aiChatbots.kpis.handoffRate"), `${this.handoffRate().toFixed(1)}%`, this.calcDelta(this.handoffRate(), this.comparisonHandoffRate())),
-            this.kpi(this.transloco.translate("aiChatbots.kpis.citationCtr"), `${this.citationCtr().toFixed(1)}%`, this.calcDelta(this.citationCtr(), this.comparisonCitationCtr()))
+            this.kpi(this.transloco.translate('aiChatbots.kpis.conversations'), this.totalStarted(), this.calcDelta(this.totalStarted(), this.comparisonStarted())),
+            this.kpi(this.transloco.translate('aiChatbots.kpis.prompts'), this.totalSent(), this.calcDelta(this.totalSent(), this.comparisonSent())),
+            this.kpi(this.transloco.translate('aiChatbots.kpis.responses'), this.totalRendered(), this.calcDelta(this.totalRendered(), this.comparisonRendered())),
+            this.kpi(this.transloco.translate('aiChatbots.kpis.assistedConversions'), this.totalAssisted(), this.calcDelta(this.totalAssisted(), this.comparisonAssisted())),
+            this.kpi(this.transloco.translate('aiChatbots.kpis.handoffRate'), `${this.handoffRate().toFixed(1)}%`, this.calcDelta(this.handoffRate(), this.comparisonHandoffRate())),
+            this.kpi(this.transloco.translate('aiChatbots.kpis.citationCtr'), `${this.citationCtr().toFixed(1)}%`, this.calcDelta(this.citationCtr(), this.comparisonCitationCtr()))
         ];
     });
 
@@ -298,7 +298,7 @@ export class AIChatbots {
         if (!url || this.isExporting()) return;
 
         this.isExporting.set(true);
-        this.exportState.set("idle");
+        this.exportState.set('idle');
 
         this.takeoutDownloadService
             .downloadFromUrl(url, this.buildExportFilename(format))
@@ -307,8 +307,8 @@ export class AIChatbots {
                 finalize(() => this.isExporting.set(false))
             )
             .subscribe({
-                next: () => this.exportState.set("success"),
-                error: () => this.exportState.set("error")
+                next: () => this.exportState.set('success'),
+                error: () => this.exportState.set('error')
             });
     }
 
@@ -325,9 +325,9 @@ export class AIChatbots {
             clicked: this.analyticsService.getEventTimeseries(siteId, from, to, CHATBOT_EVENTS.clicked, propertyKey, propertyValue),
             handoff: this.analyticsService.getEventTimeseries(siteId, from, to, CHATBOT_EVENTS.handoff, propertyKey, propertyValue),
             assisted: this.analyticsService.getEventTimeseries(siteId, from, to, CHATBOT_EVENTS.assisted, propertyKey, propertyValue),
-            intents: this.analyticsService.getEventPropertyBreakdown(siteId, from, to, CHATBOT_EVENTS.sent, "intent"),
-            providers: this.analyticsService.getEventPropertyBreakdown(siteId, from, to, CHATBOT_EVENTS.started, "provider"),
-            surfaces: this.analyticsService.getEventPropertyBreakdown(siteId, from, to, CHATBOT_EVENTS.started, "surface")
+            intents: this.analyticsService.getEventPropertyBreakdown(siteId, from, to, CHATBOT_EVENTS.sent, 'intent'),
+            providers: this.analyticsService.getEventPropertyBreakdown(siteId, from, to, CHATBOT_EVENTS.started, 'provider'),
+            surfaces: this.analyticsService.getEventPropertyBreakdown(siteId, from, to, CHATBOT_EVENTS.started, 'surface')
         })
             .pipe(
                 finalize(() => {
@@ -418,7 +418,7 @@ export class AIChatbots {
         const end = new Date();
         const start = new Date();
 
-        if (range.value === "custom") {
+        if (range.value === 'custom') {
             const dates = this.customRangeDates();
             if (dates && dates.length === 2 && dates[0] && dates[1]) {
                 return { from: dates[0].toISOString(), to: dates[1].toISOString() };
@@ -427,13 +427,13 @@ export class AIChatbots {
         }
 
         switch (range.value) {
-            case "24h":
+            case '24h':
                 start.setHours(end.getHours() - 24);
                 break;
-            case "7d":
+            case '7d':
                 start.setDate(end.getDate() - 7);
                 break;
-            case "1y":
+            case '1y':
                 start.setFullYear(end.getFullYear() - 1);
                 break;
             default:
@@ -464,19 +464,19 @@ export class AIChatbots {
 
     private buildExportUrl(format: TakeoutExportFormat): string {
         const baseUrl = this.exportUrl();
-        if (!baseUrl) return "";
+        if (!baseUrl) return '';
         const url = new URL(baseUrl, window.location.origin);
-        url.searchParams.set("format", format);
+        url.searchParams.set('format', format);
         return url.pathname + `?${url.searchParams.toString()}`;
     }
 
     private buildExportFilename(format: TakeoutExportFormat): string {
-        const siteDomain = this.activeSite()?.domain || "site";
+        const siteDomain = this.activeSite()?.domain || 'site';
         const safeDomain = siteDomain
             .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/(^-|-$)/g, "");
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)/g, '');
         const dateStamp = new Date().toISOString().slice(0, 10);
-        return `${safeDomain || "site"}-ai-chatbots-${dateStamp}.${format}`;
+        return `${safeDomain || 'site'}-ai-chatbots-${dateStamp}.${format}`;
     }
 }

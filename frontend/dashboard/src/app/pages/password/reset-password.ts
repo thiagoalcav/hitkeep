@@ -1,25 +1,25 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 
-import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
-import { compatForm } from "@angular/forms/signals/compat";
-import { ActivatedRoute, Router } from "@angular/router";
-import { finalize } from "rxjs";
-import { TranslocoPipe } from "@jsverse/transloco";
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { ActivatedRoute, Router } from '@angular/router';
+import { finalize } from 'rxjs';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 // PrimeNG
-import { ButtonModule } from "primeng/button";
-import { PasswordModule } from "primeng/password";
+import { ButtonModule } from 'primeng/button';
+import { PasswordModule } from 'primeng/password';
 
 // Core
-import { Brand } from "@components/brand/brand";
-import { AuthService } from "@services/auth.service";
+import { Brand } from '@components/brand/brand';
+import { AuthService } from '@services/auth.service';
 
 @Component({
-    selector: "app-reset-password",
+    selector: 'app-reset-password',
     standalone: true,
     imports: [ReactiveFormsModule, Brand, ButtonModule, PasswordModule, TranslocoPipe],
-    templateUrl: "./reset-password.html",
-    styleUrl: "./reset-password.css",
+    templateUrl: './reset-password.html',
+    styleUrl: './reset-password.css',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ResetPassword implements OnInit {
@@ -33,14 +33,14 @@ export class ResetPassword implements OnInit {
     protected successMessage = signal(false);
 
     private readonly formModel = signal({
-        password: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.minLength(8)] })
+        password: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(8)] })
     });
     protected readonly form = compatForm(this.formModel);
 
     ngOnInit() {
-        this.token = this.route.snapshot.queryParamMap.get("token");
+        this.token = this.route.snapshot.queryParamMap.get('token');
         if (!this.token) {
-            this.errorMessage.set("password.reset.errors.invalidLink");
+            this.errorMessage.set('password.reset.errors.invalidLink');
         }
     }
 
@@ -62,15 +62,15 @@ export class ResetPassword implements OnInit {
                 next: () => this.successMessage.set(true),
                 error: (err) => {
                     if (err.status === 400) {
-                        this.errorMessage.set("password.reset.errors.expiredOrInvalid");
+                        this.errorMessage.set('password.reset.errors.expiredOrInvalid');
                     } else {
-                        this.errorMessage.set("password.reset.errors.resetFailed");
+                        this.errorMessage.set('password.reset.errors.resetFailed');
                     }
                 }
             });
     }
 
     goToLogin() {
-        this.router.navigate(["/login"]);
+        this.router.navigate(['/login']);
     }
 }

@@ -1,16 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from "@angular/core";
-import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { toSignal } from "@angular/core/rxjs-interop";
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { toSignal } from '@angular/core/rxjs-interop';
 
-import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
-import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
-import { SettingsAPIClients } from "@features/settings/components/settings-api-clients";
+import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
+import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
+import { SettingsAPIClients } from '@features/settings/components/settings-api-clients';
 
 @Component({
-    selector: "app-api-clients-page",
+    selector: 'app-api-clients-page',
     imports: [PageHeader, PageHeaderLeft, PageBreadcrumb, SettingsAPIClients, TranslocoPipe],
-    templateUrl: "./api-clients.html",
-    styleUrl: "./api-clients.css",
+    templateUrl: './api-clients.html',
+    styleUrl: './api-clients.css',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class APIClientsPage {
@@ -20,8 +20,8 @@ export class APIClientsPage {
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         this.activeLanguage();
         return [
-            { label: this.transloco.translate("nav.integration"), routerLink: "/integration/api-clients" },
-            { label: this.transloco.translate("nav.apiClients"), isCurrent: true }
+            { label: this.transloco.translate('nav.integration'), routerLink: '/integration/api-clients' },
+            { label: this.transloco.translate('nav.apiClients'), isCurrent: true }
         ];
     });
 }

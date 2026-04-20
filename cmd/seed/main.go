@@ -275,6 +275,26 @@ type chatbotBot struct {
 	model    string
 }
 
+type autoTrackedOutboundTarget struct {
+	host     string
+	path     string
+	protocol string
+}
+
+type autoTrackedDownloadTarget struct {
+	host string
+	path string
+	ext  string
+}
+
+type autoTrackedFormTarget struct {
+	host       string
+	path       string
+	method     string
+	sameOrigin bool
+	formID     string
+}
+
 var utmCampaigns = []weightedEntry[*utmParams]{
 	{nil, 800}, // no UTM (organic / direct)
 	{&utmParams{
@@ -321,6 +341,28 @@ var chatbotBots = []weightedEntry[chatbotBot]{
 	{chatbotBot{botID: "docs-guide", provider: "anthropic", model: "claude-3-7-sonnet"}, 28},
 	{chatbotBot{botID: "sales-assistant", provider: "google", model: "gemini-2.0-flash"}, 18},
 	{chatbotBot{botID: "checkout-helper", provider: "openai", model: "gpt-4.1"}, 12},
+}
+
+var outboundTargets = []weightedEntry[autoTrackedOutboundTarget]{
+	{autoTrackedOutboundTarget{host: "github.com", path: "/hitkeep/hitkeep", protocol: "https"}, 28},
+	{autoTrackedOutboundTarget{host: "docs.docker.com", path: "/engine/install", protocol: "https"}, 18},
+	{autoTrackedOutboundTarget{host: "vercel.com", path: "/templates", protocol: "https"}, 14},
+	{autoTrackedOutboundTarget{host: "stripe.com", path: "/billing", protocol: "https"}, 10},
+	{autoTrackedOutboundTarget{host: "status.hitkeep.com", path: "/history", protocol: "https"}, 8},
+}
+
+var downloadTargets = []weightedEntry[autoTrackedDownloadTarget]{
+	{autoTrackedDownloadTarget{host: "acme-analytics.io", path: "/downloads/hitkeep-pricing.pdf", ext: "pdf"}, 32},
+	{autoTrackedDownloadTarget{host: "acme-analytics.io", path: "/downloads/security-checklist.xlsx", ext: "xlsx"}, 18},
+	{autoTrackedDownloadTarget{host: "acme-analytics.io", path: "/downloads/customer-stories.csv", ext: "csv"}, 16},
+	{autoTrackedDownloadTarget{host: "cdn.acme-analytics.io", path: "/assets/hitkeep-demo.zip", ext: "zip"}, 12},
+}
+
+var formTargets = []weightedEntry[autoTrackedFormTarget]{
+	{autoTrackedFormTarget{host: "acme-analytics.io", path: "/signup", method: "post", sameOrigin: true, formID: "pricing-signup-form"}, 26},
+	{autoTrackedFormTarget{host: "acme-analytics.io", path: "/contact", method: "post", sameOrigin: true, formID: "contact-sales-form"}, 18},
+	{autoTrackedFormTarget{host: "go.hitkeep.com", path: "/demo-request", method: "post", sameOrigin: false, formID: "demo-request-form"}, 14},
+	{autoTrackedFormTarget{host: "api.hsforms.com", path: "/submissions/v3/integration/submit", method: "post", sameOrigin: false, formID: "newsletter-form"}, 10},
 }
 
 // ─────────────────────────────────────────────
@@ -457,7 +499,16 @@ func ensureUser(ctx context.Context, store *database.Store, email, password stri
 		os.Exit(1)
 	}
 	if existing != nil {
-		slog.Info("Reusing existing user", "id", existing.ID)
+		hash, err := hashPassword(password)
+		if err != nil {
+			slog.Error("Failed to hash password", "error", err)
+			os.Exit(1)
+		}
+		if err := store.UpdatePasswordByID(ctx, existing.ID.String(), hash); err != nil {
+			slog.Error("Failed to reset existing demo user password", "error", err, "id", existing.ID)
+			os.Exit(1)
+		}
+		slog.Info("Reusing existing user and reset password", "id", existing.ID)
 		return existing.ID
 	}
 
@@ -895,6 +946,82 @@ func fireConversionEvents(batch *seedWriteBatch, siteID, sessionID uuid.UUID, go
 	}
 	count += fireEcommerceEvents(batch, siteID, sessionID, rng, ts, entryPage, utm)
 	count += fireAIChatbotEvents(batch, siteID, sessionID, rng, ts, entryPage, utm)
+	count += fireAutomaticTrackingEvents(batch, siteID, sessionID, rng, ts, entryPage)
+	return count
+}
+
+func fireAutomaticTrackingEvents(batch *seedWriteBatch, siteID, sessionID uuid.UUID, rng *mrand.Rand, ts time.Time, entryPage string) int {
+	count := 0
+
+	outboundProb := 0.09
+	downloadProb := 0.06
+	formProb := 0.04
+
+	switch entryPage {
+	case "/pricing", "/docs/getting-started", "/docs/configuration", "/docs/api-reference":
+		outboundProb = 0.18
+		downloadProb = 0.14
+		formProb = 0.08
+	case "/signup", "/contact":
+		formProb = 0.16
+	case "/blog/privacy-first-analytics-2025", "/blog/self-hosted-vs-cloud-analytics", "/blog/replace-google-analytics":
+		outboundProb = 0.2
+		downloadProb = 0.11
+	}
+
+	if rng.Float64() < outboundProb {
+		target := pickWeighted(rng, outboundTargets)
+		if insertSeedEvent(batch, &api.Event{
+			SiteID:    siteID,
+			SessionID: sessionID,
+			Name:      "outbound_click",
+			Properties: map[string]any{
+				"target_host":     target.host,
+				"target_path":     target.path,
+				"target_protocol": target.protocol,
+			},
+			Timestamp: ts.Add(15 * time.Second),
+		}) {
+			count++
+		}
+	}
+
+	if rng.Float64() < downloadProb {
+		target := pickWeighted(rng, downloadTargets)
+		if insertSeedEvent(batch, &api.Event{
+			SiteID:    siteID,
+			SessionID: sessionID,
+			Name:      "file_download",
+			Properties: map[string]any{
+				"file_host": target.host,
+				"file_path": target.path,
+				"file_ext":  target.ext,
+			},
+			Timestamp: ts.Add(30 * time.Second),
+		}) {
+			count++
+		}
+	}
+
+	if rng.Float64() < formProb {
+		target := pickWeighted(rng, formTargets)
+		if insertSeedEvent(batch, &api.Event{
+			SiteID:    siteID,
+			SessionID: sessionID,
+			Name:      "form_submit",
+			Properties: map[string]any{
+				"action_host": target.host,
+				"action_path": target.path,
+				"method":      target.method,
+				"same_origin": target.sameOrigin,
+				"form_id":     target.formID,
+			},
+			Timestamp: ts.Add(45 * time.Second),
+		}) {
+			count++
+		}
+	}
+
 	return count
 }
 

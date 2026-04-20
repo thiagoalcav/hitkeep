@@ -1,6 +1,6 @@
-import { HttpInterceptorFn } from "@angular/common/http";
-import { inject } from "@angular/core";
-import { ShareService } from "@services/share.service";
+import { HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { ShareService } from '@services/share.service';
 
 export const shareInterceptor: HttpInterceptorFn = (req, next) => {
     const share = inject(ShareService);
@@ -10,16 +10,16 @@ export const shareInterceptor: HttpInterceptorFn = (req, next) => {
         return next(req);
     }
 
-    if (!req.url.startsWith("/api/") || req.url.startsWith("/api/share/")) {
+    if (!req.url.startsWith('/api/') || req.url.startsWith('/api/share/')) {
         return next(req);
     }
 
-    if (req.method !== "GET" && req.method !== "HEAD") {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
         return next(req);
     }
 
-    if (req.url.startsWith("/api/sites/")) {
-        const url = req.url.replace("/api/sites/", `/api/share/${encodeURIComponent(token)}/sites/`);
+    if (req.url.startsWith('/api/sites/')) {
+        const url = req.url.replace('/api/sites/', `/api/share/${encodeURIComponent(token)}/sites/`);
         return next(req.clone({ url }));
     }
 

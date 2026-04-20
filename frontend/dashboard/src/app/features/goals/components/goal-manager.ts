@@ -1,25 +1,25 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, model, output, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, inject, input, model, output, signal } from '@angular/core';
 
-import { rxResource, toSignal } from "@angular/core/rxjs-interop";
-import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
-import { compatForm } from "@angular/forms/signals/compat";
-import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { DialogModule } from "primeng/dialog";
-import { ButtonModule } from "primeng/button";
-import { DividerModule } from "primeng/divider";
-import { IconFieldModule } from "primeng/iconfield";
-import { InputIconModule } from "primeng/inputicon";
-import { InputGroupModule } from "primeng/inputgroup";
-import { InputGroupAddonModule } from "primeng/inputgroupaddon";
-import { InputTextModule } from "primeng/inputtext";
-import { SelectButtonModule } from "primeng/selectbutton";
-import { TableModule } from "primeng/table";
-import { TagModule } from "primeng/tag";
-import { AnalyticsService } from "@services/analytics.service";
-import { Goal } from "@models/analytics.types";
+import { rxResource, toSignal } from '@angular/core/rxjs-interop';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { DialogModule } from 'primeng/dialog';
+import { ButtonModule } from 'primeng/button';
+import { DividerModule } from 'primeng/divider';
+import { IconFieldModule } from 'primeng/iconfield';
+import { InputIconModule } from 'primeng/inputicon';
+import { InputGroupModule } from 'primeng/inputgroup';
+import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
+import { InputTextModule } from 'primeng/inputtext';
+import { SelectButtonModule } from 'primeng/selectbutton';
+import { TableModule } from 'primeng/table';
+import { TagModule } from 'primeng/tag';
+import { AnalyticsService } from '@services/analytics.service';
+import { Goal } from '@models/analytics.types';
 
 @Component({
-    selector: "app-goal-manager",
+    selector: 'app-goal-manager',
     imports: [ReactiveFormsModule, DialogModule, ButtonModule, DividerModule, IconFieldModule, InputIconModule, InputGroupModule, InputGroupAddonModule, InputTextModule, SelectButtonModule, TableModule, TagModule, TranslocoPipe],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
@@ -139,15 +139,15 @@ export class GoalManager {
     protected readonly types = computed(() => {
         this.activeLanguage();
         return [
-            { label: this.transloco.translate("goals.manager.typePagePath"), value: "path", icon: "pi pi-link" },
-            { label: this.transloco.translate("goals.manager.typeCustomEvent"), value: "event", icon: "pi pi-bolt" }
+            { label: this.transloco.translate('goals.manager.typePagePath'), value: 'path', icon: 'pi pi-link' },
+            { label: this.transloco.translate('goals.manager.typeCustomEvent'), value: 'event', icon: 'pi pi-bolt' }
         ];
     });
 
     private readonly newGoalModel = signal({
-        name: new FormControl("", { nonNullable: true, validators: [Validators.required] }),
-        type: new FormControl<"path" | "event">("path", { nonNullable: true, validators: [Validators.required] }),
-        value: new FormControl("", { nonNullable: true, validators: [Validators.required] })
+        name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+        type: new FormControl<'path' | 'event'>('path', { nonNullable: true, validators: [Validators.required] }),
+        value: new FormControl('', { nonNullable: true, validators: [Validators.required] })
     });
     protected readonly newGoalForm = compatForm(this.newGoalModel);
 
@@ -157,11 +157,11 @@ export class GoalManager {
         return !this.newGoalForm().invalid() && name.length > 0 && value.length > 0;
     });
 
-    protected goalTypeLabel(type: Goal["type"]): string {
-        if (type === "event") {
-            return this.transloco.translate("goals.manager.typeCustomEvent");
+    protected goalTypeLabel(type: Goal['type']): string {
+        if (type === 'event') {
+            return this.transloco.translate('goals.manager.typeCustomEvent');
         }
-        return this.transloco.translate("goals.manager.typePagePath");
+        return this.transloco.translate('goals.manager.typePagePath');
     }
 
     createGoal() {
@@ -177,9 +177,9 @@ export class GoalManager {
         this.analyticsService.createGoal(siteId, payload).subscribe({
             next: () => {
                 this.creating.set(false);
-                this.newGoalForm.name().control().reset("");
-                this.newGoalForm.type().control().reset("path");
-                this.newGoalForm.value().control().reset("");
+                this.newGoalForm.name().control().reset('');
+                this.newGoalForm.type().control().reset('path');
+                this.newGoalForm.value().control().reset('');
                 this.goalsResource.reload();
                 this.goalsChanged.emit();
             },

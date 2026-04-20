@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>HitKeep Auto Event Fixture</title>
+        <style>
+            body {
+                font-family: sans-serif;
+                padding: 2rem;
+                display: grid;
+                gap: 1rem;
+            }
+
+            section {
+                border: 1px solid #d4d4d8;
+                border-radius: 0.75rem;
+                padding: 1rem;
+            }
+
+            form {
+                display: grid;
+                gap: 0.75rem;
+            }
+        </style>
+        <script>
+            (() => {
+                const params = new URLSearchParams(window.location.search);
+                const externalOrigin = `${window.location.protocol}//external.lvh.me:${window.location.port}`;
+
+                window.addEventListener("DOMContentLoaded", () => {
+                    const outboundLink = document.getElementById("outbound-link");
+                    const outboundDownloadLink = document.getElementById("outbound-download-link");
+                    const insideFormLink = document.getElementById("inside-form-link");
+                    const clickForm = document.getElementById("click-submit-form");
+                    const enterForm = document.getElementById("enter-submit-form");
+                    const enterInput = document.getElementById("enter-submit-input");
+
+                    if (outboundLink instanceof HTMLAnchorElement) {
+                        outboundLink.href = `${externalOrigin}/tracker-fixtures/external-target.html?utm_campaign=fixture#cta`;
+                    }
+                    if (outboundDownloadLink instanceof HTMLAnchorElement) {
+                        outboundDownloadLink.href = `${externalOrigin}/tracker-fixtures/downloads/demo-report.csv?signature=fixture#download`;
+                    }
+                    if (insideFormLink instanceof HTMLAnchorElement) {
+                        insideFormLink.href = `${externalOrigin}/tracker-fixtures/external-target.html?inside=form#cta`;
+                    }
+                    if (clickForm instanceof HTMLFormElement) {
+                        clickForm.action = `${window.location.origin}/tracker-fixtures/form-complete.html?source=click#done`;
+                    }
+                    if (enterForm instanceof HTMLFormElement) {
+                        enterForm.action = `${window.location.origin}/tracker-fixtures/form-complete.html?source=enter#done`;
+                    }
+                    if (enterForm instanceof HTMLFormElement && enterInput instanceof HTMLInputElement) {
+                        enterInput.addEventListener("keydown", (event) => {
+                            if (event.key !== "Enter") {
+                                return;
+                            }
+                            event.preventDefault();
+                            enterForm.requestSubmit();
+                        });
+                    }
+                });
+
+                const tracker = document.createElement("script");
+                tracker.async = true;
+                tracker.src = `${window.location.origin}/hk.js`;
+                if (params.get("disableBeacon") === "1") tracker.setAttribute("data-disable-beacon", "true");
+                if (params.get("disableOutbound") === "1") tracker.setAttribute("data-disable-outbound-tracking", "true");
+                if (params.get("disableDownload") === "1") tracker.setAttribute("data-disable-download-tracking", "true");
+                if (params.get("disableForm") === "1") tracker.setAttribute("data-disable-form-tracking", "true");
+                document.head.appendChild(tracker);
+            })();
+        </script>
+    </head>
+    <body>
+        <h1>HitKeep auto event fixture</h1>
+
+        <section>
+            <h2>Links</h2>
+            <a id="outbound-link" href="#">Outbound link</a>
+            <a id="local-download-link" href="/tracker-fixtures/downloads/demo-report.csv?token=fixture#download" download>Local download link</a>
+            <a id="outbound-download-link" href="#">Outbound download link</a>
+        </section>
+
+        <section>
+            <h2>Forms</h2>
+            <form id="click-submit-form" method="post">
+                <label>
+                    Email
+                    <input id="click-submit-input" name="email" type="email" value="demo@example.com" />
+                </label>
+                <button id="click-submit-button" type="submit">Submit with click</button>
+            </form>
+
+            <form id="enter-submit-form" method="get">
+                <label>
+                    Search
+                    <input id="enter-submit-input" name="query" type="text" value="analytics" />
+                </label>
+                <button type="submit">Submit with enter</button>
+            </form>
+        </section>
+
+        <section>
+            <h2>Inside form</h2>
+            <form id="link-wrapper-form" action="/tracker-fixtures/form-complete.html" method="post">
+                <a id="inside-form-link" href="#" target="_blank" rel="noreferrer">Outbound link inside a form</a>
+                <button type="submit">Standalone submit</button>
+            </form>
+        </section>
+    </body>
+</html>

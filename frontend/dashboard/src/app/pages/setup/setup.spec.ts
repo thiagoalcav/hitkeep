@@ -1,11 +1,11 @@
-import { ComponentFixture, TestBed } from "@angular/core/testing";
-import { provideHttpClient } from "@angular/common/http";
-import { provideRouter } from "@angular/router";
-import { TranslocoTestingModule } from "@jsverse/transloco";
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+import { TranslocoTestingModule } from '@jsverse/transloco';
 
-import { Setup } from "@pages/setup/setup";
+import { Setup } from '@pages/setup/setup';
 
-describe("Setup", () => {
+describe('Setup', () => {
     let component: Setup;
     let fixture: ComponentFixture<Setup>;
 
@@ -16,8 +16,8 @@ describe("Setup", () => {
                 TranslocoTestingModule.forRoot({
                     langs: { en: {} },
                     translocoConfig: {
-                        availableLangs: ["en"],
-                        defaultLang: "en"
+                        availableLangs: ['en'],
+                        defaultLang: 'en'
                     },
                     preloadLangs: true
                 })
@@ -30,7 +30,7 @@ describe("Setup", () => {
         fixture.detectChanges();
     });
 
-    it("should create", () => {
+    it('should create', () => {
         expect(component).toBeTruthy();
     });
 });

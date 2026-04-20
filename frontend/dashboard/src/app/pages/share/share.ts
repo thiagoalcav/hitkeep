@@ -1,16 +1,16 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from "@angular/core";
-import { ActivatedRoute, RouterOutlet } from "@angular/router";
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ActivatedRoute, RouterOutlet } from '@angular/router';
 
-import { TranslocoPipe } from "@jsverse/transloco";
-import { ShareService } from "@services/share.service";
-import { SiteService } from "@features/sites/services/site.service";
+import { TranslocoPipe } from '@jsverse/transloco';
+import { ShareService } from '@services/share.service';
+import { SiteService } from '@features/sites/services/site.service';
 
 @Component({
-    selector: "app-share-dashboard",
+    selector: 'app-share-dashboard',
     standalone: true,
     imports: [RouterOutlet, TranslocoPipe],
-    templateUrl: "./share.html",
-    styleUrl: "./share.css",
+    templateUrl: './share.html',
+    styleUrl: './share.css',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ShareDashboard {
@@ -22,9 +22,9 @@ export class ShareDashboard {
     protected error = signal<string | null>(null);
 
     constructor() {
-        const token = this.route.snapshot.paramMap.get("token");
+        const token = this.route.snapshot.paramMap.get('token');
         if (!token) {
-            this.error.set("share.page.missingToken");
+            this.error.set('share.page.missingToken');
             this.loading.set(false);
             return;
         }
@@ -36,7 +36,7 @@ export class ShareDashboard {
                 this.loading.set(false);
             },
             error: () => {
-                this.error.set("share.page.invalidOrExpired");
+                this.error.set('share.page.invalidOrExpired');
                 this.loading.set(false);
             }
         });

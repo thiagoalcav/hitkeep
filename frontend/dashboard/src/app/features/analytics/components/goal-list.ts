@@ -1,19 +1,19 @@
-import { Component, input, output, signal, ChangeDetectionStrategy } from "@angular/core";
+import { Component, input, output, signal, ChangeDetectionStrategy } from '@angular/core';
 
-import { TranslocoPipe } from "@jsverse/transloco";
-import { TranslocoDecimalPipe } from "@jsverse/transloco-locale";
-import { CardModule } from "primeng/card";
-import { ButtonModule } from "primeng/button";
-import { SkeletonModule } from "primeng/skeleton";
-import { TooltipModule } from "primeng/tooltip";
-import { GoalStats } from "@models/analytics.types";
+import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoDecimalPipe } from '@jsverse/transloco-locale';
+import { CardModule } from 'primeng/card';
+import { ButtonModule } from 'primeng/button';
+import { SkeletonModule } from 'primeng/skeleton';
+import { TooltipModule } from 'primeng/tooltip';
+import { GoalStats } from '@models/analytics.types';
 
 // Components
-import { EmptyState } from "@components/molecules/empty-state";
-import { GoalManager } from "@features/goals/components/goal-manager";
+import { EmptyState } from '@components/molecules/empty-state';
+import { GoalManager } from '@features/goals/components/goal-manager';
 
 @Component({
-    selector: "app-goal-list",
+    selector: 'app-goal-list',
     standalone: true,
     imports: [CardModule, SkeletonModule, TranslocoPipe, TranslocoDecimalPipe, ButtonModule, TooltipModule, EmptyState, GoalManager],
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -23,7 +23,7 @@ import { GoalManager } from "@features/goals/components/goal-manager";
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center gap-2">
                     <i class="pi pi-flag text-[var(--p-primary-color)]" aria-hidden="true"></i>
-                    <h3 class="font-semibold text-lg">{{ "goals.list.title" | transloco }}</h3>
+                    <h3 class="font-semibold text-lg">{{ 'goals.list.title' | transloco }}</h3>
                 </div>
                 <!-- Only show header add button if we have data (otherwise EmptyState handles it) -->
                 @if (!readOnly() && !isLoading() && data() && data().length > 0) {
@@ -53,11 +53,11 @@ import { GoalManager } from "@features/goals/components/goal-manager";
                         <li class="flex items-center justify-between text-sm p-3 border border-surface-100 dark:border-surface-800 rounded hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors">
                             <div class="flex flex-col gap-1">
                                 <span class="font-medium truncate" [title]="item.name">{{ item.name }}</span>
-                                <span class="text-xs text-muted-color">{{ item.conversions | translocoDecimal }} {{ "goals.list.conversionsSuffix" | transloco }}</span>
+                                <span class="text-xs text-muted-color">{{ item.conversions | translocoDecimal }} {{ 'goals.list.conversionsSuffix' | transloco }}</span>
                             </div>
                             <div class="flex flex-col items-end">
                                 <span class="font-bold text-[var(--p-primary-color)]">{{ item.conversion_rate | translocoDecimal: { minimumFractionDigits: 1, maximumFractionDigits: 2 } }}%</span>
-                                <span class="text-xs text-muted-color">{{ "goals.list.conversionRateShort" | transloco }}</span>
+                                <span class="text-xs text-muted-color">{{ 'goals.list.conversionRateShort' | transloco }}</span>
                             </div>
                         </li>
                     }

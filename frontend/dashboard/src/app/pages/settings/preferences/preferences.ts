@@ -1,18 +1,18 @@
-import { NgOptimizedImage } from "@angular/common";
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from "@angular/core";
+import { NgOptimizedImage } from '@angular/common';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 
-import { FormControl, ReactiveFormsModule } from "@angular/forms";
-import { compatForm } from "@angular/forms/signals/compat";
-import { toSignal } from "@angular/core/rxjs-interop";
-import { ButtonModule } from "primeng/button";
-import { CardModule } from "primeng/card";
-import { SelectModule } from "primeng/select";
-import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
-import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
-import { localeFlagUrl } from "@core/i18n/flag-utils";
-import { UserPreferences, UserPreferencesService } from "@services/user-preferences.service";
-import { getBaseLanguage, getLocaleDirection, normalizeLocaleTag, TextDirection } from "@core/i18n/locale-utils";
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
+import { SelectModule } from 'primeng/select';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
+import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
+import { localeFlagUrl } from '@core/i18n/flag-utils';
+import { UserPreferences, UserPreferencesService } from '@services/user-preferences.service';
+import { getBaseLanguage, getLocaleDirection, normalizeLocaleTag, TextDirection } from '@core/i18n/locale-utils';
 
 interface LanguageOption {
     label: string;
@@ -24,10 +24,10 @@ interface LanguageOption {
 type AvailableLang = string | { id: string; label: string };
 
 @Component({
-    selector: "app-preferences",
+    selector: 'app-preferences',
     imports: [ReactiveFormsModule, ButtonModule, CardModule, SelectModule, PageHeader, PageHeaderLeft, PageBreadcrumb, TranslocoPipe, NgOptimizedImage],
-    templateUrl: "./preferences.html",
-    styleUrl: "./preferences.css",
+    templateUrl: './preferences.html',
+    styleUrl: './preferences.css',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Preferences {
@@ -42,7 +42,7 @@ export class Preferences {
     protected readonly isLoading = this.preferencesService.isLoading;
     protected readonly isSaving = this.preferencesService.isSaving;
     protected readonly loadError = signal<string | null>(null);
-    protected readonly saveState = signal<"idle" | "saved" | "error">("idle");
+    protected readonly saveState = signal<'idle' | 'saved' | 'error'>('idle');
     protected readonly initialPreferences = signal<UserPreferences | null>(null);
 
     protected readonly languageOptions = computed(() => {
@@ -52,7 +52,7 @@ export class Preferences {
         const available = this.transloco.getAvailableLangs() as AvailableLang[];
 
         for (const entry of available) {
-            const raw = typeof entry === "string" ? entry : entry.id;
+            const raw = typeof entry === 'string' ? entry : entry.id;
             const normalized = normalizeLocaleTag(raw);
             const base = getBaseLanguage(normalized) || normalized;
             if (!base || seen.has(base)) {
@@ -69,7 +69,7 @@ export class Preferences {
             });
         }
 
-        return options.sort((a, b) => a.label.localeCompare(b.label, "en", { sensitivity: "base" }));
+        return options.sort((a, b) => a.label.localeCompare(b.label, 'en', { sensitivity: 'base' }));
     });
     protected readonly languageOptionsByValue = computed(() => {
         const byValue = new Map<string, LanguageOption>();
@@ -91,13 +91,13 @@ export class Preferences {
 
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         this.activeLanguage();
-        return [{ label: this.transloco.translate("preferences.breadcrumb"), isCurrent: true }];
+        return [{ label: this.transloco.translate('preferences.breadcrumb'), isCurrent: true }];
     });
 
     constructor() {
         this.preferencesService.load().subscribe({
             error: () => {
-                this.loadError.set("preferences.errors.loadFailed");
+                this.loadError.set('preferences.errors.loadFailed');
             }
         });
 
@@ -121,7 +121,7 @@ export class Preferences {
             this.initialPreferences.set({
                 default_locale: selectedLocale
             });
-            this.saveState.set("idle");
+            this.saveState.set('idle');
             this.loadError.set(null);
         });
     }
@@ -129,21 +129,21 @@ export class Preferences {
     protected save() {
         if (!this.canSave()) return;
         const payload = this.currentPreferences();
-        this.saveState.set("idle");
+        this.saveState.set('idle');
         this.preferencesService.save(payload).subscribe({
             next: (prefs) => {
                 this.initialPreferences.set(prefs);
-                this.saveState.set("saved");
+                this.saveState.set('saved');
             },
             error: () => {
-                this.saveState.set("error");
+                this.saveState.set('error');
             }
         });
     }
 
     protected onLocaleChange(option: LanguageOption | null | undefined): void {
-        if (this.saveState() !== "idle") {
-            this.saveState.set("idle");
+        if (this.saveState() !== 'idle') {
+            this.saveState.set('idle');
         }
         this.applyLocalePreview(option ?? null);
     }
@@ -151,18 +151,18 @@ export class Preferences {
     protected optionLabel(locale: string): string {
         const normalized = normalizeLocaleTag(locale);
         if (!normalized) return locale;
-        const uiLanguage = getBaseLanguage(this.activeLanguage()) || "en";
-        const languageNames = this.displayNames("language", uiLanguage);
-        const language = normalized.split("-")[0];
+        const uiLanguage = getBaseLanguage(this.activeLanguage()) || 'en';
+        const languageNames = this.displayNames('language', uiLanguage);
+        const language = normalized.split('-')[0];
         const languageName = languageNames?.of(language) ?? language;
         return languageName;
     }
 
     protected currentPreferences(): UserPreferences {
         const selected = this.preferencesForm.defaultLocale().value();
-        const defaultLocale = normalizeLocaleTag(selected?.value ?? "");
+        const defaultLocale = normalizeLocaleTag(selected?.value ?? '');
         const base = getBaseLanguage(defaultLocale);
-        const normalizedDefault = base || "";
+        const normalizedDefault = base || '';
         return {
             default_locale: normalizedDefault
         };
@@ -172,7 +172,7 @@ export class Preferences {
         return a.default_locale === b.default_locale;
     }
     private applyLocalePreview(locale: LanguageOption | string | null | undefined): void {
-        const resolvedLocale = typeof locale === "string" ? locale : locale?.value;
+        const resolvedLocale = typeof locale === 'string' ? locale : locale?.value;
         if (!resolvedLocale) {
             return;
         }
@@ -188,7 +188,7 @@ export class Preferences {
             this.transloco.setActiveLang(translationLang);
         }
 
-        if (typeof document !== "undefined") {
+        if (typeof document !== 'undefined') {
             document.documentElement.lang = base;
             document.documentElement.dir = getLocaleDirection(base);
         }
@@ -199,7 +199,7 @@ export class Preferences {
         const base = getBaseLanguage(normalized) || normalized;
         const available = this.transloco.getAvailableLangs() as AvailableLang[];
         const availableIds = available
-            .map((entry) => (typeof entry === "string" ? entry : entry.id))
+            .map((entry) => (typeof entry === 'string' ? entry : entry.id))
             .map((entry) => normalizeLocaleTag(entry))
             .filter((entry): entry is string => Boolean(entry));
 
@@ -215,8 +215,8 @@ export class Preferences {
         return this.transloco.getDefaultLang();
     }
 
-    private displayNames(type: "language" | "region" | "script", locale: string): Intl.DisplayNames | null {
-        if (typeof Intl === "undefined" || !("DisplayNames" in Intl)) {
+    private displayNames(type: 'language' | 'region' | 'script', locale: string): Intl.DisplayNames | null {
+        if (typeof Intl === 'undefined' || !('DisplayNames' in Intl)) {
             return null;
         }
         try {

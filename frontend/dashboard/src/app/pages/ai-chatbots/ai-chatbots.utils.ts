@@ -1,6 +1,6 @@
-import { EventSeriesPoint } from "@models/analytics.types";
+import { EventSeriesPoint } from '@models/analytics.types';
 
-export type ChatbotMetricKey = "started" | "sent" | "rendered" | "clicked" | "handoff" | "assisted";
+export type ChatbotMetricKey = 'started' | 'sent' | 'rendered' | 'clicked' | 'handoff' | 'assisted';
 
 export interface ChatbotSeriesState {
     started: EventSeriesPoint[];

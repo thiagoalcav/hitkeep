@@ -1,23 +1,23 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal } from "@angular/core";
-import { ReactiveFormsModule } from "@angular/forms";
-import { finalize, forkJoin } from "rxjs";
-import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { injectActiveLang } from "@core/i18n/active-lang";
-import { TranslocoLocaleService } from "@jsverse/transloco-locale";
-import { ButtonModule } from "primeng/button";
-import { CardModule } from "primeng/card";
-import { TableModule } from "primeng/table";
-import { SiteService } from "@features/sites/services/site.service";
-import { AnalyticsService } from "@core/services/analytics.service";
-import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
-import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
-import { KpiCard } from "@features/analytics/components/kpi-card";
-import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from "@components/range-toolbar/range-toolbar";
-import { MetricList } from "@features/analytics/components/metric-list";
-import { SeriesChart, SeriesChartPoint, SeriesDefinition } from "@features/analytics/components/series-chart";
-import { EcommerceProductStat, EcommerceSeriesPoint, EcommerceSourceStat, EcommerceSummary, MetricStat, SiteStats } from "@models/analytics.types";
+import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal } from '@angular/core';
+import { ReactiveFormsModule } from '@angular/forms';
+import { finalize, forkJoin } from 'rxjs';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { injectActiveLang } from '@core/i18n/active-lang';
+import { TranslocoLocaleService } from '@jsverse/transloco-locale';
+import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
+import { TableModule } from 'primeng/table';
+import { SiteService } from '@features/sites/services/site.service';
+import { AnalyticsService } from '@core/services/analytics.service';
+import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
+import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
+import { KpiCard } from '@features/analytics/components/kpi-card';
+import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from '@components/range-toolbar/range-toolbar';
+import { MetricList } from '@features/analytics/components/metric-list';
+import { SeriesChart, SeriesChartPoint, SeriesDefinition } from '@features/analytics/components/series-chart';
+import { EcommerceProductStat, EcommerceSeriesPoint, EcommerceSourceStat, EcommerceSummary, MetricStat, SiteStats } from '@models/analytics.types';
 
-type MetricFilterType = "referrer" | "device" | "country" | "utm_source";
+type MetricFilterType = 'referrer' | 'device' | 'country' | 'utm_source';
 
 interface MetricFilter {
     type: MetricFilterType;
@@ -30,14 +30,14 @@ interface ProductFilter {
 }
 
 @Component({
-    selector: "app-ecommerce",
+    selector: 'app-ecommerce',
     imports: [ReactiveFormsModule, TranslocoPipe, ButtonModule, CardModule, TableModule, PageHeader, PageHeaderLeft, PageBreadcrumb, RangeToolbar, KpiCard, MetricList, SeriesChart],
-    templateUrl: "./ecommerce.html",
-    styleUrl: "./ecommerce.css",
+    templateUrl: './ecommerce.html',
+    styleUrl: './ecommerce.css',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EcommercePage {
-    protected readonly ecommerceDocsUrl = "https://hitkeep.com/guides/analytics/ecommerce/";
+    protected readonly ecommerceDocsUrl = 'https://hitkeep.com/guides/analytics/ecommerce/';
     protected siteService = inject(SiteService);
     private analyticsService = inject(AnalyticsService);
     private localeService = inject(TranslocoLocaleService);
@@ -55,15 +55,15 @@ export class EcommercePage {
     protected readonly selectedRange = linkedSignal<RangeOption[], RangeOption>({
         source: this.timeRanges,
         computation: (ranges, previous) => {
-            const value = previous?.value.value ?? "30d";
+            const value = previous?.value.value ?? '30d';
             return ranges.find((range) => range.value === value) ?? ranges[2]!;
         }
     });
     protected readonly customRangeDates = signal<Date[] | null>(null);
     protected readonly isShortRange = computed(() => {
-        if (this.selectedRange().value === "24h") return true;
+        if (this.selectedRange().value === '24h') return true;
         const customRangeDates = this.customRangeDates();
-        if (this.selectedRange().value === "custom" && customRangeDates?.length === 2 && customRangeDates[0] && customRangeDates[1]) {
+        if (this.selectedRange().value === 'custom' && customRangeDates?.length === 2 && customRangeDates[0] && customRangeDates[1]) {
             return customRangeDates[1].getTime() - customRangeDates[0].getTime() < 48 * 60 * 60 * 1000;
         }
         return false;
@@ -76,11 +76,11 @@ export class EcommercePage {
         this.activeLanguage();
         const site = this.siteService.activeSite();
         if (!site) {
-            return [{ label: this.transloco.translate("nav.ecommerce"), isCurrent: true }];
+            return [{ label: this.transloco.translate('nav.ecommerce'), isCurrent: true }];
         }
         return [
-            { label: site.domain, favicon: site, routerLink: "/dashboard" },
-            { label: this.transloco.translate("nav.ecommerce"), isCurrent: true }
+            { label: site.domain, favicon: site, routerLink: '/dashboard' },
+            { label: this.transloco.translate('nav.ecommerce'), isCurrent: true }
         ];
     });
 
@@ -92,28 +92,28 @@ export class EcommercePage {
 
         return [
             {
-                label: this.transloco.translate("ecommerce.kpis.revenue"),
+                label: this.transloco.translate('ecommerce.kpis.revenue'),
                 value: summary ? this.formatMoney(summary.revenue, currency) : this.formatMoney(0, currency),
                 loading,
-                valueClass: "text-2xl xl:text-3xl font-bold"
+                valueClass: 'text-2xl xl:text-3xl font-bold'
             },
             {
-                label: this.transloco.translate("ecommerce.kpis.orders"),
+                label: this.transloco.translate('ecommerce.kpis.orders'),
                 value: summary?.orders ?? 0,
                 loading,
-                valueClass: "text-2xl xl:text-3xl font-bold"
+                valueClass: 'text-2xl xl:text-3xl font-bold'
             },
             {
-                label: this.transloco.translate("ecommerce.kpis.averageOrderValue"),
+                label: this.transloco.translate('ecommerce.kpis.averageOrderValue'),
                 value: summary ? this.formatMoney(summary.average_order_value, currency) : this.formatMoney(0, currency),
                 loading,
-                valueClass: "text-2xl xl:text-3xl font-bold"
+                valueClass: 'text-2xl xl:text-3xl font-bold'
             },
             {
-                label: this.transloco.translate("ecommerce.kpis.checkoutConversion"),
+                label: this.transloco.translate('ecommerce.kpis.checkoutConversion'),
                 value: `${this.formatPercent(summary?.checkout_conversion_rate ?? 0)}%`,
                 loading,
-                valueClass: "text-2xl xl:text-3xl font-bold"
+                valueClass: 'text-2xl xl:text-3xl font-bold'
             }
         ];
     });
@@ -128,18 +128,18 @@ export class EcommercePage {
         this.activeLanguage();
         return [
             {
-                key: "revenue",
-                label: this.transloco.translate("ecommerce.chart.revenue"),
-                color: "#0f9d58",
-                gradientFrom: "rgba(15, 157, 88, 0.45)",
-                gradientTo: "rgba(15, 157, 88, 0.0)"
+                key: 'revenue',
+                label: this.transloco.translate('ecommerce.chart.revenue'),
+                color: '#0f9d58',
+                gradientFrom: 'rgba(15, 157, 88, 0.45)',
+                gradientTo: 'rgba(15, 157, 88, 0.0)'
             },
             {
-                key: "orders",
-                label: this.transloco.translate("ecommerce.chart.orders"),
-                color: "#2563eb",
-                gradientFrom: "rgba(37, 99, 235, 0.35)",
-                gradientTo: "rgba(37, 99, 235, 0.0)"
+                key: 'orders',
+                label: this.transloco.translate('ecommerce.chart.orders'),
+                color: '#2563eb',
+                gradientFrom: 'rgba(37, 99, 235, 0.35)',
+                gradientTo: 'rgba(37, 99, 235, 0.0)'
             }
         ];
     });
@@ -154,7 +154,7 @@ export class EcommercePage {
         if (product) {
             chips.push({
                 key: `item:${product.itemId || product.itemName}`,
-                label: this.transloco.translate("ecommerce.filters.product", { value: product.itemName || product.itemId }),
+                label: this.transloco.translate('ecommerce.filters.product', { value: product.itemName || product.itemId }),
                 remove: () => this.selectedProduct.set(null)
             });
         }
@@ -239,7 +239,7 @@ export class EcommercePage {
 
     protected formatCurrency(value: number, currency: string): string {
         return new Intl.NumberFormat(this.activeLanguage(), {
-            style: "currency",
+            style: 'currency',
             currency,
             maximumFractionDigits: 2
         }).format(value);
@@ -250,25 +250,25 @@ export class EcommercePage {
             return this.formatCurrency(value, currency);
         }
 
-        return this.localeService.localizeNumber(value, "decimal", undefined, {
+        return this.localeService.localizeNumber(value, 'decimal', undefined, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
         });
     }
 
     protected formatNumber(value: number): string {
-        return this.localeService.localizeNumber(value, "decimal");
+        return this.localeService.localizeNumber(value, 'decimal');
     }
 
     protected formatPercent(value: number): string {
-        return this.localeService.localizeNumber(value, "decimal", undefined, {
+        return this.localeService.localizeNumber(value, 'decimal', undefined, {
             minimumFractionDigits: 1,
             maximumFractionDigits: 1
         });
     }
 
     protected resolveCurrency(currency: string | null | undefined): string | null {
-        const normalized = (currency ?? "").trim().toUpperCase();
+        const normalized = (currency ?? '').trim().toUpperCase();
         if (/^[A-Z]{3}$/.test(normalized)) {
             return normalized;
         }
@@ -299,14 +299,14 @@ export class EcommercePage {
 
     private filterLabel(filter: MetricFilter): string {
         switch (filter.type) {
-            case "referrer":
-                return this.transloco.translate("common.filters.source", { value: filter.value });
-            case "device":
-                return this.transloco.translate("common.filters.device", { value: filter.value });
-            case "country":
-                return this.transloco.translate("common.filters.country", { value: filter.value });
-            case "utm_source":
-                return this.transloco.translate("ecommerce.filters.utmSource", { value: filter.value });
+            case 'referrer':
+                return this.transloco.translate('common.filters.source', { value: filter.value });
+            case 'device':
+                return this.transloco.translate('common.filters.device', { value: filter.value });
+            case 'country':
+                return this.transloco.translate('common.filters.country', { value: filter.value });
+            case 'utm_source':
+                return this.transloco.translate('ecommerce.filters.utmSource', { value: filter.value });
             default:
                 return `${filter.type}: ${filter.value}`;
         }
@@ -317,7 +317,7 @@ export class EcommercePage {
         const end = new Date();
         const start = new Date();
 
-        if (range.value === "custom") {
+        if (range.value === 'custom') {
             const dates = this.customRangeDates();
             if (dates && dates.length === 2 && dates[0] && dates[1]) {
                 return { from: dates[0].toISOString(), to: dates[1].toISOString() };
@@ -326,16 +326,16 @@ export class EcommercePage {
         }
 
         switch (range.value) {
-            case "24h":
+            case '24h':
                 start.setHours(end.getHours() - 24);
                 break;
-            case "7d":
+            case '7d':
                 start.setDate(end.getDate() - 7);
                 break;
-            case "30d":
+            case '30d':
                 start.setDate(end.getDate() - 30);
                 break;
-            case "1y":
+            case '1y':
                 start.setFullYear(end.getFullYear() - 1);
                 break;
         }

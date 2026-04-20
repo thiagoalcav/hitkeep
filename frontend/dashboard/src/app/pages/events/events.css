@@ -1,3 +1,119 @@
 :host {
     display: block;
 }
+
+.events-filter-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.events-auto-row {
+    align-items: center;
+    border-bottom: 1px solid var(--p-surface-border);
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+    padding-bottom: 1rem;
+}
+
+.events-auto-row__label {
+    align-items: center;
+    color: var(--p-text-muted-color);
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    gap: 0.45rem;
+    min-height: 2rem;
+}
+
+.events-auto-row__label .pi {
+    color: var(--p-primary-color);
+    font-size: 0.8rem;
+}
+
+.events-auto-row__control {
+    display: flex;
+    justify-content: flex-end;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+}
+
+.events-auto-select-content {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.45rem;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.events-filter-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.events-filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.events-filter-field__label {
+    color: var(--p-text-color);
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+:host ::ng-deep .events-auto-row .p-selectbutton {
+    max-width: 100%;
+}
+
+:host ::ng-deep .events-auto-select-item.p-togglebutton {
+    background: transparent;
+    border-color: var(--p-surface-border);
+    color: var(--p-text-color);
+    flex: 0 0 auto;
+    min-height: 2rem;
+    padding-inline: 0.7rem;
+    transition:
+        background-color 150ms ease,
+        border-color 150ms ease,
+        color 150ms ease;
+}
+
+:host ::ng-deep .events-auto-select-item.p-togglebutton:not(.p-disabled):hover {
+    background: var(--p-surface-hover);
+    border-color: color-mix(in srgb, var(--p-primary-color) 45%, var(--p-surface-border));
+}
+
+:host ::ng-deep .events-auto-select-item.p-togglebutton-checked {
+    background: var(--p-primary-color);
+    border-color: var(--p-primary-color);
+    color: var(--p-primary-contrast-color);
+}
+
+:host ::ng-deep .events-auto-select-item.p-togglebutton:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--p-primary-color) 35%, transparent);
+    outline-offset: 2px;
+}
+
+@media (max-width: 960px) {
+    .events-auto-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .events-auto-row__control {
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 640px) {
+    .events-filter-grid {
+        grid-template-columns: 1fr;
+    }
+}

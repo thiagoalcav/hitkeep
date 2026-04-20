@@ -1,7 +1,7 @@
-import { Signal, inject } from "@angular/core";
-import { toSignal } from "@angular/core/rxjs-interop";
-import { TranslocoService } from "@jsverse/transloco";
-import { map, switchMap } from "rxjs";
+import { Signal, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { TranslocoService } from '@jsverse/transloco';
+import { map, switchMap } from 'rxjs';
 
 /**
  * Returns a signal that emits the current active language code whenever

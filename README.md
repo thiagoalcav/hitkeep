@@ -29,7 +29,7 @@ HitKeep is for teams that want product analytics without adopting a full analyti
 - **Efficient write path:** NSQ buffers ingest bursts and DuckDB appender batches smooth out disk-heavy per-row inserts
 - **Privacy-first by default:** cookie-less tracking, Do Not Track support, focused data collection
 - **Useful out of the box:** traffic analytics with countries/languages audience toggles, top/landing/exit page views, custom events, goals, funnels, ecommerce, UTM attribution, and scheduled email reports
-- **Ready for modern discovery:** AI visibility analytics for crawler fetches and downstream AI-referred visits, plus on-site AI chatbot analytics built on structured custom events
+- **Ready for modern discovery:** AI visibility analytics for server-side AI crawler fetches and downstream AI-referred visits, plus on-site AI chatbot analytics built on structured custom events
 - **Built for teams:** passkeys, TOTP, site and team permissions, API clients, share links, and audit visibility
 - **Flexible deployment:** self-host it yourself or use HitKeep Cloud and still keep the migration path open
 

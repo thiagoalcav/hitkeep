@@ -47,6 +47,7 @@ linters:
         text: "G706:"
     paths:
       - frontend$
+      - node_modules
       - examples$
       - public$
 formatters:
@@ -65,4 +66,5 @@ formatters:
     generated: lax
     paths:
       - frontend$
+      - node_modules
       - public$

@@ -1,18 +1,18 @@
-import { ChangeDetectionStrategy, Component, inject, model, signal } from "@angular/core";
-import { HttpErrorResponse } from "@angular/common/http";
-import { Router } from "@angular/router";
-import { ReactiveFormsModule, FormControl, Validators } from "@angular/forms";
-import { compatForm } from "@angular/forms/signals/compat";
-import { TranslocoPipe } from "@jsverse/transloco";
-import { DialogModule } from "primeng/dialog";
-import { ButtonModule } from "primeng/button";
-import { InputTextModule } from "primeng/inputtext";
-import { SiteService } from "@features/sites/services/site.service";
-import { TeamService } from "@services/team.service";
-import { PermissionService } from "@services/permission.service";
+import { ChangeDetectionStrategy, Component, inject, model, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Router } from '@angular/router';
+import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { TranslocoPipe } from '@jsverse/transloco';
+import { DialogModule } from 'primeng/dialog';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { SiteService } from '@features/sites/services/site.service';
+import { TeamService } from '@services/team.service';
+import { PermissionService } from '@services/permission.service';
 
 @Component({
-    selector: "app-create-team-dialog",
+    selector: 'app-create-team-dialog',
     changeDetection: ChangeDetectionStrategy.OnPush,
     imports: [ReactiveFormsModule, DialogModule, ButtonModule, InputTextModule, TranslocoPipe],
     template: `
@@ -49,7 +49,7 @@ export class CreateTeamDialog {
     protected createError = signal<string | null>(null);
 
     private readonly formModel = signal({
-        name: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.maxLength(120)] })
+        name: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(120)] })
     });
     protected readonly form = compatForm(this.formModel);
 
@@ -58,7 +58,7 @@ export class CreateTeamDialog {
     }
 
     resetForm() {
-        this.form.name().control().reset("");
+        this.form.name().control().reset('');
         this.createError.set(null);
         this.isSubmitting.set(false);
     }
@@ -78,7 +78,7 @@ export class CreateTeamDialog {
         this.isSubmitting.set(true);
         this.createError.set(null);
 
-        this.teamService.createTeam({ name, logo_url: "" }).subscribe({
+        this.teamService.createTeam({ name, logo_url: '' }).subscribe({
             next: () => {
                 this.siteService.sites.set([]);
                 this.siteService.activeSite.set(null);
@@ -87,18 +87,18 @@ export class CreateTeamDialog {
                         this.siteService.loadSites();
                         this.perms.loadPermissions().subscribe({ error: () => undefined });
                         this.visible.set(false);
-                        this.router.navigateByUrl("/dashboard");
+                        this.router.navigateByUrl('/dashboard');
                     },
                     error: () => {
                         this.siteService.loadSites();
                         this.perms.loadPermissions().subscribe({ error: () => undefined });
                         this.visible.set(false);
-                        this.router.navigateByUrl("/dashboard");
+                        this.router.navigateByUrl('/dashboard');
                     }
                 });
             },
             error: (err: HttpErrorResponse) => {
-                this.createError.set(err.status === 403 ? "teams.createDialog.errors.limitReached" : "teams.createDialog.errors.createFailed");
+                this.createError.set(err.status === 403 ? 'teams.createDialog.errors.limitReached' : 'teams.createDialog.errors.createFailed');
                 this.isSubmitting.set(false);
             }
         });

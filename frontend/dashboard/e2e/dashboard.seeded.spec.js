@@ -35,6 +35,12 @@ test("dashboard renders seeded data and product controls", async ({ page }) => {
 
     await page.getByRole("button", { name: /site settings/i }).click();
     await expect(page.getByText("Site settings")).toBeVisible();
+    await page.getByRole("tab", { name: /tracking/i }).click();
+    await expect(page.getByText("Automatic event tracking")).toBeVisible();
+    await expect(page.getByText("Track outbound clicks")).toBeVisible();
+    await expect(page.getByText("Track file downloads")).toBeVisible();
+    await expect(page.getByText("Track form submissions")).toBeVisible();
+
     await page.getByRole("tab", { name: /team/i }).click();
     await expect(page.getByRole("heading", { name: "Transfer site" })).toBeVisible();
 });
@@ -42,14 +48,19 @@ test("dashboard renders seeded data and product controls", async ({ page }) => {
 test("events page exposes seeded event breakdowns", async ({ page }) => {
     await login(page, "/events");
     await expect(page.getByText("Event activity")).toBeVisible();
+    await expect(page.getByText("Automatic events")).toBeVisible();
 
-    const eventName = await selectFirstVisibleOption(page, "#event-name-select");
+    await page.getByRole("button", { name: /outbound clicks/i }).click();
+    await expect(page.locator("#event-name-select:visible")).toContainText("outbound_click");
+
+    const eventName = ((await page.locator("#event-name-select:visible").first().textContent()) || "").trim();
     expect(eventName).not.toBe("");
 
     const propertySelect = page.locator("#property-key-select:visible").first();
     await expect(propertySelect).toBeEnabled({ timeout: 10_000 });
     const propertyName = await selectFirstVisibleOption(page, "#property-key-select");
     expect(propertyName).not.toBe("");
+    expect(propertyName).toBe("target_host");
 
     await page.waitForTimeout(CHART_SETTLE_MS);
     await expect(page.getByText("Property breakdown")).toBeVisible();

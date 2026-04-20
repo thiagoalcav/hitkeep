@@ -1,14 +1,14 @@
-import { Injectable, inject } from "@angular/core";
-import { HttpClient } from "@angular/common/http";
-import { Observable } from "rxjs";
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
 
-import { CloudPlanTier } from "@models/analytics.types";
+import { CloudPlanTier } from '@models/analytics.types';
 
 export interface CloudSignupRequest {
     email: string;
     password: string;
     team_name: string;
-    plan_code: "free" | "pro" | "business";
+    plan_code: 'free' | 'pro' | 'business';
     jurisdiction?: string;
     locale?: string;
     given_name?: string;
@@ -32,27 +32,27 @@ export interface BillingPortalSessionRequest {
 }
 
 export interface BillingCheckoutSessionRequest {
-    plan_code: "pro" | "business";
+    plan_code: 'pro' | 'business';
     locale?: string;
 }
 
-@Injectable({ providedIn: "root" })
+@Injectable({ providedIn: 'root' })
 export class CloudService {
     private readonly http = inject(HttpClient);
 
     signup(payload: CloudSignupRequest): Observable<CloudSignupResponse> {
-        return this.http.post<CloudSignupResponse>("/api/cloud/signup", payload);
+        return this.http.post<CloudSignupResponse>('/api/cloud/signup', payload);
     }
 
     createBillingPortalSession(payload: BillingPortalSessionRequest = {}): Observable<BillingPortalSessionResponse> {
-        return this.http.post<BillingPortalSessionResponse>("/api/cloud/billing/portal", payload);
+        return this.http.post<BillingPortalSessionResponse>('/api/cloud/billing/portal', payload);
     }
 
     createBillingCheckoutSession(payload: BillingCheckoutSessionRequest): Observable<BillingPortalSessionResponse> {
-        return this.http.post<BillingPortalSessionResponse>("/api/cloud/billing/checkout", payload);
+        return this.http.post<BillingPortalSessionResponse>('/api/cloud/billing/checkout', payload);
     }
 
     getPlans(): Observable<CloudPlanTier[]> {
-        return this.http.get<CloudPlanTier[]>("/api/cloud/plans");
+        return this.http.get<CloudPlanTier[]>('/api/cloud/plans');
     }
 }

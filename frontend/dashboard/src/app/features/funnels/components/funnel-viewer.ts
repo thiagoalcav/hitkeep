@@ -1,14 +1,14 @@
-import { Component, inject, signal, OnChanges, input, model } from "@angular/core";
+import { Component, inject, signal, OnChanges, input, model } from '@angular/core';
 
-import { TranslocoPipe } from "@jsverse/transloco";
-import { TranslocoDecimalPipe } from "@jsverse/transloco-locale";
-import { DialogModule } from "primeng/dialog";
-import { SkeletonModule } from "primeng/skeleton";
-import { AnalyticsService } from "@services/analytics.service";
-import { FunnelStats } from "@models/analytics.types";
+import { TranslocoPipe } from '@jsverse/transloco';
+import { TranslocoDecimalPipe } from '@jsverse/transloco-locale';
+import { DialogModule } from 'primeng/dialog';
+import { SkeletonModule } from 'primeng/skeleton';
+import { AnalyticsService } from '@services/analytics.service';
+import { FunnelStats } from '@models/analytics.types';
 
 @Component({
-    selector: "app-funnel-viewer",
+    selector: 'app-funnel-viewer',
     standalone: true,
     imports: [DialogModule, SkeletonModule, TranslocoPipe, TranslocoDecimalPipe],
     template: `
@@ -26,15 +26,15 @@ import { FunnelStats } from "@models/analytics.types";
                     <!-- Top Summary Cards -->
                     <div class="grid grid-cols-3 gap-4">
                         <div class="p-4 bg-surface-50 dark:bg-surface-900 rounded border border-surface-200 dark:border-surface-700 text-center">
-                            <div class="text-sm text-muted-color mb-1">{{ "funnels.kpis.entries" | transloco }}</div>
+                            <div class="text-sm text-muted-color mb-1">{{ 'funnels.kpis.entries' | transloco }}</div>
                             <div class="text-2xl font-bold">{{ stats()!.total_entries | translocoDecimal }}</div>
                         </div>
                         <div class="p-4 bg-surface-50 dark:bg-surface-900 rounded border border-surface-200 dark:border-surface-700 text-center">
-                            <div class="text-sm text-muted-color mb-1">{{ "funnels.kpis.completions" | transloco }}</div>
+                            <div class="text-sm text-muted-color mb-1">{{ 'funnels.kpis.completions' | transloco }}</div>
                             <div class="text-2xl font-bold">{{ stats()!.total_completions | translocoDecimal }}</div>
                         </div>
                         <div class="p-4 bg-surface-50 dark:bg-surface-900 rounded border border-surface-200 dark:border-surface-700 text-center">
-                            <div class="text-sm text-muted-color mb-1">{{ "common.kpis.conversionRate" | transloco }}</div>
+                            <div class="text-sm text-muted-color mb-1">{{ 'common.kpis.conversionRate' | transloco }}</div>
                             <div class="text-2xl font-bold text-primary">{{ stats()!.overall_conversion_rate | translocoDecimal: { minimumFractionDigits: 1, maximumFractionDigits: 2 } }}%</div>
                         </div>
                     </div>
@@ -47,7 +47,7 @@ import { FunnelStats } from "@models/analytics.types";
                                 <div class="h-8 ml-8 border-l-2 border-dashed border-surface-300 dark:border-surface-600 relative">
                                     <!-- Dropoff Pill -->
                                     <div class="absolute top-1/2 left-4 -translate-y-1/2 text-xs font-medium text-red-500 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-full border border-red-200 dark:border-red-900/50">
-                                        -{{ step.dropoff | translocoDecimal }} {{ "funnels.viewer.droppedSuffix" | transloco }}
+                                        -{{ step.dropoff | translocoDecimal }} {{ 'funnels.viewer.droppedSuffix' | transloco }}
                                     </div>
                                 </div>
                             }
@@ -61,17 +61,17 @@ import { FunnelStats } from "@models/analytics.types";
                                 <!-- Info -->
                                 <div class="flex-1 min-w-0">
                                     <div class="font-semibold truncate" [title]="step.name">{{ step.name }}</div>
-                                    <div class="text-sm text-muted-color">{{ step.visitors | translocoDecimal }} {{ "common.visitors" | transloco }}</div>
+                                    <div class="text-sm text-muted-color">{{ step.visitors | translocoDecimal }} {{ 'common.visitors' | transloco }}</div>
                                 </div>
 
                                 <!-- Step Conversion -->
                                 @if (!first) {
                                     <div class="flex flex-col items-end shrink-0">
                                         <div [class]="conversionClass(step.conversion_rate)">{{ step.conversion_rate | translocoDecimal: { minimumFractionDigits: 1, maximumFractionDigits: 1 } }}%</div>
-                                        <div class="text-xs text-muted-color">{{ "funnels.viewer.retention" | transloco }}</div>
+                                        <div class="text-xs text-muted-color">{{ 'funnels.viewer.retention' | transloco }}</div>
                                     </div>
                                 } @else {
-                                    <div class="text-xs font-medium text-muted-color uppercase tracking-wider px-2">{{ "funnels.viewer.entry" | transloco }}</div>
+                                    <div class="text-xs font-medium text-muted-color uppercase tracking-wider px-2">{{ 'funnels.viewer.entry' | transloco }}</div>
                                 }
                             </div>
                         }
@@ -118,7 +118,7 @@ export class FunnelViewer implements OnChanges {
     }
 
     conversionClass(rate: number): string {
-        const base = "text-sm font-bold";
+        const base = 'text-sm font-bold';
         if (rate >= 70) return `${base} text-green-600 dark:text-green-400`;
         if (rate >= 40) return `${base} text-yellow-600 dark:text-yellow-400`;
         return `${base} text-red-600 dark:text-red-400`;

@@ -77,7 +77,7 @@ func newLocalizedSiteReportMailable(locale string) *stubMailable {
 	}
 
 	return &stubMailable{
-		subject:  Translatef(locale, "subject.site_report", Translate(locale, "freq.daily"), "example.com", "31. März 2026"),
+		subject:  Translatef(locale, "subject.site_report", Translate(locale, "freq.report.daily"), "example.com", "31. März 2026"),
 		template: "site_report.mjml",
 		locale:   locale,
 		data: struct {
@@ -92,7 +92,7 @@ func newLocalizedSiteReportMailable(locale string) *stubMailable {
 		}{
 			SiteDomain:  "example.com",
 			PeriodLabel: "31. März 2026",
-			FreqLabel:   Translate(locale, "freq.daily"),
+			FreqLabel:   Translate(locale, "freq.report.daily"),
 			DashURL:     "https://example.com/dashboard",
 			SettingsURL: "https://example.com/settings",
 			Current: reportStats{
@@ -119,7 +119,7 @@ func newLocalizedDigestMailable(locale string) *stubMailable {
 	}
 
 	return &stubMailable{
-		subject:  Translatef(locale, "subject.analytics_digest", Translate(locale, "freq.weekly"), "23–29 mars 2026"),
+		subject:  Translatef(locale, "subject.analytics_digest", Translate(locale, "freq.digest_subject.weekly"), "23–29 mars 2026"),
 		template: "analytics_digest.mjml",
 		locale:   locale,
 		data: struct {
@@ -130,7 +130,7 @@ func newLocalizedDigestMailable(locale string) *stubMailable {
 			Sites       []digestSite
 		}{
 			PeriodLabel: "23–29 mars 2026",
-			FreqLabel:   Translate(locale, "freq.weekly"),
+			FreqLabel:   Translate(locale, "freq.digest.weekly"),
 			DashURL:     "https://example.com/dashboard",
 			SettingsURL: "https://example.com/settings",
 			Sites: []digestSite{

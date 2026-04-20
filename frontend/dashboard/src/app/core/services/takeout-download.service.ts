@@ -1,9 +1,9 @@
-import { HttpClient, HttpResponse } from "@angular/common/http";
-import { Injectable, inject } from "@angular/core";
-import { TakeoutExportFormat } from "@core/export/export-formats";
-import { map, Observable } from "rxjs";
+import { HttpClient, HttpResponse } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { TakeoutExportFormat } from '@core/export/export-formats';
+import { map, Observable } from 'rxjs';
 
-@Injectable({ providedIn: "root" })
+@Injectable({ providedIn: 'root' })
 export class TakeoutDownloadService {
     private http = inject(HttpClient);
 
@@ -14,45 +14,45 @@ export class TakeoutDownloadService {
     }
 
     downloadSiteTakeout(siteID: string, domain: string | undefined, format: TakeoutExportFormat): Observable<string> {
-        const safeDomain = (domain || "site")
+        const safeDomain = (domain || 'site')
             .toLowerCase()
-            .replace(/[^a-z0-9]+/g, "-")
-            .replace(/(^-|-$)/g, "");
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/(^-|-$)/g, '');
         const dateStamp = this.currentDateStamp();
-        const fallbackFilename = `${safeDomain || "site"}-takeout-${dateStamp}.${format}`;
+        const fallbackFilename = `${safeDomain || 'site'}-takeout-${dateStamp}.${format}`;
         return this.downloadFromUrl(`/api/sites/${siteID}/takeout?format=${format}`, fallbackFilename);
     }
 
     downloadFromUrl(url: string, fallbackFilename: string): Observable<string> {
-        return this.http.get(url, { responseType: "blob", observe: "response" }).pipe(map((response) => this.persistDownload(response, fallbackFilename)));
+        return this.http.get(url, { responseType: 'blob', observe: 'response' }).pipe(map((response) => this.persistDownload(response, fallbackFilename)));
     }
 
     private persistDownload(response: HttpResponse<Blob>, fallbackFilename: string): string {
         const blob = response.body;
         if (!blob) {
-            throw new Error("missing_takeout_download");
+            throw new Error('missing_takeout_download');
         }
 
         if (this.isHTMLResponse(response, blob)) {
-            throw new Error("unexpected_html_download_response");
+            throw new Error('unexpected_html_download_response');
         }
 
-        const filename = this.ensureFilenameExtension(this.extractFilename(response.headers.get("content-disposition")) ?? fallbackFilename, fallbackFilename);
+        const filename = this.ensureFilenameExtension(this.extractFilename(response.headers.get('content-disposition')) ?? fallbackFilename, fallbackFilename);
         this.saveBlob(blob, filename);
         return filename;
     }
 
     private isHTMLResponse(response: HttpResponse<Blob>, blob: Blob): boolean {
-        const contentType = (response.headers.get("content-type") ?? blob.type ?? "").toLowerCase();
-        return contentType.includes("text/html") || contentType.includes("application/xhtml+xml");
+        const contentType = (response.headers.get('content-type') ?? blob.type ?? '').toLowerCase();
+        return contentType.includes('text/html') || contentType.includes('application/xhtml+xml');
     }
 
     private saveBlob(blob: Blob, filename: string): void {
         const objectURL = URL.createObjectURL(blob);
-        const link = document.createElement("a");
+        const link = document.createElement('a');
         link.href = objectURL;
         link.download = filename;
-        link.style.display = "none";
+        link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
         link.remove();
@@ -90,9 +90,9 @@ export class TakeoutDownloadService {
 
     private fileExtension(filename: string): string {
         const trimmed = filename.trim();
-        const lastDot = trimmed.lastIndexOf(".");
+        const lastDot = trimmed.lastIndexOf('.');
         if (lastDot <= 0 || lastDot === trimmed.length - 1) {
-            return "";
+            return '';
         }
         return trimmed.slice(lastDot + 1);
     }

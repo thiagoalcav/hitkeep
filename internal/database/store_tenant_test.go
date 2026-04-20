@@ -370,6 +370,72 @@ func TestDeleteArchivedTenantMetadataRemovesArchivedTeamRows(t *testing.T) {
 	}
 }
 
+func TestDeleteArchivedTenantMetadataRemovesCloudAndAPIClientRows(t *testing.T) {
+	store := setupTenantStore(t)
+	ctx := context.Background()
+
+	ownerID, err := store.CreateUser(ctx, "purge-cloud-owner@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create owner user: %v", err)
+	}
+
+	team, err := store.CreateTenant(ctx, ownerID, "Purge Cloud Rows", "")
+	if err != nil {
+		t.Fatalf("create team: %v", err)
+	}
+
+	now := time.Now().UTC()
+	clientID := uuid.New()
+	if _, err := store.DB().ExecContext(ctx, `
+		INSERT INTO api_clients (id, tenant_id, name, secret_hash, instance_role, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, clientID, team.ID, "Team client", "purge-cloud-secret", "user", now, now); err != nil {
+		t.Fatalf("insert team api client: %v", err)
+	}
+	if _, err := store.DB().ExecContext(ctx, `
+		INSERT INTO cloud_billing_accounts (
+			tenant_id, plan_code, plan_name, subscription_status, stripe_customer_id, created_at, updated_at
+		)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, team.ID, "pro", "Pro", "active", "cus_purge_cloud", now, now); err != nil {
+		t.Fatalf("insert cloud billing account: %v", err)
+	}
+	if _, err := store.DB().ExecContext(ctx, `
+		INSERT INTO cloud_billing_events (
+			stripe_event_id, tenant_id, event_type, livemode, processing_status, created_at, updated_at
+		)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, "evt_purge_cloud", team.ID, "customer.subscription.deleted", false, "processed", now, now); err != nil {
+		t.Fatalf("insert cloud billing event: %v", err)
+	}
+
+	if err := store.ArchiveTenant(ctx, team.ID, ownerID); err != nil {
+		t.Fatalf("archive tenant: %v", err)
+	}
+
+	deleted, err := store.DeleteArchivedTenantMetadata(ctx, team.ID)
+	if err != nil {
+		t.Fatalf("delete archived tenant metadata: %v", err)
+	}
+	if deleted == nil || deleted.ID != team.ID {
+		t.Fatalf("expected deleted team %s, got %+v", team.ID, deleted)
+	}
+
+	assertTenantPurgeCount := func(table string) {
+		t.Helper()
+		var count int
+		if err := store.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM "+table+" WHERE tenant_id = ?", team.ID).Scan(&count); err != nil {
+			t.Fatalf("count %s rows: %v", table, err)
+		}
+		if count != 0 {
+			t.Fatalf("expected %s tenant rows to be purged, got %d", table, count)
+		}
+	}
+	assertTenantPurgeCount("api_clients")
+	assertTenantPurgeCount("cloud_billing_accounts")
+	assertTenantPurgeCount("cloud_billing_events")
+}
+
 func TestDeleteArchivedTenantMetadataRequiresArchivedTeam(t *testing.T) {
 	store := setupTenantStore(t)
 	ctx := context.Background()

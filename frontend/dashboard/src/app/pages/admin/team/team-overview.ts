@@ -1,21 +1,21 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from "@angular/core";
-import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { ButtonModule } from "primeng/button";
-import { CardModule } from "primeng/card";
-import { ProgressBarModule } from "primeng/progressbar";
-import { TagModule } from "primeng/tag";
-import { TeamService } from "@services/team.service";
-import { injectActiveLang } from "@core/i18n/active-lang";
-import { AnalyticsService } from "@services/analytics.service";
-import { CloudService } from "@services/cloud.service";
-import { CloudPlanTier, SystemStatus, TeamRole } from "@models/analytics.types";
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
+import { ProgressBarModule } from 'primeng/progressbar';
+import { TagModule } from 'primeng/tag';
+import { TeamService } from '@services/team.service';
+import { injectActiveLang } from '@core/i18n/active-lang';
+import { AnalyticsService } from '@services/analytics.service';
+import { CloudService } from '@services/cloud.service';
+import { CloudPlanTier, SystemStatus, TeamRole } from '@models/analytics.types';
 
 @Component({
-    selector: "app-team-overview",
+    selector: 'app-team-overview',
     imports: [ButtonModule, CardModule, ProgressBarModule, TagModule, TranslocoPipe],
-    templateUrl: "./team-overview.html",
-    styleUrl: "./team-overview.css",
+    templateUrl: './team-overview.html',
+    styleUrl: './team-overview.css',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TeamOverviewPage {
@@ -38,7 +38,7 @@ export class TeamOverviewPage {
             return [];
         }
 
-        return [this.buildUsageCard("sites", team.usage.current_sites, team.entitlements.max_sites_per_team), this.buildUsageCard("members", team.usage.current_members, team.entitlements.max_team_members)];
+        return [this.buildUsageCard('sites', team.usage.current_sites, team.entitlements.max_sites_per_team), this.buildUsageCard('members', team.usage.current_members, team.entitlements.max_team_members)];
     });
     protected readonly cloudPlan = computed(() => {
         const team = this.team();
@@ -54,14 +54,14 @@ export class TeamOverviewPage {
         };
     });
     protected readonly showUsageSection = computed(() => this.usageCards().length > 0);
-    protected readonly canManageBilling = computed(() => this.cloudPlan()?.plan.code !== "free" && !this.portalPending());
-    protected readonly canStartUpgrade = computed(() => this.cloudPlan()?.plan.code === "free" && !this.checkoutPending());
+    protected readonly canManageBilling = computed(() => this.cloudPlan()?.plan.code !== 'free' && !this.portalPending());
+    protected readonly canStartUpgrade = computed(() => this.cloudPlan()?.plan.code === 'free' && !this.checkoutPending());
     protected readonly showPlanComparison = computed(() => this.canStartUpgrade() && this.planTiers().length > 1);
     protected readonly currentTier = computed(() => {
         const code = this.cloudPlan()?.plan.code;
         return this.planTiers().find((t) => t.code === code) ?? null;
     });
-    protected readonly upgradeTiers = computed(() => this.planTiers().filter((t) => t.code !== "free"));
+    protected readonly upgradeTiers = computed(() => this.planTiers().filter((t) => t.code !== 'free'));
 
     constructor() {
         this.analyticsService
@@ -78,15 +78,15 @@ export class TeamOverviewPage {
             });
     }
 
-    protected roleSeverity(role: TeamRole): "danger" | "info" | "secondary" {
+    protected roleSeverity(role: TeamRole): 'danger' | 'info' | 'secondary' {
         switch (role) {
-            case "owner":
-                return "danger";
-            case "admin":
-                return "info";
-            case "member":
+            case 'owner':
+                return 'danger';
+            case 'admin':
+                return 'info';
+            case 'member':
             default:
-                return "secondary";
+                return 'secondary';
         }
     }
 
@@ -95,41 +95,41 @@ export class TeamOverviewPage {
     }
 
     protected usageDescription(current: number): string {
-        return this.transloco.translate("admin.team.overview.usage.currentUsage", { count: current });
+        return this.transloco.translate('admin.team.overview.usage.currentUsage', { count: current });
     }
 
     protected usageLimitLabel(limit: number): string {
         if (limit <= 0) {
-            return this.transloco.translate("admin.team.overview.usage.unlimited");
+            return this.transloco.translate('admin.team.overview.usage.unlimited');
         }
-        return this.transloco.translate("admin.team.overview.usage.limitValue", { count: limit });
+        return this.transloco.translate('admin.team.overview.usage.limitValue', { count: limit });
     }
 
     protected usageStateClass(percentage: number, limit: number): string {
         if (limit <= 0) {
-            return "team-overview__usage-card--unlimited";
+            return 'team-overview__usage-card--unlimited';
         }
         if (percentage >= 95) {
-            return "team-overview__usage-card--critical";
+            return 'team-overview__usage-card--critical';
         }
         if (percentage >= 80) {
-            return "team-overview__usage-card--warning";
+            return 'team-overview__usage-card--warning';
         }
-        return "team-overview__usage-card--healthy";
+        return 'team-overview__usage-card--healthy';
     }
 
     protected pendingInviteLabel(count: number): string {
         if (count === 1) {
-            return this.transloco.translate("admin.team.overview.usage.pendingInviteOne");
+            return this.transloco.translate('admin.team.overview.usage.pendingInviteOne');
         }
-        return this.transloco.translate("admin.team.overview.usage.pendingInviteMany", { count });
+        return this.transloco.translate('admin.team.overview.usage.pendingInviteMany', { count });
     }
 
     protected retentionLabel(days: number): string {
         if (days <= 0) {
-            return this.transloco.translate("admin.team.overview.cloud.unlimitedRetention");
+            return this.transloco.translate('admin.team.overview.cloud.unlimitedRetention');
         }
-        return this.transloco.translate("admin.team.overview.cloud.retentionDays", { count: days });
+        return this.transloco.translate('admin.team.overview.cloud.retentionDays', { count: days });
     }
 
     protected openBillingPortal(): void {
@@ -152,7 +152,7 @@ export class TeamOverviewPage {
             });
     }
 
-    protected startCheckoutForPlan(planCode: "pro" | "business"): void {
+    protected startCheckoutForPlan(planCode: 'pro' | 'business'): void {
         if (this.checkoutPending()) {
             return;
         }
@@ -179,7 +179,7 @@ export class TeamOverviewPage {
 
         this.checkoutPending.set(true);
         this.cloudService
-            .createBillingCheckoutSession({ plan_code: "pro", locale: this.activeLanguage() })
+            .createBillingCheckoutSession({ plan_code: 'pro', locale: this.activeLanguage() })
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
                 next: ({ url }) => {
@@ -210,20 +210,20 @@ export class TeamOverviewPage {
 
     protected retentionYears(days: number): string {
         if (days <= 0) {
-            return this.transloco.translate("admin.team.overview.usage.unlimited");
+            return this.transloco.translate('admin.team.overview.usage.unlimited');
         }
         if (days < 365) {
-            return this.transloco.translate("admin.team.overview.plans.features.retentionDays", { count: days });
+            return this.transloco.translate('admin.team.overview.plans.features.retentionDays', { count: days });
         }
-        return this.transloco.translate("admin.team.overview.plans.features.retention", { count: Math.round(days / 365) });
+        return this.transloco.translate('admin.team.overview.plans.features.retention', { count: Math.round(days / 365) });
     }
 
     protected featureValue(value: number | boolean, suffix?: string): string {
-        if (typeof value === "boolean") {
-            return "";
+        if (typeof value === 'boolean') {
+            return '';
         }
         if (value <= 0) {
-            return this.transloco.translate("admin.team.overview.usage.unlimited");
+            return this.transloco.translate('admin.team.overview.usage.unlimited');
         }
         return suffix ? `${value} ${suffix}` : `${value}`;
     }

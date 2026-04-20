@@ -98,9 +98,9 @@
                 </div>
 
                 <p-button [label]="'login.verifyTotp' | transloco" type="submit" [loading]="isLoading()" class="w-full" [disabled]="isLoading() || loginForm.mfaCode().invalid()"> </p-button>
-                } @if (mfaHasRecoveryCode()) { @if (mfaHasTotp()) {
+                } @if (mfaHasFallback()) { @if (mfaShowsFallbackDivider()) {
                 <div class="hk-auth-divider">{{ "login.or" | transloco }}</div>
-                }
+                } @if (mfaHasRecoveryCode()) {
 
                 <div class="hk-auth-field">
                     <label for="recoveryCode" class="hk-auth-field-label">{{ "login.recoveryCodeLabel" | transloco }}</label>
@@ -119,11 +119,10 @@
                 </div>
 
                 <p-button [label]="'login.verifyRecoveryCode' | transloco" type="button" [loading]="isLoading()" class="w-full" [disabled]="isLoading() || loginForm.recoveryCode().invalid()" (onClick)="verifyRecoveryCodeMfa()"> </p-button>
-                } @if (isPasskeySupported() && mfaHasPasskey()) { @if (mfaHasTotp() || mfaHasRecoveryCode()) {
-                <div class="hk-auth-divider">{{ "login.or" | transloco }}</div>
-                }
+                } @if (mfaHasActionFallback()) {
 
-                <div class="hk-auth-actions-center">
+                <div class="hk-auth-actions-center hk-auth-actions-stack">
+                    @if (mfaHasVisiblePasskey()) {
                     <p-button
                         [label]="'login.signInWithPasskey' | transloco"
                         type="button"
@@ -134,12 +133,8 @@
                         [disabled]="isLoading() || isPasskeyLoading()"
                         (onClick)="onPasskeyLogin()"
                     />
-                </div>
-                } @if (mfaHasEmailLink()) { @if (mfaHasTotp() || mfaHasRecoveryCode() || (isPasskeySupported() && mfaHasPasskey())) {
-                <div class="hk-auth-divider">{{ "login.or" | transloco }}</div>
-                }
+                    } @if (mfaHasEmailLink()) {
 
-                <div class="hk-auth-actions-center">
                     <p-button
                         [label]="'login.sendEmailLink' | transloco"
                         type="button"
@@ -150,8 +145,9 @@
                         [disabled]="isLoading() || isPasskeyLoading()"
                         (onClick)="requestEmailLinkMfa()"
                     />
+                    }
                 </div>
-                } }
+                } } }
             </form>
         </div>
 

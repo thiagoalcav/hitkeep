@@ -1132,18 +1132,37 @@ func (s *Store) DeleteArchivedTenantMetadata(ctx context.Context, tenantID uuid.
 	}
 
 	if err := s.Transact(ctx, func(tx *sql.Tx) error {
+		tables, err := listTables(ctx, tx)
+		if err != nil {
+			return err
+		}
+		execIfTableExists := func(table string, query string, args ...any) error {
+			if _, ok := tables[table]; !ok {
+				return nil
+			}
+			if _, err := tx.ExecContext(ctx, query, args...); err != nil {
+				return err
+			}
+			return nil
+		}
+
 		statements := []struct {
+			table string
 			query string
 			args  []any
 		}{
-			{query: "DELETE FROM team_audit_log WHERE tenant_id = ?", args: []any{tenantID}},
-			{query: "DELETE FROM team_invites WHERE tenant_id = ?", args: []any{tenantID}},
-			{query: "DELETE FROM tenant_members WHERE tenant_id = ?", args: []any{tenantID}},
-			{query: "DELETE FROM tenant_archives WHERE tenant_id = ?", args: []any{tenantID}},
+			{table: "api_client_site_roles", query: "DELETE FROM api_client_site_roles WHERE api_client_id IN (SELECT id FROM api_clients WHERE tenant_id = ?)", args: []any{tenantID}},
+			{table: "api_clients", query: "DELETE FROM api_clients WHERE tenant_id = ?", args: []any{tenantID}},
+			{table: "cloud_billing_events", query: "DELETE FROM cloud_billing_events WHERE tenant_id = ?", args: []any{tenantID}},
+			{table: "cloud_billing_accounts", query: "DELETE FROM cloud_billing_accounts WHERE tenant_id = ?", args: []any{tenantID}},
+			{table: "team_audit_log", query: "DELETE FROM team_audit_log WHERE tenant_id = ?", args: []any{tenantID}},
+			{table: "team_invites", query: "DELETE FROM team_invites WHERE tenant_id = ?", args: []any{tenantID}},
+			{table: "tenant_members", query: "DELETE FROM tenant_members WHERE tenant_id = ?", args: []any{tenantID}},
+			{table: "tenant_archives", query: "DELETE FROM tenant_archives WHERE tenant_id = ?", args: []any{tenantID}},
 		}
 
 		for _, stmt := range statements {
-			if _, err := tx.ExecContext(ctx, stmt.query, stmt.args...); err != nil {
+			if err := execIfTableExists(stmt.table, stmt.query, stmt.args...); err != nil {
 				return fmt.Errorf("could not purge archived tenant metadata: %w", err)
 			}
 		}

@@ -1,24 +1,108 @@
-import { ComponentFixture, TestBed } from "@angular/core/testing";
-import { provideHttpClient } from "@angular/common/http";
-import { provideRouter } from "@angular/router";
-import { TranslocoTestingModule } from "@jsverse/transloco";
-import { provideTranslocoLocale } from "@jsverse/transloco-locale";
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+import { signal } from '@angular/core';
+import { TranslocoTestingModule } from '@jsverse/transloco';
+import { provideTranslocoLocale } from '@jsverse/transloco-locale';
+import { of } from 'rxjs';
 
-import { Events } from "@pages/events/events";
+import { Events } from '@pages/events/events';
+import { AnalyticsService } from '@core/services/analytics.service';
+import { SiteService } from '@features/sites/services/site.service';
 
-describe("Events", () => {
+describe('Events', () => {
     let component: Events;
     let fixture: ComponentFixture<Events>;
+    const siteServiceStub = {
+        activeSite: signal({
+            id: 'site-1',
+            user_id: 'user-1',
+            domain: 'acme-analytics.io',
+            created_at: new Date().toISOString()
+        })
+    };
+    const analyticsServiceStub = {
+        getEventNames: () => of(['outbound_click', 'newsletter_signup']),
+        getEventPropertyKeys: () => of(['target_host']),
+        getEventPropertyBreakdown: () => of([{ name: 'external.example.com', value: 12 }]),
+        getEventTimeseries: () => of([{ time: new Date().toISOString(), count: 12 }]),
+        getEventAudience: () =>
+            of({
+                top_pages: [{ name: '/pricing', value: 8 }],
+                top_referrers: [{ name: 'https://google.com', value: 5 }],
+                top_devices: [{ name: 'Desktop', value: 7 }],
+                top_countries: [{ name: 'US', value: 4 }]
+            })
+    };
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
             imports: [
                 Events,
                 TranslocoTestingModule.forRoot({
-                    langs: { en: {} },
+                    langs: {
+                        en: {
+                            events: {
+                                title: 'Events',
+                                docsAction: 'Auto-tracking guide',
+                                noSiteDescription: 'Select or create a site to view event analytics.',
+                                eventNameLabel: 'Event',
+                                eventNamePlaceholder: 'Select an event',
+                                propertyKeyLabel: 'Break down by',
+                                propertyKeyPlaceholder: 'Select a property',
+                                automatic: {
+                                    title: 'Automatic events',
+                                    description: 'Jump straight into built-in tracker events when this site has outbound clicks, downloads, or form submissions.',
+                                    badge: 'Auto',
+                                    quickPicks: {
+                                        outboundClick: 'Outbound clicks',
+                                        fileDownload: 'File downloads',
+                                        formSubmit: 'Form submissions'
+                                    }
+                                },
+                                series: {
+                                    title: 'Event activity',
+                                    description: 'Event occurrences over the selected period.',
+                                    emptyTitle: 'No event data',
+                                    emptyDescription: 'Select an event to view activity over time.'
+                                },
+                                breakdown: {
+                                    title: 'Property breakdown',
+                                    selectEventFirst: 'Select an event to view a property breakdown.',
+                                    selectPropertyFirst: 'Select a property to view the breakdown.'
+                                },
+                                kpis: {
+                                    totalEvents: 'Total events'
+                                }
+                            },
+                            dashboard: {
+                                filteredBadge: 'Filtered'
+                            },
+                            common: {
+                                noSiteSelected: 'No site selected',
+                                noActiveFilter: 'No active filter',
+                                removeFilterAria: 'Remove filter',
+                                actions: {
+                                    clearAll: 'Clear all'
+                                },
+                                metrics: {
+                                    topPages: 'Top Pages',
+                                    topSources: 'Top Sources',
+                                    devices: 'Devices',
+                                    countries: 'Countries'
+                                },
+                                filters: {
+                                    page: 'Page: {{value}}',
+                                    source: 'Source: {{value}}',
+                                    device: 'Device: {{value}}',
+                                    country: 'Country: {{value}}'
+                                }
+                            }
+                        }
+                    },
                     translocoConfig: {
-                        availableLangs: ["en"],
-                        defaultLang: "en"
+                        availableLangs: ['en'],
+                        defaultLang: 'en'
                     },
                     preloadLangs: true
                 })
@@ -26,11 +110,13 @@ describe("Events", () => {
             providers: [
                 provideHttpClient(),
                 provideRouter([]),
+                { provide: SiteService, useValue: siteServiceStub },
+                { provide: AnalyticsService, useValue: analyticsServiceStub },
                 provideTranslocoLocale({
-                    defaultLocale: "en-US",
+                    defaultLocale: 'en-US',
                     langToLocaleMapping: {
-                        en: "en-US",
-                        "en-US": "en-US"
+                        en: 'en-US',
+                        'en-US': 'en-US'
                     }
                 })
             ]
@@ -41,7 +127,17 @@ describe("Events", () => {
         fixture.detectChanges();
     });
 
-    it("should create", () => {
+    it('should create', () => {
         expect(component).toBeTruthy();
+    });
+
+    it('shows automatic event quick picks when built-in events exist', async () => {
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        const compiled = fixture.nativeElement as HTMLElement;
+        expect(compiled.textContent).toContain('Automatic events');
+        expect(compiled.textContent).toContain('Outbound clicks');
     });
 });

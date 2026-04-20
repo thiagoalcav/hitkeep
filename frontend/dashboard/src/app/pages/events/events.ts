@@ -1,37 +1,50 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal, untracked } from "@angular/core";
-import { FormsModule, ReactiveFormsModule } from "@angular/forms";
-import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { TranslocoLocaleService } from "@jsverse/transloco-locale";
-import { SelectModule } from "primeng/select";
-import { CardModule } from "primeng/card";
-import { SkeletonModule } from "primeng/skeleton";
-import { ButtonModule } from "primeng/button";
-import { SiteService } from "@features/sites/services/site.service";
-import { AnalyticsService } from "@core/services/analytics.service";
-import { MetricList } from "@features/analytics/components/metric-list";
-import { DEFAULT_RANGE_OPTIONS, RangeToolbar, RangeOption } from "@components/range-toolbar/range-toolbar";
-import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
-import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
-import { SeriesChart, SeriesDefinition, SeriesChartPoint } from "@features/analytics/components/series-chart";
-import { MetricStat, EventSeriesPoint, EventAudience } from "@models/analytics.types";
-import { finalize } from "rxjs";
-import { injectActiveLang } from "@core/i18n/active-lang";
+import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoLocaleService } from '@jsverse/transloco-locale';
+import { SelectModule } from 'primeng/select';
+import { SelectButtonModule } from 'primeng/selectbutton';
+import { CardModule } from 'primeng/card';
+import { SkeletonModule } from 'primeng/skeleton';
+import { ButtonModule } from 'primeng/button';
+import { SiteService } from '@features/sites/services/site.service';
+import { AnalyticsService } from '@core/services/analytics.service';
+import { MetricList } from '@features/analytics/components/metric-list';
+import { DEFAULT_RANGE_OPTIONS, RangeToolbar, RangeOption } from '@components/range-toolbar/range-toolbar';
+import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
+import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
+import { SeriesChart, SeriesDefinition, SeriesChartPoint } from '@features/analytics/components/series-chart';
+import { MetricStat, EventSeriesPoint, EventAudience } from '@models/analytics.types';
+import { finalize } from 'rxjs';
+import { injectActiveLang } from '@core/i18n/active-lang';
 
 interface EventFilterChip {
     key: string;
     label: string;
-    remove: "property" | "dimension";
+    remove: 'property' | 'dimension';
 }
 
+interface AutomaticEventQuickPick {
+    name: string;
+    label: string;
+    icon: string;
+}
+
+const AUTOMATIC_EVENT_META: Record<string, { labelKey: string; icon: string }> = {
+    outbound_click: { labelKey: 'events.automatic.quickPicks.outboundClick', icon: 'pi pi-external-link' },
+    file_download: { labelKey: 'events.automatic.quickPicks.fileDownload', icon: 'pi pi-download' },
+    form_submit: { labelKey: 'events.automatic.quickPicks.formSubmit', icon: 'pi pi-send' }
+};
+
 @Component({
-    selector: "app-events",
-    imports: [FormsModule, ReactiveFormsModule, TranslocoPipe, SelectModule, CardModule, SkeletonModule, ButtonModule, MetricList, RangeToolbar, PageHeader, PageHeaderLeft, PageBreadcrumb, SeriesChart],
-    templateUrl: "./events.html",
-    styleUrl: "./events.css",
+    selector: 'app-events',
+    imports: [FormsModule, ReactiveFormsModule, TranslocoPipe, SelectModule, SelectButtonModule, CardModule, SkeletonModule, ButtonModule, MetricList, RangeToolbar, PageHeader, PageHeaderLeft, PageBreadcrumb, SeriesChart],
+    templateUrl: './events.html',
+    styleUrl: './events.css',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Events {
-    protected readonly addEventsDocsUrl = "https://hitkeep.com/guides/tracking/custom-events/";
+    protected readonly addEventsDocsUrl = 'https://hitkeep.com/guides/tracking/automatic-events/';
     private siteService = inject(SiteService);
     private analyticsService = inject(AnalyticsService);
     private localeService = inject(TranslocoLocaleService);
@@ -42,15 +55,15 @@ export class Events {
     protected selectedRange = linkedSignal<RangeOption[], RangeOption>({
         source: this.timeRanges,
         computation: (ranges, previous) => {
-            const value = previous?.value.value ?? "30d";
+            const value = previous?.value.value ?? '30d';
             return ranges.find((r) => r.value === value) ?? ranges[2]!;
         }
     });
     protected readonly customRangeDates = signal<Date[] | null>(null);
     protected isShortRange = computed(() => {
-        if (this.selectedRange().value === "24h") return true;
+        if (this.selectedRange().value === '24h') return true;
         const d = this.customRangeDates();
-        if (this.selectedRange().value === "custom" && d && d.length === 2 && d[0] && d[1]) {
+        if (this.selectedRange().value === 'custom' && d && d.length === 2 && d[0] && d[1]) {
             return d[1].getTime() - d[0].getTime() < 48 * 60 * 60 * 1000;
         }
         return false;
@@ -87,13 +100,23 @@ export class Events {
     protected readonly noSite = computed(() => !this.activeSite());
     protected eventOptions = computed(() => this.eventNames().map((name) => ({ label: name, value: name })));
     protected propertyOptions = computed(() => this.propertyKeys().map((key) => ({ label: key, value: key })));
+    protected readonly automaticEventQuickPicks = computed<AutomaticEventQuickPick[]>(() => {
+        this.activeLanguage();
+        return this.eventNames()
+            .filter((name) => name in AUTOMATIC_EVENT_META)
+            .map((name) => ({
+                name,
+                label: this.transloco.translate(AUTOMATIC_EVENT_META[name]!.labelKey),
+                icon: AUTOMATIC_EVENT_META[name]!.icon
+            }));
+    });
 
     protected comparisonLabel = computed(() => {
         this.activeLanguage();
         const r = this.comparisonRange();
-        if (!r) return "";
+        if (!r) return '';
         const showYear = new Date(r.from).getFullYear() !== new Date().getFullYear();
-        const opts = showYear ? ({ month: "short", day: "numeric", year: "numeric" } as const) : ({ month: "short", day: "numeric" } as const);
+        const opts = showYear ? ({ month: 'short', day: 'numeric', year: 'numeric' } as const) : ({ month: 'short', day: 'numeric' } as const);
         const fmt = (d: string) => this.localeService.localizeDate(new Date(d), undefined, opts);
         return `${fmt(r.from)} – ${fmt(r.to)}`;
     });
@@ -102,11 +125,11 @@ export class Events {
         this.activeLanguage();
         return [
             {
-                key: "count",
-                label: this.transloco.translate("events.kpis.totalEvents"),
-                color: "#6366f1",
-                gradientFrom: "rgba(99, 102, 241, 0.5)",
-                gradientTo: "rgba(99, 102, 241, 0.0)"
+                key: 'count',
+                label: this.transloco.translate('events.kpis.totalEvents'),
+                color: '#6366f1',
+                gradientFrom: 'rgba(99, 102, 241, 0.5)',
+                gradientTo: 'rgba(99, 102, 241, 0.0)'
             }
         ];
     });
@@ -114,10 +137,10 @@ export class Events {
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         this.activeLanguage();
         const site = this.siteService.activeSite();
-        if (!site) return [{ label: this.transloco.translate("events.title"), isCurrent: true }];
+        if (!site) return [{ label: this.transloco.translate('events.title'), isCurrent: true }];
         return [
-            { label: site.domain, favicon: site, routerLink: "/dashboard" },
-            { label: this.transloco.translate("events.title"), isCurrent: true }
+            { label: site.domain, favicon: site, routerLink: '/dashboard' },
+            { label: this.transloco.translate('events.title'), isCurrent: true }
         ];
     });
 
@@ -128,11 +151,11 @@ export class Events {
         const propKey = this.selectedPropertyKey();
         const propValue = this.selectedPropertyValue();
         if (propKey && propValue) {
-            chips.push({ key: "property", label: `${propKey}: ${propValue}`, remove: "property" });
+            chips.push({ key: 'property', label: `${propKey}: ${propValue}`, remove: 'property' });
         }
         const dim = this.audienceDimFilter();
         if (dim) {
-            chips.push({ key: "dimension", label: this.dimFilterLabel(dim.dim, dim.value), remove: "dimension" });
+            chips.push({ key: 'dimension', label: this.dimFilterLabel(dim.dim, dim.value), remove: 'dimension' });
         }
         return chips;
     });
@@ -143,16 +166,16 @@ export class Events {
 
     protected readonly totalEventDeltaClass = computed(() => {
         const d = this.totalEventDelta();
-        if (d === null) return "";
+        if (d === null) return '';
         return d >= 0
-            ? "text-xs font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-            : "text-xs font-medium px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+            ? 'text-xs font-medium px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+            : 'text-xs font-medium px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
     });
 
     protected readonly totalEventDeltaLabel = computed(() => {
         const d = this.totalEventDelta();
-        if (d === null) return "";
-        return `${d >= 0 ? "+" : ""}${d.toFixed(1)}%`;
+        if (d === null) return '';
+        return `${d >= 0 ? '+' : ''}${d.toFixed(1)}%`;
     });
 
     constructor() {
@@ -267,9 +290,9 @@ export class Events {
         return ((current - previous) / previous) * 100;
     }
 
-    protected removeFilter(type: "property" | "dimension") {
-        if (type === "property") this.selectedPropertyValue.set(null);
-        if (type === "dimension") this.audienceDimFilter.set(null);
+    protected removeFilter(type: 'property' | 'dimension') {
+        if (type === 'property') this.selectedPropertyValue.set(null);
+        if (type === 'dimension') this.audienceDimFilter.set(null);
     }
 
     protected clearAllFilters() {
@@ -304,14 +327,14 @@ export class Events {
 
     private dimFilterLabel(dim: string, value: string): string {
         switch (dim) {
-            case "path":
-                return this.transloco.translate("common.filters.page", { value });
-            case "referrer":
-                return this.transloco.translate("common.filters.source", { value });
-            case "device":
-                return this.transloco.translate("common.filters.device", { value });
-            case "country":
-                return this.transloco.translate("common.filters.country", { value });
+            case 'path':
+                return this.transloco.translate('common.filters.page', { value });
+            case 'referrer':
+                return this.transloco.translate('common.filters.source', { value });
+            case 'device':
+                return this.transloco.translate('common.filters.device', { value });
+            case 'country':
+                return this.transloco.translate('common.filters.country', { value });
             default:
                 return `${dim}: ${value}`;
         }
@@ -322,7 +345,7 @@ export class Events {
         const end = new Date();
         const start = new Date();
 
-        if (range.value === "custom") {
+        if (range.value === 'custom') {
             const d = this.customRangeDates();
             if (d && d.length === 2 && d[0] && d[1]) {
                 return { from: d[0].toISOString(), to: d[1].toISOString() };
@@ -331,13 +354,13 @@ export class Events {
         }
 
         switch (range.value) {
-            case "24h":
+            case '24h':
                 start.setHours(end.getHours() - 24);
                 break;
-            case "7d":
+            case '7d':
                 start.setDate(end.getDate() - 7);
                 break;
-            case "1y":
+            case '1y':
                 start.setFullYear(end.getFullYear() - 1);
                 break;
             default:
@@ -348,10 +371,11 @@ export class Events {
 
     private loadEventNames(siteId: string, from: string, to: string) {
         this.isLoadingNames.set(true);
-        this.selectedEvent.set(null);
+        const currentSelection = this.selectedEvent();
         this.analyticsService.getEventNames(siteId, from, to).subscribe({
             next: (names) => {
                 this.eventNames.set(names);
+                this.selectedEvent.set(currentSelection && names.includes(currentSelection) ? currentSelection : null);
                 this.isLoadingNames.set(false);
             },
             error: () => this.isLoadingNames.set(false)
@@ -360,10 +384,11 @@ export class Events {
 
     private loadPropertyKeys(siteId: string, from: string, to: string, eventName: string) {
         this.isLoadingKeys.set(true);
-        this.selectedPropertyKey.set(null);
+        const currentPropertyKey = this.selectedPropertyKey();
         this.analyticsService.getEventPropertyKeys(siteId, from, to, eventName).subscribe({
             next: (keys) => {
                 this.propertyKeys.set(keys);
+                this.selectedPropertyKey.set(currentPropertyKey && keys.includes(currentPropertyKey) ? currentPropertyKey : null);
                 this.isLoadingKeys.set(false);
             },
             error: () => this.isLoadingKeys.set(false)

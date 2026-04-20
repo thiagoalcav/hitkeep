@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestDeleteUserBlocksSoleOwnerDeletion(t *testing.T) {
@@ -98,5 +99,75 @@ func TestDeleteUserAllowsDeletionWhenAnotherOwnerExists(t *testing.T) {
 	}
 	if loadedSite != nil {
 		t.Fatalf("expected owned site to be deleted with user, got %+v", loadedSite)
+	}
+}
+
+func TestDeleteUserRemovesLegacyAuthStateRows(t *testing.T) {
+	store := setupTenantStore(t)
+	ctx := context.Background()
+
+	ownerID, err := store.CreateUser(ctx, "legacy-auth-owner@delete-user.test", "hash")
+	if err != nil {
+		t.Fatalf("create owner user: %v", err)
+	}
+	coOwnerID, err := store.CreateUser(ctx, "legacy-auth-co-owner@delete-user.test", "hash")
+	if err != nil {
+		t.Fatalf("create co-owner user: %v", err)
+	}
+
+	defaultTenantID, err := store.GetDefaultTenantID(ctx)
+	if err != nil {
+		t.Fatalf("get default tenant: %v", err)
+	}
+	if err := store.AddTeamMember(ctx, defaultTenantID, coOwnerID, TenantRoleOwner, ownerID); err != nil {
+		t.Fatalf("promote co-owner: %v", err)
+	}
+
+	if _, err := store.DB().ExecContext(ctx, `
+		CREATE TABLE user_totp_pending_setup (
+			user_id UUID PRIMARY KEY REFERENCES users(id),
+			secret VARCHAR NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL,
+			expires_at TIMESTAMPTZ NOT NULL
+		)
+	`); err != nil {
+		t.Fatalf("create legacy totp table: %v", err)
+	}
+	if _, err := store.DB().ExecContext(ctx, `
+		CREATE TABLE user_passkey_challenges (
+			user_id UUID PRIMARY KEY REFERENCES users(id),
+			challenge VARCHAR NOT NULL,
+			requested_name VARCHAR,
+			created_at TIMESTAMPTZ NOT NULL,
+			expires_at TIMESTAMPTZ NOT NULL
+		)
+	`); err != nil {
+		t.Fatalf("create legacy passkey table: %v", err)
+	}
+
+	now := time.Now().UTC()
+	if _, err := store.DB().ExecContext(ctx,
+		"INSERT INTO user_totp_pending_setup (user_id, secret, created_at, expires_at) VALUES (?, ?, ?, ?)",
+		ownerID, "secret", now, now.Add(time.Hour),
+	); err != nil {
+		t.Fatalf("insert legacy totp row: %v", err)
+	}
+	if _, err := store.DB().ExecContext(ctx,
+		"INSERT INTO user_passkey_challenges (user_id, challenge, requested_name, created_at, expires_at) VALUES (?, ?, ?, ?, ?)",
+		ownerID, "challenge", "Key", now, now.Add(time.Hour),
+	); err != nil {
+		t.Fatalf("insert legacy passkey row: %v", err)
+	}
+
+	if err := store.DeleteUser(ctx, ownerID); err != nil {
+		t.Fatalf("delete user: %v", err)
+	}
+
+	user, err := store.GetUserByID(ctx, ownerID)
+	if err != nil {
+		t.Fatalf("lookup deleted user: %v", err)
+	}
+	if user != nil {
+		t.Fatalf("expected user to be deleted, got %+v", user)
 	}
 }

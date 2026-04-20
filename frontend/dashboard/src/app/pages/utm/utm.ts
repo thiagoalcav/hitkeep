@@ -1,32 +1,32 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal } from "@angular/core";
-import { injectActiveLang } from "@core/i18n/active-lang";
-import { ReactiveFormsModule } from "@angular/forms";
-import { RouterLink } from "@angular/router";
-import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { TranslocoLocaleService } from "@jsverse/transloco-locale";
-import { ButtonModule } from "primeng/button";
-import { CardModule } from "primeng/card";
-import { SiteService } from "@features/sites/services/site.service";
-import { StatsService } from "@features/analytics/services/stats.service";
-import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
-import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
-import { KpiCard } from "@features/analytics/components/kpi-card";
-import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from "@components/range-toolbar/range-toolbar";
-import { MetricList } from "@features/analytics/components/metric-list";
-import { SeriesChart, SeriesChartPoint, SeriesDefinition } from "@features/analytics/components/series-chart";
+import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal } from '@angular/core';
+import { injectActiveLang } from '@core/i18n/active-lang';
+import { ReactiveFormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoLocaleService } from '@jsverse/transloco-locale';
+import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
+import { SiteService } from '@features/sites/services/site.service';
+import { StatsService } from '@features/analytics/services/stats.service';
+import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
+import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
+import { KpiCard } from '@features/analytics/components/kpi-card';
+import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from '@components/range-toolbar/range-toolbar';
+import { MetricList } from '@features/analytics/components/metric-list';
+import { SeriesChart, SeriesChartPoint, SeriesDefinition } from '@features/analytics/components/series-chart';
 
-type MetricFilterType = "utm_campaign" | "utm_content" | "utm_medium" | "utm_source" | "utm_term";
+type MetricFilterType = 'utm_campaign' | 'utm_content' | 'utm_medium' | 'utm_source' | 'utm_term';
 interface MetricFilter {
     type: MetricFilterType;
     value: string;
 }
 
 @Component({
-    selector: "app-utm-dashboard",
+    selector: 'app-utm-dashboard',
     standalone: true,
     imports: [ReactiveFormsModule, RouterLink, TranslocoPipe, ButtonModule, CardModule, PageHeader, PageHeaderLeft, PageBreadcrumb, RangeToolbar, KpiCard, MetricList, SeriesChart],
-    templateUrl: "./utm.html",
-    styleUrl: "./utm.css",
+    templateUrl: './utm.html',
+    styleUrl: './utm.css',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class UtmDashboard {
@@ -40,16 +40,16 @@ export class UtmDashboard {
     protected selectedRange = linkedSignal<RangeOption[], RangeOption>({
         source: this.timeRanges,
         computation: (ranges, previous) => {
-            const value = previous?.value.value ?? "30d";
+            const value = previous?.value.value ?? '30d';
             return ranges.find((r) => r.value === value) ?? ranges[2]!;
         }
     });
     protected readonly customRangeDates = signal<Date[] | null>(null);
     protected isRefreshing = computed(() => this.statsService.isLoading());
     protected isShortRange = computed(() => {
-        if (this.selectedRange().value === "24h") return true;
+        if (this.selectedRange().value === '24h') return true;
         const customRangeDates = this.customRangeDates();
-        if (this.selectedRange().value === "custom" && customRangeDates) {
+        if (this.selectedRange().value === 'custom' && customRangeDates) {
             const d = customRangeDates;
             if (d.length === 2 && d[0] && d[1]) {
                 const diff = d[1].getTime() - d[0].getTime();
@@ -70,20 +70,20 @@ export class UtmDashboard {
         this.activeLanguage();
         const site = this.siteService.activeSite();
         if (!site) {
-            return [{ label: this.transloco.translate("nav.utm"), isCurrent: true }];
+            return [{ label: this.transloco.translate('nav.utm'), isCurrent: true }];
         }
         return [
-            { label: site.domain, favicon: site, routerLink: "/dashboard" },
-            { label: this.transloco.translate("nav.utm"), isCurrent: true }
+            { label: site.domain, favicon: site, routerLink: '/dashboard' },
+            { label: this.transloco.translate('nav.utm'), isCurrent: true }
         ];
     });
 
     protected comparisonLabel = computed(() => {
         this.activeLanguage();
         const r = this.statsService.currentComparisonRange();
-        if (!r) return "";
+        if (!r) return '';
         const showYear = new Date(r.from).getFullYear() !== new Date().getFullYear();
-        const opts = showYear ? ({ month: "short", day: "numeric", year: "numeric" } as const) : ({ month: "short", day: "numeric" } as const);
+        const opts = showYear ? ({ month: 'short', day: 'numeric', year: 'numeric' } as const) : ({ month: 'short', day: 'numeric' } as const);
         const fmt = (d: string) => this.localeService.localizeDate(new Date(d), undefined, opts);
         return `${fmt(r.from)} – ${fmt(r.to)}`;
     });
@@ -108,18 +108,18 @@ export class UtmDashboard {
         this.activeLanguage();
         return [
             {
-                key: "pageviews",
-                label: this.transloco.translate("dashboard.kpis.pageviews"),
-                color: "#6366f1",
-                gradientFrom: "rgba(99, 102, 241, 0.5)",
-                gradientTo: "rgba(99, 102, 241, 0.0)"
+                key: 'pageviews',
+                label: this.transloco.translate('dashboard.kpis.pageviews'),
+                color: '#6366f1',
+                gradientFrom: 'rgba(99, 102, 241, 0.5)',
+                gradientTo: 'rgba(99, 102, 241, 0.0)'
             },
             {
-                key: "visitors",
-                label: this.transloco.translate("dashboard.traffic.visitors"),
-                color: "#14b8a6",
-                gradientFrom: "rgba(20, 184, 166, 0.5)",
-                gradientTo: "rgba(20, 184, 166, 0.0)"
+                key: 'visitors',
+                label: this.transloco.translate('dashboard.traffic.visitors'),
+                color: '#14b8a6',
+                gradientFrom: 'rgba(20, 184, 166, 0.5)',
+                gradientTo: 'rgba(20, 184, 166, 0.0)'
             }
         ];
     });
@@ -131,38 +131,38 @@ export class UtmDashboard {
 
         return [
             {
-                label: this.transloco.translate("utm.kpis.campaign"),
+                label: this.transloco.translate('utm.kpis.campaign'),
                 value: stats?.utm_campaign_hits ?? 0,
                 loading,
-                valueClass: "text-2xl xl:text-3xl font-bold",
+                valueClass: 'text-2xl xl:text-3xl font-bold',
                 delta: cmp ? this.calcDelta(stats?.utm_campaign_hits ?? 0, cmp.utm_campaign_hits) : null
             },
             {
-                label: this.transloco.translate("utm.kpis.content"),
+                label: this.transloco.translate('utm.kpis.content'),
                 value: stats?.utm_content_hits ?? 0,
                 loading,
-                valueClass: "text-2xl xl:text-3xl font-bold",
+                valueClass: 'text-2xl xl:text-3xl font-bold',
                 delta: cmp ? this.calcDelta(stats?.utm_content_hits ?? 0, cmp.utm_content_hits) : null
             },
             {
-                label: this.transloco.translate("utm.kpis.medium"),
+                label: this.transloco.translate('utm.kpis.medium'),
                 value: stats?.utm_medium_hits ?? 0,
                 loading,
-                valueClass: "text-2xl xl:text-3xl font-bold",
+                valueClass: 'text-2xl xl:text-3xl font-bold',
                 delta: cmp ? this.calcDelta(stats?.utm_medium_hits ?? 0, cmp.utm_medium_hits) : null
             },
             {
-                label: this.transloco.translate("utm.kpis.source"),
+                label: this.transloco.translate('utm.kpis.source'),
                 value: stats?.utm_source_hits ?? 0,
                 loading,
-                valueClass: "text-2xl xl:text-3xl font-bold",
+                valueClass: 'text-2xl xl:text-3xl font-bold',
                 delta: cmp ? this.calcDelta(stats?.utm_source_hits ?? 0, cmp.utm_source_hits) : null
             },
             {
-                label: this.transloco.translate("utm.kpis.term"),
+                label: this.transloco.translate('utm.kpis.term'),
                 value: stats?.utm_term_hits ?? 0,
                 loading,
-                valueClass: "text-2xl xl:text-3xl font-bold",
+                valueClass: 'text-2xl xl:text-3xl font-bold',
                 delta: cmp ? this.calcDelta(stats?.utm_term_hits ?? 0, cmp.utm_term_hits) : null
             }
         ];
@@ -225,16 +225,16 @@ export class UtmDashboard {
 
     private filterLabel(filter: MetricFilter): string {
         switch (filter.type) {
-            case "utm_campaign":
-                return this.transloco.translate("utm.filters.campaign", { value: filter.value });
-            case "utm_content":
-                return this.transloco.translate("utm.filters.content", { value: filter.value });
-            case "utm_medium":
-                return this.transloco.translate("utm.filters.medium", { value: filter.value });
-            case "utm_source":
-                return this.transloco.translate("utm.filters.source", { value: filter.value });
-            case "utm_term":
-                return this.transloco.translate("utm.filters.term", { value: filter.value });
+            case 'utm_campaign':
+                return this.transloco.translate('utm.filters.campaign', { value: filter.value });
+            case 'utm_content':
+                return this.transloco.translate('utm.filters.content', { value: filter.value });
+            case 'utm_medium':
+                return this.transloco.translate('utm.filters.medium', { value: filter.value });
+            case 'utm_source':
+                return this.transloco.translate('utm.filters.source', { value: filter.value });
+            case 'utm_term':
+                return this.transloco.translate('utm.filters.term', { value: filter.value });
             default:
                 return `${filter.type}: ${filter.value}`;
         }
@@ -245,7 +245,7 @@ export class UtmDashboard {
         const end = new Date();
         const start = new Date();
 
-        if (range.value === "custom") {
+        if (range.value === 'custom') {
             const dates = this.customRangeDates();
             if (dates && dates.length === 2 && dates[0] && dates[1]) {
                 return { from: dates[0].toISOString(), to: dates[1].toISOString() };
@@ -254,16 +254,16 @@ export class UtmDashboard {
         }
 
         switch (range.value) {
-            case "24h":
+            case '24h':
                 start.setHours(end.getHours() - 24);
                 break;
-            case "7d":
+            case '7d':
                 start.setDate(end.getDate() - 7);
                 break;
-            case "30d":
+            case '30d':
                 start.setDate(end.getDate() - 30);
                 break;
-            case "1y":
+            case '1y':
                 start.setFullYear(end.getFullYear() - 1);
                 break;
         }

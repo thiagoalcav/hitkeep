@@ -6,7 +6,7 @@ export interface Site {
     data_retention_days?: number;
 }
 
-export type TeamRole = "owner" | "admin" | "member";
+export type TeamRole = 'owner' | 'admin' | 'member';
 
 export interface Team {
     id: string;
@@ -66,7 +66,7 @@ export interface TeamInvite {
     email: string;
     role: TeamRole;
     invited_user_id?: string;
-    status: "pending" | "accepted" | "revoked";
+    status: 'pending' | 'accepted' | 'revoked';
     created_by?: string;
     created_at: string;
     expires_at: string;
@@ -337,13 +337,13 @@ export interface Goal {
     id: string;
     site_id: string;
     name: string;
-    type: "event" | "path";
+    type: 'event' | 'path';
     value: string;
     created_at: string;
 }
 
 export interface FunnelStep {
-    type: "event" | "path";
+    type: 'event' | 'path';
     value: string;
 }
 
@@ -387,7 +387,7 @@ export interface CloudStatus {
     support_url?: string;
 }
 
-export type ReportFrequency = "daily" | "weekly" | "monthly";
+export type ReportFrequency = 'daily' | 'weekly' | 'monthly';
 
 export interface FrequencyPrefs {
     daily: boolean;

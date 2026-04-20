@@ -1,38 +1,38 @@
-import { ChangeDetectionStrategy, Component, inject, signal, effect, computed, linkedSignal, untracked } from "@angular/core";
-import { injectActiveLang } from "@core/i18n/active-lang";
-import { FormControl, ReactiveFormsModule } from "@angular/forms";
-import { compatForm } from "@angular/forms/signals/compat";
-import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { TranslocoLocaleService } from "@jsverse/transloco-locale";
-import { ButtonModule } from "primeng/button";
-import { CardModule } from "primeng/card";
-import { SelectModule } from "primeng/select";
-import { SiteService } from "@features/sites/services/site.service";
-import { StatsService } from "@features/analytics/services/stats.service";
-import { AnalyticsService } from "@services/analytics.service";
-import { GoalList } from "@features/analytics/components/goal-list";
-import { MetricList } from "@features/analytics/components/metric-list";
-import { GoalManager } from "@features/goals/components/goal-manager";
-import { PageHeader, PageHeaderLeft } from "@components/page-header/page-header";
-import { PageBreadcrumb, PageBreadcrumbItem } from "@components/page-breadcrumb/page-breadcrumb";
-import { SeriesChart, SeriesDefinition, SeriesChartPoint } from "@features/analytics/components/series-chart";
-import { Goal, GoalSeriesPoint, SiteStats } from "@models/analytics.types";
-import { KpiCard } from "@features/analytics/components/kpi-card";
-import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from "@components/range-toolbar/range-toolbar";
-import { finalize } from "rxjs";
+import { ChangeDetectionStrategy, Component, inject, signal, effect, computed, linkedSignal, untracked } from '@angular/core';
+import { injectActiveLang } from '@core/i18n/active-lang';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { TranslocoLocaleService } from '@jsverse/transloco-locale';
+import { ButtonModule } from 'primeng/button';
+import { CardModule } from 'primeng/card';
+import { SelectModule } from 'primeng/select';
+import { SiteService } from '@features/sites/services/site.service';
+import { StatsService } from '@features/analytics/services/stats.service';
+import { AnalyticsService } from '@services/analytics.service';
+import { GoalList } from '@features/analytics/components/goal-list';
+import { MetricList } from '@features/analytics/components/metric-list';
+import { GoalManager } from '@features/goals/components/goal-manager';
+import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
+import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
+import { SeriesChart, SeriesDefinition, SeriesChartPoint } from '@features/analytics/components/series-chart';
+import { Goal, GoalSeriesPoint, SiteStats } from '@models/analytics.types';
+import { KpiCard } from '@features/analytics/components/kpi-card';
+import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from '@components/range-toolbar/range-toolbar';
+import { finalize } from 'rxjs';
 
-type MetricFilterType = "path" | "referrer" | "device" | "country";
+type MetricFilterType = 'path' | 'referrer' | 'device' | 'country';
 interface MetricFilter {
     type: MetricFilterType;
     value: string;
 }
 
 @Component({
-    selector: "app-goals",
+    selector: 'app-goals',
     standalone: true,
     imports: [ReactiveFormsModule, ButtonModule, CardModule, SelectModule, PageHeader, PageHeaderLeft, PageBreadcrumb, RangeToolbar, SeriesChart, KpiCard, MetricList, GoalList, GoalManager, TranslocoPipe],
-    templateUrl: "./goals.html",
-    styleUrl: "./goals.css",
+    templateUrl: './goals.html',
+    styleUrl: './goals.css',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Goals {
@@ -47,7 +47,7 @@ export class Goals {
     protected selectedRange = linkedSignal<RangeOption[], RangeOption>({
         source: this.timeRanges,
         computation: (ranges, previous) => {
-            const value = previous?.value.value ?? "30d";
+            const value = previous?.value.value ?? '30d';
             return ranges.find((r) => r.value === value) ?? ranges[2]!;
         }
     });
@@ -57,9 +57,9 @@ export class Goals {
     });
     protected readonly goalFilterForm = compatForm(this.goalFilterFormModel);
     protected isShortRange = computed(() => {
-        if (this.selectedRange().value === "24h") return true;
+        if (this.selectedRange().value === '24h') return true;
         const customRangeDates = this.goalFilterForm.customRangeDates().value();
-        if (this.selectedRange().value === "custom" && customRangeDates) {
+        if (this.selectedRange().value === 'custom' && customRangeDates) {
             const d = customRangeDates;
             if (d.length === 2 && d[0] && d[1]) {
                 const diff = d[1].getTime() - d[0].getTime();
@@ -103,9 +103,9 @@ export class Goals {
     protected comparisonLabel = computed(() => {
         this.activeLanguage();
         const r = this.statsService.currentComparisonRange();
-        if (!r) return "";
+        if (!r) return '';
         const showYear = new Date(r.from).getFullYear() !== new Date().getFullYear();
-        const opts = showYear ? ({ month: "short", day: "numeric", year: "numeric" } as const) : ({ month: "short", day: "numeric" } as const);
+        const opts = showYear ? ({ month: 'short', day: 'numeric', year: 'numeric' } as const) : ({ month: 'short', day: 'numeric' } as const);
         const fmt = (d: string) => this.localeService.localizeDate(new Date(d), undefined, opts);
         return `${fmt(r.from)} – ${fmt(r.to)}`;
     });
@@ -126,31 +126,31 @@ export class Goals {
 
         return [
             {
-                label: this.transloco.translate("goals.kpis.totalGoals"),
+                label: this.transloco.translate('goals.kpis.totalGoals'),
                 value: totalGoals,
                 loading: isLoading,
-                valueClass: "text-2xl xl:text-3xl font-bold",
+                valueClass: 'text-2xl xl:text-3xl font-bold',
                 delta: null as number | null
             },
             {
-                label: this.transloco.translate("goals.kpis.conversions"),
+                label: this.transloco.translate('goals.kpis.conversions'),
                 value: totalConversions,
                 loading: isLoading,
-                valueClass: "text-2xl xl:text-3xl font-bold",
+                valueClass: 'text-2xl xl:text-3xl font-bold',
                 delta: this.calcDelta(totalConversions, cmpTotalConversions)
             },
             {
-                label: this.transloco.translate("common.kpis.conversionRate"),
-                value: `${this.localeService.localizeNumber(conversionRate, "decimal", undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
+                label: this.transloco.translate('common.kpis.conversionRate'),
+                value: `${this.localeService.localizeNumber(conversionRate, 'decimal', undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`,
                 loading: isLoading,
-                valueClass: "text-2xl xl:text-3xl font-bold",
+                valueClass: 'text-2xl xl:text-3xl font-bold',
                 delta: this.calcDelta(conversionRate, cmpConversionRate)
             },
             {
-                label: this.transloco.translate("dashboard.kpis.uniqueSessions"),
+                label: this.transloco.translate('dashboard.kpis.uniqueSessions'),
                 value: totalSessions,
                 loading: isLoading,
-                valueClass: "text-2xl xl:text-3xl font-bold",
+                valueClass: 'text-2xl xl:text-3xl font-bold',
                 delta: this.calcDelta(totalSessions, cmpTotalSessions)
             }
         ];
@@ -159,11 +159,11 @@ export class Goals {
         this.activeLanguage();
         return [
             {
-                key: "conversions",
-                label: this.transloco.translate("goals.kpis.conversions"),
-                color: "#6366f1",
-                gradientFrom: "rgba(99, 102, 241, 0.5)",
-                gradientTo: "rgba(99, 102, 241, 0.0)"
+                key: 'conversions',
+                label: this.transloco.translate('goals.kpis.conversions'),
+                color: '#6366f1',
+                gradientFrom: 'rgba(99, 102, 241, 0.5)',
+                gradientTo: 'rgba(99, 102, 241, 0.0)'
             }
         ];
     });
@@ -171,11 +171,11 @@ export class Goals {
         this.activeLanguage();
         const site = this.siteService.activeSite();
         if (!site) {
-            return [{ label: this.transloco.translate("nav.goals"), isCurrent: true }];
+            return [{ label: this.transloco.translate('nav.goals'), isCurrent: true }];
         }
         return [
-            { label: site.domain, favicon: site, routerLink: "/dashboard" },
-            { label: this.transloco.translate("nav.goals"), isCurrent: true }
+            { label: site.domain, favicon: site, routerLink: '/dashboard' },
+            { label: this.transloco.translate('nav.goals'), isCurrent: true }
         ];
     });
 
@@ -313,14 +313,14 @@ export class Goals {
 
     private filterLabel(filter: MetricFilter): string {
         switch (filter.type) {
-            case "path":
-                return this.transloco.translate("common.filters.page", { value: filter.value });
-            case "referrer":
-                return this.transloco.translate("common.filters.source", { value: filter.value });
-            case "device":
-                return this.transloco.translate("common.filters.device", { value: filter.value });
-            case "country":
-                return this.transloco.translate("common.filters.country", { value: filter.value });
+            case 'path':
+                return this.transloco.translate('common.filters.page', { value: filter.value });
+            case 'referrer':
+                return this.transloco.translate('common.filters.source', { value: filter.value });
+            case 'device':
+                return this.transloco.translate('common.filters.device', { value: filter.value });
+            case 'country':
+                return this.transloco.translate('common.filters.country', { value: filter.value });
             default:
                 return `${filter.type}: ${filter.value}`;
         }
@@ -358,7 +358,7 @@ export class Goals {
         const end = new Date();
         const start = new Date();
 
-        if (range.value === "custom") {
+        if (range.value === 'custom') {
             const d = this.goalFilterForm.customRangeDates().value();
             if (d && d.length === 2 && d[0] && d[1]) {
                 return { from: d[0].toISOString(), to: d[1].toISOString() };
@@ -367,16 +367,16 @@ export class Goals {
         }
 
         switch (range.value) {
-            case "24h":
+            case '24h':
                 start.setHours(end.getHours() - 24);
                 break;
-            case "7d":
+            case '7d':
                 start.setDate(end.getDate() - 7);
                 break;
-            case "30d":
+            case '30d':
                 start.setDate(end.getDate() - 30);
                 break;
-            case "1y":
+            case '1y':
                 start.setFullYear(end.getFullYear() - 1);
                 break;
         }

@@ -1,26 +1,26 @@
-import { Component, input, signal, inject, ChangeDetectionStrategy, computed, DestroyRef } from "@angular/core";
-import { toSignal, takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { finalize } from "rxjs";
+import { Component, input, signal, inject, ChangeDetectionStrategy, computed, DestroyRef } from '@angular/core';
+import { toSignal, takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { finalize } from 'rxjs';
 
-import { SplitButtonModule } from "primeng/splitbutton";
-import { MenuItem } from "primeng/api";
-import { Site } from "@models/analytics.types";
-import { buildTakeoutExportMenuItems, DEFAULT_TAKEOUT_EXPORT_FORMAT, TakeoutExportFormat } from "@core/export/export-formats";
-import { TakeoutDownloadService } from "@services/takeout-download.service";
+import { SplitButtonModule } from 'primeng/splitbutton';
+import { MenuItem } from 'primeng/api';
+import { Site } from '@models/analytics.types';
+import { buildTakeoutExportMenuItems, DEFAULT_TAKEOUT_EXPORT_FORMAT, TakeoutExportFormat } from '@core/export/export-formats';
+import { TakeoutDownloadService } from '@services/takeout-download.service';
 
 @Component({
-    selector: "app-site-general-settings",
+    selector: 'app-site-general-settings',
     standalone: true,
     imports: [SplitButtonModule, TranslocoPipe],
     changeDetection: ChangeDetectionStrategy.OnPush,
-    templateUrl: "./site-general-settings.html",
-    styleUrl: "./site-general-settings.css"
+    templateUrl: './site-general-settings.html',
+    styleUrl: './site-general-settings.css'
 })
 export class SiteGeneralSettings {
     site = input.required<Site | null>();
     protected isExporting = signal(false);
-    protected exportState = signal<"idle" | "success" | "error">("idle");
+    protected exportState = signal<'idle' | 'success' | 'error'>('idle');
     private destroyRef = inject(DestroyRef);
     private takeoutDownloadService = inject(TakeoutDownloadService);
     private transloco = inject(TranslocoService);
@@ -35,7 +35,7 @@ export class SiteGeneralSettings {
         if (!site?.id || this.isExporting()) return;
 
         this.isExporting.set(true);
-        this.exportState.set("idle");
+        this.exportState.set('idle');
 
         this.takeoutDownloadService
             .downloadSiteTakeout(site.id, site.domain, format)
@@ -44,8 +44,8 @@ export class SiteGeneralSettings {
                 finalize(() => this.isExporting.set(false))
             )
             .subscribe({
-                next: () => this.exportState.set("success"),
-                error: () => this.exportState.set("error")
+                next: () => this.exportState.set('success'),
+                error: () => this.exportState.set('error')
             });
     }
 }

@@ -1,32 +1,32 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, model, output, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, inject, input, model, output, signal } from '@angular/core';
 
-import { CdkDragDrop, DragDropModule, moveItemInArray } from "@angular/cdk/drag-drop";
-import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
-import { compatForm } from "@angular/forms/signals/compat";
-import { rxResource, toSignal } from "@angular/core/rxjs-interop";
-import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { DialogModule } from "primeng/dialog";
-import { ButtonModule } from "primeng/button";
-import { DividerModule } from "primeng/divider";
-import { IconFieldModule } from "primeng/iconfield";
-import { InputIconModule } from "primeng/inputicon";
-import { InputGroupModule } from "primeng/inputgroup";
-import { InputGroupAddonModule } from "primeng/inputgroupaddon";
-import { InputTextModule } from "primeng/inputtext";
-import { SelectButtonModule } from "primeng/selectbutton";
-import { TableModule } from "primeng/table";
-import { TagModule } from "primeng/tag";
-import { TooltipModule } from "primeng/tooltip";
-import { AnalyticsService } from "@services/analytics.service";
-import { Funnel, FunnelStep } from "@models/analytics.types";
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { rxResource, toSignal } from '@angular/core/rxjs-interop';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { DialogModule } from 'primeng/dialog';
+import { ButtonModule } from 'primeng/button';
+import { DividerModule } from 'primeng/divider';
+import { IconFieldModule } from 'primeng/iconfield';
+import { InputIconModule } from 'primeng/inputicon';
+import { InputGroupModule } from 'primeng/inputgroup';
+import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
+import { InputTextModule } from 'primeng/inputtext';
+import { SelectButtonModule } from 'primeng/selectbutton';
+import { TableModule } from 'primeng/table';
+import { TagModule } from 'primeng/tag';
+import { TooltipModule } from 'primeng/tooltip';
+import { AnalyticsService } from '@services/analytics.service';
+import { Funnel, FunnelStep } from '@models/analytics.types';
 
 interface FunnelStepControl {
-    typeControl: FormControl<FunnelStep["type"]>;
+    typeControl: FormControl<FunnelStep['type']>;
     valueControl: FormControl<string>;
 }
 
 @Component({
-    selector: "app-funnel-manager",
+    selector: 'app-funnel-manager',
     imports: [
         DragDropModule,
         ReactiveFormsModule,
@@ -170,13 +170,13 @@ export class FunnelManager {
     protected readonly types = computed(() => {
         this.activeLanguage();
         return [
-            { label: this.transloco.translate("funnels.manager.typePagePath"), value: "path" },
-            { label: this.transloco.translate("funnels.manager.typeCustomEvent"), value: "event" }
+            { label: this.transloco.translate('funnels.manager.typePagePath'), value: 'path' },
+            { label: this.transloco.translate('funnels.manager.typeCustomEvent'), value: 'event' }
         ];
     });
 
     private readonly newFunnelModel = signal({
-        name: new FormControl("", { nonNullable: true, validators: [Validators.required] })
+        name: new FormControl('', { nonNullable: true, validators: [Validators.required] })
     });
     protected readonly newFunnelForm = compatForm(this.newFunnelModel);
     protected readonly stepControls = signal<FunnelStepControl[]>([this.createStepControl(), this.createStepControl()]);
@@ -218,7 +218,7 @@ export class FunnelManager {
         this.analyticsService.createFunnel(siteId, payload).subscribe({
             next: () => {
                 this.creating.set(false);
-                this.newFunnelForm.name().control().reset("");
+                this.newFunnelForm.name().control().reset('');
                 this.stepControls.set([this.createStepControl(), this.createStepControl()]);
                 this.funnelsResource.reload();
                 this.funnelsChanged.emit();
@@ -238,7 +238,7 @@ export class FunnelManager {
         });
     }
 
-    private createStepControl(type: FunnelStep["type"] = "path", value = ""): FunnelStepControl {
+    private createStepControl(type: FunnelStep['type'] = 'path', value = ''): FunnelStepControl {
         return {
             typeControl: new FormControl(type, { nonNullable: true, validators: [Validators.required] }),
             valueControl: new FormControl(value, { nonNullable: true, validators: [Validators.required] })

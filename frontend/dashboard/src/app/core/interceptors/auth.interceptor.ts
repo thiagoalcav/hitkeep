@@ -1,9 +1,9 @@
-import { HttpContextToken, HttpErrorResponse, HttpInterceptorFn } from "@angular/common/http";
-import { inject } from "@angular/core";
-import { Router } from "@angular/router";
-import { EMPTY, catchError, throwError } from "rxjs";
-import { AuthService } from "@services/auth.service";
-import { ShareService } from "@services/share.service";
+import { HttpContextToken, HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
+import { EMPTY, catchError, throwError } from 'rxjs';
+import { AuthService } from '@services/auth.service';
+import { ShareService } from '@services/share.service';
 
 export const SKIP_AUTH_REDIRECT = new HttpContextToken<boolean>(() => false);
 
@@ -17,11 +17,11 @@ interface ReturnUrlRouterContext {
 }
 
 export function resolveCurrentReturnUrl(router: ReturnUrlRouterContext): string {
-    const browserPath = typeof window !== "undefined" && typeof window.location !== "undefined" ? `${window.location.pathname || ""}${window.location.search || ""}${window.location.hash || ""}` : "";
+    const browserPath = typeof window !== 'undefined' && typeof window.location !== 'undefined' ? `${window.location.pathname || ''}${window.location.search || ''}${window.location.hash || ''}` : '';
 
-    const candidate = browserPath && browserPath !== "/" ? browserPath : router.url || router.routerState.snapshot.url || "/dashboard";
-    if (!candidate.startsWith("/") || candidate.startsWith("//")) {
-        return "/dashboard";
+    const candidate = browserPath && browserPath !== '/' ? browserPath : router.url || router.routerState.snapshot.url || '/dashboard';
+    if (!candidate.startsWith('/') || candidate.startsWith('//')) {
+        return '/dashboard';
     }
     return candidate;
 }
@@ -31,7 +31,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     const auth = inject(AuthService);
     const share = inject(ShareService);
     const isAuthRequest =
-        req.url.startsWith("/api/login") || req.url.startsWith("/api/logout") || req.url.startsWith("/api/initial-user") || req.url.startsWith("/api/auth/") || req.url.startsWith("/api/cloud/") || req.url.startsWith("/api/user/password");
+        req.url.startsWith('/api/login') || req.url.startsWith('/api/logout') || req.url.startsWith('/api/initial-user') || req.url.startsWith('/api/auth/') || req.url.startsWith('/api/cloud/') || req.url.startsWith('/api/user/password');
 
     // We clone the request to ensure credentials (cookies) are included.
     // This ensures the http-only cookie is sent to the backend.
@@ -47,14 +47,14 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
             // If we receive a 401 Unauthorized, it means the cookie is missing or invalid.
             if (error.status === 401 && !share.isShareMode() && !isAuthRequest) {
-                const shouldNavigate = auth.status() !== "unauthenticated";
+                const shouldNavigate = auth.status() !== 'unauthenticated';
                 auth.markUnauthenticated();
 
                 if (shouldNavigate) {
                     // Avoid redirect loops if already on login or setup.
                     const currentUrl = resolveCurrentReturnUrl(router);
-                    if (!currentUrl.startsWith("/login") && !currentUrl.startsWith("/setup")) {
-                        void router.navigate(["/login"], {
+                    if (!currentUrl.startsWith('/login') && !currentUrl.startsWith('/setup')) {
+                        void router.navigate(['/login'], {
                             queryParams: { returnUrl: currentUrl }
                         });
                     }

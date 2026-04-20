@@ -11,6 +11,7 @@ SEED_EMAIL="${HITKEEP_SEED_EMAIL:-demo@example.com}"
 SEED_PASSWORD="${HITKEEP_SEED_PASSWORD:-demo1234}"
 SEED_DOMAIN="${HITKEEP_SEED_DOMAIN:-acme-analytics.io}"
 SEED_DAYS="${HITKEEP_SEED_DAYS:-90}"
+BACKEND_ADDR="${HITKEEP_HTTP_ADDR:-:8080}"
 RUN_SEED=0
 
 usage() {
@@ -31,6 +32,7 @@ Environment overrides:
   HITKEEP_SEED_PASSWORD   Seed user password (default: demo1234)
   HITKEEP_SEED_DOMAIN     Seed site domain (default: acme-analytics.io)
   HITKEEP_SEED_DAYS       Days of seed traffic (default: 90)
+  HITKEEP_HTTP_ADDR        Backend listen address (default: :8080)
 
 Backend mail defaults for local dev:
   HITKEEP_MAIL_DRIVER=smtp
@@ -38,6 +40,36 @@ Backend mail defaults for local dev:
   HITKEEP_MAIL_PORT=1025
   HITKEEP_MAIL_ENCRYPTION=none
 EOF
+}
+
+backend_port() {
+  local addr="$1"
+  local port="${addr##*:}"
+  if [[ "$port" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "$port"
+  fi
+}
+
+ensure_backend_port_available() {
+  local port occupant
+  port="$(backend_port "$BACKEND_ADDR")"
+  if [[ -z "$port" ]] || ! command -v lsof >/dev/null 2>&1; then
+    return
+  fi
+
+  occupant="$(lsof -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null | awk 'NR == 2 { print $1 " PID " $2 }' || true)"
+  if [[ -z "$occupant" ]]; then
+    return
+  fi
+
+  cat >&2 <<EOF
+Port $port is already in use by $occupant.
+HitKeep dev needs the backend on $BACKEND_ADDR so the Angular proxy can reach /api.
+
+Stop the process using port $port, or start HitKeep on another port and update
+frontend/dashboard/proxy.conf.json to match.
+EOF
+  exit 1
 }
 
 while [[ $# -gt 0 ]]; do
@@ -59,6 +91,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 cd "$REPO_DIR"
+
+ensure_backend_port_available
 
 if ! command -v air >/dev/null 2>&1; then
   echo "Air is not installed. Installing..."

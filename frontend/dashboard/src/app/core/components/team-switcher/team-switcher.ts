@@ -1,16 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from "@angular/core";
-import { FormControl, ReactiveFormsModule } from "@angular/forms";
-import { compatForm } from "@angular/forms/signals/compat";
-import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { SelectModule } from "primeng/select";
-import { SkeletonModule } from "primeng/skeleton";
-import { Team } from "@models/analytics.types";
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { SelectModule } from 'primeng/select';
+import { SkeletonModule } from 'primeng/skeleton';
+import { Team } from '@models/analytics.types';
 
 @Component({
-    selector: "app-team-switcher",
+    selector: 'app-team-switcher',
     imports: [ReactiveFormsModule, SelectModule, SkeletonModule, TranslocoPipe],
-    templateUrl: "./team-switcher.html",
-    styleUrl: "./team-switcher.css",
+    templateUrl: './team-switcher.html',
+    styleUrl: './team-switcher.css',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TeamSwitcher {
@@ -20,7 +20,7 @@ export class TeamSwitcher {
     });
 
     teams = input.required<Team[]>();
-    currentTeamId = input<string>("");
+    currentTeamId = input<string>('');
     loading = input<boolean>(false);
     switching = input<boolean>(false);
     showBrand = input<boolean>(true);
@@ -34,8 +34,8 @@ export class TeamSwitcher {
     protected readonly teamForm = compatForm(this.teamFormModel);
     protected readonly isCheckingSwitch = signal(false);
     protected readonly activeTeam = computed(() => this.teams().find((team) => team.id === this.currentTeamId()) ?? this.teams()[0] ?? null);
-    protected readonly activeTeamId = computed(() => this.activeTeam()?.id ?? "");
-    protected readonly activeTeamName = computed(() => this.activeTeam()?.name ?? this.transloco.translate("teams.switcher.placeholder"));
+    protected readonly activeTeamId = computed(() => this.activeTeam()?.id ?? '');
+    protected readonly activeTeamName = computed(() => this.activeTeam()?.name ?? this.transloco.translate('teams.switcher.placeholder'));
     protected readonly interactionDisabled = computed(() => this.switching() || this.isCheckingSwitch());
 
     constructor() {
@@ -81,7 +81,7 @@ export class TeamSwitcher {
 
     protected teamLogoUrl(team: Team | null): string {
         if (!team) {
-            return this.generateInitialsAvatar({ id: "team", name: "Team", logo_url: "", role: "member", created_at: "" });
+            return this.generateInitialsAvatar({ id: 'team', name: 'Team', logo_url: '', role: 'member', created_at: '' });
         }
         if (team.logo_url) {
             return team.logo_url;
@@ -99,20 +99,20 @@ export class TeamSwitcher {
             return true;
         }
         const allowed = checker(nextTeam);
-        return typeof (allowed as Promise<boolean>)?.then === "function" ? await allowed : Boolean(allowed);
+        return typeof (allowed as Promise<boolean>)?.then === 'function' ? await allowed : Boolean(allowed);
     }
 
     private generateInitialsAvatar(team: Team): string {
         const initials = this.teamInitials(team.name);
-        const palette = this.paletteFromSeed(team.id || team.name || "team");
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28" role="img" aria-label="${this.escapeAttr(team.name || "Team")}"><rect width="28" height="28" rx="6" fill="${palette.background}"/><text x="14" y="19" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" font-weight="700" fill="${palette.foreground}">${this.escapeText(initials)}</text></svg>`;
+        const palette = this.paletteFromSeed(team.id || team.name || 'team');
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28" role="img" aria-label="${this.escapeAttr(team.name || 'Team')}"><rect width="28" height="28" rx="6" fill="${palette.background}"/><text x="14" y="19" text-anchor="middle" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="11" font-weight="700" fill="${palette.foreground}">${this.escapeText(initials)}</text></svg>`;
         return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
     }
 
     private teamInitials(name: string): string {
-        const trimmed = (name || "").trim();
+        const trimmed = (name || '').trim();
         if (!trimmed) {
-            return "T";
+            return 'T';
         }
         const parts = trimmed.split(/\s+/).filter(Boolean);
         if (parts.length === 1) {
@@ -123,11 +123,11 @@ export class TeamSwitcher {
 
     private paletteFromSeed(seed: string): { background: string; foreground: string } {
         const palettes: { background: string; foreground: string }[] = [
-            { background: "#DCFCE7", foreground: "#065F46" },
-            { background: "#DBEAFE", foreground: "#1E3A8A" },
-            { background: "#FCE7F3", foreground: "#9D174D" },
-            { background: "#FEF3C7", foreground: "#92400E" },
-            { background: "#E0E7FF", foreground: "#3730A3" }
+            { background: '#DCFCE7', foreground: '#065F46' },
+            { background: '#DBEAFE', foreground: '#1E3A8A' },
+            { background: '#FCE7F3', foreground: '#9D174D' },
+            { background: '#FEF3C7', foreground: '#92400E' },
+            { background: '#E0E7FF', foreground: '#3730A3' }
         ];
         let hash = 0;
         for (let i = 0; i < seed.length; i++) {
@@ -141,16 +141,16 @@ export class TeamSwitcher {
     private escapeText(value: string): string {
         return value.replace(/[&<>"']/g, (ch) => {
             switch (ch) {
-                case "&":
-                    return "&amp;";
-                case "<":
-                    return "&lt;";
-                case ">":
-                    return "&gt;";
+                case '&':
+                    return '&amp;';
+                case '<':
+                    return '&lt;';
+                case '>':
+                    return '&gt;';
                 case '"':
-                    return "&quot;";
+                    return '&quot;';
                 case "'":
-                    return "&#39;";
+                    return '&#39;';
                 default:
                     return ch;
             }

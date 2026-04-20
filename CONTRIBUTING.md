@@ -122,7 +122,7 @@ make build
 
 This:
 1. Runs `npm ci && ng build --configuration production` for the dashboard (output: `frontend/dashboard/dist/`)
-2. Minifies the tracker snippet (`src/tracker/index.js` → `dist/dashboard/browser/hk.js`) via esbuild
+2. Minifies the tracker snippet (`src/tracker/index.ts` → `dist/dashboard/browser/hk.js`) via esbuild
 3. Copies the dashboard bundle to `public/`
 4. Compiles the Go binary: `go build -o hitkeep ./cmd/hitkeep/main.go`
 
@@ -200,7 +200,7 @@ hitkeep/
 │   ├── server/            # HTTP server setup, middleware, shared handlers
 │   └── worker/            # Background workers (retention, rollups, reports)
 ├── frontend/
-│   └── dashboard/         # Angular v21 SPA + tracker snippet (src/tracker/index.js)
+│   └── dashboard/         # Angular v21 SPA + tracker snippet (src/tracker/index.ts)
 ├── public/                # Embedded static assets (built frontend output)
 ├── scripts/               # Developer tooling scripts
 ├── Makefile               # Development and build commands

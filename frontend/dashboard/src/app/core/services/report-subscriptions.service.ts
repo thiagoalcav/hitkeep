@@ -1,9 +1,9 @@
-import { Injectable, inject, signal } from "@angular/core";
-import { HttpClient } from "@angular/common/http";
-import { Observable, tap, finalize } from "rxjs";
-import { FrequencyPrefs, ReportSubscriptions } from "@core/models/analytics.types";
+import { Injectable, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, tap, finalize } from 'rxjs';
+import { FrequencyPrefs, ReportSubscriptions } from '@core/models/analytics.types';
 
-@Injectable({ providedIn: "root" })
+@Injectable({ providedIn: 'root' })
 export class ReportSubscriptionsService {
     private http = inject(HttpClient);
 
@@ -12,7 +12,7 @@ export class ReportSubscriptionsService {
 
     load(): Observable<ReportSubscriptions> {
         this.isLoading.set(true);
-        return this.http.get<ReportSubscriptions>("/api/user/report-subscriptions").pipe(
+        return this.http.get<ReportSubscriptions>('/api/user/report-subscriptions').pipe(
             tap((s) => this.subscriptions.set(s)),
             finalize(() => this.isLoading.set(false))
         );
@@ -23,6 +23,6 @@ export class ReportSubscriptionsService {
     }
 
     updateDigestSubscription(prefs: FrequencyPrefs): Observable<void> {
-        return this.http.put<void>("/api/user/report-subscriptions/digest", prefs);
+        return this.http.put<void>('/api/user/report-subscriptions/digest', prefs);
     }
 }

@@ -1,7 +1,7 @@
-import { Injectable, computed, inject, signal } from "@angular/core";
-import { HttpClient } from "@angular/common/http";
-import { finalize, of, tap } from "rxjs";
-import { Team, TeamAuditListResponse, TeamInvite, TeamMember, TeamRole, UserTeamsResponse } from "@models/analytics.types";
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { finalize, of, tap } from 'rxjs';
+import { Team, TeamAuditListResponse, TeamInvite, TeamMember, TeamRole, UserTeamsResponse } from '@models/analytics.types';
 
 interface SetActiveTeamResponse {
     status: string;
@@ -36,12 +36,12 @@ interface LeaveTeamResponse {
     recent_team_ids?: string[];
 }
 
-@Injectable({ providedIn: "root" })
+@Injectable({ providedIn: 'root' })
 export class TeamService {
     private http = inject(HttpClient);
 
     readonly teams = signal<Team[]>([]);
-    readonly activeTeamId = signal<string>("");
+    readonly activeTeamId = signal<string>('');
     readonly isLoading = signal(false);
     readonly isSwitching = signal(false);
 
@@ -50,11 +50,11 @@ export class TeamService {
 
     loadTeams() {
         this.isLoading.set(true);
-        return this.http.get<UserTeamsResponse>("/api/user/teams").pipe(
+        return this.http.get<UserTeamsResponse>('/api/user/teams').pipe(
             tap((response) => {
                 const teams = response.teams ?? [];
                 this.teams.set(teams);
-                this.activeTeamId.set(response.active_team_id || teams[0]?.id || "");
+                this.activeTeamId.set(response.active_team_id || teams[0]?.id || '');
             }),
             finalize(() => this.isLoading.set(false))
         );
@@ -63,13 +63,13 @@ export class TeamService {
     setActiveTeam(teamID: string) {
         if (!teamID || teamID === this.activeTeamId()) {
             return of({
-                status: "ok",
+                status: 'ok',
                 active_team_id: this.activeTeamId()
             });
         }
 
         this.isSwitching.set(true);
-        return this.http.put<SetActiveTeamResponse>("/api/user/teams/active", { team_id: teamID }).pipe(
+        return this.http.put<SetActiveTeamResponse>('/api/user/teams/active', { team_id: teamID }).pipe(
             tap((response) => {
                 this.activeTeamId.set(response.active_team_id || teamID);
             }),
@@ -104,17 +104,17 @@ export class TeamService {
     listTeamAudit(teamID: string, params: { action?: string; limit?: number; offset?: number } = {}) {
         const search = new URLSearchParams();
         if (params.action) {
-            search.set("action", params.action);
+            search.set('action', params.action);
         }
-        if (typeof params.limit === "number") {
-            search.set("limit", String(params.limit));
+        if (typeof params.limit === 'number') {
+            search.set('limit', String(params.limit));
         }
-        if (typeof params.offset === "number") {
-            search.set("offset", String(params.offset));
+        if (typeof params.offset === 'number') {
+            search.set('offset', String(params.offset));
         }
 
         const query = search.toString();
-        return this.http.get<TeamAuditListResponse>(`/api/user/teams/${encodeURIComponent(teamID)}/audit${query ? `?${query}` : ""}`);
+        return this.http.get<TeamAuditListResponse>(`/api/user/teams/${encodeURIComponent(teamID)}/audit${query ? `?${query}` : ''}`);
     }
 
     transferTeamOwnership(teamID: string, targetUserID: string) {
@@ -128,7 +128,7 @@ export class TeamService {
         return this.http.delete<LeaveTeamResponse>(`/api/user/teams/${encodeURIComponent(teamID)}/leave`).pipe(
             tap((response) => {
                 this.teams.update((teams) => teams.filter((team) => team.id !== teamID));
-                this.activeTeamId.set(response.active_team_id || this.teams()[0]?.id || "");
+                this.activeTeamId.set(response.active_team_id || this.teams()[0]?.id || '');
             }),
             finalize(() => this.isSwitching.set(false))
         );
@@ -139,14 +139,14 @@ export class TeamService {
         return this.http.post<LeaveTeamResponse>(`/api/user/teams/${encodeURIComponent(teamID)}/archive`, {}).pipe(
             tap((response) => {
                 this.teams.update((teams) => teams.filter((team) => team.id !== teamID));
-                this.activeTeamId.set(response.active_team_id || this.teams()[0]?.id || "");
+                this.activeTeamId.set(response.active_team_id || this.teams()[0]?.id || '');
             }),
             finalize(() => this.isSwitching.set(false))
         );
     }
 
     createTeam(payload: { name: string; logo_url: string }) {
-        return this.http.post<{ team: Team }>("/api/user/teams", payload).pipe(
+        return this.http.post<{ team: Team }>('/api/user/teams', payload).pipe(
             tap((response) => {
                 this.teams.update((teams) => [...teams, response.team]);
                 this.activeTeamId.set(response.team.id);

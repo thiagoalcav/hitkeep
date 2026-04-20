@@ -1,9 +1,9 @@
-import { Injectable, inject, signal } from "@angular/core";
-import { HttpClient, HttpParams } from "@angular/common/http";
-import { finalize, Observable } from "rxjs";
-import { SiteStats } from "@models/analytics.types";
+import { Injectable, inject, signal } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { finalize, Observable } from 'rxjs';
+import { SiteStats } from '@models/analytics.types';
 
-@Injectable({ providedIn: "root" })
+@Injectable({ providedIn: 'root' })
 export class StatsService {
     private http = inject(HttpClient);
 
@@ -25,15 +25,15 @@ export class StatsService {
 
     fetchStats(siteId: string, from: string, to: string, filters: { type: string; value: string }[] = [], goalIds: string[] = [], funnelIds: string[] = []): Observable<SiteStats> {
         const cmp = this.computePreviousPeriod(from, to);
-        let params = new HttpParams().set("from", from).set("to", to).set("compare_from", cmp.from).set("compare_to", cmp.to);
+        let params = new HttpParams().set('from', from).set('to', to).set('compare_from', cmp.from).set('compare_to', cmp.to);
         for (const filter of filters) {
-            params = params.append("filter", `${filter.type}:${filter.value}`);
+            params = params.append('filter', `${filter.type}:${filter.value}`);
         }
         for (const id of goalIds) {
-            params = params.append("goal_id", id);
+            params = params.append('goal_id', id);
         }
         for (const id of funnelIds) {
-            params = params.append("funnel_id", id);
+            params = params.append('funnel_id', id);
         }
 
         return this.http.get<SiteStats>(`/api/sites/${siteId}/stats`, { params });

@@ -1,20 +1,20 @@
-import { HttpErrorResponse } from "@angular/common/http";
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from "@angular/core";
-import { toSignal } from "@angular/core/rxjs-interop";
-import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
-import { compatForm } from "@angular/forms/signals/compat";
-import { TranslocoPipe, TranslocoService } from "@jsverse/transloco";
-import { RelativeDateTime } from "@components/relative-date-time/relative-date-time";
-import { TeamInvite, TeamMember, TeamRole } from "@models/analytics.types";
-import { TeamService } from "@services/team.service";
-import { ConfirmationService } from "primeng/api";
-import { ButtonModule } from "primeng/button";
-import { ConfirmPopupModule } from "primeng/confirmpopup";
-import { InputTextModule } from "primeng/inputtext";
-import { SelectModule } from "primeng/select";
-import { TableModule } from "primeng/table";
-import { TagModule } from "primeng/tag";
-import { finalize, forkJoin } from "rxjs";
+import { HttpErrorResponse } from '@angular/common/http';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
+import { TeamInvite, TeamMember, TeamRole } from '@models/analytics.types';
+import { TeamService } from '@services/team.service';
+import { ConfirmationService } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { ConfirmPopupModule } from 'primeng/confirmpopup';
+import { InputTextModule } from 'primeng/inputtext';
+import { SelectModule } from 'primeng/select';
+import { TableModule } from 'primeng/table';
+import { TagModule } from 'primeng/tag';
+import { finalize, forkJoin } from 'rxjs';
 
 interface TeamRoleOption {
     label: string;
@@ -22,10 +22,10 @@ interface TeamRoleOption {
 }
 
 @Component({
-    selector: "app-team-members",
+    selector: 'app-team-members',
     imports: [ReactiveFormsModule, ButtonModule, ConfirmPopupModule, InputTextModule, SelectModule, TableModule, TagModule, RelativeDateTime, TranslocoPipe],
-    templateUrl: "./team-members.html",
-    styleUrl: "./team-members.css",
+    templateUrl: './team-members.html',
+    styleUrl: './team-members.css',
     changeDetection: ChangeDetectionStrategy.OnPush,
     providers: [ConfirmationService]
 })
@@ -47,16 +47,16 @@ export class TeamMembersPage {
     protected readonly errorKey = signal<string | null>(null);
     protected readonly successKey = signal<string | null>(null);
 
-    protected readonly confirmKey = "team-member-remove";
-    protected readonly inviteConfirmKey = "team-invite-action";
-    protected readonly ownershipConfirmKey = "team-ownership-transfer";
+    protected readonly confirmKey = 'team-member-remove';
+    protected readonly inviteConfirmKey = 'team-invite-action';
+    protected readonly ownershipConfirmKey = 'team-ownership-transfer';
 
     protected readonly canManageMembers = computed(() => {
         const role = this.team()?.role;
-        return role === "owner" || role === "admin";
+        return role === 'owner' || role === 'admin';
     });
-    protected readonly canTransferOwnership = computed(() => this.team()?.role === "owner");
-    protected readonly ownerCount = computed(() => this.members().filter((member) => member.role === "owner").length);
+    protected readonly canTransferOwnership = computed(() => this.team()?.role === 'owner');
+    protected readonly ownerCount = computed(() => this.members().filter((member) => member.role === 'owner').length);
 
     protected readonly inviteRoleOptions = computed(() => {
         this.activeLanguage();
@@ -68,8 +68,8 @@ export class TeamMembersPage {
 
     private readonly roleControls = new Map<string, FormControl<TeamRole>>();
     private readonly inviteFormModel = signal({
-        email: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.email, Validators.maxLength(320)] }),
-        role: new FormControl<TeamRole>("member", { nonNullable: true, validators: [Validators.required] })
+        email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email, Validators.maxLength(320)] }),
+        role: new FormControl<TeamRole>('member', { nonNullable: true, validators: [Validators.required] })
     });
     protected readonly inviteForm = compatForm(this.inviteFormModel);
 
@@ -114,12 +114,12 @@ export class TeamMembersPage {
             .pipe(finalize(() => this.isInviting.set(false)))
             .subscribe({
                 next: (response) => {
-                    this.inviteForm.email().control().reset("");
-                    this.successKey.set(response.is_invite ? "teams.management.status.inviteSent" : "teams.management.status.memberUpdated");
-                    this.loadTeamState(teamID, this.team()?.role ?? "member");
+                    this.inviteForm.email().control().reset('');
+                    this.successKey.set(response.is_invite ? 'teams.management.status.inviteSent' : 'teams.management.status.memberUpdated');
+                    this.loadTeamState(teamID, this.team()?.role ?? 'member');
                 },
                 error: (error: unknown) => {
-                    this.errorKey.set(this.resolveErrorKey(error, "teams.management.errors.inviteFailed"));
+                    this.errorKey.set(this.resolveErrorKey(error, 'teams.management.errors.inviteFailed'));
                 }
             });
     }
@@ -130,16 +130,16 @@ export class TeamMembersPage {
         this.confirmationService.confirm({
             key: this.confirmKey,
             target: event.currentTarget as EventTarget,
-            message: this.transloco.translate("teams.management.confirmRemove", { email: member.email }),
-            icon: "pi pi-exclamation-triangle",
+            message: this.transloco.translate('teams.management.confirmRemove', { email: member.email }),
+            icon: 'pi pi-exclamation-triangle',
             rejectButtonProps: {
-                label: this.transloco.translate("common.actions.cancel"),
-                severity: "secondary",
+                label: this.transloco.translate('common.actions.cancel'),
+                severity: 'secondary',
                 outlined: true
             },
             acceptButtonProps: {
-                label: this.transloco.translate("teams.management.removeAction"),
-                severity: "danger"
+                label: this.transloco.translate('teams.management.removeAction'),
+                severity: 'danger'
             },
             accept: () => this.removeMember(member)
         });
@@ -154,13 +154,13 @@ export class TeamMembersPage {
 
     protected canRemoveMember(member: TeamMember): boolean {
         if (!this.canEditMember(member)) return false;
-        if (member.role === "owner" && this.ownerCount() <= 1) return false;
+        if (member.role === 'owner' && this.ownerCount() <= 1) return false;
         return true;
     }
 
     protected canTransferMember(member: TeamMember): boolean {
         if (!this.canTransferOwnership()) return false;
-        return member.role !== "owner";
+        return member.role !== 'owner';
     }
 
     protected roleControlFor(member: TeamMember): FormControl<TeamRole> {
@@ -185,8 +185,8 @@ export class TeamMembersPage {
             return;
         }
 
-        if (member.role === "owner" && role !== "owner" && this.ownerCount() <= 1) {
-            this.errorKey.set("teams.management.errors.lastOwner");
+        if (member.role === 'owner' && role !== 'owner' && this.ownerCount() <= 1) {
+            this.errorKey.set('teams.management.errors.lastOwner');
             this.roleControlFor(member).setValue(member.role, { emitEvent: false });
             return;
         }
@@ -200,11 +200,11 @@ export class TeamMembersPage {
             .pipe(finalize(() => this.setRoleUpdateState(member.user_id, false)))
             .subscribe({
                 next: () => {
-                    this.successKey.set("teams.management.status.roleUpdated");
-                    this.loadTeamState(teamID, this.team()?.role ?? "member");
+                    this.successKey.set('teams.management.status.roleUpdated');
+                    this.loadTeamState(teamID, this.team()?.role ?? 'member');
                 },
                 error: (error: unknown) => {
-                    this.errorKey.set(this.resolveErrorKey(error, "teams.management.errors.roleUpdateFailed"));
+                    this.errorKey.set(this.resolveErrorKey(error, 'teams.management.errors.roleUpdateFailed'));
                     this.roleControlFor(member).setValue(member.role, { emitEvent: false });
                 }
             });
@@ -218,15 +218,15 @@ export class TeamMembersPage {
         return this.transloco.translate(`teams.roles.${role}`);
     }
 
-    protected roleSeverity(role: TeamRole): "danger" | "info" | "secondary" {
+    protected roleSeverity(role: TeamRole): 'danger' | 'info' | 'secondary' {
         switch (role) {
-            case "owner":
-                return "danger";
-            case "admin":
-                return "info";
-            case "member":
+            case 'owner':
+                return 'danger';
+            case 'admin':
+                return 'info';
+            case 'member':
             default:
-                return "secondary";
+                return 'secondary';
         }
     }
 
@@ -236,15 +236,15 @@ export class TeamMembersPage {
         this.confirmationService.confirm({
             key: this.inviteConfirmKey,
             target,
-            message: this.transloco.translate("teams.management.confirmResendInvite", { email: invite.email }),
-            icon: "pi pi-envelope",
+            message: this.transloco.translate('teams.management.confirmResendInvite', { email: invite.email }),
+            icon: 'pi pi-envelope',
             rejectButtonProps: {
-                label: this.transloco.translate("common.actions.cancel"),
-                severity: "secondary",
+                label: this.transloco.translate('common.actions.cancel'),
+                severity: 'secondary',
                 outlined: true
             },
             acceptButtonProps: {
-                label: this.transloco.translate("teams.management.resendAction")
+                label: this.transloco.translate('teams.management.resendAction')
             },
             accept: () => this.resendInvite(invite)
         });
@@ -256,16 +256,16 @@ export class TeamMembersPage {
         this.confirmationService.confirm({
             key: this.inviteConfirmKey,
             target,
-            message: this.transloco.translate("teams.management.confirmRevokeInvite", { email: invite.email }),
-            icon: "pi pi-exclamation-triangle",
+            message: this.transloco.translate('teams.management.confirmRevokeInvite', { email: invite.email }),
+            icon: 'pi pi-exclamation-triangle',
             rejectButtonProps: {
-                label: this.transloco.translate("common.actions.cancel"),
-                severity: "secondary",
+                label: this.transloco.translate('common.actions.cancel'),
+                severity: 'secondary',
                 outlined: true
             },
             acceptButtonProps: {
-                label: this.transloco.translate("teams.management.revokeInviteAction"),
-                severity: "danger"
+                label: this.transloco.translate('teams.management.revokeInviteAction'),
+                severity: 'danger'
             },
             accept: () => this.revokeInvite(invite)
         });
@@ -277,16 +277,16 @@ export class TeamMembersPage {
         this.confirmationService.confirm({
             key: this.ownershipConfirmKey,
             target,
-            message: this.transloco.translate("teams.management.confirmTransferOwnership", { email: member.email }),
-            icon: "pi pi-shield",
+            message: this.transloco.translate('teams.management.confirmTransferOwnership', { email: member.email }),
+            icon: 'pi pi-shield',
             rejectButtonProps: {
-                label: this.transloco.translate("common.actions.cancel"),
-                severity: "secondary",
+                label: this.transloco.translate('common.actions.cancel'),
+                severity: 'secondary',
                 outlined: true
             },
             acceptButtonProps: {
-                label: this.transloco.translate("teams.management.transferOwnershipAction"),
-                severity: "contrast"
+                label: this.transloco.translate('teams.management.transferOwnershipAction'),
+                severity: 'contrast'
             },
             accept: () => this.transferOwnership(member)
         });
@@ -303,7 +303,7 @@ export class TeamMembersPage {
     private loadTeamState(teamID: string, role: TeamRole) {
         this.errorKey.set(null);
         this.isLoading.set(true);
-        if (role === "owner" || role === "admin") {
+        if (role === 'owner' || role === 'admin') {
             forkJoin({
                 members: this.teamService.listTeamMembers(teamID),
                 invites: this.teamService.listTeamInvites(teamID)
@@ -316,7 +316,7 @@ export class TeamMembersPage {
                         this.syncRoleControls(members);
                     },
                     error: (error: unknown) => {
-                        this.errorKey.set(this.resolveErrorKey(error, "teams.management.errors.loadFailed"));
+                        this.errorKey.set(this.resolveErrorKey(error, 'teams.management.errors.loadFailed'));
                     }
                 });
             return;
@@ -332,7 +332,7 @@ export class TeamMembersPage {
                     this.syncRoleControls(members);
                 },
                 error: (error: unknown) => {
-                    this.errorKey.set(this.resolveErrorKey(error, "teams.management.errors.loadFailed"));
+                    this.errorKey.set(this.resolveErrorKey(error, 'teams.management.errors.loadFailed'));
                 }
             });
     }
@@ -351,19 +351,19 @@ export class TeamMembersPage {
                 next: () => {
                     this.members.update((current) => current.filter((entry) => entry.user_id !== member.user_id));
                     this.roleControls.delete(member.user_id);
-                    this.successKey.set("teams.management.status.memberRemoved");
+                    this.successKey.set('teams.management.status.memberRemoved');
                 },
                 error: (error: unknown) => {
-                    this.errorKey.set(this.resolveErrorKey(error, "teams.management.errors.removeFailed"));
+                    this.errorKey.set(this.resolveErrorKey(error, 'teams.management.errors.removeFailed'));
                 }
             });
     }
 
     private assignableRoles(): TeamRole[] {
         const actorRole = this.team()?.role;
-        if (actorRole === "owner") return ["admin", "member"];
-        if (actorRole === "admin") return ["admin", "member"];
-        return ["member"];
+        if (actorRole === 'owner') return ['admin', 'member'];
+        if (actorRole === 'admin') return ['admin', 'member'];
+        return ['member'];
     }
 
     private resendInvite(invite: TeamInvite) {
@@ -378,11 +378,11 @@ export class TeamMembersPage {
             .pipe(finalize(() => this.setInviteActionState(invite.id, false)))
             .subscribe({
                 next: () => {
-                    this.successKey.set("teams.management.status.inviteResent");
-                    this.loadTeamState(teamID, this.team()?.role ?? "member");
+                    this.successKey.set('teams.management.status.inviteResent');
+                    this.loadTeamState(teamID, this.team()?.role ?? 'member');
                 },
                 error: (error: unknown) => {
-                    this.errorKey.set(this.resolveErrorKey(error, "teams.management.errors.inviteResendFailed"));
+                    this.errorKey.set(this.resolveErrorKey(error, 'teams.management.errors.inviteResendFailed'));
                 }
             });
     }
@@ -400,10 +400,10 @@ export class TeamMembersPage {
             .subscribe({
                 next: () => {
                     this.pendingInvites.update((current) => current.filter((entry) => entry.id !== invite.id));
-                    this.successKey.set("teams.management.status.inviteRevoked");
+                    this.successKey.set('teams.management.status.inviteRevoked');
                 },
                 error: (error: unknown) => {
-                    this.errorKey.set(this.resolveErrorKey(error, "teams.management.errors.inviteRevokeFailed"));
+                    this.errorKey.set(this.resolveErrorKey(error, 'teams.management.errors.inviteRevokeFailed'));
                 }
             });
     }
@@ -420,25 +420,25 @@ export class TeamMembersPage {
             .pipe(finalize(() => this.transferringUserID.set(null)))
             .subscribe({
                 next: () => {
-                    this.successKey.set("teams.management.status.ownershipTransferred");
+                    this.successKey.set('teams.management.status.ownershipTransferred');
                     this.teamService.loadTeams().subscribe({
-                        next: () => this.loadTeamState(teamID, this.team()?.role ?? "member"),
-                        error: () => this.loadTeamState(teamID, this.team()?.role ?? "member")
+                        next: () => this.loadTeamState(teamID, this.team()?.role ?? 'member'),
+                        error: () => this.loadTeamState(teamID, this.team()?.role ?? 'member')
                     });
                 },
                 error: (error: unknown) => {
-                    this.errorKey.set(this.resolveErrorKey(error, "teams.management.errors.ownershipTransferFailed"));
+                    this.errorKey.set(this.resolveErrorKey(error, 'teams.management.errors.ownershipTransferFailed'));
                 }
             });
     }
 
     private roleRank(role: TeamRole): number {
         switch (role) {
-            case "owner":
+            case 'owner':
                 return 0;
-            case "admin":
+            case 'admin':
                 return 1;
-            case "member":
+            case 'member':
             default:
                 return 2;
         }
@@ -477,23 +477,23 @@ export class TeamMembersPage {
 
     private resolveErrorKey(error: unknown, fallback: string): string {
         if (!(error instanceof HttpErrorResponse)) return fallback;
-        if (error.error && typeof error.error === "object" && "code" in error.error && typeof error.error.code === "string") {
+        if (error.error && typeof error.error === 'object' && 'code' in error.error && typeof error.error.code === 'string') {
             switch (error.error.code) {
-                case "ownership_transfer_required":
-                    return "teams.management.errors.transferRequired";
-                case "team_last_owner":
-                    return "teams.management.errors.lastOwner";
-                case "ownership_transfer_target_invalid":
-                    return "teams.management.errors.transferTargetInvalid";
-                case "ownership_transfer_self":
-                case "ownership_transfer_already_owner":
-                    return "teams.management.errors.ownershipTransferConflict";
+                case 'ownership_transfer_required':
+                    return 'teams.management.errors.transferRequired';
+                case 'team_last_owner':
+                    return 'teams.management.errors.lastOwner';
+                case 'ownership_transfer_target_invalid':
+                    return 'teams.management.errors.transferTargetInvalid';
+                case 'ownership_transfer_self':
+                case 'ownership_transfer_already_owner':
+                    return 'teams.management.errors.ownershipTransferConflict';
             }
         }
-        if (error.status === 403) return "teams.management.errors.forbidden";
-        if (error.status === 409) return "teams.management.errors.alreadyMember";
-        if (error.status === 400 && typeof error.error === "string" && error.error.toLowerCase().includes("last owner")) {
-            return "teams.management.errors.lastOwner";
+        if (error.status === 403) return 'teams.management.errors.forbidden';
+        if (error.status === 409) return 'teams.management.errors.alreadyMember';
+        if (error.status === 400 && typeof error.error === 'string' && error.error.toLowerCase().includes('last owner')) {
+            return 'teams.management.errors.lastOwner';
         }
         return fallback;
     }

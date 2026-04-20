@@ -1,11 +1,11 @@
-import { ComponentFixture, TestBed } from "@angular/core/testing";
-import { provideHttpClient } from "@angular/common/http";
-import { provideHttpClientTesting } from "@angular/common/http/testing";
-import { provideRouter } from "@angular/router";
-import { TranslocoTestingModule } from "@jsverse/transloco";
-import { CreateTeamDialog } from "./create-team-dialog";
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideRouter } from '@angular/router';
+import { TranslocoTestingModule } from '@jsverse/transloco';
+import { CreateTeamDialog } from './create-team-dialog';
 
-describe("CreateTeamDialog", () => {
+describe('CreateTeamDialog', () => {
     let component: CreateTeamDialog;
     let fixture: ComponentFixture<CreateTeamDialog>;
 
@@ -16,8 +16,8 @@ describe("CreateTeamDialog", () => {
                 TranslocoTestingModule.forRoot({
                     langs: { en: {} },
                     translocoConfig: {
-                        availableLangs: ["en"],
-                        defaultLang: "en"
+                        availableLangs: ['en'],
+                        defaultLang: 'en'
                     },
                     preloadLangs: true
                 })
@@ -30,16 +30,16 @@ describe("CreateTeamDialog", () => {
         fixture.detectChanges();
     });
 
-    it("should create", () => {
+    it('should create', () => {
         expect(component).toBeTruthy();
     });
 
-    it("should reset form on resetForm", () => {
+    it('should reset form on resetForm', () => {
         component.resetForm();
         expect(component.visible()).toBe(false);
     });
 
-    it("should not submit when form is invalid", () => {
+    it('should not submit when form is invalid', () => {
         component.onSubmit();
         // No error thrown, form stays open
         expect(component).toBeTruthy();

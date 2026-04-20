@@ -1,25 +1,25 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from "@angular/core";
-import { HttpClient } from "@angular/common/http";
-import { Router } from "@angular/router";
-import { FormControl, Validators, ReactiveFormsModule } from "@angular/forms";
-import { compatForm } from "@angular/forms/signals/compat";
-import { finalize } from "rxjs/operators";
-import { TranslocoPipe } from "@jsverse/transloco";
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
+import { FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { finalize } from 'rxjs/operators';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 // PrimeNG Imports
-import { PasswordModule } from "primeng/password";
-import { ButtonModule } from "primeng/button";
-import { InputTextModule } from "primeng/inputtext";
+import { PasswordModule } from 'primeng/password';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
 
 // Corrected path to Core
-import { Brand } from "@components/brand/brand";
+import { Brand } from '@components/brand/brand';
 
 @Component({
-    selector: "app-setup",
+    selector: 'app-setup',
     standalone: true,
     imports: [Brand, ReactiveFormsModule, PasswordModule, ButtonModule, InputTextModule, TranslocoPipe],
-    templateUrl: "./setup.html",
-    styleUrl: "./setup.css",
+    templateUrl: './setup.html',
+    styleUrl: './setup.css',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Setup {
@@ -30,10 +30,10 @@ export class Setup {
     protected errorMessage = signal<string | null>(null);
 
     private readonly setupModel = signal({
-        givenName: new FormControl("", { nonNullable: true }),
-        lastName: new FormControl("", { nonNullable: true }),
-        email: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.email] }),
-        password: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.minLength(8)] })
+        givenName: new FormControl('', { nonNullable: true }),
+        lastName: new FormControl('', { nonNullable: true }),
+        email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
+        password: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(8)] })
     });
     protected readonly setupForm = compatForm(this.setupModel);
 
@@ -54,23 +54,23 @@ export class Setup {
         const lastName = this.setupForm.lastName().value().trim();
 
         const payload: { email: string; password: string; given_name?: string; last_name?: string } = { email, password };
-        if (givenName !== "") {
+        if (givenName !== '') {
             payload.given_name = givenName;
         }
-        if (lastName !== "") {
+        if (lastName !== '') {
             payload.last_name = lastName;
         }
 
         this.http
-            .post("/api/initial-user", payload)
+            .post('/api/initial-user', payload)
             .pipe(finalize(() => this.isLoading.set(false)))
             .subscribe({
                 next: () => {
-                    this.router.navigate(["/dashboard"]);
+                    this.router.navigate(['/dashboard']);
                 },
                 error: (err) => {
-                    console.error("Failed to create initial user:", err);
-                    this.errorMessage.set("setup.errors.unexpected");
+                    console.error('Failed to create initial user:', err);
+                    this.errorMessage.set('setup.errors.unexpected');
                 }
             });
     }

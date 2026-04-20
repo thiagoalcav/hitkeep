@@ -217,6 +217,13 @@ func (h *handler) refreshIPFilter(ctx context.Context) {
 	}
 }
 
+func (h *handler) deleteSite(ctx context.Context, siteID uuid.UUID) error {
+	if h.ctx.TenantStores != nil {
+		return h.ctx.TenantStores.DeleteSite(ctx, siteID)
+	}
+	return h.ctx.Store.DeleteSite(ctx, siteID)
+}
+
 func (h *handler) actorInstanceRole(r *http.Request) (authcore.InstanceRole, error) {
 	if permissionCtx, ok := r.Context().Value(shared.PermissionKey).(shared.PermissionContext); ok && permissionCtx.InstanceRole != "" {
 		return permissionCtx.InstanceRole, nil
@@ -365,7 +372,7 @@ func (h *handler) handleDeleteUser() http.HandlerFunc {
 					return
 				}
 				for _, site := range sites {
-					if delErr := h.ctx.Store.DeleteSite(r.Context(), site.ID); delErr != nil {
+					if delErr := h.deleteSite(r.Context(), site.ID); delErr != nil {
 						slog.Error("Failed to delete site during force delete", "error", delErr, "site_id", site.ID, "team_id", team.ID)
 						http.Error(w, "Failed to delete user", http.StatusInternalServerError)
 						return
@@ -380,20 +387,38 @@ func (h *handler) handleDeleteUser() http.HandlerFunc {
 			}
 		}
 
+		if h.ctx.TenantStores != nil {
+			blockingTeams, listErr := h.ctx.Store.ListSoleOwnerTeams(r.Context(), targetUserID)
+			if listErr != nil {
+				slog.Error("Failed to list sole-owner teams before delete", "error", listErr, "target_user_id", targetUserID)
+				http.Error(w, "Failed to delete user", http.StatusInternalServerError)
+				return
+			}
+			if len(blockingTeams) > 0 {
+				writeDeleteUserBlocked(w, targetUserID, blockingTeams)
+				return
+			}
+
+			siteIDs, listErr := h.ctx.Store.ListUserSiteIDs(r.Context(), targetUserID)
+			if listErr != nil {
+				slog.Error("Failed to list owned sites before delete", "error", listErr, "target_user_id", targetUserID)
+				http.Error(w, "Failed to delete user", http.StatusInternalServerError)
+				return
+			}
+			for _, siteID := range siteIDs {
+				if delErr := h.ctx.TenantStores.DeleteSite(r.Context(), siteID); delErr != nil {
+					slog.Error("Failed to delete owned site before user delete", "error", delErr, "site_id", siteID, "target_user_id", targetUserID)
+					http.Error(w, "Failed to delete user", http.StatusInternalServerError)
+					return
+				}
+			}
+		}
+
 		err = h.ctx.Store.DeleteUser(r.Context(), targetUserID)
 		if err != nil {
 			var ownsTeamsErr *database.UserOwnsTeamsError
 			if errors.As(err, &ownsTeamsErr) {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusConflict)
-				if encodeErr := json.NewEncoder(w).Encode(api.AdminDeleteUserBlockedResponse{
-					Status:  "error",
-					Code:    "user_owns_teams",
-					Message: "Transfer ownership before deleting this user, or use ?force=true to archive their teams.",
-					Teams:   ownsTeamsErr.Teams,
-				}); encodeErr != nil {
-					slog.Error("Failed to encode delete user blocked response", "error", encodeErr, "target_user_id", targetUserID)
-				}
+				writeDeleteUserBlocked(w, targetUserID, ownsTeamsErr.Teams)
 				return
 			}
 			slog.Error("Failed to delete user", "error", err)
@@ -405,6 +430,19 @@ func (h *handler) handleDeleteUser() http.HandlerFunc {
 		if err := json.NewEncoder(w).Encode(map[string]string{"status": "ok"}); err != nil {
 			slog.Error("Failed to encode response", "error", err)
 		}
+	}
+}
+
+func writeDeleteUserBlocked(w http.ResponseWriter, targetUserID uuid.UUID, teams []api.Team) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusConflict)
+	if encodeErr := json.NewEncoder(w).Encode(api.AdminDeleteUserBlockedResponse{
+		Status:  "error",
+		Code:    "user_owns_teams",
+		Message: "Transfer ownership before deleting this user, or use ?force=true to archive their teams.",
+		Teams:   teams,
+	}); encodeErr != nil {
+		slog.Error("Failed to encode delete user blocked response", "error", encodeErr, "target_user_id", targetUserID)
 	}
 }
 

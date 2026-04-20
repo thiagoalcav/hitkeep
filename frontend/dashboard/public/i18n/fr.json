@@ -839,12 +839,20 @@
             }
         },
         "tracking": {
-            "description": "Copiez et collez le code ci-dessous dans le HTML de votre site.",
+            "description": "Copiez et collez le code ci-dessous dans le HTML de votre site. Le suivi automatique des clics sortants, téléchargements et soumissions de formulaires est activé par défaut.",
             "trackingCodeConfiguration": "Configuration du code de suivi",
             "collectDntLabel": "Collecter DNT",
             "collectDntDescription": "Suivre les utilisateurs même si \"Do Not Track\" est activé dans leur navigateur.",
             "disableBeaconLabel": "Désactiver sendBeacon",
             "disableBeaconDescription": "Utiliser des requêtes fetch standard au lieu de navigator.sendBeacon.",
+            "autoTrackingTitle": "Suivi automatique des événements",
+            "autoTrackingDescription": "HitKeep peut envoyer automatiquement des événements outbound_click, file_download et form_submit avec des métadonnées respectueuses de la vie privée depuis hk.js.",
+            "outboundTrackingLabel": "Suivre les clics sortants",
+            "outboundTrackingDescription": "Envoie outbound_click lorsque les visiteurs suivent des liens vers un autre nom d’hôte.",
+            "downloadTrackingLabel": "Suivre les téléchargements",
+            "downloadTrackingDescription": "Envoie file_download pour les liens avec un attribut download ou une extension de fichier connue.",
+            "formTrackingLabel": "Suivre les soumissions de formulaires",
+            "formTrackingDescription": "Envoie form_submit pour les soumissions de formulaires observées par le navigateur sans capturer les valeurs du formulaire.",
             "htmlLabel": "HTML",
             "copyCode": "Copier le code"
         }
@@ -1192,12 +1200,22 @@
     },
     "events": {
         "title": "Événements",
-        "docsAction": "Ajouter des événements",
+        "docsAction": "Guide du suivi automatique",
         "noSiteDescription": "Sélectionnez ou créez un site pour voir l'analyse des événements.",
         "eventNameLabel": "Événement",
         "eventNamePlaceholder": "Sélectionner un événement",
         "propertyKeyLabel": "Ventiler par",
         "propertyKeyPlaceholder": "Sélectionner une propriété",
+        "automatic": {
+            "title": "Événements automatiques",
+            "description": "Accédez directement aux événements intégrés du tracker lorsque ce site enregistre des clics sortants, des téléchargements ou des soumissions de formulaires.",
+            "badge": "Auto",
+            "quickPicks": {
+                "outboundClick": "Clics sortants",
+                "fileDownload": "Téléchargements",
+                "formSubmit": "Soumissions de formulaires"
+            }
+        },
         "series": {
             "title": "Activité des événements",
             "description": "Occurrences d'événements sur la période sélectionnée.",
@@ -1260,9 +1278,16 @@
         "title": "Visibilité IA",
         "docsAction": "Guide de visibilité IA",
         "noSiteDescription": "Sélectionne ou crée un site pour voir l’analyse des fetchs IA et des corrélations.",
+        "setup": {
+            "title": "Capture server-side requise",
+            "badge": "Configuration requise",
+            "description": "Cette page ne suit les fetchs des crawlers IA qu’après leur transfert vers HitKeep via une ingestion edge ou basée sur les logs.",
+            "detail": "L’installation de hk.js seule ne capture pas les fetchs de bots. Les visites référées par l’IA depuis ChatGPT, Gemini, Perplexity et des assistants similaires peuvent quand même apparaître ailleurs dans l’analytics via le referrer.",
+            "action": "Ouvrir le guide de configuration"
+        },
         "header": {
             "title": "Analyse de visibilité IA",
-            "description": "Suis la manière dont les assistants IA récupèrent ton contenu, où les erreurs de crawl se concentrent et quelles pages récupérées attirent ensuite des visites référées par l’IA."
+            "description": "Suis les fetchs server-side des crawlers IA, où les erreurs de crawl se concentrent et quelles pages récupérées attirent ensuite des visites référées par l’IA."
         },
         "filters": {
             "assistant": "Assistant",
@@ -1284,10 +1309,10 @@
         },
         "chart": {
             "title": "Volume de fetchs dans le temps",
-            "description": "Vois quand les assistants IA explorent activement ton contenu et comment la demande évolue sur la période sélectionnée.",
+            "description": "Vois quand les fetchs transférés des crawlers IA touchent ton contenu et comment la demande évolue sur la période sélectionnée.",
             "fetches": "Fetchs",
             "emptyTitle": "Aucune activité de fetch IA",
-            "emptyDescription": "Envoie des enregistrements à /api/sites/{id}/ingest/ai-fetch pour alimenter ce rapport."
+            "emptyDescription": "Transmets des enregistrements à /api/sites/{id}/ingest/ai-fetch pour alimenter ce rapport. hk.js seul n’enregistre pas les fetchs de crawlers."
         },
         "breakdowns": {
             "assistants": "Assistants principaux",

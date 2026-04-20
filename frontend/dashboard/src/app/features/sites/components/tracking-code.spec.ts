@@ -1,8 +1,8 @@
-import { ComponentFixture, TestBed } from "@angular/core/testing";
-import { TranslocoTestingModule } from "@jsverse/transloco";
-import { SiteTrackingSettings } from "./site-tracking-settings";
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TranslocoTestingModule } from '@jsverse/transloco';
+import { SiteTrackingSettings } from './site-tracking-settings';
 
-describe("SiteTrackingSettings", () => {
+describe('SiteTrackingSettings', () => {
     let component: SiteTrackingSettings;
     let fixture: ComponentFixture<SiteTrackingSettings>;
     beforeEach(async () => {
@@ -12,8 +12,8 @@ describe("SiteTrackingSettings", () => {
                 TranslocoTestingModule.forRoot({
                     langs: { en: {} },
                     translocoConfig: {
-                        availableLangs: ["en"],
-                        defaultLang: "en"
+                        availableLangs: ['en'],
+                        defaultLang: 'en'
                     },
                     preloadLangs: true
                 })
@@ -21,34 +21,46 @@ describe("SiteTrackingSettings", () => {
         }).compileComponents();
 
         fixture = TestBed.createComponent(SiteTrackingSettings);
-        fixture.componentRef.setInput("site", null);
+        fixture.componentRef.setInput('site', null);
         component = fixture.componentInstance;
         fixture.detectChanges();
     });
-    it("should create", () => {
+    it('should create', () => {
         expect(component).toBeTruthy();
     });
-    it("should update snippet when toggles change", () => {
+    it('should update snippet when toggles change', () => {
         const internals = component as SiteTrackingSettings & {
             snippetCode: () => string;
             trackingForm: {
                 collectDnt: () => { control: () => { setValue: (value: boolean) => void } };
                 disableBeacon: () => { control: () => { setValue: (value: boolean) => void } };
+                trackOutbound: () => { control: () => { setValue: (value: boolean) => void } };
+                trackDownloads: () => { control: () => { setValue: (value: boolean) => void } };
+                trackForms: () => { control: () => { setValue: (value: boolean) => void } };
             };
         };
         const getSnippet = () => internals.snippetCode();
 
-        expect(getSnippet()).toContain("hk.js");
-        expect(getSnippet()).not.toContain("data-collect-dnt");
-        expect(getSnippet()).not.toContain("data-disable-beacon");
+        expect(getSnippet()).toContain('hk.js');
+        expect(getSnippet()).not.toContain('data-collect-dnt');
+        expect(getSnippet()).not.toContain('data-disable-beacon');
+        expect(getSnippet()).not.toContain('data-disable-outbound-tracking');
+        expect(getSnippet()).not.toContain('data-disable-download-tracking');
+        expect(getSnippet()).not.toContain('data-disable-form-tracking');
 
         internals.trackingForm.collectDnt().control().setValue(true);
         fixture.detectChanges();
         expect(getSnippet()).toContain('data-collect-dnt="true"');
 
         internals.trackingForm.disableBeacon().control().setValue(true);
+        internals.trackingForm.trackOutbound().control().setValue(false);
+        internals.trackingForm.trackDownloads().control().setValue(false);
+        internals.trackingForm.trackForms().control().setValue(false);
         fixture.detectChanges();
-        expect(getSnippet()).toContain("hk.js");
+        expect(getSnippet()).toContain('hk.js');
         expect(getSnippet()).toContain('data-disable-beacon="true"');
+        expect(getSnippet()).toContain('data-disable-outbound-tracking="true"');
+        expect(getSnippet()).toContain('data-disable-download-tracking="true"');
+        expect(getSnippet()).toContain('data-disable-form-tracking="true"');
     });
 });

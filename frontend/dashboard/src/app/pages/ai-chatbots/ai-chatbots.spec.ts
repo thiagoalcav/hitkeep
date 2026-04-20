@@ -1,12 +1,12 @@
-import { ComponentFixture, TestBed } from "@angular/core/testing";
-import { provideHttpClient } from "@angular/common/http";
-import { provideRouter } from "@angular/router";
-import { TranslocoTestingModule } from "@jsverse/transloco";
-import { provideTranslocoLocale } from "@jsverse/transloco-locale";
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+import { TranslocoTestingModule } from '@jsverse/transloco';
+import { provideTranslocoLocale } from '@jsverse/transloco-locale';
 
-import { AIChatbots } from "@pages/ai-chatbots/ai-chatbots";
+import { AIChatbots } from '@pages/ai-chatbots/ai-chatbots';
 
-describe("AIChatbots", () => {
+describe('AIChatbots', () => {
     let component: AIChatbots;
     let fixture: ComponentFixture<AIChatbots>;
 
@@ -17,8 +17,8 @@ describe("AIChatbots", () => {
                 TranslocoTestingModule.forRoot({
                     langs: { en: {} },
                     translocoConfig: {
-                        availableLangs: ["en"],
-                        defaultLang: "en"
+                        availableLangs: ['en'],
+                        defaultLang: 'en'
                     },
                     preloadLangs: true
                 })
@@ -27,10 +27,10 @@ describe("AIChatbots", () => {
                 provideHttpClient(),
                 provideRouter([]),
                 provideTranslocoLocale({
-                    defaultLocale: "en-US",
+                    defaultLocale: 'en-US',
                     langToLocaleMapping: {
-                        en: "en-US",
-                        "en-US": "en-US"
+                        en: 'en-US',
+                        'en-US': 'en-US'
                     }
                 })
             ]
@@ -41,7 +41,7 @@ describe("AIChatbots", () => {
         fixture.detectChanges();
     });
 
-    it("should create", () => {
+    it('should create', () => {
         expect(component).toBeTruthy();
     });
 });

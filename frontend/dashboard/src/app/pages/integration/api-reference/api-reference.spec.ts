@@ -1,13 +1,13 @@
-import { SecurityContext } from "@angular/core";
-import { ComponentFixture, TestBed } from "@angular/core/testing";
-import { provideRouter } from "@angular/router";
-import { provideNoopAnimations } from "@angular/platform-browser/animations";
-import { DomSanitizer } from "@angular/platform-browser";
-import { TranslocoTestingModule } from "@jsverse/transloco";
-import { APIReferencePage } from "./api-reference";
-import { PreferencesService } from "@services/preferences.service";
+import { SecurityContext } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { DomSanitizer } from '@angular/platform-browser';
+import { TranslocoTestingModule } from '@jsverse/transloco';
+import { APIReferencePage } from './api-reference';
+import { PreferencesService } from '@services/preferences.service';
 
-describe("APIReferencePage", () => {
+describe('APIReferencePage', () => {
     let fixture: ComponentFixture<APIReferencePage>;
     let sanitizer: DomSanitizer;
 
@@ -19,20 +19,20 @@ describe("APIReferencePage", () => {
                     langs: {
                         en: {
                             nav: {
-                                integration: "Integration",
-                                apiReference: "API Reference"
+                                integration: 'Integration',
+                                apiReference: 'API Reference'
                             },
                             integration: {
                                 apiReference: {
-                                    subtitle: "Versioned REST API reference",
-                                    loading: "Loading..."
+                                    subtitle: 'Versioned REST API reference',
+                                    loading: 'Loading...'
                                 }
                             }
                         }
                     },
                     translocoConfig: {
-                        availableLangs: ["en"],
-                        defaultLang: "en"
+                        availableLangs: ['en'],
+                        defaultLang: 'en'
                     },
                     preloadLangs: true
                 })
@@ -54,17 +54,17 @@ describe("APIReferencePage", () => {
         fixture.detectChanges();
     });
 
-    it("uses the supported Scalar query parameters", () => {
-        const frameUrl = sanitizer.sanitize(SecurityContext.RESOURCE_URL, fixture.componentInstance["scalarFrameSrc"]());
+    it('uses the supported Scalar query parameters', () => {
+        const frameUrl = sanitizer.sanitize(SecurityContext.RESOURCE_URL, fixture.componentInstance['scalarFrameSrc']());
         expect(frameUrl).toBeTruthy();
-        const url = new URL(frameUrl!, "https://example.test");
+        const url = new URL(frameUrl!, 'https://example.test');
 
-        expect(url.pathname).toBe("/scalar/index.html");
-        expect(url.searchParams.get("withDefaultFonts")).toBe("0");
-        expect(url.searchParams.get("hideClientButton")).toBe("1");
-        expect(url.searchParams.get("hiddenClients")).toBe("1");
-        expect(url.searchParams.get("telemetry")).toBe("0");
-        expect(url.searchParams.get("defaultFonts")).toBeNull();
-        expect(url.searchParams.get("showClient")).toBeNull();
+        expect(url.pathname).toBe('/scalar/index.html');
+        expect(url.searchParams.get('withDefaultFonts')).toBe('0');
+        expect(url.searchParams.get('hideClientButton')).toBe('1');
+        expect(url.searchParams.get('hiddenClients')).toBe('1');
+        expect(url.searchParams.get('telemetry')).toBe('0');
+        expect(url.searchParams.get('defaultFonts')).toBeNull();
+        expect(url.searchParams.get('showClient')).toBeNull();
     });
 });

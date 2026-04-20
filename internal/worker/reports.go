@@ -113,7 +113,7 @@ func (w *ReportWorker) processSiteReports(ctx context.Context, freq api.ReportFr
 			return
 		}
 
-		freqLabel := mailables.LocalizedFrequencyLabel(p.UserLocale, string(freq))
+		freqLabel := mailables.LocalizedReportFrequencyLabel(p.UserLocale, string(freq))
 		periodLabel := reportPeriodLabel(p.UserLocale, freq, start, end)
 
 		curParams := api.AnalyticsParams{
@@ -205,7 +205,8 @@ func (w *ReportWorker) processDigests(ctx context.Context, freq api.ReportFreque
 			return
 		}
 
-		freqLabel := mailables.LocalizedFrequencyLabel(p.UserLocale, string(freq))
+		freqLabel := mailables.LocalizedDigestFrequencyLabel(p.UserLocale, string(freq))
+		subjectFreqLabel := mailables.LocalizedDigestSubjectFrequencyLabel(p.UserLocale, string(freq))
 		periodLabel := reportPeriodLabel(p.UserLocale, freq, start, end)
 
 		var entries []mailables.DigestSiteEntry
@@ -258,7 +259,7 @@ func (w *ReportWorker) processDigests(ctx context.Context, freq api.ReportFreque
 
 		dashURL := fmt.Sprintf("%s/dashboard", w.pubURL)
 		settingsURL := fmt.Sprintf("%s/settings", w.pubURL)
-		digest := mailables.NewAnalyticsDigest(p.UserLocale, periodLabel, freqLabel, dashURL, settingsURL, entries)
+		digest := mailables.NewAnalyticsDigestWithSubjectLabel(p.UserLocale, periodLabel, freqLabel, subjectFreqLabel, dashURL, settingsURL, entries)
 
 		if err := w.mailer.Send(p.UserEmail, digest); err != nil {
 			slog.Error("ReportWorker: failed to send digest", "email", p.UserEmail, "error", err)

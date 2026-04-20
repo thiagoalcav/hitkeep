@@ -98,6 +98,38 @@
         </div>
     </p-card>
 
+    @if (showSetupNotice()) {
+    <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card mb-6">
+        <div class="ai-visibility__setup-callout flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div class="flex min-w-0 gap-3">
+                <span class="ai-visibility__setup-icon" aria-hidden="true">
+                    <i class="pi pi-info-circle"></i>
+                </span>
+                <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h3 class="text-base font-semibold text-[var(--p-text-color)]">{{ "aiVisibility.setup.title" | transloco }}</h3>
+                        <span class="ai-visibility__setup-badge">{{ "aiVisibility.setup.badge" | transloco }}</span>
+                    </div>
+                    <p class="mt-2 text-sm text-[var(--p-text-muted-color)]">{{ "aiVisibility.setup.description" | transloco }}</p>
+                    <p class="mt-2 text-sm text-[var(--p-text-muted-color)]">{{ "aiVisibility.setup.detail" | transloco }}</p>
+                </div>
+            </div>
+            <a
+                pButton
+                [href]="docsUrl"
+                target="_blank"
+                rel="noreferrer"
+                size="small"
+                icon="pi pi-external-link"
+                iconPos="right"
+                [label]="'aiVisibility.setup.action' | transloco"
+                [attr.aria-label]="'aiVisibility.setup.action' | transloco"
+                class="p-button-outlined p-button-sm"
+            ></a>
+        </div>
+    </p-card>
+    }
+
     <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card mb-6">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
             <div>

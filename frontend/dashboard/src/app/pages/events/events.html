@@ -39,36 +39,67 @@
     } @else {
     <!-- Selectors — placed first so the user picks context before the chart renders -->
     <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card mb-6">
-        <div class="flex flex-col sm:flex-row gap-4">
-            <div class="flex flex-col gap-1 flex-1">
-                <label for="event-name-select" class="text-sm font-medium">{{ 'events.eventNameLabel' | transloco }}</label>
-                <p-select
-                    inputId="event-name-select"
-                    [options]="eventOptions()"
-                    [ngModel]="selectedEvent()"
-                    (ngModelChange)="selectedEvent.set($event)"
-                    optionLabel="label"
-                    optionValue="value"
-                    [placeholder]="'events.eventNamePlaceholder' | transloco"
-                    [loading]="isLoadingNames()"
-                    [disabled]="isLoadingNames()"
-                    class="w-full"
-                />
+        <div class="events-filter-panel">
+            @if (automaticEventQuickPicks().length > 0) {
+            <div class="events-auto-row">
+                <span id="automatic-events-label" class="events-auto-row__label">
+                    <i class="pi pi-bolt" aria-hidden="true"></i>
+                    <span>{{ "events.automatic.title" | transloco }}</span>
+                </span>
+                <div class="events-auto-row__control">
+                    <p-selectbutton
+                        [options]="automaticEventQuickPicks()"
+                        [ngModel]="selectedEvent()"
+                        (ngModelChange)="selectedEvent.set($event)"
+                        optionLabel="label"
+                        optionValue="name"
+                        size="small"
+                        [allowEmpty]="false"
+                        ariaLabelledBy="automatic-events-label"
+                        styleClass="events-auto-select-item"
+                    >
+                        <ng-template #item let-option>
+                            <span class="events-auto-select-content">
+                                <i [class]="option.icon" aria-hidden="true"></i>
+                                <span>{{ option.label }}</span>
+                            </span>
+                        </ng-template>
+                    </p-selectbutton>
+                </div>
             </div>
-            <div class="flex flex-col gap-1 flex-1">
-                <label for="property-key-select" class="text-sm font-medium">{{ 'events.propertyKeyLabel' | transloco }}</label>
-                <p-select
-                    inputId="property-key-select"
-                    [options]="propertyOptions()"
-                    [ngModel]="selectedPropertyKey()"
-                    (ngModelChange)="selectedPropertyKey.set($event)"
-                    optionLabel="label"
-                    optionValue="value"
-                    [placeholder]="'events.propertyKeyPlaceholder' | transloco"
-                    [loading]="isLoadingKeys()"
-                    [disabled]="isLoadingKeys() || !selectedEvent()"
-                    class="w-full"
-                />
+            }
+
+            <div class="events-filter-grid">
+                <div class="events-filter-field">
+                    <label for="event-name-select" class="events-filter-field__label">{{ 'events.eventNameLabel' | transloco }}</label>
+                    <p-select
+                        inputId="event-name-select"
+                        [options]="eventOptions()"
+                        [ngModel]="selectedEvent()"
+                        (ngModelChange)="selectedEvent.set($event)"
+                        optionLabel="label"
+                        optionValue="value"
+                        [placeholder]="'events.eventNamePlaceholder' | transloco"
+                        [loading]="isLoadingNames()"
+                        [disabled]="isLoadingNames()"
+                        class="w-full"
+                    />
+                </div>
+                <div class="events-filter-field">
+                    <label for="property-key-select" class="events-filter-field__label">{{ 'events.propertyKeyLabel' | transloco }}</label>
+                    <p-select
+                        inputId="property-key-select"
+                        [options]="propertyOptions()"
+                        [ngModel]="selectedPropertyKey()"
+                        (ngModelChange)="selectedPropertyKey.set($event)"
+                        optionLabel="label"
+                        optionValue="value"
+                        [placeholder]="'events.propertyKeyPlaceholder' | transloco"
+                        [loading]="isLoadingKeys()"
+                        [disabled]="isLoadingKeys() || !selectedEvent()"
+                        class="w-full"
+                    />
+                </div>
             </div>
         </div>
     </p-card>

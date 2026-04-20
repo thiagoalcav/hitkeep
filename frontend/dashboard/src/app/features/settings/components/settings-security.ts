@@ -1,28 +1,28 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from "@angular/core";
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 
-import { FormControl, ReactiveFormsModule, Validators } from "@angular/forms";
-import { compatForm } from "@angular/forms/signals/compat";
-import { firstValueFrom, finalize } from "rxjs";
-import { TranslocoPipe } from "@jsverse/transloco";
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { firstValueFrom, finalize } from 'rxjs';
+import { TranslocoPipe } from '@jsverse/transloco';
 
 // PrimeNG
-import { ButtonModule } from "primeng/button";
-import { PasswordModule } from "primeng/password";
-import { MessageModule } from "primeng/message";
-import { InputOtpModule } from "primeng/inputotp";
-import { SettingsCard } from "@features/settings/components/settings-card";
-import { RelativeDateTime } from "@components/relative-date-time/relative-date-time";
+import { ButtonModule } from 'primeng/button';
+import { PasswordModule } from 'primeng/password';
+import { MessageModule } from 'primeng/message';
+import { InputOtpModule } from 'primeng/inputotp';
+import { SettingsCard } from '@features/settings/components/settings-card';
+import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
 
 // Core
-import { AuthService } from "@services/auth.service";
-import { PasskeyRegistrationFinishRequest, PasskeyRegistrationStartResponse, UserRecoveryCodesResponse, UserSecurityService, UserSecurityStatus, UserTotpSetup } from "@services/user-security.service";
-import { toCreationResponseJson, toPublicKeyCreationOptions } from "@core/utils/webauthn";
+import { AuthService } from '@services/auth.service';
+import { PasskeyRegistrationFinishRequest, PasskeyRegistrationStartResponse, UserRecoveryCodesResponse, UserSecurityService, UserSecurityStatus, UserTotpSetup } from '@services/user-security.service';
+import { toCreationResponseJson, toPublicKeyCreationOptions } from '@core/utils/webauthn';
 
 @Component({
-    selector: "app-settings-security",
+    selector: 'app-settings-security',
     imports: [ReactiveFormsModule, ButtonModule, PasswordModule, MessageModule, InputOtpModule, SettingsCard, RelativeDateTime, TranslocoPipe],
-    templateUrl: "./settings-security.html",
-    styleUrl: "./settings-security.css",
+    templateUrl: './settings-security.html',
+    styleUrl: './settings-security.css',
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SettingsSecurity {
@@ -49,11 +49,11 @@ export class SettingsSecurity {
     protected readonly recoveryCodes = signal<string[]>([]);
 
     private readonly formModel = signal({
-        currentPassword: new FormControl("", { nonNullable: true, validators: [Validators.required] }),
-        newPassword: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.minLength(8)] }),
-        totpCode: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.pattern(/^[0-9]{6}$/)] }),
-        disableTotpCode: new FormControl("", { nonNullable: true, validators: [Validators.required, Validators.pattern(/^[0-9]{6}$/)] }),
-        passkeyName: new FormControl("", { nonNullable: true, validators: [Validators.maxLength(64)] })
+        currentPassword: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+        newPassword: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(8)] }),
+        totpCode: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/^[0-9]{6}$/)] }),
+        disableTotpCode: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/^[0-9]{6}$/)] }),
+        passkeyName: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(64)] })
     });
     protected readonly form = compatForm(this.formModel);
     protected readonly totpEnabled = computed(() => this.securityStatus()?.totp_enabled ?? false);
@@ -87,13 +87,13 @@ export class SettingsSecurity {
             .subscribe({
                 next: () => {
                     this.passwordSuccess.set(true);
-                    this.form.currentPassword().control().reset("");
-                    this.form.newPassword().control().reset("");
+                    this.form.currentPassword().control().reset('');
+                    this.form.newPassword().control().reset('');
                 },
                 error: (err) => {
                     // 403 is returned by backend for invalid current password
                     // TODO: adhere to RESTFUL
-                    const msg = err.status === 403 ? "settings.security.errors.invalidCurrentPassword" : "settings.security.errors.updateFailed";
+                    const msg = err.status === 403 ? 'settings.security.errors.invalidCurrentPassword' : 'settings.security.errors.updateFailed';
                     this.passwordError.set(msg);
                 }
             });
@@ -110,10 +110,10 @@ export class SettingsSecurity {
             .subscribe({
                 next: (setup) => {
                     this.totpSetup.set(setup);
-                    this.form.totpCode().control().reset("");
+                    this.form.totpCode().control().reset('');
                 },
                 error: () => {
-                    this.totpError.set("settings.security.twoFactor.errors.startFailed");
+                    this.totpError.set('settings.security.twoFactor.errors.startFailed');
                 }
             });
     }
@@ -136,12 +136,12 @@ export class SettingsSecurity {
                 next: (status) => {
                     this.securityStatus.set(status);
                     this.totpSetup.set(null);
-                    control.reset("");
-                    this.form.disableTotpCode().control().reset("");
-                    this.totpSuccess.set("settings.security.twoFactor.enabled");
+                    control.reset('');
+                    this.form.disableTotpCode().control().reset('');
+                    this.totpSuccess.set('settings.security.twoFactor.enabled');
                 },
                 error: () => {
-                    this.totpError.set("settings.security.twoFactor.errors.verifyFailed");
+                    this.totpError.set('settings.security.twoFactor.errors.verifyFailed');
                 }
             });
     }
@@ -164,19 +164,19 @@ export class SettingsSecurity {
                 next: (status) => {
                     this.securityStatus.set(status);
                     this.totpSetup.set(null);
-                    this.form.totpCode().control().reset("");
-                    control.reset("");
-                    this.totpSuccess.set("settings.security.twoFactor.disabled");
+                    this.form.totpCode().control().reset('');
+                    control.reset('');
+                    this.totpSuccess.set('settings.security.twoFactor.disabled');
                 },
                 error: () => {
-                    this.totpError.set("settings.security.twoFactor.errors.disableFailed");
+                    this.totpError.set('settings.security.twoFactor.errors.disableFailed');
                 }
             });
     }
 
     protected async registerPasskey(): Promise<void> {
-        if (typeof window === "undefined" || typeof navigator === "undefined" || !window.PublicKeyCredential || !navigator.credentials) {
-            this.passkeyError.set("settings.security.passkeys.errors.notSupported");
+        if (typeof window === 'undefined' || typeof navigator === 'undefined' || !window.PublicKeyCredential || !navigator.credentials) {
+            this.passkeyError.set('settings.security.passkeys.errors.notSupported');
             return;
         }
 
@@ -197,21 +197,21 @@ export class SettingsSecurity {
             });
 
             if (!(credential instanceof PublicKeyCredential) || !(credential.response instanceof AuthenticatorAttestationResponse)) {
-                this.passkeyError.set("settings.security.passkeys.errors.registrationFailed");
+                this.passkeyError.set('settings.security.passkeys.errors.registrationFailed');
                 return;
             }
 
             const payload = this.toPasskeyFinishPayload(credential);
             if (!payload) {
-                this.passkeyError.set("settings.security.passkeys.errors.notSupported");
+                this.passkeyError.set('settings.security.passkeys.errors.notSupported');
                 return;
             }
             const status = await firstValueFrom(this.securityService.finishPasskeyRegistration(payload));
             this.securityStatus.set(status);
-            this.form.passkeyName().control().reset("");
-            this.passkeySuccess.set("settings.security.passkeys.registered");
+            this.form.passkeyName().control().reset('');
+            this.passkeySuccess.set('settings.security.passkeys.registered');
         } catch {
-            this.passkeyError.set("settings.security.passkeys.errors.registrationFailed");
+            this.passkeyError.set('settings.security.passkeys.errors.registrationFailed');
         } finally {
             this.isPasskeyActionLoading.set(false);
         }
@@ -234,17 +234,17 @@ export class SettingsSecurity {
                             passkeys: current.passkeys.filter((entry) => entry.id !== passkeyID)
                         };
                     });
-                    this.passkeySuccess.set("settings.security.passkeys.deleted");
+                    this.passkeySuccess.set('settings.security.passkeys.deleted');
                 },
                 error: () => {
-                    this.passkeyError.set("settings.security.passkeys.errors.deleteFailed");
+                    this.passkeyError.set('settings.security.passkeys.errors.deleteFailed');
                 }
             });
     }
 
     protected regenerateRecoveryCodes(): void {
         if (!this.hasMfaProtection()) {
-            this.recoveryCodeError.set("settings.security.recoveryCodes.errors.mfaRequired");
+            this.recoveryCodeError.set('settings.security.recoveryCodes.errors.mfaRequired');
             return;
         }
 
@@ -258,7 +258,7 @@ export class SettingsSecurity {
             .subscribe({
                 next: (response) => this.handleRecoveryCodeResponse(response),
                 error: (err) => {
-                    const message = err.status === 409 ? "settings.security.recoveryCodes.errors.mfaRequired" : "settings.security.recoveryCodes.errors.generateFailed";
+                    const message = err.status === 409 ? 'settings.security.recoveryCodes.errors.mfaRequired' : 'settings.security.recoveryCodes.errors.generateFailed';
                     this.recoveryCodeError.set(message);
                 }
             });
@@ -268,8 +268,8 @@ export class SettingsSecurity {
         if (this.recoveryCodes().length === 0) {
             return;
         }
-        if (typeof navigator === "undefined" || !navigator.clipboard?.writeText) {
-            this.recoveryCodeError.set("settings.security.recoveryCodes.errors.copyFailed");
+        if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+            this.recoveryCodeError.set('settings.security.recoveryCodes.errors.copyFailed');
             this.recoveryCodeSuccess.set(null);
             return;
         }
@@ -279,9 +279,9 @@ export class SettingsSecurity {
 
         try {
             await navigator.clipboard.writeText(this.buildRecoveryCodesText());
-            this.recoveryCodeSuccess.set("settings.security.recoveryCodes.copied");
+            this.recoveryCodeSuccess.set('settings.security.recoveryCodes.copied');
         } catch {
-            this.recoveryCodeError.set("settings.security.recoveryCodes.errors.copyFailed");
+            this.recoveryCodeError.set('settings.security.recoveryCodes.errors.copyFailed');
         }
     }
 
@@ -289,8 +289,8 @@ export class SettingsSecurity {
         if (this.recoveryCodes().length === 0) {
             return;
         }
-        if (typeof window === "undefined" || typeof document === "undefined" || !window.URL?.createObjectURL) {
-            this.recoveryCodeError.set("settings.security.recoveryCodes.errors.downloadFailed");
+        if (typeof window === 'undefined' || typeof document === 'undefined' || !window.URL?.createObjectURL) {
+            this.recoveryCodeError.set('settings.security.recoveryCodes.errors.downloadFailed');
             this.recoveryCodeSuccess.set(null);
             return;
         }
@@ -298,17 +298,17 @@ export class SettingsSecurity {
         this.recoveryCodeError.set(null);
         this.recoveryCodeSuccess.set(null);
 
-        const blob = new Blob([this.buildRecoveryCodesText()], { type: "text/plain;charset=utf-8" });
+        const blob = new Blob([this.buildRecoveryCodesText()], { type: 'text/plain;charset=utf-8' });
         const url = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
+        const link = document.createElement('a');
         link.href = url;
         link.download = `hitkeep-recovery-codes-${new Date().toISOString().slice(0, 10)}.txt`;
 
         try {
             link.click();
-            this.recoveryCodeSuccess.set("settings.security.recoveryCodes.downloaded");
+            this.recoveryCodeSuccess.set('settings.security.recoveryCodes.downloaded');
         } catch {
-            this.recoveryCodeError.set("settings.security.recoveryCodes.errors.downloadFailed");
+            this.recoveryCodeError.set('settings.security.recoveryCodes.errors.downloadFailed');
         } finally {
             window.URL.revokeObjectURL(url);
         }
@@ -327,7 +327,7 @@ export class SettingsSecurity {
                     this.recoveryCodes.set([]);
                 },
                 error: () => {
-                    this.securityError.set("settings.security.errors.loadFailed");
+                    this.securityError.set('settings.security.errors.loadFailed');
                 }
             });
     }
@@ -345,11 +345,11 @@ export class SettingsSecurity {
                 recovery_codes_remaining: response.remaining
             };
         });
-        this.recoveryCodeSuccess.set("settings.security.recoveryCodes.generated");
+        this.recoveryCodeSuccess.set('settings.security.recoveryCodes.generated');
     }
 
     private buildRecoveryCodesText(): string {
-        return this.recoveryCodes().join("\n");
+        return this.recoveryCodes().join('\n');
     }
 
     private toPublicKeyOptions(response: PasskeyRegistrationStartResponse): PublicKeyCredentialCreationOptions {

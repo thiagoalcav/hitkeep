@@ -1,16 +1,16 @@
-import { ComponentFixture, TestBed } from "@angular/core/testing";
-import { signal } from "@angular/core";
-import { NoopAnimationsModule } from "@angular/platform-browser/animations";
-import { TranslocoTestingModule } from "@jsverse/transloco";
-import { TeamOverviewPage } from "./team-overview";
-import { TeamService } from "@services/team.service";
-import { AnalyticsService } from "@services/analytics.service";
-import { CloudService } from "@services/cloud.service";
-import { Team } from "@models/analytics.types";
-import { of } from "rxjs";
-import { vi } from "vitest";
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { TranslocoTestingModule } from '@jsverse/transloco';
+import { TeamOverviewPage } from './team-overview';
+import { TeamService } from '@services/team.service';
+import { AnalyticsService } from '@services/analytics.service';
+import { CloudService } from '@services/cloud.service';
+import { Team } from '@models/analytics.types';
+import { of } from 'rxjs';
+import { vi } from 'vitest';
 
-describe("TeamOverviewPage", () => {
+describe('TeamOverviewPage', () => {
     let fixture: ComponentFixture<TeamOverviewPage>;
     type TeamOverviewTestAccess = TeamOverviewPage & {
         openBillingPortal(): void;
@@ -31,11 +31,11 @@ describe("TeamOverviewPage", () => {
     };
 
     const activeTeam = signal<Team | null>({
-        id: "00000000-0000-0000-0000-000000000001",
-        name: "Acme Analytics",
-        logo_url: "",
-        role: "owner",
-        created_at: "2026-03-01T00:00:00Z",
+        id: '00000000-0000-0000-0000-000000000001',
+        name: 'Acme Analytics',
+        logo_url: '',
+        role: 'owner',
+        created_at: '2026-03-01T00:00:00Z',
         usage: {
             current_sites: 3,
             current_members: 5,
@@ -49,24 +49,24 @@ describe("TeamOverviewPage", () => {
             allow_custom_branding: true
         },
         plan: {
-            code: "free",
-            name: "Free",
-            upgrade_url: "https://hitkeep.com/cloud/upgrade",
-            support_url: "https://hitkeep.com/cloud/support"
+            code: 'free',
+            name: 'Free',
+            upgrade_url: 'https://hitkeep.com/cloud/upgrade',
+            support_url: 'https://hitkeep.com/cloud/support'
         }
     });
 
     beforeEach(async () => {
         systemStatusResponse = {
             needs_setup: false,
-            version: "v2.0.0",
+            version: 'v2.0.0',
             cloud: {
                 hosted: true,
                 signup_enabled: false,
-                jurisdiction: "EU",
-                region: "eu-central-1",
-                upgrade_url: "https://hitkeep.com/cloud/upgrade",
-                support_url: "https://hitkeep.com/cloud/support"
+                jurisdiction: 'EU',
+                region: 'eu-central-1',
+                upgrade_url: 'https://hitkeep.com/cloud/upgrade',
+                support_url: 'https://hitkeep.com/cloud/support'
             }
         };
 
@@ -80,66 +80,66 @@ describe("TeamOverviewPage", () => {
                             admin: {
                                 team: {
                                     overview: {
-                                        title: "Team",
-                                        memberCount: "Members",
+                                        title: 'Team',
+                                        memberCount: 'Members',
                                         usage: {
-                                            title: "Usage and limits",
-                                            description: "Track plan usage before it becomes a limit.",
-                                            currentUsage: "{{count}} used",
-                                            unlimited: "Unlimited",
-                                            unlimitedFootnote: "Unlimited on the current plan",
-                                            limitValue: "Limit {{count}}",
-                                            progressLabel: "{{count}}% of limit",
-                                            pendingInviteOne: "1 pending invite",
-                                            pendingInviteMany: "{{count}} pending invites",
+                                            title: 'Usage and limits',
+                                            description: 'Track plan usage before it becomes a limit.',
+                                            currentUsage: '{{count}} used',
+                                            unlimited: 'Unlimited',
+                                            unlimitedFootnote: 'Unlimited on the current plan',
+                                            limitValue: 'Limit {{count}}',
+                                            progressLabel: '{{count}}% of limit',
+                                            pendingInviteOne: '1 pending invite',
+                                            pendingInviteMany: '{{count}} pending invites',
                                             metrics: {
-                                                sites: "Sites",
-                                                members: "Members"
+                                                sites: 'Sites',
+                                                members: 'Members'
                                             }
                                         },
                                         cloud: {
-                                            title: "Cloud plan",
-                                            managed: "Managed cloud",
-                                            description: "Run this team in the hosted EU or US cell with hard limits, backups, and upgrade paths.",
-                                            manageBillingAction: "Manage billing",
-                                            jurisdiction: "Jurisdiction",
-                                            region: "Region",
-                                            retention: "Retention",
-                                            retentionDays: "{{count}} days",
-                                            unlimitedRetention: "Unlimited retention",
-                                            upgradeAction: "Upgrade plan",
-                                            supportAction: "Contact support"
+                                            title: 'Cloud plan',
+                                            managed: 'Managed cloud',
+                                            description: 'Run this team in the hosted EU or US cell with hard limits, backups, and upgrade paths.',
+                                            manageBillingAction: 'Manage billing',
+                                            jurisdiction: 'Jurisdiction',
+                                            region: 'Region',
+                                            retention: 'Retention',
+                                            retentionDays: '{{count}} days',
+                                            unlimitedRetention: 'Unlimited retention',
+                                            upgradeAction: 'Upgrade plan',
+                                            supportAction: 'Contact support'
                                         },
                                         plans: {
-                                            title: "Upgrade your plan",
-                                            description: "Unlock longer retention, more sites, and team capacity.",
-                                            currentPlan: "Current plan",
-                                            recommended: "Recommended",
-                                            upgradeAction: "Upgrade to {{plan}}",
+                                            title: 'Upgrade your plan',
+                                            description: 'Unlock longer retention, more sites, and team capacity.',
+                                            currentPlan: 'Current plan',
+                                            recommended: 'Recommended',
+                                            upgradeAction: 'Upgrade to {{plan}}',
                                             features: {
-                                                sites: "Up to {{count}} sites",
-                                                members: "Up to {{count}} team members",
-                                                retention: "{{count}}-year data retention",
-                                                retentionDays: "{{count}}-day data retention"
+                                                sites: 'Up to {{count}} sites',
+                                                members: 'Up to {{count}} team members',
+                                                retention: '{{count}}-year data retention',
+                                                retentionDays: '{{count}}-day data retention'
                                             }
                                         }
                                     }
                                 }
                             },
-                            common: { columns: { role: "Role" } },
-                            teams: { roles: { owner: "Owner" } },
+                            common: { columns: { role: 'Role' } },
+                            teams: { roles: { owner: 'Owner' } },
                             signup: {
                                 plans: {
-                                    free: { name: "Free", price: "€0", description: "60-day retention to validate your sites." },
-                                    pro: { name: "Pro", price: "€15/mo", description: "Longer retention and more room for a small team." },
-                                    business: { name: "Business", price: "€39/mo", description: "More scale for agencies." }
+                                    free: { name: 'Free', price: '€0', description: '60-day retention to validate your sites.' },
+                                    pro: { name: 'Pro', price: '€15/mo', description: 'Longer retention and more room for a small team.' },
+                                    business: { name: 'Business', price: '€39/mo', description: 'More scale for agencies.' }
                                 }
                             }
                         }
                     },
                     translocoConfig: {
-                        availableLangs: ["en"],
-                        defaultLang: "en"
+                        availableLangs: ['en'],
+                        defaultLang: 'en'
                     }
                 })
             ],
@@ -159,23 +159,23 @@ describe("TeamOverviewPage", () => {
                 {
                     provide: CloudService,
                     useValue: {
-                        createBillingPortalSession: vi.fn().mockReturnValue(of({ url: "https://billing.stripe.test/session" })),
-                        createBillingCheckoutSession: vi.fn().mockReturnValue(of({ url: "https://checkout.stripe.test/session" })),
+                        createBillingPortalSession: vi.fn().mockReturnValue(of({ url: 'https://billing.stripe.test/session' })),
+                        createBillingCheckoutSession: vi.fn().mockReturnValue(of({ url: 'https://checkout.stripe.test/session' })),
                         getPlans: vi.fn().mockReturnValue(
                             of([
                                 {
-                                    code: "free",
-                                    name: "Free",
+                                    code: 'free',
+                                    name: 'Free',
                                     entitlements: { max_sites_per_team: 3, max_team_members: 3, max_retention_days: 60, allow_sso: false, allow_custom_branding: false }
                                 },
                                 {
-                                    code: "pro",
-                                    name: "Pro",
+                                    code: 'pro',
+                                    name: 'Pro',
                                     entitlements: { max_sites_per_team: 10, max_team_members: 5, max_retention_days: 365, allow_sso: false, allow_custom_branding: false }
                                 },
                                 {
-                                    code: "business",
-                                    name: "Business",
+                                    code: 'business',
+                                    name: 'Business',
                                     entitlements: { max_sites_per_team: 50, max_team_members: 20, max_retention_days: 1095, allow_sso: true, allow_custom_branding: true }
                                 }
                             ])
@@ -189,61 +189,61 @@ describe("TeamOverviewPage", () => {
         fixture.detectChanges();
     });
 
-    it("renders usage cards for the active team", () => {
+    it('renders usage cards for the active team', () => {
         const text = fixture.nativeElement.textContent;
-        expect(text).toContain("Usage and limits");
-        expect(text).toContain("Sites");
-        expect(text).toContain("Members");
-        expect(text).toContain("2 pending invites");
+        expect(text).toContain('Usage and limits');
+        expect(text).toContain('Sites');
+        expect(text).toContain('Members');
+        expect(text).toContain('2 pending invites');
     });
 
-    it("renders cloud plan with inline upgrade comparison for free users", () => {
+    it('renders cloud plan with inline upgrade comparison for free users', () => {
         const text = fixture.nativeElement.textContent;
-        expect(text).toContain("Cloud plan");
-        expect(text).toContain("Managed cloud");
-        expect(text).toContain("EU");
-        expect(text).toContain("365 days");
-        expect(text).toContain("Current plan");
-        expect(text).toContain("Upgrade to Pro");
-        expect(text).toContain("Upgrade to Business");
+        expect(text).toContain('Cloud plan');
+        expect(text).toContain('Managed cloud');
+        expect(text).toContain('EU');
+        expect(text).toContain('365 days');
+        expect(text).toContain('Current plan');
+        expect(text).toContain('Upgrade to Pro');
+        expect(text).toContain('Upgrade to Business');
     });
 
-    it("creates a billing portal session from the cloud card", () => {
+    it('creates a billing portal session from the cloud card', () => {
         const component = fixture.componentInstance as TeamOverviewTestAccess;
         const cloudService = TestBed.inject(CloudService);
-        const redirectSpy = vi.spyOn(component, "redirectTo").mockImplementation(() => undefined);
+        const redirectSpy = vi.spyOn(component, 'redirectTo').mockImplementation(() => undefined);
 
         component.openBillingPortal();
 
-        expect(cloudService.createBillingPortalSession).toHaveBeenCalledWith({ locale: "en" });
-        expect(redirectSpy).toHaveBeenCalledWith("https://billing.stripe.test/session");
+        expect(cloudService.createBillingPortalSession).toHaveBeenCalledWith({ locale: 'en' });
+        expect(redirectSpy).toHaveBeenCalledWith('https://billing.stripe.test/session');
     });
 
-    it("starts a checkout session when upgrading a free cloud team", () => {
+    it('starts a checkout session when upgrading a free cloud team', () => {
         const component = fixture.componentInstance as TeamOverviewTestAccess;
         const cloudService = TestBed.inject(CloudService);
-        const redirectSpy = vi.spyOn(component, "redirectTo").mockImplementation(() => undefined);
+        const redirectSpy = vi.spyOn(component, 'redirectTo').mockImplementation(() => undefined);
 
         component.startUpgradeCheckout();
 
-        expect(cloudService.createBillingCheckoutSession).toHaveBeenCalledWith({ plan_code: "pro", locale: "en" });
-        expect(redirectSpy).toHaveBeenCalledWith("https://checkout.stripe.test/session");
+        expect(cloudService.createBillingCheckoutSession).toHaveBeenCalledWith({ plan_code: 'pro', locale: 'en' });
+        expect(redirectSpy).toHaveBeenCalledWith('https://checkout.stripe.test/session');
     });
 
-    it("hides usage limits and cloud plan details for OSS instances", () => {
+    it('hides usage limits and cloud plan details for OSS instances', () => {
         fixture.destroy();
         systemStatusResponse = {
             needs_setup: false,
-            version: "v2.0.0"
+            version: 'v2.0.0'
         };
 
         fixture = TestBed.createComponent(TeamOverviewPage);
         fixture.detectChanges();
 
         const text = fixture.nativeElement.textContent;
-        expect(text).not.toContain("Usage and limits");
-        expect(text).not.toContain("Cloud plan");
-        expect(text).toContain("Acme Analytics");
-        expect(text).toContain("Members");
+        expect(text).not.toContain('Usage and limits');
+        expect(text).not.toContain('Cloud plan');
+        expect(text).toContain('Acme Analytics');
+        expect(text).toContain('Members');
     });
 });

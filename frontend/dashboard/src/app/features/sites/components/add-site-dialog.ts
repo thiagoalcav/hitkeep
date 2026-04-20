@@ -1,15 +1,15 @@
-import { Component, inject, model, signal } from "@angular/core";
+import { Component, inject, model, signal } from '@angular/core';
 
-import { ReactiveFormsModule, FormControl, Validators, AbstractControl, ValidationErrors } from "@angular/forms";
-import { compatForm } from "@angular/forms/signals/compat";
-import { TranslocoPipe } from "@jsverse/transloco";
-import { DialogModule } from "primeng/dialog";
-import { ButtonModule } from "primeng/button";
-import { InputTextModule } from "primeng/inputtext";
-import { MessageModule } from "primeng/message";
-import { SiteService } from "@features/sites/services/site.service";
+import { ReactiveFormsModule, FormControl, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
+import { compatForm } from '@angular/forms/signals/compat';
+import { TranslocoPipe } from '@jsverse/transloco';
+import { DialogModule } from 'primeng/dialog';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { MessageModule } from 'primeng/message';
+import { SiteService } from '@features/sites/services/site.service';
 @Component({
-    selector: "app-add-site-dialog",
+    selector: 'app-add-site-dialog',
     standalone: true,
     imports: [ReactiveFormsModule, DialogModule, ButtonModule, InputTextModule, MessageModule, TranslocoPipe],
     template: `
@@ -71,18 +71,18 @@ export class AddSiteDialog {
     protected isSubmitting = signal(false);
     protected createError = signal<string | null>(null);
     private readonly formModel = signal({
-        domain: new FormControl("", { nonNullable: true, validators: [Validators.required, this.domainValidator] })
+        domain: new FormControl('', { nonNullable: true, validators: [Validators.required, this.domainValidator] })
     });
     protected readonly form = compatForm(this.formModel);
     private domainValidator(control: AbstractControl): ValidationErrors | null {
         const value = control.value as string;
         if (!value) return null;
 
-        if (value.startsWith("http://") || value.startsWith("https://")) {
+        if (value.startsWith('http://') || value.startsWith('https://')) {
             return { containsProtocol: true };
         }
 
-        if (value.startsWith("www.")) {
+        if (value.startsWith('www.')) {
             return { containsWww: true };
         }
 
@@ -97,8 +97,8 @@ export class AddSiteDialog {
         let val = this.form.domain().value();
         val = val.toLowerCase().trim();
 
-        val = val.replace(/^https?:\/\//, "");
-        val = val.replace(/\/$/, "");
+        val = val.replace(/^https?:\/\//, '');
+        val = val.replace(/\/$/, '');
 
         this.form.domain().control().setValue(val);
     }
@@ -106,7 +106,7 @@ export class AddSiteDialog {
         return this.form.domain().invalid() && (this.form.domain().dirty() || this.form.domain().touched());
     }
     resetForm() {
-        this.form.domain().control().reset("");
+        this.form.domain().control().reset('');
         this.createError.set(null);
         this.isSubmitting.set(false);
     }
@@ -130,7 +130,7 @@ export class AddSiteDialog {
                 this.visible.set(false);
             },
             error: () => {
-                this.createError.set("sites.addDialog.errors.createFailed");
+                this.createError.set('sites.addDialog.errors.createFailed');
                 this.isSubmitting.set(false);
             }
         });

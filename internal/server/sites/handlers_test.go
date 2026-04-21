@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -434,7 +435,13 @@ func TestHandleGetSiteStatsIncludesPageModes(t *testing.T) {
 		}
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/api/sites/"+site.ID.String()+"/stats", nil)
+	statsURL := fmt.Sprintf(
+		"/api/sites/%s/stats?from=%s&to=%s",
+		site.ID,
+		base.Add(-24*time.Hour).Format(time.RFC3339),
+		base.Add(24*time.Hour).Format(time.RFC3339),
+	)
+	req := httptest.NewRequest(http.MethodGet, statsURL, nil)
 	req.SetPathValue("id", site.ID.String())
 	req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, userID))
 

@@ -17,6 +17,7 @@ import (
 	"hitkeep/internal/database"
 	"hitkeep/internal/entitlements"
 	"hitkeep/internal/mailer"
+	"hitkeep/internal/mcpserver"
 	"hitkeep/internal/server/admin"
 	"hitkeep/internal/server/aifetch"
 	serverauth "hitkeep/internal/server/auth"
@@ -62,6 +63,8 @@ type Server struct {
 }
 
 func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStores *database.TenantStoreManager, ent entitlements.Provider, cluster *cluster.Manager, producer *nsq.Producer, mailService *mailer.Mailer) *Server {
+	config.NormalizeMCPConfig(conf)
+
 	ingestLim := shared.NewIPRateLimiter(rate.Limit(conf.IngestRateLimit), conf.IngestBurst)
 	apiLim := shared.NewIPRateLimiter(rate.Limit(conf.ApiRateLimit), conf.ApiBurst)
 	authLim := shared.NewIPRateLimiter(rate.Limit(conf.AuthRateLimit), conf.AuthBurst)
@@ -206,6 +209,10 @@ func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 	aifetch.Register(mux, ctx)
 	takeouthandlers.Register(mux, ctx)
 	sharehandlers.Register(mux, ctx)
+	if s.conf.MCPEnabled && s.store != nil && (s.cluster == nil || s.cluster.IsLeader()) {
+		slog.Info("MCP server route enabled", "path", s.conf.MCPPath)
+		mcpserver.Register(mux, ctx, slog.Default())
+	}
 
 	// Static & SPA Handling
 	mux.Handle("/", s.spaHandler(publicFS))

@@ -1,5 +1,7 @@
 all: run
 
+STATICCHECK_VERSION ?= v0.7.0
+
 build: frontend-build go-build
 
 go-build:
@@ -30,6 +32,7 @@ dev-backend:
 		HITKEEP_MAIL_HOST=$${HITKEEP_MAIL_HOST:-localhost} \
 		HITKEEP_MAIL_PORT=$${HITKEEP_MAIL_PORT:-1025} \
 		HITKEEP_MAIL_ENCRYPTION=$${HITKEEP_MAIL_ENCRYPTION:-none} \
+		HITKEEP_MCP_ENABLED=$${HITKEEP_MCP_ENABLED:-true} \
 		air
 
 dev-frontend:
@@ -75,4 +78,8 @@ dev-cloud-backend:
 		HITKEEP_PUBLIC_URL=$${HITKEEP_PUBLIC_URL:-http://localhost:4200} \
 		air -c .air-cloud.toml
 
-.PHONY: all build go-build frontend-build frontend-dashboard-build run clean update-default-spam-filter dev dev-seed dev-backend dev-frontend dev-cloud dev-cloud-backend
+staticcheck:
+	@echo "Running Staticcheck..."
+	go run honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION) ./...
+
+.PHONY: all build go-build frontend-build frontend-dashboard-build run clean update-default-spam-filter dev dev-seed dev-backend dev-frontend dev-cloud dev-cloud-backend staticcheck

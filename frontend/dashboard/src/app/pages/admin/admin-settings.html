@@ -558,7 +558,7 @@
                                 </div>
                                 <div>
                                     <dt>{{ "admin.system.backups.interval" | transloco }}</dt>
-                                    <dd>{{ backups.interval_min }} min</dd>
+                                    <dd>{{ formatMinutes(backups.interval_min) }}</dd>
                                 </div>
                                 <div>
                                     <dt>{{ "admin.system.backups.retention" | transloco }}</dt>
@@ -620,6 +620,8 @@
                             </dl>
                             @if (spam.last_error) {
                             <p-message severity="error" styleClass="w-full mt-3" [text]="spam.last_error" />
+                            } @if (spamActionStatus(); as status) {
+                            <p-message [severity]="status.severity" styleClass="w-full mt-3" [text]="spamActionStatusMessage()" />
                             } } @else if (isLoadingSpam()) {
                             <div class="admin-loading"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i>{{ "common.loading" | transloco }}</div>
                             }

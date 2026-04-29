@@ -1207,7 +1207,8 @@
                 "actions": {
                     "refresh": "Actualiser la base anti-spam"
                 },
-                "refreshTriggered": "Filtre anti-spam actualisé"
+                "refreshTriggered": "Filtre anti-spam actualisé",
+                "refreshFailed": "Impossible d'actualiser le filtre anti-spam"
             },
             "caches": {
                 "title": "Caches",
@@ -1260,6 +1261,8 @@
                 },
                 "empty": "Aucune entrée d’audit trouvée",
                 "loadError": "Impossible de charger les entrées d’audit",
+                "exportSuccess": "Export d'audit téléchargé",
+                "exportFailed": "Impossible d'exporter le journal d'audit",
                 "loadMore": "Charger plus",
                 "columns": {
                     "created": "Heure",

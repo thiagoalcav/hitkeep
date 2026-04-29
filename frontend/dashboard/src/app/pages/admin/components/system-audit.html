@@ -3,6 +3,7 @@
         <div class="system-audit__filters">
             <p-select [options]="actionOptions()" [(ngModel)]="selectedAction" (onChange)="onFilterChange()" optionLabel="label" optionValue="value" [style]="{ 'min-width': '180px' }" appendTo="body" />
             <p-select [options]="outcomeOptions()" [(ngModel)]="selectedOutcome" (onChange)="onFilterChange()" optionLabel="label" optionValue="value" [style]="{ 'min-width': '140px' }" appendTo="body" />
+            <p-select [options]="targetTypeOptions()" [(ngModel)]="selectedTargetType" (onChange)="onFilterChange()" optionLabel="label" optionValue="value" [style]="{ 'min-width': '150px' }" appendTo="body" />
             <p-datepicker
                 [(ngModel)]="dateRange"
                 (onSelect)="onFilterChange()"
@@ -18,12 +19,14 @@
             </p-iconfield>
         </div>
         <div class="system-audit__actions">
-            <p-button icon="pi pi-download" [label]="'admin.system.audit.actions.export' | transloco" severity="secondary" (onClick)="exportAudit()" />
+            <p-button icon="pi pi-download" [label]="'admin.system.audit.actions.export' | transloco" severity="secondary" [loading]="isExporting()" [disabled]="isExporting()" (onClick)="exportAudit()" />
         </div>
     </div>
 
     @if (hasError()) {
     <p-message severity="error" [text]="'admin.system.audit.loadError' | transloco" styleClass="w-full mb-4" />
+    } @if (exportStatus(); as status) {
+    <p-message [severity]="status.severity" [text]="status.key | transloco" styleClass="w-full mb-4" />
     }
 
     <div class="system-audit__table-wrap">

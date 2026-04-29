@@ -1207,7 +1207,8 @@
                 "actions": {
                     "refresh": "Aggiorna database spam"
                 },
-                "refreshTriggered": "Filtro spam aggiornato"
+                "refreshTriggered": "Filtro spam aggiornato",
+                "refreshFailed": "Impossibile aggiornare il filtro spam"
             },
             "caches": {
                 "title": "Cache",
@@ -1260,6 +1261,8 @@
                 },
                 "empty": "Nessuna voce di audit trovata",
                 "loadError": "Impossibile caricare le voci di audit",
+                "exportSuccess": "Esportazione audit scaricata",
+                "exportFailed": "Impossibile esportare il registro audit",
                 "loadMore": "Carica altro",
                 "columns": {
                     "created": "Ora",

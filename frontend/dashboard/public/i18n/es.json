@@ -1207,7 +1207,8 @@
                 "actions": {
                     "refresh": "Actualizar base de spam"
                 },
-                "refreshTriggered": "Filtro de spam actualizado"
+                "refreshTriggered": "Filtro de spam actualizado",
+                "refreshFailed": "No se pudo actualizar el filtro de spam"
             },
             "caches": {
                 "title": "Cachés",
@@ -1260,6 +1261,8 @@
                 },
                 "empty": "No se encontraron entradas de auditoría",
                 "loadError": "No se pudieron cargar las entradas",
+                "exportSuccess": "Exportación de auditoría descargada",
+                "exportFailed": "No se pudo exportar el registro de auditoría",
                 "loadMore": "Cargar más",
                 "columns": {
                     "created": "Hora",

@@ -135,6 +135,8 @@ export interface AuditFilterParams {
     offset?: number;
 }
 
+const AUDIT_EXPORT_LIMIT = 50000;
+
 @Injectable({ providedIn: 'root' })
 export class AdminSystemService {
     private http = inject(HttpClient);
@@ -180,22 +182,29 @@ export class AdminSystemService {
     }
 
     listAudit(params?: AuditFilterParams) {
-        let httpParams = new HttpParams();
-        if (params) {
-            if (params.action) httpParams = httpParams.set('action', params.action);
-            if (params.target_type) httpParams = httpParams.set('target_type', params.target_type);
-            if (params.outcome) httpParams = httpParams.set('outcome', params.outcome);
-            if (params.actor_id) httpParams = httpParams.set('actor_id', params.actor_id);
-            if (params.from) httpParams = httpParams.set('from', params.from);
-            if (params.to) httpParams = httpParams.set('to', params.to);
-            if (params.query) httpParams = httpParams.set('query', params.query);
-            if (params.limit !== undefined) httpParams = httpParams.set('limit', params.limit);
-            if (params.offset !== undefined) httpParams = httpParams.set('offset', params.offset);
-        }
+        const httpParams = this.auditParams(params, { includePagination: true });
         return this.http.get<InstanceAuditListResponse>('/api/admin/system/audit', { params: httpParams });
     }
 
     exportAudit(params?: AuditFilterParams) {
+        const httpParams = this.auditParams(params, {
+            exportLimit: AUDIT_EXPORT_LIMIT,
+            format: 'json'
+        });
+        return this.http.get<Blob>('/api/admin/system/audit/export', {
+            params: httpParams,
+            responseType: 'blob' as 'json'
+        });
+    }
+
+    private auditParams(
+        params?: AuditFilterParams,
+        options: {
+            includePagination?: boolean;
+            exportLimit?: number;
+            format?: 'json' | 'csv';
+        } = {}
+    ): HttpParams {
         let httpParams = new HttpParams();
         if (params) {
             if (params.action) httpParams = httpParams.set('action', params.action);
@@ -205,10 +214,15 @@ export class AdminSystemService {
             if (params.from) httpParams = httpParams.set('from', params.from);
             if (params.to) httpParams = httpParams.set('to', params.to);
             if (params.query) httpParams = httpParams.set('query', params.query);
+            if (options.includePagination && params.limit !== undefined) httpParams = httpParams.set('limit', params.limit);
+            if (options.includePagination && params.offset !== undefined) httpParams = httpParams.set('offset', params.offset);
         }
-        return this.http.get<Blob>('/api/admin/system/audit/export', {
-            params: httpParams.set('format', 'json'),
-            responseType: 'blob' as 'json'
-        });
+        if (options.exportLimit !== undefined) {
+            httpParams = httpParams.set('limit', options.exportLimit);
+        }
+        if (options.format) {
+            httpParams = httpParams.set('format', options.format);
+        }
+        return httpParams;
     }
 }

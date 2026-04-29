@@ -1207,7 +1207,8 @@
                 "actions": {
                     "refresh": "Refresh spam database"
                 },
-                "refreshTriggered": "Spam filter refreshed"
+                "refreshTriggered": "Spam filter refreshed",
+                "refreshFailed": "Could not refresh spam filter"
             },
             "caches": {
                 "title": "Caches",
@@ -1260,6 +1261,8 @@
                 },
                 "empty": "No audit entries found",
                 "loadError": "Failed to load audit entries",
+                "exportSuccess": "Audit export downloaded",
+                "exportFailed": "Could not export audit log",
                 "loadMore": "Load more",
                 "columns": {
                     "created": "Time",

@@ -21,6 +21,7 @@ import { ActivatedRoute } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
 import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
+import { formatDurationInterval } from '@core/i18n/duration-format';
 import { PermissionService } from '@services/permission.service';
 import { UserProfileService } from '@services/user-profile.service';
 import { AdminPageFrame } from './components/admin-page-frame';
@@ -154,6 +155,7 @@ export class AdminSettings implements OnInit {
     protected isRefreshingSpam = signal(false);
     protected isTestingMail = signal(false);
 
+    protected spamActionStatus = signal<StatusState | null>(null);
     protected mailTestResult = signal<{ severity: 'success' | 'error'; message: string } | null>(null);
     protected mailTestRecipient = new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email, Validators.maxLength(320)] });
 
@@ -266,6 +268,7 @@ export class AdminSettings implements OnInit {
     protected readonly userMfaStatusMessage = computed(() => {
         return this.actionStatusMessage(this.userMfaStatus());
     });
+    protected readonly spamActionStatusMessage = computed(() => this.actionStatusMessage(this.spamActionStatus()));
     protected readonly userActionStatusMessage = computed(() => this.actionStatusMessage(this.userActionStatus()));
     protected readonly siteActionStatusMessage = computed(() => this.actionStatusMessage(this.siteActionStatus()));
     protected readonly teamActionStatusMessage = computed(() => this.actionStatusMessage(this.teamActionStatus()));
@@ -447,11 +450,24 @@ export class AdminSettings implements OnInit {
 
     protected refreshSpamFilter() {
         this.isRefreshingSpam.set(true);
+        this.spamActionStatus.set(null);
         this.system
             .refreshSpamFilter()
             .pipe(finalize(() => this.isRefreshingSpam.set(false)))
             .subscribe({
-                next: () => this.loadSystemSpam()
+                next: () => {
+                    this.spamActionStatus.set({
+                        severity: 'success',
+                        key: 'admin.system.spam.refreshTriggered'
+                    });
+                    this.loadSystemSpam();
+                },
+                error: () => {
+                    this.spamActionStatus.set({
+                        severity: 'error',
+                        key: 'admin.system.spam.refreshFailed'
+                    });
+                }
             });
     }
 
@@ -495,6 +511,14 @@ export class AdminSettings implements OnInit {
 
     protected formatBytesValue(value: number | null | undefined): string {
         return formatBytes(value ?? 0, this.localeTag());
+    }
+
+    protected formatMinutes(minutes: number | null | undefined): string {
+        this.activeLanguage();
+        if (!minutes || minutes <= 0) {
+            return '-';
+        }
+        return formatDurationInterval(minutes * 60, this.localeTag(), 'short');
     }
 
     protected statusSeverity(status: string | null | undefined): 'success' | 'danger' | 'warn' | 'secondary' | 'info' | 'contrast' {

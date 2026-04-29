@@ -1207,7 +1207,8 @@
                 "actions": {
                     "refresh": "Spam-Datenbank aktualisieren"
                 },
-                "refreshTriggered": "Spamfilter aktualisiert"
+                "refreshTriggered": "Spamfilter aktualisiert",
+                "refreshFailed": "Spamfilter konnte nicht aktualisiert werden"
             },
             "caches": {
                 "title": "Caches",
@@ -1260,6 +1261,8 @@
                 },
                 "empty": "Keine Audit-Einträge gefunden",
                 "loadError": "Audit-Einträge konnten nicht geladen werden",
+                "exportSuccess": "Audit-Export heruntergeladen",
+                "exportFailed": "Audit-Log konnte nicht exportiert werden",
                 "loadMore": "Mehr laden",
                 "columns": {
                     "created": "Zeit",

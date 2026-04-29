@@ -46,6 +46,14 @@ interface AdminSettingsTestAccess {
     } | null;
     siteActionStatusMessage(): string;
     deletingSiteId(): string;
+    isRefreshingSpam(): boolean;
+    refreshSpamFilter(): void;
+    spamActionStatus(): {
+        severity: 'success' | 'error';
+        key: string;
+        params?: Record<string, string | number>;
+    } | null;
+    spamActionStatusMessage(): string;
     canDisableUserMfa(): boolean;
     currentUserId: { set(value: string): void };
     users: {
@@ -95,6 +103,12 @@ describe('AdminSettings', () => {
                                 status: {
                                     deleteUserSuccess: 'Deleted user {{email}}.',
                                     deleteSiteSuccess: 'Deleted site {{domain}}.'
+                                },
+                                system: {
+                                    spam: {
+                                        refreshTriggered: 'Spam filter refreshed.',
+                                        refreshFailed: 'Could not refresh the spam filter.'
+                                    }
                                 }
                             }
                         }
@@ -251,6 +265,43 @@ describe('AdminSettings', () => {
         expect(component.siteActionStatusMessage()).toBe('Could not delete site example.com.');
 
         consoleSpy.mockRestore();
+    });
+
+    it('shows in-place success feedback after refreshing the spam filter', () => {
+        component.refreshSpamFilter();
+
+        expect(component.isRefreshingSpam()).toBe(true);
+        const refreshRequest = httpMock.expectOne('/api/admin/system/spam-filter/refresh');
+        expect(refreshRequest.request.method).toBe('POST');
+        refreshRequest.flush({ status: 'ok', message: 'refreshed' });
+
+        const reloadRequest = httpMock.expectOne('/api/admin/system/spam-filter');
+        reloadRequest.flush({
+            db_path: '/tmp/spam-filter.json',
+            rule_count: 10,
+            auto_update: true
+        });
+
+        expect(component.isRefreshingSpam()).toBe(false);
+        expect(component.spamActionStatus()).toEqual({
+            severity: 'success',
+            key: 'admin.system.spam.refreshTriggered'
+        });
+        expect(component.spamActionStatusMessage()).toBe('Spam filter refreshed.');
+    });
+
+    it('shows in-place error feedback when refreshing the spam filter fails', () => {
+        component.refreshSpamFilter();
+
+        const refreshRequest = httpMock.expectOne('/api/admin/system/spam-filter/refresh');
+        refreshRequest.flush('refresh failed', { status: 500, statusText: 'Server Error' });
+
+        expect(component.isRefreshingSpam()).toBe(false);
+        expect(component.spamActionStatus()).toEqual({
+            severity: 'error',
+            key: 'admin.system.spam.refreshFailed'
+        });
+        expect(component.spamActionStatusMessage()).toBe('Could not refresh the spam filter.');
     });
 
     it('allows MFA recovery actions when the current user is an instance owner', () => {

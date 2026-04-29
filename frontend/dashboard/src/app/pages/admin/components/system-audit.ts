@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 
 import { FormsModule } from '@angular/forms';
 import { TableModule } from 'primeng/table';
@@ -14,9 +14,14 @@ import { MessageModule } from 'primeng/message';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
 import { AdminSystemService, InstanceAuditEntry, InstanceAuditListResponse } from '@services/admin-system.service';
-import { debounceTime, Subject, switchMap } from 'rxjs';
+import { debounceTime, finalize, Subject, switchMap } from 'rxjs';
 
 type AuditOutcome = '' | 'success' | 'failure' | 'denied';
+
+interface AuditStatus {
+    severity: 'success' | 'error';
+    key: string;
+}
 
 @Component({
     selector: 'app-system-audit',
@@ -28,6 +33,7 @@ type AuditOutcome = '' | 'success' | 'failure' | 'denied';
 export class SystemAudit implements OnInit {
     private system = inject(AdminSystemService);
     private transloco = inject(TranslocoService);
+    private destroyRef = inject(DestroyRef);
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
     protected entries = signal<InstanceAuditEntry[]>([]);
@@ -35,7 +41,9 @@ export class SystemAudit implements OnInit {
     protected limit = signal(25);
     protected offset = signal(0);
     protected isLoading = signal(false);
+    protected isExporting = signal(false);
     protected hasError = signal(false);
+    protected exportStatus = signal<AuditStatus | null>(null);
 
     protected selectedAction = signal('');
     protected selectedOutcome = signal<AuditOutcome>('');
@@ -69,6 +77,21 @@ export class SystemAudit implements OnInit {
         ];
     });
 
+    protected readonly targetTypeOptions = computed(() => {
+        this.activeLanguage();
+        return [
+            { label: this.transloco.translate('admin.system.audit.filters.all'), value: '' },
+            { label: this.transloco.translate('admin.system.audit.targetTypes.system'), value: 'system' },
+            { label: this.transloco.translate('admin.system.audit.targetTypes.mail'), value: 'mail' },
+            { label: this.transloco.translate('admin.system.audit.targetTypes.user'), value: 'user' },
+            { label: this.transloco.translate('admin.system.audit.targetTypes.team'), value: 'team' },
+            { label: this.transloco.translate('admin.system.audit.targetTypes.site'), value: 'site' },
+            { label: this.transloco.translate('admin.system.audit.targetTypes.backup'), value: 'backup' },
+            { label: this.transloco.translate('admin.system.audit.targetTypes.spamFilter'), value: 'spam_filter' },
+            { label: this.transloco.translate('admin.system.audit.targetTypes.diagnostics'), value: 'diagnostics' }
+        ];
+    });
+
     protected readonly hasMore = computed(() => this.offset() + this.entries().length < this.total());
 
     private searchSubject = new Subject<void>();
@@ -82,7 +105,8 @@ export class SystemAudit implements OnInit {
                     this.isLoading.set(true);
                     this.hasError.set(false);
                     return this.system.listAudit(this.buildFilter());
-                })
+                }),
+                takeUntilDestroyed(this.destroyRef)
             )
             .subscribe({
                 next: (resp) => this.onData(resp),
@@ -128,21 +152,36 @@ export class SystemAudit implements OnInit {
     }
 
     protected onFilterChange() {
+        this.exportStatus.set(null);
         this.searchSubject.next();
     }
 
     protected exportAudit() {
         const filter = this.buildFilter();
-        this.system.exportAudit(filter).subscribe({
-            next: (blob) => {
-                const url = window.URL.createObjectURL(blob as Blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `instance-audit-${new Date().toISOString().split('T')[0]}.json`;
-                a.click();
-                window.URL.revokeObjectURL(url);
-            }
-        });
+        this.exportStatus.set(null);
+        this.isExporting.set(true);
+        this.system
+            .exportAudit(filter)
+            .pipe(finalize(() => this.isExporting.set(false)))
+            .subscribe({
+                next: (blob) => {
+                    this.downloadAuditBlob(blob);
+                    this.exportStatus.set({ severity: 'success', key: 'admin.system.audit.exportSuccess' });
+                },
+                error: () => {
+                    this.exportStatus.set({ severity: 'error', key: 'admin.system.audit.exportFailed' });
+                }
+            });
+    }
+
+    private downloadAuditBlob(blob: Blob) {
+        const date = new Date().toISOString().slice(0, 10);
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `instance-audit-${date}.json`;
+        a.click();
+        window.URL.revokeObjectURL(url);
     }
 
     protected outcomeSeverity(outcome: string): 'success' | 'danger' | 'warn' | 'secondary' | 'info' | 'contrast' {

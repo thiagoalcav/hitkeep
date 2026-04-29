@@ -933,6 +933,12 @@
             "deleteUserFailed": "Impossibile eliminare l'utente {{email}}.",
             "deleteSiteFailed": "Impossibile eliminare il sito {{domain}}.",
             "deleteTeamFailed": "Impossibile eliminare il team \"{{name}}\".",
+            "deleteForbidden": "Non hai l'autorizzazione per eliminare questa risorsa.",
+            "deleteNotFound": "Questa risorsa non esiste più.",
+            "deleteUnavailable": "L'eliminazione è disponibile solo sul nodo attivo dell'istanza.",
+            "deleteDefaultTeam": "Il team predefinito non può essere eliminato.",
+            "deleteTeamNotArchived": "Archivia il team prima di eliminarlo.",
+            "deleteTeamHasSites": "Trasferisci o elimina tutti i siti prima di eliminare questo team.",
             "disable2faFailed": "Impossibile disattivare MFA per {{email}}."
         },
         "status": {

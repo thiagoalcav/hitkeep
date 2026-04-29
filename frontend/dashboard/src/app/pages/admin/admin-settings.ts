@@ -734,9 +734,14 @@ export class AdminSettings implements OnInit {
     }
 
     confirmDeleteUser(event: Event, user: User) {
+        const target = event.currentTarget;
+        if (!(target instanceof HTMLElement) || user.id === this.currentUserId() || this.isDeletingUser(user)) {
+            return;
+        }
+
         this.confirmationService.confirm({
             key: 'admin-delete',
-            target: event.currentTarget as EventTarget,
+            target,
             message: this.transloco.translate('admin.confirmDeleteUser', { email: user.email }),
             icon: 'pi pi-exclamation-triangle',
             rejectButtonProps: {
@@ -771,7 +776,7 @@ export class AdminSettings implements OnInit {
                             }
                             this.userActionStatus.set({
                                 severity: 'error',
-                                key: 'admin.errors.deleteUserFailed',
+                                key: this.resolveDeleteErrorKey(err, 'admin.errors.deleteUserFailed'),
                                 params: { email: user.email }
                             });
                             console.error('Failed to delete user', err);
@@ -782,9 +787,14 @@ export class AdminSettings implements OnInit {
     }
 
     confirmDeleteSite(event: Event, site: Site) {
+        const target = event.currentTarget;
+        if (!(target instanceof HTMLElement) || this.isDeletingSite(site)) {
+            return;
+        }
+
         this.confirmationService.confirm({
             key: 'admin-delete',
-            target: event.currentTarget as EventTarget,
+            target,
             message: this.transloco.translate('admin.confirmDeleteSite', { domain: site.domain }),
             icon: 'pi pi-exclamation-triangle',
             rejectButtonProps: {
@@ -814,7 +824,7 @@ export class AdminSettings implements OnInit {
                         error: (err) => {
                             this.siteActionStatus.set({
                                 severity: 'error',
-                                key: 'admin.errors.deleteSiteFailed',
+                                key: this.resolveDeleteErrorKey(err, 'admin.errors.deleteSiteFailed'),
                                 params: { domain: site.domain }
                             });
                             console.error('Failed to delete site', err);
@@ -839,11 +849,16 @@ export class AdminSettings implements OnInit {
     }
 
     confirmDeleteTeam(event: Event, team: AdminTeam) {
+        const target = event.currentTarget;
+        if (!(target instanceof HTMLElement) || this.isDeletingTeam(team)) {
+            return;
+        }
+
         const messageKey = team.site_count > 0 ? 'admin.confirmDeleteTeamWithSites' : 'admin.confirmDeleteTeam';
 
         this.confirmationService.confirm({
             key: 'admin-delete',
-            target: event.currentTarget as EventTarget,
+            target,
             message: this.transloco.translate(messageKey, { name: team.name, sites: team.site_count }),
             icon: 'pi pi-exclamation-triangle',
             rejectButtonProps: {
@@ -874,7 +889,7 @@ export class AdminSettings implements OnInit {
                         error: (err) => {
                             this.teamActionStatus.set({
                                 severity: 'error',
-                                key: 'admin.errors.deleteTeamFailed',
+                                key: this.resolveDeleteErrorKey(err, 'admin.errors.deleteTeamFailed'),
                                 params: { name: team.name }
                             });
                             console.error('Failed to delete team', err);
@@ -911,5 +926,48 @@ export class AdminSettings implements OnInit {
             teams: teamNames
         });
         return true;
+    }
+
+    private resolveDeleteErrorKey(err: unknown, fallbackKey: string): string {
+        if (!(err instanceof HttpErrorResponse)) {
+            return fallbackKey;
+        }
+
+        const detail = this.deleteErrorDetail(err);
+
+        if (err.status === 403) {
+            return 'admin.errors.deleteForbidden';
+        }
+        if (err.status === 404) {
+            return 'admin.errors.deleteNotFound';
+        }
+        if (err.status === 503) {
+            return 'admin.errors.deleteUnavailable';
+        }
+        if (detail.includes('default team')) {
+            return 'admin.errors.deleteDefaultTeam';
+        }
+        if (detail.includes('archive the team')) {
+            return 'admin.errors.deleteTeamNotArchived';
+        }
+        if (detail.includes('transfer or delete all sites')) {
+            return 'admin.errors.deleteTeamHasSites';
+        }
+
+        return fallbackKey;
+    }
+
+    private deleteErrorDetail(err: HttpErrorResponse): string {
+        if (typeof err.error === 'string') {
+            return err.error.toLowerCase();
+        }
+        if (err.error && typeof err.error === 'object') {
+            const body = err.error as Record<string, unknown>;
+            return [body['message'], body['error'], body['code']]
+                .filter((value): value is string => typeof value === 'string')
+                .join(' ')
+                .toLowerCase();
+        }
+        return '';
     }
 }

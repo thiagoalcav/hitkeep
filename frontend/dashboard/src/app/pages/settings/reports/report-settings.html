@@ -23,21 +23,21 @@
                     <div class="flex flex-col gap-4">
                         <div class="flex items-center justify-between">
                             <div>
-                                <div class="font-medium">{{ "settings.reports.frequency.daily" | transloco }}</div>
+                                <div class="font-medium">{{ "settings.reports.frequency.daily.label" | transloco }}</div>
                                 <div class="text-sm text-[var(--p-text-muted-color)]">{{ "settings.reports.frequency.daily.hint" | transloco }}</div>
                             </div>
                             <p-toggleswitch [ngModel]="digestPrefs().daily" (ngModelChange)="setDigestFreq('daily', $event)" [disabled]="isDigestSaving()" />
                         </div>
                         <div class="flex items-center justify-between">
                             <div>
-                                <div class="font-medium">{{ "settings.reports.frequency.weekly" | transloco }}</div>
+                                <div class="font-medium">{{ "settings.reports.frequency.weekly.label" | transloco }}</div>
                                 <div class="text-sm text-[var(--p-text-muted-color)]">{{ "settings.reports.frequency.weekly.hint" | transloco }}</div>
                             </div>
                             <p-toggleswitch [ngModel]="digestPrefs().weekly" (ngModelChange)="setDigestFreq('weekly', $event)" [disabled]="isDigestSaving()" />
                         </div>
                         <div class="flex items-center justify-between">
                             <div>
-                                <div class="font-medium">{{ "settings.reports.frequency.monthly" | transloco }}</div>
+                                <div class="font-medium">{{ "settings.reports.frequency.monthly.label" | transloco }}</div>
                                 <div class="text-sm text-[var(--p-text-muted-color)]">{{ "settings.reports.frequency.monthly.hint" | transloco }}</div>
                             </div>
                             <p-toggleswitch [ngModel]="digestPrefs().monthly" (ngModelChange)="setDigestFreq('monthly', $event)" [disabled]="isDigestSaving()" />
@@ -73,15 +73,15 @@
                             </div>
                             <div class="site-toggles">
                                 <div class="site-toggle-item">
-                                    <span class="site-toggle-label">{{ "settings.reports.frequency.daily" | transloco }}</span>
+                                    <span class="site-toggle-label">{{ "settings.reports.frequency.daily.label" | transloco }}</span>
                                     <p-toggleswitch [ngModel]="site.daily" (ngModelChange)="setSiteFreq(i, 'daily', $event)" [disabled]="isSitesSaving()" />
                                 </div>
                                 <div class="site-toggle-item">
-                                    <span class="site-toggle-label">{{ "settings.reports.frequency.weekly" | transloco }}</span>
+                                    <span class="site-toggle-label">{{ "settings.reports.frequency.weekly.label" | transloco }}</span>
                                     <p-toggleswitch [ngModel]="site.weekly" (ngModelChange)="setSiteFreq(i, 'weekly', $event)" [disabled]="isSitesSaving()" />
                                 </div>
                                 <div class="site-toggle-item">
-                                    <span class="site-toggle-label">{{ "settings.reports.frequency.monthly" | transloco }}</span>
+                                    <span class="site-toggle-label">{{ "settings.reports.frequency.monthly.label" | transloco }}</span>
                                     <p-toggleswitch [ngModel]="site.monthly" (ngModelChange)="setSiteFreq(i, 'monthly', $event)" [disabled]="isSitesSaving()" />
                                 </div>
                             </div>

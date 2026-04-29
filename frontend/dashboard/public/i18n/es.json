@@ -933,6 +933,12 @@
             "deleteUserFailed": "No se pudo eliminar el usuario {{email}}.",
             "deleteSiteFailed": "No se pudo eliminar el sitio {{domain}}.",
             "deleteTeamFailed": "No se pudo eliminar el equipo \"{{name}}\".",
+            "deleteForbidden": "No tienes permiso para eliminar este recurso.",
+            "deleteNotFound": "Este recurso ya no existe.",
+            "deleteUnavailable": "La eliminación solo está disponible en el nodo activo de la instancia.",
+            "deleteDefaultTeam": "El equipo predeterminado no se puede eliminar.",
+            "deleteTeamNotArchived": "Archiva el equipo antes de eliminarlo.",
+            "deleteTeamHasSites": "Transfiere o elimina todos los sitios antes de eliminar este equipo.",
             "disable2faFailed": "No se pudo desactivar MFA para {{email}}."
         },
         "status": {

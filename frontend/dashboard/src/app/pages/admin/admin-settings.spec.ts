@@ -5,7 +5,7 @@ import { TestBed } from '@angular/core/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { ConfirmationService } from 'primeng/api';
 import { provideRouter } from '@angular/router';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { vi } from 'vitest';
 
 import { UserProfileService } from '@services/user-profile.service';
@@ -14,6 +14,16 @@ import { AdminSettings } from './admin-settings';
 
 interface AdminSettingsTestAccess {
     handleDeleteUserError(err: unknown, user: { email: string }): boolean;
+    resolveDeleteErrorKey(err: unknown, fallbackKey: string): string;
+    confirmDeleteSite(
+        event: Event,
+        site: {
+            id: string;
+            domain: string;
+            user_id: string;
+            created_at: string;
+        }
+    ): void;
     deleteUserBlock(): {
         email: string;
         teams: string[];
@@ -29,6 +39,13 @@ interface AdminSettingsTestAccess {
         ): void;
     };
     userActionStatusMessage(): string;
+    siteActionStatus(): {
+        severity: 'success' | 'error';
+        key: string;
+        params?: Record<string, string | number>;
+    } | null;
+    siteActionStatusMessage(): string;
+    deletingSiteId(): string;
     canDisableUserMfa(): boolean;
     currentUserId: { set(value: string): void };
     users: {
@@ -45,12 +62,20 @@ interface AdminSettingsTestAccess {
 
 describe('AdminSettings', () => {
     let component: AdminSettingsTestAccess;
+    let httpMock: HttpTestingController;
+    let confirmationServiceMock: {
+        confirm: ReturnType<typeof vi.fn>;
+    };
     const permissionServiceMock = {
         isInstanceOwner: signal(false),
         permissions: signal(null)
     };
 
     beforeEach(() => {
+        confirmationServiceMock = {
+            confirm: vi.fn()
+        };
+
         TestBed.configureTestingModule({
             imports: [
                 TranslocoTestingModule.forRoot({
@@ -58,10 +83,18 @@ describe('AdminSettings', () => {
                         en: {
                             admin: {
                                 errors: {
-                                    deleteUserBlockedOwnership: 'Cannot delete {{email}} until ownership is transferred for: {{teams}}.'
+                                    deleteUserBlockedOwnership: 'Cannot delete {{email}} until ownership is transferred for: {{teams}}.',
+                                    deleteSiteFailed: 'Could not delete site {{domain}}.',
+                                    deleteForbidden: 'You do not have permission to delete this resource.',
+                                    deleteNotFound: 'This resource no longer exists.',
+                                    deleteUnavailable: 'Deletion is only available on the active instance node.',
+                                    deleteDefaultTeam: 'The default team cannot be deleted.',
+                                    deleteTeamNotArchived: 'Archive the team before deleting it.',
+                                    deleteTeamHasSites: 'Transfer or delete all sites before deleting this team.'
                                 },
                                 status: {
-                                    deleteUserSuccess: 'Deleted user {{email}}.'
+                                    deleteUserSuccess: 'Deleted user {{email}}.',
+                                    deleteSiteSuccess: 'Deleted site {{domain}}.'
                                 }
                             }
                         }
@@ -77,7 +110,10 @@ describe('AdminSettings', () => {
                 provideRouter([]),
                 provideHttpClient(),
                 provideHttpClientTesting(),
-                ConfirmationService,
+                {
+                    provide: ConfirmationService,
+                    useValue: confirmationServiceMock
+                },
                 {
                     provide: UserProfileService,
                     useValue: {
@@ -94,7 +130,12 @@ describe('AdminSettings', () => {
 
         permissionServiceMock.isInstanceOwner.set(false);
         permissionServiceMock.permissions.set(null);
+        httpMock = TestBed.inject(HttpTestingController);
         component = TestBed.runInInjectionContext(() => new AdminSettings()) as unknown as AdminSettingsTestAccess;
+    });
+
+    afterEach(() => {
+        httpMock.verify();
     });
 
     it('stores blocking team details for sole-owner delete errors', () => {
@@ -148,6 +189,68 @@ describe('AdminSettings', () => {
         });
 
         expect(component.userActionStatusMessage()).toBe('Deleted user owner@example.com.');
+    });
+
+    it('maps delete errors to specific in-place messages when the API gives useful context', () => {
+        expect(component.resolveDeleteErrorKey(new HttpErrorResponse({ status: 403 }), 'fallback')).toBe('admin.errors.deleteForbidden');
+        expect(component.resolveDeleteErrorKey(new HttpErrorResponse({ status: 404 }), 'fallback')).toBe('admin.errors.deleteNotFound');
+        expect(component.resolveDeleteErrorKey(new HttpErrorResponse({ status: 503 }), 'fallback')).toBe('admin.errors.deleteUnavailable');
+        expect(component.resolveDeleteErrorKey(new HttpErrorResponse({ status: 400, error: 'Default team cannot be deleted.' }), 'fallback')).toBe('admin.errors.deleteDefaultTeam');
+        expect(component.resolveDeleteErrorKey(new HttpErrorResponse({ status: 400, error: 'Archive the team before deleting it.' }), 'fallback')).toBe('admin.errors.deleteTeamNotArchived');
+        expect(component.resolveDeleteErrorKey(new HttpErrorResponse({ status: 400, error: 'Transfer or delete all sites before deleting this team.' }), 'fallback')).toBe('admin.errors.deleteTeamHasSites');
+        expect(component.resolveDeleteErrorKey(new HttpErrorResponse({ status: 500, error: 'Unexpected failure' }), 'fallback')).toBe('fallback');
+    });
+
+    it('shows in-place success feedback after deleting a site', () => {
+        confirmationServiceMock.confirm.mockImplementation((options: { accept?: () => void }) => options.accept?.());
+
+        component.confirmDeleteSite({ currentTarget: document.createElement('button') } as unknown as Event, {
+            id: 'site-1',
+            domain: 'example.com',
+            user_id: 'user-1',
+            created_at: '2026-03-10T00:00:00Z'
+        });
+
+        expect(component.deletingSiteId()).toBe('site-1');
+        const deleteRequest = httpMock.expectOne('/api/admin/sites/site-1');
+        expect(deleteRequest.request.method).toBe('DELETE');
+        deleteRequest.flush({ status: 'ok' });
+
+        const reloadRequest = httpMock.expectOne('/api/admin/sites');
+        reloadRequest.flush([]);
+
+        expect(component.deletingSiteId()).toBe('');
+        expect(component.siteActionStatus()).toEqual({
+            severity: 'success',
+            key: 'admin.status.deleteSiteSuccess',
+            params: { domain: 'example.com' }
+        });
+        expect(component.siteActionStatusMessage()).toBe('Deleted site example.com.');
+    });
+
+    it('shows in-place error feedback when deleting a site fails', () => {
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        confirmationServiceMock.confirm.mockImplementation((options: { accept?: () => void }) => options.accept?.());
+
+        component.confirmDeleteSite({ currentTarget: document.createElement('button') } as unknown as Event, {
+            id: 'site-1',
+            domain: 'example.com',
+            user_id: 'user-1',
+            created_at: '2026-03-10T00:00:00Z'
+        });
+
+        const deleteRequest = httpMock.expectOne('/api/admin/sites/site-1');
+        deleteRequest.flush('Failed to delete site', { status: 500, statusText: 'Server Error' });
+
+        expect(component.deletingSiteId()).toBe('');
+        expect(component.siteActionStatus()).toEqual({
+            severity: 'error',
+            key: 'admin.errors.deleteSiteFailed',
+            params: { domain: 'example.com' }
+        });
+        expect(component.siteActionStatusMessage()).toBe('Could not delete site example.com.');
+
+        consoleSpy.mockRestore();
     });
 
     it('allows MFA recovery actions when the current user is an instance owner', () => {

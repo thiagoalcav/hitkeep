@@ -933,6 +933,12 @@
             "deleteUserFailed": "Benutzer {{email}} konnte nicht gelöscht werden.",
             "deleteSiteFailed": "Seite {{domain}} konnte nicht gelöscht werden.",
             "deleteTeamFailed": "Team \"{{name}}\" konnte nicht gelöscht werden.",
+            "deleteForbidden": "Du hast keine Berechtigung, diese Ressource zu löschen.",
+            "deleteNotFound": "Diese Ressource existiert nicht mehr.",
+            "deleteUnavailable": "Löschen ist nur auf dem aktiven Instanzknoten verfügbar.",
+            "deleteDefaultTeam": "Das Standardteam kann nicht gelöscht werden.",
+            "deleteTeamNotArchived": "Archiviere das Team, bevor du es löschst.",
+            "deleteTeamHasSites": "Übertrage oder lösche alle Seiten, bevor du dieses Team löschst.",
             "disable2faFailed": "MFA konnte für {{email}} nicht deaktiviert werden."
         },
         "status": {

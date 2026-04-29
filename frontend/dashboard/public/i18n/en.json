@@ -933,6 +933,12 @@
             "deleteUserFailed": "Could not delete user {{email}}.",
             "deleteSiteFailed": "Could not delete site {{domain}}.",
             "deleteTeamFailed": "Could not delete team \"{{name}}\".",
+            "deleteForbidden": "You do not have permission to delete this resource.",
+            "deleteNotFound": "This resource no longer exists.",
+            "deleteUnavailable": "Deletion is only available on the active instance node.",
+            "deleteDefaultTeam": "The default team cannot be deleted.",
+            "deleteTeamNotArchived": "Archive the team before deleting it.",
+            "deleteTeamHasSites": "Transfer or delete all sites before deleting this team.",
             "disable2faFailed": "Failed to disable MFA for {{email}}."
         },
         "status": {

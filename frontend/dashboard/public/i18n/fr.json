@@ -933,6 +933,12 @@
             "deleteUserFailed": "Impossible de supprimer l'utilisateur {{email}}.",
             "deleteSiteFailed": "Impossible de supprimer le site {{domain}}.",
             "deleteTeamFailed": "Impossible de supprimer l'équipe \"{{name}}\".",
+            "deleteForbidden": "Vous n'avez pas l'autorisation de supprimer cette ressource.",
+            "deleteNotFound": "Cette ressource n'existe plus.",
+            "deleteUnavailable": "La suppression est disponible uniquement sur le nœud actif de l'instance.",
+            "deleteDefaultTeam": "L'équipe par défaut ne peut pas être supprimée.",
+            "deleteTeamNotArchived": "Archivez l'équipe avant de la supprimer.",
+            "deleteTeamHasSites": "Transférez ou supprimez tous les sites avant de supprimer cette équipe.",
             "disable2faFailed": "Impossible de désactiver la MFA pour {{email}}."
         },
         "status": {

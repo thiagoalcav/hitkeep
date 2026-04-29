@@ -44,6 +44,56 @@ jobs:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
+  link-release-blog:
+    name: Link release blog
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: write
+    steps:
+      - name: Add release blog link to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GHT }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+
+          VERSION="${TAG#v}"
+          BLOG_SLUG="hitkeep-${VERSION//./-}"
+          BLOG_URL="https://hitkeep.com/blog/${BLOG_SLUG}/"
+
+          if ! curl -fsSLI "$BLOG_URL" >/dev/null; then
+            echo "::warning::Release blog URL did not respond successfully yet: $BLOG_URL"
+          fi
+
+          release_found=false
+          for attempt in {1..5}; do
+            if gh release view "$TAG" --json body --jq .body > release-notes.md; then
+              release_found=true
+              break
+            fi
+            sleep 2
+          done
+
+          if [[ "$release_found" != "true" ]]; then
+            echo "GitHub Release $TAG was not found"
+            exit 1
+          fi
+
+          if grep -Fq "$BLOG_URL" release-notes.md; then
+            echo "Release blog link already present"
+            exit 0
+          fi
+
+          {
+            printf '**Release blog:** [HitKeep %s](%s)\n\n' "$VERSION" "$BLOG_URL"
+            cat release-notes.md
+          } > updated-release-notes.md
+
+          gh release edit "$TAG" --notes-file updated-release-notes.md
+
   publish-helm:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created == 'true' }}

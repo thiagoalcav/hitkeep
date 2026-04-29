@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, OnInit, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 
 import { DecimalPipe } from '@angular/common';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -17,23 +17,38 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { HttpClient } from '@angular/common/http';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
 import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
 import { formatDurationInterval } from '@core/i18n/duration-format';
 import { PermissionService } from '@services/permission.service';
+import { TeamService } from '@services/team.service';
 import { UserProfileService } from '@services/user-profile.service';
 import { AdminPageFrame } from './components/admin-page-frame';
 import { AdminGlobalExclusionSettings } from './components/admin-global-exclusion-settings';
 import { SystemStatusCard } from './components/system-status-card';
 import { SystemAudit } from './components/system-audit';
-import { AdminSystemService, SystemFeatureStatus, SystemInfo, SystemHealth, SystemStorage, SystemIngestStats, SystemBackupStatus, SystemSpamStatus, SystemCacheStatus, SystemMailStatus } from '@services/admin-system.service';
+import {
+    ActivationStatus,
+    AdminSystemService,
+    SystemActivationResponse,
+    SystemActivationRow,
+    SystemFeatureStatus,
+    SystemInfo,
+    SystemHealth,
+    SystemStorage,
+    SystemIngestStats,
+    SystemBackupStatus,
+    SystemSpamStatus,
+    SystemCacheStatus,
+    SystemMailStatus
+} from '@services/admin-system.service';
 import { formatBytes } from '@pages/ai-visibility/ai-visibility.utils';
 import { finalize } from 'rxjs';
 
 type InstanceRole = 'owner' | 'admin' | 'user';
-type AdminStatusTab = 'runtime' | 'operations' | 'audit';
+type AdminStatusTab = 'runtime' | 'operations' | 'activation' | 'audit';
 type AdminSettingsTab = 'users' | 'sites' | 'teams' | 'globalFilters';
 
 interface User {
@@ -122,8 +137,11 @@ export class AdminSettings implements OnInit {
     private confirmationService = inject(ConfirmationService);
     private transloco = inject(TranslocoService);
     private route = inject(ActivatedRoute);
+    private router = inject(Router);
+    private destroyRef = inject(DestroyRef);
     private profile = inject(UserProfileService);
     protected perms = inject(PermissionService);
+    private userTeamService = inject(TeamService);
     private system = inject(AdminSystemService);
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
@@ -132,6 +150,7 @@ export class AdminSettings implements OnInit {
     private routeData = toSignal(this.route.data, { initialValue: this.route.snapshot.data });
     private loadedRuntime = signal(false);
     private loadedOperations = signal(false);
+    private loadedActivation = signal(false);
     private loadedSettings = signal(false);
 
     // System console data
@@ -143,6 +162,7 @@ export class AdminSettings implements OnInit {
     protected systemSpam = signal<SystemSpamStatus | null>(null);
     protected systemCaches = signal<SystemCacheStatus | null>(null);
     protected systemMail = signal<SystemMailStatus | null>(null);
+    protected systemActivation = signal<SystemActivationResponse | null>(null);
 
     protected isLoadingSystem = signal(false);
     protected isLoadingHealth = signal(false);
@@ -152,8 +172,17 @@ export class AdminSettings implements OnInit {
     protected isLoadingSpam = signal(false);
     protected isLoadingCaches = signal(false);
     protected isLoadingMail = signal(false);
+    protected isLoadingActivation = signal(false);
     protected isRefreshingSpam = signal(false);
     protected isTestingMail = signal(false);
+    protected activationStatusFilter = signal('');
+    protected activationTeamFilter = signal('');
+    protected activationDomainFilter = signal('');
+    protected activationCopyStatus = signal<'idle' | 'success' | 'error'>('idle');
+    protected openingActivationTeamId = signal('');
+    protected activationStatusControl = new FormControl<ActivationStatus | ''>('', { nonNullable: true });
+    private activationCopyResetTimer: ReturnType<typeof setTimeout> | null = null;
+    private activationRequestID = 0;
 
     protected spamActionStatus = signal<StatusState | null>(null);
     protected mailTestResult = signal<{ severity: 'success' | 'error'; message: string } | null>(null);
@@ -215,6 +244,18 @@ export class AdminSettings implements OnInit {
         return Math.round((used / storage.disk_total_bytes) * 100);
     });
     protected readonly recentHits = computed(() => this.systemIngest()?.recent_hits ?? 0);
+    protected readonly activationRows = computed(() => this.systemActivation()?.rows ?? []);
+    protected readonly activationLiveSites = computed(() => this.activationRows().filter((row) => row.status === 'live').length);
+    protected readonly activationStatusOptions = computed(() => {
+        this.activeLanguage();
+        return [
+            { label: this.transloco.translate('admin.system.activation.filters.anyStatus'), value: '' },
+            { label: this.transloco.translate('admin.system.activation.status.waiting'), value: 'waiting' },
+            { label: this.transloco.translate('admin.system.activation.status.live'), value: 'live' },
+            { label: this.transloco.translate('admin.system.activation.status.dormant'), value: 'dormant' },
+            { label: this.transloco.translate('admin.system.activation.status.domain_mismatch'), value: 'domain_mismatch' }
+        ];
+    });
     protected readonly runtimeStatusKey = computed(() => {
         const health = this.systemHealth();
         if (this.isLoadingHealth() && !health) {
@@ -304,6 +345,16 @@ export class AdminSettings implements OnInit {
     });
 
     constructor() {
+        this.activationStatusControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((value) => {
+            this.activationStatusFilter.set(value);
+        });
+
+        this.destroyRef.onDestroy(() => {
+            if (this.activationCopyResetTimer) {
+                clearTimeout(this.activationCopyResetTimer);
+            }
+        });
+
         effect(() => {
             const profile = this.profile.profile();
             this.currentUserId.set(profile?.id ?? '');
@@ -355,13 +406,22 @@ export class AdminSettings implements OnInit {
                         this.refreshOperations();
                     }
                     break;
+                case 'activation':
+                    if (this.perms.isInstanceOwner() && !this.loadedActivation()) {
+                        this.loadedActivation.set(true);
+                        this.loadSystemActivation();
+                    }
+                    break;
             }
         });
     }
 
     ngOnInit() {
         if (!this.profile.profile()) {
-            this.profile.loadProfile().subscribe({ error: (err) => console.error('Failed to load profile', err) });
+            this.profile
+                .loadProfile()
+                .pipe(takeUntilDestroyed(this.destroyRef))
+                .subscribe({ error: (err) => console.error('Failed to load profile', err) });
         }
     }
 
@@ -507,6 +567,133 @@ export class AdminSettings implements OnInit {
         this.loadSystemSpam();
         this.loadSystemCaches();
         this.loadSystemMail();
+    }
+
+    protected loadSystemActivation(offset = 0) {
+        if (!this.perms.isInstanceOwner()) return;
+        const requestID = ++this.activationRequestID;
+        this.isLoadingActivation.set(true);
+        this.system
+            .getActivation({
+                status: this.activationStatusFilter(),
+                team: this.activationTeamFilter(),
+                domain: this.activationDomainFilter(),
+                limit: this.systemActivation()?.limit ?? 50,
+                offset
+            })
+            .pipe(
+                finalize(() => {
+                    if (requestID === this.activationRequestID) {
+                        this.isLoadingActivation.set(false);
+                    }
+                }),
+                takeUntilDestroyed(this.destroyRef)
+            )
+            .subscribe({
+                next: (activation) => {
+                    if (requestID === this.activationRequestID) {
+                        this.systemActivation.set(activation);
+                    }
+                },
+                error: () => {
+                    if (requestID === this.activationRequestID) {
+                        this.systemActivation.set({ rows: [], total: 0, limit: 50, offset: 0, has_more: false });
+                    }
+                }
+            });
+    }
+
+    protected applyActivationFilters() {
+        this.loadSystemActivation(0);
+    }
+
+    protected clearActivationFilters() {
+        this.activationStatusControl.setValue('', { emitEvent: false });
+        this.activationStatusFilter.set('');
+        this.activationTeamFilter.set('');
+        this.activationDomainFilter.set('');
+        this.loadSystemActivation(0);
+    }
+
+    protected previousActivationOffset(): number {
+        const current = this.systemActivation();
+        if (!current) return 0;
+        return Math.max(current.offset - current.limit, 0);
+    }
+
+    protected filterActivationTeam(row: SystemActivationRow) {
+        this.activationTeamFilter.set(row.team_name);
+        this.loadSystemActivation(0);
+    }
+
+    protected copyActivationContext(row: SystemActivationRow) {
+        const lines = [
+            `Team: ${row.team_name} (${row.team_id})`,
+            `Owner: ${row.owner_email || '-'}`,
+            `Site: ${row.site_domain} (${row.site_id})`,
+            `Status: ${row.status}`,
+            `First hit: ${row.first_hit_at || '-'}`,
+            `Last hit: ${row.last_hit_at || '-'}`,
+            `Last event: ${row.last_event_at || '-'}${row.last_event_name ? ` (${row.last_event_name})` : ''}`,
+            `Hits 24h: ${row.hits_last_24h}`,
+            `Hits 7d: ${row.hits_last_7d}`,
+            `Events 7d: ${row.events_last_7d}`,
+            `Tracker: ${row.tracker_source || '-'}${row.tracker_version ? ` ${row.tracker_version}` : ''}`
+        ].join('\n');
+        const clipboard = navigator.clipboard;
+        if (!clipboard) {
+            this.setActivationCopyStatus('error');
+            return;
+        }
+        this.activationCopyStatus.set('idle');
+        clipboard
+            .writeText(lines)
+            .then(() => this.setActivationCopyStatus('success'))
+            .catch(() => this.setActivationCopyStatus('error'));
+    }
+
+    protected openActivationTeam(row: SystemActivationRow) {
+        if (!this.perms.isInstanceOwner() || this.openingActivationTeamId()) return;
+        this.openingActivationTeamId.set(row.team_id);
+        this.userTeamService
+            .setActiveTeam(row.team_id)
+            .pipe(
+                finalize(() => this.openingActivationTeamId.set('')),
+                takeUntilDestroyed(this.destroyRef)
+            )
+            .subscribe({
+                next: () => void this.router.navigate(['/admin/team']),
+                error: () => undefined
+            });
+    }
+
+    private setActivationCopyStatus(status: 'success' | 'error') {
+        this.activationCopyStatus.set(status);
+        if (this.activationCopyResetTimer) {
+            clearTimeout(this.activationCopyResetTimer);
+        }
+        this.activationCopyResetTimer = setTimeout(() => {
+            this.activationCopyStatus.set('idle');
+            this.activationCopyResetTimer = null;
+        }, 3000);
+    }
+
+    protected activationStatusLabel(status: ActivationStatus): string {
+        this.activeLanguage();
+        return this.transloco.translate(`admin.system.activation.status.${status}`);
+    }
+
+    protected activationStatusSeverity(status: ActivationStatus): 'success' | 'danger' | 'warn' | 'secondary' | 'info' | 'contrast' {
+        switch (status) {
+            case 'live':
+                return 'success';
+            case 'domain_mismatch':
+                return 'danger';
+            case 'dormant':
+                return 'warn';
+            default:
+                return 'secondary';
+        }
     }
 
     protected formatBytesValue(value: number | null | undefined): string {

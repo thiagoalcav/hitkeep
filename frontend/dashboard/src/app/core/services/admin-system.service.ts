@@ -123,6 +123,49 @@ export interface InstanceAuditListResponse {
     has_more: boolean;
 }
 
+export type ActivationStatus = 'waiting' | 'live' | 'dormant' | 'domain_mismatch';
+
+export interface SystemActivationRow {
+    team_id: string;
+    team_name: string;
+    owner_email: string;
+    plan_code?: string;
+    plan_name?: string;
+    cloud_region?: string;
+    site_id: string;
+    site_domain: string;
+    sites_count: number;
+    active_sites: number;
+    status: ActivationStatus;
+    first_hit_at?: string;
+    last_hit_at?: string;
+    last_event_at?: string;
+    last_event_name?: string;
+    hits_last_24h: number;
+    hits_last_7d: number;
+    events_last_7d: number;
+    tracker_source?: string;
+    tracker_version?: string;
+}
+
+export interface SystemActivationResponse {
+    rows: SystemActivationRow[];
+    total: number;
+    limit: number;
+    offset: number;
+    has_more: boolean;
+}
+
+export interface ActivationFilterParams {
+    status?: string;
+    team?: string;
+    domain?: string;
+    last_seen_from?: string;
+    last_seen_to?: string;
+    limit?: number;
+    offset?: number;
+}
+
 export interface AuditFilterParams {
     action?: string;
     target_type?: string;
@@ -179,6 +222,20 @@ export class AdminSystemService {
 
     testMail(email: string) {
         return this.http.post<{ status: string; message: string }>('/api/admin/system/mail/test', { email });
+    }
+
+    getActivation(params?: ActivationFilterParams) {
+        let httpParams = new HttpParams();
+        if (params) {
+            if (params.status) httpParams = httpParams.set('status', params.status);
+            if (params.team) httpParams = httpParams.set('team', params.team);
+            if (params.domain) httpParams = httpParams.set('domain', params.domain);
+            if (params.last_seen_from) httpParams = httpParams.set('last_seen_from', params.last_seen_from);
+            if (params.last_seen_to) httpParams = httpParams.set('last_seen_to', params.last_seen_to);
+            if (params.limit !== undefined) httpParams = httpParams.set('limit', params.limit);
+            if (params.offset !== undefined) httpParams = httpParams.set('offset', params.offset);
+        }
+        return this.http.get<SystemActivationResponse>('/api/admin/system/activation', { params: httpParams });
     }
 
     listAudit(params?: AuditFilterParams) {

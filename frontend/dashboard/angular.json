@@ -36,7 +36,9 @@
                                 "output": "flags"
                             }
                         ],
-                        "styles": ["src/styles.scss"]
+                        "styles": [
+                            "src/styles.scss"
+                        ]
                     },
                     "configurations": {
                         "production": {
@@ -86,7 +88,9 @@
                 "test": {
                     "builder": "@angular/build:unit-test",
                     "options": {
-                        "browsers": ["chromium"]
+                        "browsers": [
+                            "chromium"
+                        ]
                     }
                 },
                 "e2e": {
@@ -99,7 +103,10 @@
                 "lint": {
                     "builder": "@angular-eslint/builder:lint",
                     "options": {
-                        "lintFilePatterns": ["src/**/*.ts", "src/**/*.html"]
+                        "lintFilePatterns": [
+                            "src/**/*.ts",
+                            "src/**/*.html"
+                        ]
                     }
                 }
             },
@@ -111,6 +118,8 @@
     },
     "cli": {
         "analytics": false,
-        "schematicCollections": ["angular-eslint"]
+        "schematicCollections": [
+            "angular-eslint"
+        ]
     }
 }

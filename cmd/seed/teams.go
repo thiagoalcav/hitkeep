@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -169,4 +170,88 @@ func ensureSiteInActiveTeam(ctx context.Context, store *database.Store, userID u
 	}
 
 	return store.CreateSite(ctx, userID, domain)
+}
+
+func seedActivationFixtures(ctx context.Context, store *database.Store, userID, primarySiteID uuid.UUID) {
+	now := time.Now().UTC().Truncate(time.Minute)
+
+	primary, err := store.GetSiteByID(ctx, primarySiteID)
+	if err != nil || primary == nil {
+		slog.Warn("Skipping activation fixtures; primary site unavailable", "site_id", primarySiteID, "error", err)
+		return
+	}
+
+	waiting, err := ensureSiteInActiveTeam(ctx, store, userID, "launch-waiting.example.com")
+	if err != nil {
+		slog.Warn("Failed to ensure waiting activation site", "error", err)
+	}
+	dormant, err := ensureSiteInActiveTeam(ctx, store, userID, "legacy-dormant.example.com")
+	if err != nil {
+		slog.Warn("Failed to ensure dormant activation site", "error", err)
+	}
+
+	sitesToReset := []uuid.UUID{primarySiteID}
+	if waiting != nil {
+		sitesToReset = append(sitesToReset, waiting.ID)
+	}
+	if dormant != nil {
+		sitesToReset = append(sitesToReset, dormant.ID)
+	}
+	for _, siteID := range sitesToReset {
+		_ = store.Exec(ctx, "DELETE FROM site_activity_hourly_counts WHERE site_id = ?", siteID)
+		_ = store.Exec(ctx, "DELETE FROM site_activity_summary WHERE site_id = ?", siteID)
+	}
+
+	primaryHost := primary.Domain
+	if err := store.RecordHitActivity(ctx, []*api.Hit{
+		{SiteID: primarySiteID, Timestamp: now.AddDate(0, 0, -30), Hostname: &primaryHost, TrackerSource: "hk.js"},
+		{SiteID: primarySiteID, Timestamp: now.Add(-9 * time.Minute), Hostname: &primaryHost, TrackerSource: "hk.js"},
+	}); err != nil {
+		slog.Warn("Failed to seed primary activation hits", "error", err)
+	}
+	if err := store.RecordEventActivity(ctx, []*api.Event{
+		{SiteID: primarySiteID, Name: "outbound_click", Timestamp: now.Add(-7 * time.Minute), TrackerSource: "hk.js"},
+		{SiteID: primarySiteID, Name: "file_download", Timestamp: now.Add(-4 * time.Minute), TrackerSource: "hk.js"},
+	}); err != nil {
+		slog.Warn("Failed to seed primary activation events", "error", err)
+	}
+	seedActivationCount(ctx, store, primarySiteID, now, 184, 27)
+	seedActivationCount(ctx, store, primarySiteID, now.Add(-24*time.Hour), 612, 84)
+	seedActivationCount(ctx, store, primarySiteID, now.AddDate(0, 0, -6), 944, 131)
+
+	if dormant != nil {
+		dormantHost := dormant.Domain
+		dormantAt := now.AddDate(0, 0, -12)
+		if err := store.RecordHitActivity(ctx, []*api.Hit{
+			{SiteID: dormant.ID, Timestamp: dormantAt, Hostname: &dormantHost, TrackerSource: "wordpress", TrackerVersion: "2.3.0-demo"},
+		}); err != nil {
+			slog.Warn("Failed to seed dormant activation hit", "error", err)
+		}
+		if err := store.RecordEventActivity(ctx, []*api.Event{
+			{SiteID: dormant.ID, Name: "form_submit", Timestamp: dormantAt.Add(2 * time.Minute), TrackerSource: "wordpress", TrackerVersion: "2.3.0-demo"},
+		}); err != nil {
+			slog.Warn("Failed to seed dormant activation event", "error", err)
+		}
+	}
+
+	slog.Info("Activation fixtures seeded", "sites", len(sitesToReset))
+}
+
+func seedActivationCount(ctx context.Context, store *database.Store, siteID uuid.UUID, ts time.Time, hits, events int) {
+	tenantID, err := store.GetSiteTenantID(ctx, siteID)
+	if err != nil {
+		slog.Warn("Failed to resolve activation fixture tenant", "site_id", siteID, "error", err)
+		return
+	}
+	if err := store.Exec(ctx, `
+		INSERT INTO site_activity_hourly_counts (site_id, tenant_id, bucket, hits, events, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+		ON CONFLICT (site_id, bucket) DO UPDATE SET
+			tenant_id = excluded.tenant_id,
+			hits = excluded.hits,
+			events = excluded.events,
+			updated_at = excluded.updated_at
+	`, siteID, tenantID, ts.UTC().Truncate(time.Hour), hits, events, time.Now().UTC()); err != nil {
+		slog.Warn("Failed to seed activation fixture counts", "site_id", siteID, "error", err)
+	}
 }

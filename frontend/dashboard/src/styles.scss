@@ -603,6 +603,68 @@
     color: var(--p-red-700);
 }
 
+.site-settings-alert--warn {
+    border-color: color-mix(in srgb, var(--p-amber-500) 30%, var(--site-settings-border));
+    background: color-mix(in srgb, var(--p-amber-50) 80%, var(--site-settings-card-bg));
+    color: var(--p-amber-800);
+}
+
+.site-settings-alert--info {
+    border-color: color-mix(in srgb, var(--p-blue-500) 28%, var(--site-settings-border));
+    background: color-mix(in srgb, var(--p-blue-50) 80%, var(--site-settings-card-bg));
+    color: var(--p-blue-800);
+}
+
+.site-settings-verifier-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+}
+
+.site-settings-status-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--site-settings-border);
+    border-radius: 8px;
+}
+
+.site-settings-status-grid > div {
+    display: grid;
+    gap: 0.3rem;
+    min-width: 0;
+    padding: 0.75rem 0.85rem;
+    border-right: 1px solid var(--site-settings-divider);
+    border-bottom: 1px solid var(--site-settings-divider);
+}
+
+.site-settings-status-grid > div:nth-child(3n) {
+    border-right: 0;
+}
+
+.site-settings-status-grid > div:nth-last-child(-n + 3) {
+    border-bottom: 0;
+}
+
+.site-settings-status-grid span {
+    color: var(--p-text-muted-color);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.site-settings-status-grid strong {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--p-text-color);
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .site-settings-toggle-list {
     display: grid;
     gap: 0.35rem;
@@ -787,6 +849,16 @@
     color: var(--p-red-300);
 }
 
+.p-dark .site-settings-alert--warn {
+    background: color-mix(in srgb, var(--p-amber-950) 52%, var(--site-settings-card-bg));
+    color: var(--p-amber-200);
+}
+
+.p-dark .site-settings-alert--info {
+    background: color-mix(in srgb, var(--p-blue-950) 52%, var(--site-settings-card-bg));
+    color: var(--p-blue-200);
+}
+
 .p-dark .site-settings-role-chip--owner {
     background: color-mix(in srgb, var(--p-green-900) 44%, var(--site-settings-card-bg));
     color: var(--p-green-300);
@@ -837,5 +909,20 @@
     .site-settings-danger-action.p-button,
     .site-settings-card__footer .p-button {
         width: 100%;
+    }
+
+    .site-settings-status-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .site-settings-status-grid > div,
+    .site-settings-status-grid > div:nth-child(3n),
+    .site-settings-status-grid > div:nth-last-child(-n + 3) {
+        border-right: 0;
+        border-bottom: 1px solid var(--site-settings-divider);
+    }
+
+    .site-settings-status-grid > div:last-child {
+        border-bottom: 0;
     }
 }

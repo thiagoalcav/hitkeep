@@ -51,6 +51,25 @@ func openAPIV1AnalyticsSchemas() map[string]any {
 				"created_at":          map[string]any{"type": "string", "format": "date-time"},
 			},
 		},
+		"SiteTrackingStatus": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"site_id":                   map[string]any{"type": "string", "format": "uuid"},
+				"tenant_id":                 map[string]any{"type": "string", "format": "uuid"},
+				"status":                    map[string]any{"type": "string", "enum": []string{"waiting", "live", "dormant", "domain_mismatch"}},
+				"first_hit_at":              map[string]any{"type": "string", "format": "date-time"},
+				"last_hit_at":               map[string]any{"type": "string", "format": "date-time"},
+				"last_event_at":             map[string]any{"type": "string", "format": "date-time"},
+				"last_hostname":             map[string]any{"type": "string"},
+				"last_event_name":           map[string]any{"type": "string"},
+				"last_automatic_event_at":   map[string]any{"type": "string", "format": "date-time"},
+				"last_automatic_event_name": map[string]any{"type": "string"},
+				"tracker_source":            map[string]any{"type": "string"},
+				"tracker_version":           map[string]any{"type": "string"},
+				"configured_domain":         map[string]any{"type": "string"},
+				"updated_at":                map[string]any{"type": "string", "format": "date-time"},
+			},
+		},
 		"ShareLink": map[string]any{
 			"type": "object",
 			"properties": map[string]any{

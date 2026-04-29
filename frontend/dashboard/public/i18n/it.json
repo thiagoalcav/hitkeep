@@ -147,9 +147,12 @@
             "close": "Chiudi",
             "downloadXlsx": "Scarica XLSX",
             "exportCsv": "Esporta CSV",
+            "open": "Apri",
             "refresh": "Aggiorna",
             "save": "Salva"
         },
+        "previous": "Precedente",
+        "next": "Successivo",
         "saved": "Salvato",
         "saveFailed": "Salvataggio fallito. Riprova.",
         "loading": "Caricamento...",
@@ -291,6 +294,27 @@
             "teamDescription": "Crea il primo sito in {{team}} per iniziare a raccogliere dati analitici per questo team.",
             "getTrackingCode": "Ottieni codice di tracciamento",
             "createSite": "Crea sito"
+        },
+        "onboarding": {
+            "title": "Checklist di installazione",
+            "description": "Un percorso guidato dallo stato, dalla registrazione al primo dato verificato.",
+            "progress": "{{complete}} di {{total}} completati",
+            "dismiss": "Nascondi checklist",
+            "done": "Completato",
+            "steps": {
+                "create_site": "Crea il primo sito",
+                "verify_tracking": "Ricevi il primo hit",
+                "automatic_events": "Conferma eventi automatici",
+                "invite_teammate": "Invita un collega",
+                "schedule_report": "Programma report email"
+            },
+            "actions": {
+                "create_site": "Crea sito",
+                "verify_tracking": "Verifica tracking",
+                "automatic_events": "Apri tracking",
+                "invite_teammate": "Invita",
+                "schedule_report": "Programma"
+            }
         }
     },
     "goals": {
@@ -862,7 +886,29 @@
             "formTrackingLabel": "Traccia gli invii dei moduli",
             "formTrackingDescription": "Invia form_submit per gli invii di moduli osservati dal browser senza acquisire i valori del modulo.",
             "htmlLabel": "HTML",
-            "copyCode": "Copia codice"
+            "copyCode": "Copia codice",
+            "verifier": {
+                "title": "Verifica tracking live",
+                "description": "Conferma che questo sito riceva segnali operativi di tracking.",
+                "status": {
+                    "waiting": "In attesa",
+                    "live": "Live",
+                    "dormant": "Dormiente",
+                    "domain_mismatch": "Dominio diverso"
+                },
+                "waitingHint": "In attesa del primo hit accettato. Questo pannello si aggiorna automaticamente per due minuti.",
+                "mismatchHint": "L’ultimo hostname rilevato non corrisponde al dominio configurato per questo sito.",
+                "fields": {
+                    "firstHit": "Primo hit",
+                    "lastHit": "Ultimo hit",
+                    "lastEvent": "Ultimo evento",
+                    "detectedHostname": "Hostname rilevato",
+                    "automaticEvent": "Ultimo evento automatico",
+                    "tracker": "Tracker",
+                    "updated": "Aggiornato"
+                },
+                "empty": "Non ancora visto"
+            }
         }
     },
     "admin": {
@@ -1326,6 +1372,7 @@
                     "runtime": "Runtime",
                     "operations": "Operazioni",
                     "access": "Accesso",
+                    "activation": "Attivazione",
                     "audit": "Audit"
                 },
                 "status": {
@@ -1348,6 +1395,43 @@
                 "teamsDescription": "Contenitori team e relativo stato operativo.",
                 "auditDescription": "Attività append-only per operazioni sensibili dell’istanza.",
                 "settingsSubtitle": "Gestisci utenti, siti, team e filtri globali dell’istanza."
+            },
+            "activation": {
+                "title": "Attivazione utenti",
+                "subtitle": "Vedi quali team e siti sono live, in attesa, dormienti o bloccati senza ispezionare dati tenant.",
+                "empty": "Nessuna riga di attivazione corrisponde ai filtri attuali.",
+                "copySuccess": "Contesto supporto copiato.",
+                "copyError": "Impossibile copiare il contesto supporto.",
+                "pagination": "{{loaded}} di {{total}} righe mostrate",
+                "filters": {
+                    "anyStatus": "Qualsiasi stato",
+                    "team": "Filtra team",
+                    "domain": "Filtra dominio"
+                },
+                "metrics": {
+                    "liveSites": "Siti live caricati",
+                    "loadedRows": "Righe caricate",
+                    "totalRows": "Righe totali"
+                },
+                "columns": {
+                    "team": "Team",
+                    "lastHit": "Ultimo hit",
+                    "lastEvent": "Ultimo evento",
+                    "hits24h": "Hit 24h",
+                    "hits7d": "Hit 7g",
+                    "events7d": "Eventi 7g"
+                },
+                "status": {
+                    "waiting": "In attesa",
+                    "live": "Live",
+                    "dormant": "Dormiente",
+                    "domain_mismatch": "Dominio diverso"
+                },
+                "actions": {
+                    "filterTeam": "Filtra su questo team",
+                    "copyContext": "Copia contesto supporto",
+                    "openTeam": "Apri admin team"
+                }
             }
         }
     },

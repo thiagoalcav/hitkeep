@@ -28,6 +28,8 @@ type Hit struct {
 	UTMTerm        *string   `json:"utm_term"`
 	UTMContent     *string   `json:"utm_content"`
 	IsUnique       *bool     `json:"is_unique"`
+	TrackerSource  string    `json:"-"`
+	TrackerVersion string    `json:"-"`
 }
 
 type Site struct {
@@ -68,12 +70,40 @@ type APIClientSiteRole struct {
 }
 
 type Event struct {
-	ID         uuid.UUID      `json:"id"`
-	SiteID     uuid.UUID      `json:"site_id"`
-	SessionID  uuid.UUID      `json:"session_id"`
-	Name       string         `json:"name"`
-	Properties map[string]any `json:"properties"`
-	Timestamp  time.Time      `json:"timestamp"`
+	ID             uuid.UUID      `json:"id"`
+	SiteID         uuid.UUID      `json:"site_id"`
+	SessionID      uuid.UUID      `json:"session_id"`
+	Name           string         `json:"name"`
+	Properties     map[string]any `json:"properties"`
+	Timestamp      time.Time      `json:"timestamp"`
+	TrackerSource  string         `json:"-"`
+	TrackerVersion string         `json:"-"`
+}
+
+type TrackingStatus string
+
+const (
+	TrackingStatusWaiting        TrackingStatus = "waiting"
+	TrackingStatusLive           TrackingStatus = "live"
+	TrackingStatusDormant        TrackingStatus = "dormant"
+	TrackingStatusDomainMismatch TrackingStatus = "domain_mismatch"
+)
+
+type SiteTrackingStatus struct {
+	SiteID                 uuid.UUID      `json:"site_id"`
+	TenantID               uuid.UUID      `json:"tenant_id"`
+	Status                 TrackingStatus `json:"status"`
+	FirstHitAt             *time.Time     `json:"first_hit_at,omitempty"`
+	LastHitAt              *time.Time     `json:"last_hit_at,omitempty"`
+	LastEventAt            *time.Time     `json:"last_event_at,omitempty"`
+	LastHostname           string         `json:"last_hostname,omitempty"`
+	LastEventName          string         `json:"last_event_name,omitempty"`
+	LastAutomaticEventAt   *time.Time     `json:"last_automatic_event_at,omitempty"`
+	LastAutomaticEventName string         `json:"last_automatic_event_name,omitempty"`
+	TrackerSource          string         `json:"tracker_source,omitempty"`
+	TrackerVersion         string         `json:"tracker_version,omitempty"`
+	ConfiguredDomain       string         `json:"configured_domain"`
+	UpdatedAt              *time.Time     `json:"updated_at,omitempty"`
 }
 
 type Goal struct {
@@ -118,7 +148,23 @@ type UserProfile struct {
 }
 
 type UserPreferences struct {
-	DefaultLocale string `json:"default_locale"`
+	DefaultLocale         string     `json:"default_locale"`
+	DismissedOnboardingAt *time.Time `json:"dismissed_onboarding_at,omitempty"`
+}
+
+type OnboardingStep struct {
+	Key        string `json:"key"`
+	Complete   bool   `json:"complete"`
+	Current    int    `json:"current,omitempty"`
+	Target     int    `json:"target,omitempty"`
+	SiteID     string `json:"site_id,omitempty"`
+	SiteDomain string `json:"site_domain,omitempty"`
+}
+
+type UserOnboarding struct {
+	Dismissed bool             `json:"dismissed"`
+	Complete  bool             `json:"complete"`
+	Steps     []OnboardingStep `json:"steps"`
 }
 
 type AuthSession struct {
@@ -730,6 +776,37 @@ type SystemIngestStats struct {
 	RecentRejections int     `json:"recent_rejections"`
 	RecentSpam       int     `json:"recent_spam"`
 	HitsPerSecond    float64 `json:"hits_per_second"`
+}
+
+type SystemActivationRow struct {
+	TeamID         uuid.UUID      `json:"team_id"`
+	TeamName       string         `json:"team_name"`
+	OwnerEmail     string         `json:"owner_email"`
+	PlanCode       string         `json:"plan_code,omitempty"`
+	PlanName       string         `json:"plan_name,omitempty"`
+	CloudRegion    string         `json:"cloud_region,omitempty"`
+	SiteID         uuid.UUID      `json:"site_id"`
+	SiteDomain     string         `json:"site_domain"`
+	SitesCount     int            `json:"sites_count"`
+	ActiveSites    int            `json:"active_sites"`
+	Status         TrackingStatus `json:"status"`
+	FirstHitAt     *time.Time     `json:"first_hit_at,omitempty"`
+	LastHitAt      *time.Time     `json:"last_hit_at,omitempty"`
+	LastEventAt    *time.Time     `json:"last_event_at,omitempty"`
+	LastEventName  string         `json:"last_event_name,omitempty"`
+	HitsLast24h    int            `json:"hits_last_24h"`
+	HitsLast7d     int            `json:"hits_last_7d"`
+	EventsLast7d   int            `json:"events_last_7d"`
+	TrackerSource  string         `json:"tracker_source,omitempty"`
+	TrackerVersion string         `json:"tracker_version,omitempty"`
+}
+
+type SystemActivationResponse struct {
+	Rows    []SystemActivationRow `json:"rows"`
+	Total   int                   `json:"total"`
+	Limit   int                   `json:"limit"`
+	Offset  int                   `json:"offset"`
+	HasMore bool                  `json:"has_more"`
 }
 
 type SystemBackupStatus struct {

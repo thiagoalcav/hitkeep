@@ -268,6 +268,14 @@ func openAPIV1CorePaths() map[string]any {
 				jsonBody(map[string]any{"$ref": "#/components/schemas/UserPreferences"}),
 				map[string]any{"200": jsonRefResp("Preferences", "#/components/schemas/UserPreferences")}),
 		},
+		"/api/user/onboarding": map[string]any{
+			"get": op([]string{"User"}, "Get onboarding checklist", "Returns a state-driven onboarding checklist computed from sites, tracking status, team membership, and report subscription state.", secCookie(), nil, nil,
+				map[string]any{"200": jsonRefResp("Onboarding state", "#/components/schemas/UserOnboarding")}),
+		},
+		"/api/user/onboarding/dismiss": map[string]any{
+			"post": op([]string{"User"}, "Dismiss onboarding checklist", "Persists the authenticated user's onboarding dismissal timestamp.", secCookie(), nil, nil,
+				map[string]any{"200": jsonRefResp("Status", "#/components/schemas/Status")}),
+		},
 		"/api/user/teams": map[string]any{
 			"post": op([]string{"Teams"}, "Create team", "Creates a new team and returns the created team payload.", secCookie(), nil,
 				jsonBody(map[string]any{

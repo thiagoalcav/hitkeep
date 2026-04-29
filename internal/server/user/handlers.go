@@ -53,6 +53,14 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleUpdateUserPreferences()))
+	mux.HandleFunc("GET /api/user/onboarding", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetUserOnboarding()))
+	mux.HandleFunc("POST /api/user/onboarding/dismiss", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleDismissUserOnboarding()))
 	mux.HandleFunc("GET /api/user/security", ctx.Handler(shared.HandlerConfig{
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,

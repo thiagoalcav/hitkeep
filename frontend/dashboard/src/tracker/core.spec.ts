@@ -242,8 +242,19 @@ describe('tracker core', () => {
             disableSpaTracking: true,
             disableOutboundTracking: true,
             disableDownloadTracking: true,
-            disableFormTracking: true
+            disableFormTracking: true,
+            trackerSource: 'hk.js',
+            trackerVersion: ''
         });
+    });
+
+    it('reads tracker source and version metadata from the snippet element', () => {
+        const script = document.createElement('script');
+        script.setAttribute('data-hitkeep-source', 'wordpress');
+        script.setAttribute('data-hitkeep-version', '2.3.0');
+
+        expect(readTrackerOptions(script).trackerSource).toBe('wordpress');
+        expect(readTrackerOptions(script).trackerVersion).toBe('2.3.0');
     });
 
     it('ignores unsupported link protocols', () => {

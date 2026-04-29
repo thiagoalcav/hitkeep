@@ -1,0 +1,109 @@
+package database
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
+
+	"hitkeep/internal/api"
+)
+
+func (s *Store) GetUserOnboarding(ctx context.Context, userID uuid.UUID) (*api.UserOnboarding, error) {
+	prefs, err := s.GetUserPreferences(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	sites, err := s.GetSites(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list onboarding sites: %w", err)
+	}
+
+	activeTenantID, err := s.GetActiveTenantID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("resolve onboarding active tenant: %w", err)
+	}
+	memberCount, err := s.CountTeamMembers(ctx, activeTenantID)
+	if err != nil {
+		return nil, err
+	}
+	pendingInviteCount, err := s.CountPendingTeamInvites(ctx, activeTenantID)
+	if err != nil {
+		return nil, err
+	}
+	subs, err := s.GetReportSubscriptions(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	firstSiteID := ""
+	firstSiteDomain := ""
+	if len(sites) > 0 {
+		firstSiteID = sites[0].ID.String()
+		firstSiteDomain = sites[0].Domain
+	}
+
+	receivedFirstHit, automaticEventSeen := false, false
+	for _, site := range sites {
+		status, err := s.GetSiteTrackingStatus(ctx, site.ID, nowUTC())
+		if err != nil {
+			return nil, err
+		}
+		if status != nil && status.FirstHitAt != nil {
+			receivedFirstHit = true
+			if firstSiteID == "" {
+				firstSiteID = site.ID.String()
+				firstSiteDomain = site.Domain
+			}
+		}
+		if status != nil && status.LastAutomaticEventAt != nil {
+			automaticEventSeen = true
+		}
+	}
+
+	reportScheduled := false
+	if subs != nil {
+		reportScheduled = subs.Digest.Daily || subs.Digest.Weekly || subs.Digest.Monthly
+		for _, siteSub := range subs.Sites {
+			if siteSub.Daily || siteSub.Weekly || siteSub.Monthly {
+				reportScheduled = true
+				break
+			}
+		}
+	}
+
+	steps := []api.OnboardingStep{
+		{Key: "create_site", Complete: len(sites) > 0, Current: len(sites), Target: 1, SiteID: firstSiteID, SiteDomain: firstSiteDomain},
+		{Key: "verify_tracking", Complete: receivedFirstHit, Current: boolInt(receivedFirstHit), Target: 1, SiteID: firstSiteID, SiteDomain: firstSiteDomain},
+		{Key: "automatic_events", Complete: automaticEventSeen, Current: boolInt(automaticEventSeen), Target: 1, SiteID: firstSiteID, SiteDomain: firstSiteDomain},
+		{Key: "invite_teammate", Complete: memberCount > 1 || pendingInviteCount > 0, Current: memberCount + pendingInviteCount, Target: 2},
+		{Key: "schedule_report", Complete: reportScheduled, Current: boolInt(reportScheduled), Target: 1},
+	}
+
+	complete := true
+	for _, step := range steps {
+		if !step.Complete {
+			complete = false
+			break
+		}
+	}
+
+	return &api.UserOnboarding{
+		Dismissed: prefs != nil && prefs.DismissedOnboardingAt != nil,
+		Complete:  complete,
+		Steps:     steps,
+	}, nil
+}
+
+func boolInt(value bool) int {
+	if value {
+		return 1
+	}
+	return 0
+}
+
+func nowUTC() time.Time {
+	return time.Now().UTC()
+}

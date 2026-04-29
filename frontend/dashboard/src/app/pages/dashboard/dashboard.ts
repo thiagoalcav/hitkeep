@@ -1,5 +1,6 @@
 import { Component, effect, inject, signal, computed, linkedSignal, ChangeDetectionStrategy, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 import { injectActiveLang } from '@core/i18n/active-lang';
 import { NgOptimizedImage } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -17,6 +18,7 @@ import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
 import { SkeletonModule } from 'primeng/skeleton';
+import { TooltipModule } from 'primeng/tooltip';
 import { MenuItem } from 'primeng/api';
 // Features
 import { SiteService } from '@features/sites/services/site.service';
@@ -41,6 +43,7 @@ import { buildTakeoutExportMenuItems, DEFAULT_HITS_EXPORT_FORMAT, TakeoutExportF
 import { TakeoutDownloadService } from '@services/takeout-download.service';
 import { AddSiteDialog } from '@features/sites/components/add-site-dialog';
 import { TeamService } from '@services/team.service';
+import { OnboardingService, OnboardingStep } from '@services/onboarding.service';
 
 type MetricFilterType = 'path' | 'referrer' | 'device' | 'country' | 'browser' | 'language';
 type PageMetricMode = 'top_pages' | 'top_landing_pages' | 'top_exit_pages';
@@ -71,6 +74,7 @@ interface KpiCardData {
         InputIconModule,
         InputTextModule,
         SkeletonModule,
+        TooltipModule,
         PageHeader,
         PageHeaderLeft,
         PageBreadcrumb,
@@ -101,6 +105,8 @@ export class Dashboard {
     private localeService = inject(TranslocoLocaleService);
     private transloco = inject(TranslocoService);
     private destroyRef = inject(DestroyRef);
+    private router = inject(Router);
+    private onboarding = inject(OnboardingService);
     private readonly activeLanguage = injectActiveLang();
     protected timeRanges = signal<RangeOption[]>(DEFAULT_RANGE_OPTIONS);
     protected selectedRange = linkedSignal<RangeOption[], RangeOption>({
@@ -157,6 +163,21 @@ export class Dashboard {
             default:
                 return stats?.top_pages ?? [];
         }
+    });
+    protected readonly showOnboarding = computed(() => {
+        const onboarding = this.onboarding.onboarding();
+        return !this.isShareMode() && !!onboarding && !onboarding.dismissed && !onboarding.complete;
+    });
+    protected readonly onboardingSteps = computed(() => this.onboarding.onboarding()?.steps ?? []);
+    protected readonly onboardingProgress = computed(() => {
+        const steps = this.onboardingSteps();
+        if (!steps.length) {
+            return { complete: 0, total: 0 };
+        }
+        return {
+            complete: steps.filter((step) => step.complete).length,
+            total: steps.length
+        };
     });
     protected exportUrl = computed(() => {
         const shareToken = this.shareService.token();
@@ -287,10 +308,12 @@ export class Dashboard {
         return this.transloco.translate('dashboard.chartTitleOverview');
     });
     constructor() {
-        this.searchSubject.pipe(debounceTime(400), distinctUntilChanged()).subscribe((q) => {
+        this.searchSubject.pipe(debounceTime(400), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef)).subscribe((q) => {
             this.searchQuery.set(q);
             this.refreshHits();
         });
+
+        this.refreshOnboarding();
 
         effect(() => {
             const site = this.siteService.activeSite();
@@ -313,6 +336,60 @@ export class Dashboard {
     refreshAll() {
         this.loadStatsForCurrentRange();
         this.refreshHits();
+        this.refreshOnboarding();
+    }
+
+    private refreshOnboarding() {
+        if (this.isShareMode()) {
+            return;
+        }
+        this.onboarding
+            .load()
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({ error: () => undefined });
+    }
+
+    protected dismissOnboarding() {
+        this.onboarding
+            .dismiss()
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({ error: () => undefined });
+    }
+
+    protected onboardingStepLabel(step: OnboardingStep): string {
+        this.activeLanguage();
+        return this.transloco.translate(`dashboard.onboarding.steps.${step.key}`);
+    }
+
+    protected onboardingStepAction(step: OnboardingStep): string {
+        this.activeLanguage();
+        const key = `dashboard.onboarding.actions.${step.key}`;
+        const label = this.transloco.translate(key);
+        return label === key ? this.transloco.translate('common.actions.open') : label;
+    }
+
+    protected runOnboardingAction(step: OnboardingStep) {
+        switch (step.key) {
+            case 'create_site':
+                this.isAddSiteVisible.set(true);
+                break;
+            case 'verify_tracking':
+            case 'automatic_events':
+                if (step.site_id) {
+                    const site = this.siteService.sites().find((candidate) => candidate.id === step.site_id);
+                    if (site) {
+                        this.siteService.selectSite(site);
+                    }
+                }
+                this.openTrackingSettings();
+                break;
+            case 'invite_teammate':
+                void this.router.navigate(['/settings/team']);
+                break;
+            case 'schedule_report':
+                void this.router.navigate(['/settings/reports']);
+                break;
+        }
     }
 
     onSearch(event: Event) {

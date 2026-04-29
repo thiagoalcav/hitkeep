@@ -1,18 +1,96 @@
-import { ChangeDetectionStrategy, Component, computed, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { compatForm } from '@angular/forms/signals/compat';
 import { Site } from '@models/analytics.types';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
+import { TagModule } from 'primeng/tag';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
+import { SiteService, SiteTrackingStatus } from '@features/sites/services/site.service';
+import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
+import { finalize } from 'rxjs';
 
 @Component({
     selector: 'app-site-tracking-settings',
     standalone: true,
-    imports: [ReactiveFormsModule, ButtonModule, ToggleSwitchModule, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, TagModule, ToggleSwitchModule, RelativeDateTime, TranslocoPipe],
     template: `
         <div class="site-settings-stack">
+            <section class="site-settings-card">
+                <header class="site-settings-card__header">
+                    <div class="site-settings-card__title-row">
+                        <span class="site-settings-card__icon"><i class="pi pi-bolt" aria-hidden="true"></i></span>
+                        <div>
+                            <h3>{{ "sites.tracking.verifier.title" | transloco }}</h3>
+                            <p>{{ "sites.tracking.verifier.description" | transloco }}</p>
+                        </div>
+                    </div>
+                    <div class="site-settings-verifier-actions">
+                        @if (trackingStatus(); as status) {
+                        <p-tag [severity]="statusSeverity()" [value]="statusLabelKey() | transloco" />
+                        }
+                        <p-button [ariaLabel]="'common.actions.refresh' | transloco" icon="pi pi-refresh" [text]="true" [rounded]="true" [loading]="isLoadingStatus()" [type]="'button'" size="small" (onClick)="refreshStatus()" />
+                    </div>
+                </header>
+                <div class="site-settings-card__body">
+                    @if (trackingStatus(); as status) {
+                    <div class="site-settings-status-grid">
+                        <div>
+                            <span>{{ "sites.tracking.verifier.fields.firstHit" | transloco }}</span>
+                            <strong>
+                                @if (status.first_hit_at) {
+                                <app-relative-date-time [value]="status.first_hit_at" />
+                                } @else { - }
+                            </strong>
+                        </div>
+                        <div>
+                            <span>{{ "sites.tracking.verifier.fields.lastHit" | transloco }}</span>
+                            <strong>
+                                @if (status.last_hit_at) {
+                                <app-relative-date-time [value]="status.last_hit_at" />
+                                } @else { - }
+                            </strong>
+                        </div>
+                        <div>
+                            <span>{{ "sites.tracking.verifier.fields.lastEvent" | transloco }}</span>
+                            <strong>
+                                @if (status.last_event_at) {
+                                <app-relative-date-time [value]="status.last_event_at" />
+                                } @else { - }
+                            </strong>
+                        </div>
+                        <div>
+                            <span>{{ "sites.tracking.verifier.fields.detectedHostname" | transloco }}</span>
+                            <strong>{{ status.last_hostname || "-" }}</strong>
+                        </div>
+                        <div>
+                            <span>{{ "sites.tracking.verifier.fields.automaticEvent" | transloco }}</span>
+                            <strong>{{ status.last_automatic_event_name || "-" }}</strong>
+                        </div>
+                        <div>
+                            <span>{{ "sites.tracking.verifier.fields.tracker" | transloco }}</span>
+                            <strong>{{ trackerLabel(status) }}</strong>
+                        </div>
+                    </div>
+                    @if (status.status === "domain_mismatch") {
+                    <div class="site-settings-alert site-settings-alert--warn">
+                        {{ "sites.tracking.verifier.mismatchHint" | transloco }}
+                    </div>
+                    } @else if (status.status === "waiting") {
+                    <div class="site-settings-alert site-settings-alert--info">
+                        {{ "sites.tracking.verifier.waitingHint" | transloco }}
+                    </div>
+                    }
+                    } @else if (isLoadingStatus()) {
+                    <div class="site-settings-empty"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i>{{ "common.loading" | transloco }}</div>
+                    } @else {
+                    <div class="site-settings-empty">{{ "sites.tracking.verifier.empty" | transloco }}</div>
+                    }
+                </div>
+            </section>
+
             <section class="site-settings-card">
                 <header class="site-settings-card__header">
                     <div class="site-settings-card__title-row">
@@ -93,7 +171,14 @@ import { ToggleSwitchModule } from 'primeng/toggleswitch';
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SiteTrackingSettings {
+    private siteService = inject(SiteService);
+    private destroyRef = inject(DestroyRef);
     site = input.required<Site | null>();
+    protected trackingStatus = signal<SiteTrackingStatus | null>(null);
+    protected isLoadingStatus = signal(false);
+    private copyResetTimer: ReturnType<typeof setTimeout> | null = null;
+    private statusRequestID = 0;
+    private statusLoadingRequestID = 0;
     private readonly trackingFormModel = signal({
         collectDnt: new FormControl(false, { nonNullable: true }),
         disableBeacon: new FormControl(false, { nonNullable: true }),
@@ -104,6 +189,19 @@ export class SiteTrackingSettings {
     protected readonly trackingForm = compatForm(this.trackingFormModel);
     protected copyButtonLabel = signal('sites.tracking.copyCode');
     protected copyButtonIcon = signal('pi pi-copy');
+    protected statusLabelKey = computed(() => `sites.tracking.verifier.status.${this.trackingStatus()?.status ?? 'waiting'}`);
+    protected statusSeverity = computed<'success' | 'warn' | 'secondary' | 'danger'>(() => {
+        switch (this.trackingStatus()?.status) {
+            case 'live':
+                return 'success';
+            case 'dormant':
+                return 'warn';
+            case 'domain_mismatch':
+                return 'danger';
+            default:
+                return 'secondary';
+        }
+    });
 
     protected snippetCode = computed(() => {
         const origin = window.location.origin;
@@ -119,15 +217,104 @@ export class SiteTrackingSettings {
     });
 
     copySnippet() {
-        navigator.clipboard.writeText(this.snippetCode()).then(() => {
-            this.copyButtonLabel.set('common.copied');
-            this.copyButtonIcon.set('pi pi-check');
-            setTimeout(() => this.resetCopyButton(), 2000);
-        });
+        const clipboard = navigator.clipboard;
+        if (!clipboard) {
+            this.setCopyButtonState('common.saveFailed', 'pi pi-exclamation-triangle');
+            return;
+        }
+
+        clipboard
+            .writeText(this.snippetCode())
+            .then(() => {
+                this.setCopyButtonState('common.copied', 'pi pi-check');
+            })
+            .catch(() => {
+                this.setCopyButtonState('common.saveFailed', 'pi pi-exclamation-triangle');
+            });
+    }
+
+    private setCopyButtonState(label: string, icon: string) {
+        this.copyButtonLabel.set(label);
+        this.copyButtonIcon.set(icon);
+        if (this.copyResetTimer) {
+            clearTimeout(this.copyResetTimer);
+        }
+        this.copyResetTimer = setTimeout(() => this.resetCopyButton(), 2000);
     }
 
     private resetCopyButton() {
+        this.copyResetTimer = null;
         this.copyButtonLabel.set('sites.tracking.copyCode');
         this.copyButtonIcon.set('pi pi-copy');
+    }
+
+    constructor() {
+        effect((onCleanup) => {
+            const site = this.site();
+            this.statusRequestID += 1;
+            this.trackingStatus.set(null);
+            if (!site) {
+                return;
+            }
+
+            this.loadStatus(site.id);
+            const startedAt = Date.now();
+            const timer = setInterval(() => {
+                const current = this.trackingStatus();
+                if (Date.now() - startedAt > 120000 || (current && current.status !== 'waiting')) {
+                    clearInterval(timer);
+                    return;
+                }
+                this.loadStatus(site.id, { quiet: true });
+            }, 3000);
+            onCleanup(() => clearInterval(timer));
+        });
+
+        this.destroyRef.onDestroy(() => {
+            if (this.copyResetTimer) {
+                clearTimeout(this.copyResetTimer);
+            }
+        });
+    }
+
+    protected refreshStatus() {
+        const site = this.site();
+        if (!site) return;
+        this.loadStatus(site.id);
+    }
+
+    protected trackerLabel(status: SiteTrackingStatus): string {
+        const source = status.tracker_source || 'hk.js';
+        return status.tracker_version ? `${source} ${status.tracker_version}` : source;
+    }
+
+    private loadStatus(siteId: string, options: { quiet?: boolean } = {}) {
+        const requestID = ++this.statusRequestID;
+        const loadingRequestID = options.quiet ? this.statusLoadingRequestID : ++this.statusLoadingRequestID;
+        if (!options.quiet) {
+            this.isLoadingStatus.set(true);
+        }
+        this.siteService
+            .getTrackingStatus(siteId)
+            .pipe(
+                finalize(() => {
+                    if (!options.quiet && loadingRequestID === this.statusLoadingRequestID) {
+                        this.isLoadingStatus.set(false);
+                    }
+                }),
+                takeUntilDestroyed(this.destroyRef)
+            )
+            .subscribe({
+                next: (status) => {
+                    if (requestID === this.statusRequestID && this.site()?.id === siteId) {
+                        this.trackingStatus.set(status);
+                    }
+                },
+                error: () => {
+                    if (requestID === this.statusRequestID && this.site()?.id === siteId) {
+                        this.trackingStatus.set(null);
+                    }
+                }
+            });
     }
 }

@@ -306,6 +306,9 @@
             <p-tablist>
                 <p-tab value="runtime">{{ "admin.system.console.tabs.runtime" | transloco }}</p-tab>
                 <p-tab value="operations">{{ "admin.system.console.tabs.operations" | transloco }}</p-tab>
+                @if (perms.isInstanceOwner()) {
+                <p-tab value="activation">{{ "admin.system.console.tabs.activation" | transloco }}</p-tab>
+                }
                 <p-tab value="audit">{{ "admin.system.console.tabs.audit" | transloco }}</p-tab>
             </p-tablist>
 
@@ -714,6 +717,186 @@
                             }
                         </app-system-status-card>
                     </div>
+                    }
+                </p-tabpanel>
+
+                <p-tabpanel value="activation">
+                    @if (activeAdminTab() === "activation" && perms.isInstanceOwner()) {
+                    <section class="admin-panel admin-panel--wide admin-panel--table" aria-labelledby="activation-title">
+                        <div class="admin-panel__header admin-panel__header--stacked">
+                            <div class="admin-panel__title-block">
+                                <h2 id="activation-title">{{ "admin.system.activation.title" | transloco }}</h2>
+                                <span class="admin-panel__meta">{{ "admin.system.activation.subtitle" | transloco }}</span>
+                            </div>
+                            <div class="flex min-w-0 flex-wrap justify-end gap-2">
+                                <p-select [options]="activationStatusOptions()" [formControl]="activationStatusControl" optionLabel="label" optionValue="value" size="small" appendTo="body" />
+                                <p-iconfield class="admin-search">
+                                    <p-inputicon class="pi pi-users" />
+                                    <input
+                                        pInputText
+                                        [placeholder]="'admin.system.activation.filters.team' | transloco"
+                                        [value]="activationTeamFilter()"
+                                        (input)="activationTeamFilter.set($any($event.target).value)"
+                                        (keydown.enter)="applyActivationFilters()"
+                                    />
+                                </p-iconfield>
+                                <p-iconfield class="admin-search">
+                                    <p-inputicon class="pi pi-globe" />
+                                    <input
+                                        pInputText
+                                        [placeholder]="'admin.system.activation.filters.domain' | transloco"
+                                        [value]="activationDomainFilter()"
+                                        (input)="activationDomainFilter.set($any($event.target).value)"
+                                        (keydown.enter)="applyActivationFilters()"
+                                    />
+                                </p-iconfield>
+                                <p-button icon="pi pi-filter" [label]="'common.actions.apply' | transloco" size="small" (onClick)="applyActivationFilters()" [loading]="isLoadingActivation()" />
+                                <p-button icon="pi pi-times" [label]="'common.actions.clearAll' | transloco" size="small" severity="secondary" [outlined]="true" (onClick)="clearActivationFilters()" />
+                                <p-button
+                                    icon="pi pi-refresh"
+                                    [ariaLabel]="'admin.system.console.refreshCard' | transloco"
+                                    size="small"
+                                    severity="secondary"
+                                    [outlined]="true"
+                                    (onClick)="loadSystemActivation(systemActivation()?.offset ?? 0)"
+                                    [loading]="isLoadingActivation()"
+                                />
+                            </div>
+                        </div>
+                        @if (activationCopyStatus() === "success") {
+                        <div class="admin-panel__messages">
+                            <p-message severity="success" styleClass="w-full" [text]="'admin.system.activation.copySuccess' | transloco" />
+                        </div>
+                        } @else if (activationCopyStatus() === "error") {
+                        <div class="admin-panel__messages">
+                            <p-message severity="error" styleClass="w-full" [text]="'admin.system.activation.copyError' | transloco" />
+                        </div>
+                        }
+                        <div class="grid border-b border-surface-100 bg-surface-50 dark:border-surface-800 dark:bg-surface-800 md:grid-cols-3">
+                            <div class="flex min-w-0 items-center justify-between gap-3 border-b border-surface-100 px-4 py-3 dark:border-surface-800 md:border-b-0 md:border-r">
+                                <span class="text-xs font-semibold text-[var(--p-text-muted-color)]">{{ "admin.system.activation.metrics.liveSites" | transloco }}</span>
+                                <strong class="truncate font-bold text-[var(--p-text-color)]">{{ activationLiveSites() | number }}</strong>
+                            </div>
+                            <div class="flex min-w-0 items-center justify-between gap-3 border-b border-surface-100 px-4 py-3 dark:border-surface-800 md:border-b-0 md:border-r">
+                                <span class="text-xs font-semibold text-[var(--p-text-muted-color)]">{{ "admin.system.activation.metrics.loadedRows" | transloco }}</span>
+                                <strong class="truncate font-bold text-[var(--p-text-color)]">{{ activationRows().length | number }}</strong>
+                            </div>
+                            <div class="flex min-w-0 items-center justify-between gap-3 px-4 py-3">
+                                <span class="text-xs font-semibold text-[var(--p-text-muted-color)]">{{ "admin.system.activation.metrics.totalRows" | transloco }}</span>
+                                <strong class="truncate font-bold text-[var(--p-text-color)]">{{ systemActivation()?.total ?? 0 | number }}</strong>
+                            </div>
+                        </div>
+                        <div class="admin-table-wrap">
+                            <p-table [value]="activationRows()" [loading]="isLoadingActivation()" [rowHover]="true" styleClass="p-datatable-sm admin-data-table">
+                                <ng-template pTemplate="header">
+                                    <tr>
+                                        <th>{{ "admin.system.activation.columns.team" | transloco }}</th>
+                                        <th>{{ "common.columns.domain" | transloco }}</th>
+                                        <th>{{ "common.columns.status" | transloco }}</th>
+                                        <th>{{ "admin.system.activation.columns.lastHit" | transloco }}</th>
+                                        <th>{{ "admin.system.activation.columns.lastEvent" | transloco }}</th>
+                                        <th>{{ "admin.system.activation.columns.hits24h" | transloco }}</th>
+                                        <th>{{ "admin.system.activation.columns.hits7d" | transloco }}</th>
+                                        <th>{{ "admin.system.activation.columns.events7d" | transloco }}</th>
+                                        <th>{{ "common.columns.actions" | transloco }}</th>
+                                    </tr>
+                                </ng-template>
+                                <ng-template pTemplate="body" let-row>
+                                    <tr>
+                                        <td>
+                                            <div class="max-w-52 truncate font-semibold text-[var(--p-text-color)]">{{ row.team_name }}</div>
+                                            <div class="mt-0.5 max-w-52 truncate text-xs font-medium text-[var(--p-text-muted-color)]">{{ row.owner_email || ("common.unknown" | transloco) }}</div>
+                                            <div class="mt-0.5 max-w-52 truncate text-xs font-medium text-[var(--p-text-muted-color)]">{{ row.active_sites | number }} / {{ row.sites_count | number }} {{ "common.columns.sites" | transloco }}</div>
+                                        </td>
+                                        <td>
+                                            <div class="max-w-52 truncate font-semibold text-[var(--p-text-color)]">{{ row.site_domain }}</div>
+                                            @if (row.plan_name || row.plan_code || row.cloud_region) {
+                                            <div class="mt-0.5 max-w-52 truncate text-xs font-medium text-[var(--p-text-muted-color)]">{{ row.plan_name || row.plan_code || "-" }} · {{ row.cloud_region || "-" }}</div>
+                                            }
+                                        </td>
+                                        <td><p-tag [value]="activationStatusLabel(row.status)" [severity]="activationStatusSeverity(row.status)" /></td>
+                                        <td>
+                                            @if (row.last_hit_at) {
+                                            <app-relative-date-time [value]="row.last_hit_at" />
+                                            } @else { - }
+                                        </td>
+                                        <td>
+                                            @if (row.last_event_at) {
+                                            <app-relative-date-time [value]="row.last_event_at" />
+                                            @if (row.last_event_name) {
+                                            <div class="mt-0.5 max-w-36 truncate text-xs font-medium text-[var(--p-text-muted-color)]">{{ row.last_event_name }}</div>
+                                            } } @else { - }
+                                        </td>
+                                        <td>{{ row.hits_last_24h | number }}</td>
+                                        <td>{{ row.hits_last_7d | number }}</td>
+                                        <td>{{ row.events_last_7d | number }}</td>
+                                        <td>
+                                            <div class="admin-row-actions">
+                                                <p-button
+                                                    icon="pi pi-filter"
+                                                    [text]="true"
+                                                    [rounded]="true"
+                                                    [pTooltip]="'admin.system.activation.actions.filterTeam' | transloco"
+                                                    tooltipPosition="top"
+                                                    [ariaLabel]="'admin.system.activation.actions.filterTeam' | transloco"
+                                                    (onClick)="filterActivationTeam(row)"
+                                                />
+                                                <p-button
+                                                    icon="pi pi-copy"
+                                                    [text]="true"
+                                                    [rounded]="true"
+                                                    [pTooltip]="'admin.system.activation.actions.copyContext' | transloco"
+                                                    tooltipPosition="top"
+                                                    [ariaLabel]="'admin.system.activation.actions.copyContext' | transloco"
+                                                    (onClick)="copyActivationContext(row)"
+                                                />
+                                                <p-button
+                                                    icon="pi pi-arrow-right"
+                                                    [text]="true"
+                                                    [rounded]="true"
+                                                    [pTooltip]="'admin.system.activation.actions.openTeam' | transloco"
+                                                    tooltipPosition="top"
+                                                    [ariaLabel]="'admin.system.activation.actions.openTeam' | transloco"
+                                                    (onClick)="openActivationTeam(row)"
+                                                    [loading]="openingActivationTeamId() === row.team_id"
+                                                    [disabled]="!!openingActivationTeamId()"
+                                                />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </ng-template>
+                                <ng-template pTemplate="emptymessage">
+                                    <tr>
+                                        <td colspan="9" class="admin-empty-cell">{{ "admin.system.activation.empty" | transloco }}</td>
+                                    </tr>
+                                </ng-template>
+                            </p-table>
+                        </div>
+                        <div class="flex items-center justify-between gap-4 border-t border-surface-100 px-4 py-3 text-sm text-[var(--p-text-muted-color)] dark:border-surface-800">
+                            <span>{{ "admin.system.activation.pagination" | transloco: { loaded: activationRows().length, total: systemActivation()?.total ?? 0 } }}</span>
+                            <div class="flex gap-2">
+                                <p-button
+                                    icon="pi pi-chevron-left"
+                                    [label]="'common.previous' | transloco"
+                                    size="small"
+                                    severity="secondary"
+                                    [outlined]="true"
+                                    [disabled]="(systemActivation()?.offset ?? 0) <= 0 || isLoadingActivation()"
+                                    (onClick)="loadSystemActivation(previousActivationOffset())"
+                                />
+                                <p-button
+                                    icon="pi pi-chevron-right"
+                                    iconPos="right"
+                                    [label]="'common.next' | transloco"
+                                    size="small"
+                                    severity="secondary"
+                                    [outlined]="true"
+                                    [disabled]="!(systemActivation()?.has_more) || isLoadingActivation()"
+                                    (onClick)="loadSystemActivation((systemActivation()?.offset ?? 0) + (systemActivation()?.limit ?? 50))"
+                                />
+                            </div>
+                        </div>
+                    </section>
                     }
                 </p-tabpanel>
 

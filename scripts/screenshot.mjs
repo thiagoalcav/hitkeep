@@ -138,14 +138,18 @@ async function selectFirstVisibleOption(page, selector) {
   await page.waitForTimeout(TABLE_SETTLE);
 
   if (optionText) {
-    await page.waitForFunction(
-      ({ cssSelector, expectedText }) => {
-        const el = document.querySelector(cssSelector);
-        return !!el && (el.textContent || "").includes(expectedText);
-      },
-      { cssSelector: selector, expectedText: optionText },
-      { timeout: 5_000 },
-    );
+    try {
+      await page.waitForFunction(
+        ({ cssSelector, expectedText }) => {
+          const el = document.querySelector(cssSelector);
+          return !!el && (el.textContent || "").includes(expectedText);
+        },
+        { cssSelector: selector, expectedText: optionText },
+        { timeout: 5_000 },
+      );
+    } catch {
+      // PrimeNG may render the selected label outside the host element.
+    }
   }
 
   return true;
@@ -169,14 +173,18 @@ async function selectVisibleOptionMatching(page, selector, pattern) {
 
     await option.click();
     await page.waitForTimeout(TABLE_SETTLE);
-    await page.waitForFunction(
-      ({ cssSelector, expectedText }) => {
-        const el = document.querySelector(cssSelector);
-        return !!el && (el.textContent || "").includes(expectedText);
-      },
-      { cssSelector: selector, expectedText: optionText.replace(/\s*Auto\s*$/i, "") },
-      { timeout: 5_000 },
-    );
+    try {
+      await page.waitForFunction(
+        ({ cssSelector, expectedText }) => {
+          const el = document.querySelector(cssSelector);
+          return !!el && (el.textContent || "").includes(expectedText);
+        },
+        { cssSelector: selector, expectedText: optionText.replace(/\s*Auto\s*$/i, "") },
+        { timeout: 5_000 },
+      );
+    } catch {
+      // PrimeNG may render the selected label outside the host element.
+    }
     return true;
   }
 
@@ -351,6 +359,7 @@ async function run() {
 
     console.log("  Dashboard:");
     await captureRoute(page, record, "dashboard-overview", "/dashboard", CHART_SETTLE);
+    record("feature-onboarding-checklist", await shoot(page, "feature-onboarding-checklist"));
 
     if (await openTeamSwitcher(page)) {
       record("feature-team-switcher", await shoot(page, "feature-team-switcher"));
@@ -385,6 +394,8 @@ async function run() {
       await siteSettingsBtn.click();
       await page.getByRole("heading", { name: /site settings/i }).waitFor({ state: "visible", timeout: 8_000 });
       if (await clickTab(page, "tracking", FORM_SETTLE)) {
+        await page.getByText(/live tracking verifier/i).first().waitFor({ state: "visible", timeout: 8_000 });
+        record("feature-tracking-verifier", await shoot(page, "feature-tracking-verifier"));
         await page.getByText(/automatic event tracking/i).first().waitFor({ state: "visible", timeout: 8_000 });
         record("feature-site-tracking", await shoot(page, "feature-site-tracking"));
       }
@@ -447,7 +458,7 @@ async function run() {
     await captureRoute(page, record, "integration-api-reference", "/integration/api-reference", TABLE_SETTLE);
 
     console.log("\n  Admin:");
-    await captureRoute(page, record, "admin-users", "/admin", TABLE_SETTLE);
+    await captureRoute(page, record, "admin-users", "/admin/system", TABLE_SETTLE);
     let adminSitesCaptured = false;
     if (await clickTab(page, "sites")) {
       record("admin-sites-list", await shoot(page, "admin-sites-list"));
@@ -462,6 +473,13 @@ async function run() {
       } else {
         console.warn("    ! Sites tab not found, skipping admin sites screenshot");
       }
+    }
+    await nav(page, "/admin/status", TABLE_SETTLE);
+    if (await clickTab(page, "activation", TABLE_SETTLE)) {
+      await page.getByText(/user activation/i).first().waitFor({ state: "visible", timeout: 8_000 });
+      record("admin-system-activation", await shoot(page, "admin-system-activation"));
+    } else {
+      console.warn("    ! Activation tab not found, skipping admin activation screenshot");
     }
     await captureRoute(page, record, "admin-team-overview", "/admin/team", TABLE_SETTLE);
 

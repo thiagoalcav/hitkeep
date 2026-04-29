@@ -41,6 +41,10 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		InstancePerm: authcore.PermInstanceViewSystem,
 		RateLimiter:  ctx.ApiLimiter,
 	}, h.handleGetIngestStats()))
+	mux.HandleFunc("GET /api/admin/system/activation", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceViewActivation,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleGetActivation()))
 	mux.HandleFunc("GET /api/admin/system/backups", ctx.Handler(shared.HandlerConfig{
 		InstancePerm: authcore.PermInstanceViewSystem,
 		RateLimiter:  ctx.ApiLimiter,

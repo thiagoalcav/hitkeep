@@ -45,6 +45,10 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		SitePerm:    authcore.PermSiteView,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleGetSiteStats()))
+	mux.HandleFunc("GET /api/sites/{id}/tracking/status", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetSiteTrackingStatus()))
 	mux.HandleFunc("GET /api/sites/{id}/hits", ctx.Handler(shared.HandlerConfig{
 		SitePerm:    authcore.PermSiteView,
 		RateLimiter: ctx.ApiLimiter,

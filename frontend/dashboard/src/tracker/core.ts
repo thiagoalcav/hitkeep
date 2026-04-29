@@ -16,6 +16,8 @@ export interface TrackerOptions {
     disableOutboundTracking: boolean;
     disableDownloadTracking: boolean;
     disableFormTracking: boolean;
+    trackerSource: string;
+    trackerVersion: string;
 }
 
 interface PendingRequest {
@@ -70,6 +72,7 @@ const DOWNLOAD_EXTENSIONS = new Set([
 ]);
 const EXPLICIT_TRACKING_SELECTORS = ['[data-hk-event]', '[data-hitkeep-event]'].join(', ');
 const noop = () => undefined;
+const TRACKER_SOURCE = 'hk.js';
 
 function ignoreError(error?: unknown): void {
     // Best-effort tracker operations should fail closed without noisy console output.
@@ -77,13 +80,17 @@ function ignoreError(error?: unknown): void {
 }
 
 export function readTrackerOptions(scriptEl: Element): TrackerOptions {
+    const source = (scriptEl.getAttribute('data-hitkeep-source') || TRACKER_SOURCE).trim().slice(0, 64) || TRACKER_SOURCE;
+    const version = (scriptEl.getAttribute('data-hitkeep-version') || '').trim().slice(0, 64);
     return {
         collectDnt: scriptEl.getAttribute('data-collect-dnt') === 'true',
         disableBeacon: scriptEl.getAttribute('data-disable-beacon') === 'true',
         disableSpaTracking: scriptEl.getAttribute('data-disable-spa-tracking') === 'true',
         disableOutboundTracking: scriptEl.getAttribute('data-disable-outbound-tracking') === 'true',
         disableDownloadTracking: scriptEl.getAttribute('data-disable-download-tracking') === 'true',
-        disableFormTracking: scriptEl.getAttribute('data-disable-form-tracking') === 'true'
+        disableFormTracking: scriptEl.getAttribute('data-disable-form-tracking') === 'true',
+        trackerSource: source,
+        trackerVersion: version
     };
 }
 
@@ -376,7 +383,9 @@ export function bootstrapTracker(win: HitKeepWindow = window): void {
             n: name,
             p: properties,
             r: currentReferrer(),
-            sid: sessionId
+            sid: sessionId,
+            tsrc: options.trackerSource,
+            tv: options.trackerVersion
         });
     };
 
@@ -410,7 +419,9 @@ export function bootstrapTracker(win: HitKeepWindow = window): void {
             ...initialAttribution,
             unique: Boolean(isUnique),
             session_id: sessionId,
-            page_id: generateUUID()
+            page_id: generateUUID(),
+            tsrc: options.trackerSource,
+            tv: options.trackerVersion
         });
 
         lastPageviewPath = currentPath;

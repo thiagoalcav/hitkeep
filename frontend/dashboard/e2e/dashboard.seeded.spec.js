@@ -3,6 +3,7 @@ const { E2E_SHARE_TOKEN, login } = require("./support/auth");
 
 const CHART_SETTLE_MS = 2500;
 const TABLE_SETTLE_MS = 1000;
+const PRIMARY_SEEDED_SITE_DOMAIN = "acme-analytics.io";
 
 async function selectFirstVisibleOption(page, selector) {
     const select = page.locator(`${selector}:visible`).first();
@@ -20,8 +21,28 @@ async function selectFirstVisibleOption(page, selector) {
     return optionText;
 }
 
+async function selectSeededSite(page, domain = PRIMARY_SEEDED_SITE_DOMAIN) {
+    const combobox = page.locator('[role="combobox"]:visible').first();
+    await expect(combobox).toBeVisible();
+
+    const currentSite = ((await combobox.textContent()) || "").trim();
+    if (currentSite.includes(domain)) {
+        return;
+    }
+
+    await page.locator('[aria-label="Select a site to view stats"]:visible').first().click();
+
+    const option = page.locator('[role="option"]:visible').filter({ hasText: domain }).first();
+    await expect(option).toBeVisible();
+    await option.click();
+
+    await expect(combobox).toContainText(domain);
+    await page.waitForTimeout(TABLE_SETTLE_MS);
+}
+
 test("dashboard renders seeded data and product controls", async ({ page }) => {
     await login(page, "/dashboard");
+    await selectSeededSite(page);
     await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
     await expect(page.getByText("Latest Hits")).toBeVisible();
     await expect(page.getByText("Top Sources")).toBeVisible();
@@ -47,16 +68,18 @@ test("dashboard renders seeded data and product controls", async ({ page }) => {
 
 test("ecommerce page surfaces seeded orders and products", async ({ page }) => {
     await login(page, "/ecommerce");
+    await selectSeededSite(page);
     await page.waitForTimeout(CHART_SETTLE_MS);
 
     await expect(page.getByText("Revenue over time")).toBeVisible();
     await expect(page.getByText("Top products")).toBeVisible();
-    await expect(page.getByText("Revenue sources")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Revenue sources" })).toBeVisible();
     await expect(page.getByText("Pro Plan")).toBeVisible();
 });
 
 test("ai visibility page shows correlation insights", async ({ page }) => {
     await login(page, "/ai-visibility");
+    await selectSeededSite(page);
     await page.waitForTimeout(CHART_SETTLE_MS);
 
     await expect(page.getByRole("heading", { name: "Fetch volume over time" })).toBeVisible();

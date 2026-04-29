@@ -99,22 +99,24 @@ func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type ingestPayload struct {
-		Path      string    `json:"path"`
-		Referrer  *string   `json:"referrer"`
-		UserAgent *string   `json:"ua"`
-		VPWidth   *int      `json:"vp_w"`
-		VPHeight  *int      `json:"vp_h"`
-		SCWidth   *int      `json:"sc_w"`
-		SCHeight  *int      `json:"sc_h"`
-		Language  *string   `json:"lang"`
-		UTMSource *string   `json:"u_src"`
-		UTMMedium *string   `json:"u_med"`
-		UTMCamp   *string   `json:"u_cmp"`
-		UTMTerm   *string   `json:"u_trm"`
-		UTMCont   *string   `json:"u_cnt"`
-		IsUnique  bool      `json:"unique"`
-		SessionID uuid.UUID `json:"session_id"`
-		PageID    uuid.UUID `json:"page_id"`
+		Path           string    `json:"path"`
+		Referrer       *string   `json:"referrer"`
+		UserAgent      *string   `json:"ua"`
+		VPWidth        *int      `json:"vp_w"`
+		VPHeight       *int      `json:"vp_h"`
+		SCWidth        *int      `json:"sc_w"`
+		SCHeight       *int      `json:"sc_h"`
+		Language       *string   `json:"lang"`
+		UTMSource      *string   `json:"u_src"`
+		UTMMedium      *string   `json:"u_med"`
+		UTMCamp        *string   `json:"u_cmp"`
+		UTMTerm        *string   `json:"u_trm"`
+		UTMCont        *string   `json:"u_cnt"`
+		TrackerSource  string    `json:"tsrc"`
+		TrackerVersion string    `json:"tv"`
+		IsUnique       bool      `json:"unique"`
+		SessionID      uuid.UUID `json:"session_id"`
+		PageID         uuid.UUID `json:"page_id"`
 	}
 
 	var payload ingestPayload
@@ -161,6 +163,8 @@ func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 		UTMTerm:        payload.UTMTerm,
 		UTMContent:     payload.UTMCont,
 		IsUnique:       &payload.IsUnique,
+		TrackerSource:  payload.TrackerSource,
+		TrackerVersion: payload.TrackerVersion,
 	}
 
 	body, err := json.Marshal(hit)
@@ -251,10 +255,12 @@ func (h *handler) handleIngestEventLeader(w http.ResponseWriter, r *http.Request
 	}
 
 	type eventPayload struct {
-		Name       string         `json:"n"`
-		Properties map[string]any `json:"p"`
-		Referrer   *string        `json:"r"`
-		SessionID  uuid.UUID      `json:"sid"`
+		Name           string         `json:"n"`
+		Properties     map[string]any `json:"p"`
+		Referrer       *string        `json:"r"`
+		SessionID      uuid.UUID      `json:"sid"`
+		TrackerSource  string         `json:"tsrc"`
+		TrackerVersion string         `json:"tv"`
 	}
 
 	var payload eventPayload
@@ -273,11 +279,13 @@ func (h *handler) handleIngestEventLeader(w http.ResponseWriter, r *http.Request
 	}
 
 	event := api.Event{
-		SiteID:     site.ID,
-		SessionID:  payload.SessionID,
-		Name:       payload.Name,
-		Properties: payload.Properties,
-		Timestamp:  time.Now().UTC(),
+		SiteID:         site.ID,
+		SessionID:      payload.SessionID,
+		Name:           payload.Name,
+		Properties:     payload.Properties,
+		Timestamp:      time.Now().UTC(),
+		TrackerSource:  payload.TrackerSource,
+		TrackerVersion: payload.TrackerVersion,
 	}
 
 	body, err := json.Marshal(event)

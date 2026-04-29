@@ -17,10 +17,11 @@ const defaultUserLocale = "en"
 // GetUserPreferences returns stored preferences or nil if none exist.
 func (s *Store) GetUserPreferences(ctx context.Context, userID uuid.UUID) (*api.UserPreferences, error) {
 	var defaultLocale sql.NullString
+	var dismissedOnboardingAt sql.NullTime
 	err := s.QueryRowOrNil(
 		ctx,
-		"SELECT default_locale FROM user_preferences WHERE user_id = ?",
-		[]any{&defaultLocale},
+		"SELECT default_locale, dismissed_onboarding_at FROM user_preferences WHERE user_id = ?",
+		[]any{&defaultLocale, &dismissedOnboardingAt},
 		userID,
 	)
 	if err != nil {
@@ -31,7 +32,8 @@ func (s *Store) GetUserPreferences(ctx context.Context, userID uuid.UUID) (*api.
 	}
 
 	return &api.UserPreferences{
-		DefaultLocale: defaultLocale.String,
+		DefaultLocale:         defaultLocale.String,
+		DismissedOnboardingAt: nullTimePtr(dismissedOnboardingAt),
 	}, nil
 }
 
@@ -60,5 +62,20 @@ func (s *Store) UpsertUserPreferences(ctx context.Context, userID uuid.UUID, pre
 		return fmt.Errorf("could not upsert user preferences: %w", err)
 	}
 
+	return nil
+}
+
+func (s *Store) DismissUserOnboarding(ctx context.Context, userID uuid.UUID) error {
+	now := time.Now().UTC()
+	err := s.Exec(ctx, `
+		INSERT INTO user_preferences (user_id, default_locale, dismissed_onboarding_at, updated_at)
+		VALUES (?, ?, ?, ?)
+		ON CONFLICT (user_id) DO UPDATE SET
+			dismissed_onboarding_at = excluded.dismissed_onboarding_at,
+			updated_at = excluded.updated_at
+	`, userID, defaultUserLocale, now, now)
+	if err != nil {
+		return fmt.Errorf("could not dismiss onboarding: %w", err)
+	}
 	return nil
 }

@@ -147,9 +147,12 @@
             "close": "Cerrar",
             "downloadXlsx": "Descargar XLSX",
             "exportCsv": "Exportar CSV",
+            "open": "Abrir",
             "refresh": "Actualizar",
             "save": "Guardar"
         },
+        "previous": "Anterior",
+        "next": "Siguiente",
         "saved": "Guardado",
         "saveFailed": "Error al guardar. Inténtalo de nuevo.",
         "loading": "Cargando...",
@@ -291,6 +294,27 @@
             "teamDescription": "Crea el primer sitio en {{team}} para empezar a recopilar datos de analítica para este equipo.",
             "getTrackingCode": "Obtener código de seguimiento",
             "createSite": "Crear sitio"
+        },
+        "onboarding": {
+            "title": "Lista de instalación",
+            "description": "Un camino basado en estado desde el registro hasta el primer dato verificado.",
+            "progress": "{{complete}} de {{total}} completados",
+            "dismiss": "Ocultar lista",
+            "done": "Completo",
+            "steps": {
+                "create_site": "Crear primer sitio",
+                "verify_tracking": "Recibir primer hit",
+                "automatic_events": "Confirmar eventos automáticos",
+                "invite_teammate": "Invitar a un compañero",
+                "schedule_report": "Programar informe por email"
+            },
+            "actions": {
+                "create_site": "Crear sitio",
+                "verify_tracking": "Verificar tracking",
+                "automatic_events": "Abrir tracking",
+                "invite_teammate": "Invitar",
+                "schedule_report": "Programar"
+            }
         }
     },
     "goals": {
@@ -862,7 +886,29 @@
             "formTrackingLabel": "Rastrear envíos de formularios",
             "formTrackingDescription": "Envía form_submit para envíos de formularios observados por el navegador sin capturar valores del formulario.",
             "htmlLabel": "HTML",
-            "copyCode": "Copiar código"
+            "copyCode": "Copiar código",
+            "verifier": {
+                "title": "Verificador de tracking en vivo",
+                "description": "Confirma que este sitio recibe señales operativas de tracking.",
+                "status": {
+                    "waiting": "Esperando",
+                    "live": "En vivo",
+                    "dormant": "Inactivo",
+                    "domain_mismatch": "Dominio no coincide"
+                },
+                "waitingHint": "Esperando el primer hit aceptado. Este panel se actualiza automáticamente durante dos minutos.",
+                "mismatchHint": "El hostname detectado más reciente no coincide con el dominio configurado del sitio.",
+                "fields": {
+                    "firstHit": "Primer hit",
+                    "lastHit": "Último hit",
+                    "lastEvent": "Último evento",
+                    "detectedHostname": "Hostname detectado",
+                    "automaticEvent": "Último evento automático",
+                    "tracker": "Tracker",
+                    "updated": "Actualizado"
+                },
+                "empty": "Aún no visto"
+            }
         }
     },
     "admin": {
@@ -1326,6 +1372,7 @@
                     "runtime": "Ejecución",
                     "operations": "Operaciones",
                     "access": "Acceso",
+                    "activation": "Activación",
                     "audit": "Auditoría"
                 },
                 "status": {
@@ -1348,6 +1395,43 @@
                 "teamsDescription": "Contenedores de equipo y su estado operativo.",
                 "auditDescription": "Actividad append-only de operaciones sensibles de instancia.",
                 "settingsSubtitle": "Gestiona usuarios, sitios, equipos y filtros globales de la instancia."
+            },
+            "activation": {
+                "title": "Activación de usuarios",
+                "subtitle": "Ve qué equipos y sitios están en vivo, esperando, inactivos o bloqueados sin inspeccionar datos de tenants.",
+                "empty": "Ninguna fila de activación coincide con los filtros actuales.",
+                "copySuccess": "Contexto de soporte copiado.",
+                "copyError": "No se pudo copiar el contexto de soporte.",
+                "pagination": "Mostrando {{loaded}} de {{total}} filas",
+                "filters": {
+                    "anyStatus": "Cualquier estado",
+                    "team": "Filtrar equipo",
+                    "domain": "Filtrar dominio"
+                },
+                "metrics": {
+                    "liveSites": "Sitios en vivo cargados",
+                    "loadedRows": "Filas cargadas",
+                    "totalRows": "Filas totales"
+                },
+                "columns": {
+                    "team": "Equipo",
+                    "lastHit": "Último hit",
+                    "lastEvent": "Último evento",
+                    "hits24h": "Hits 24h",
+                    "hits7d": "Hits 7d",
+                    "events7d": "Eventos 7d"
+                },
+                "status": {
+                    "waiting": "Esperando",
+                    "live": "En vivo",
+                    "dormant": "Inactivo",
+                    "domain_mismatch": "Dominio no coincide"
+                },
+                "actions": {
+                    "filterTeam": "Filtrar a este equipo",
+                    "copyContext": "Copiar contexto de soporte",
+                    "openTeam": "Abrir admin de equipo"
+                }
             }
         }
     },

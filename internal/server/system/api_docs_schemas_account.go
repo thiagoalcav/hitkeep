@@ -344,6 +344,41 @@ func openAPIV1AccountSchemas() map[string]any {
 				"has_more": map[string]any{"type": "boolean"},
 			},
 		},
+		"SystemActivationRow": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"team_id":         map[string]any{"type": "string", "format": "uuid"},
+				"team_name":       map[string]any{"type": "string"},
+				"owner_email":     map[string]any{"type": "string", "format": "email"},
+				"plan_code":       map[string]any{"type": "string"},
+				"plan_name":       map[string]any{"type": "string"},
+				"cloud_region":    map[string]any{"type": "string"},
+				"site_id":         map[string]any{"type": "string", "format": "uuid"},
+				"site_domain":     map[string]any{"type": "string"},
+				"sites_count":     map[string]any{"type": "integer"},
+				"active_sites":    map[string]any{"type": "integer"},
+				"status":          map[string]any{"type": "string", "enum": []string{"waiting", "live", "dormant", "domain_mismatch"}},
+				"first_hit_at":    map[string]any{"type": "string", "format": "date-time"},
+				"last_hit_at":     map[string]any{"type": "string", "format": "date-time"},
+				"last_event_at":   map[string]any{"type": "string", "format": "date-time"},
+				"last_event_name": map[string]any{"type": "string"},
+				"hits_last_24h":   map[string]any{"type": "integer"},
+				"hits_last_7d":    map[string]any{"type": "integer"},
+				"events_last_7d":  map[string]any{"type": "integer"},
+				"tracker_source":  map[string]any{"type": "string"},
+				"tracker_version": map[string]any{"type": "string"},
+			},
+		},
+		"SystemActivationResponse": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"rows":     map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/SystemActivationRow"}},
+				"total":    map[string]any{"type": "integer"},
+				"limit":    map[string]any{"type": "integer"},
+				"offset":   map[string]any{"type": "integer"},
+				"has_more": map[string]any{"type": "boolean"},
+			},
+		},
 		"IPExclusion": map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -377,7 +412,27 @@ func openAPIV1AccountSchemas() map[string]any {
 		"UserPreferences": map[string]any{
 			"type": "object",
 			"properties": map[string]any{
-				"default_locale": map[string]any{"type": "string"},
+				"default_locale":          map[string]any{"type": "string"},
+				"dismissed_onboarding_at": map[string]any{"type": "string", "format": "date-time"},
+			},
+		},
+		"OnboardingStep": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"key":         map[string]any{"type": "string", "enum": []string{"create_site", "verify_tracking", "automatic_events", "invite_teammate", "schedule_report"}},
+				"complete":    map[string]any{"type": "boolean"},
+				"current":     map[string]any{"type": "integer"},
+				"target":      map[string]any{"type": "integer"},
+				"site_id":     map[string]any{"type": "string", "format": "uuid"},
+				"site_domain": map[string]any{"type": "string"},
+			},
+		},
+		"UserOnboarding": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"dismissed": map[string]any{"type": "boolean"},
+				"complete":  map[string]any{"type": "boolean"},
+				"steps":     map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/OnboardingStep"}},
 			},
 		},
 		"AuthSession": map[string]any{

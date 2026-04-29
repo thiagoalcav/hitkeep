@@ -84,6 +84,14 @@ func openAPIV1AdminSitePaths() map[string]any {
 					"403": errResp("Forbidden"),
 				}),
 		},
+		"/api/admin/system/activation": map[string]any{
+			"get": op([]string{"Admin"}, "List user activation", "Owner-only operational activation view for teams and sites. Returns setup status, aggregate hit/event counts, owner email, plan, and timestamps without visitor-level details.", secCookie(), activationQueryParams(), nil,
+				map[string]any{
+					"200": jsonRefResp("Activation rows", "#/components/schemas/SystemActivationResponse"),
+					"400": errResp("Invalid activation filter"),
+					"403": errResp("Forbidden"),
+				}),
+		},
 		"/api/admin/users": map[string]any{
 			"get": op([]string{"Admin"}, "List users", "Lists users for admin management.", secCookie(), nil, nil, map[string]any{"200": jsonSchemaResp("User list", map[string]any{"type": "array", "items": map[string]any{"type": "object", "additionalProperties": true}})}),
 		},
@@ -147,6 +155,13 @@ func openAPIV1AdminSitePaths() map[string]any {
 		},
 		"/api/sites/{id}": map[string]any{
 			"delete": op([]string{"Sites"}, "Delete site", "Deletes a site and associated analytics data.", secCookie(), []any{paramRef("#/components/parameters/siteID")}, nil, map[string]any{"200": jsonRefResp("Status", "#/components/schemas/Status")}),
+		},
+		"/api/sites/{id}/tracking/status": map[string]any{
+			"get": op([]string{"Sites"}, "Get tracking status", "Returns privacy-safe operational tracking metadata for a site, including live/waiting/dormant/domain-mismatch status and the latest accepted tracker source.", secCookie(), []any{paramRef("#/components/parameters/siteID")}, nil,
+				map[string]any{
+					"200": jsonRefResp("Tracking status", "#/components/schemas/SiteTrackingStatus"),
+					"404": errResp("Site not found"),
+				}),
 		},
 		"/api/sites/{id}/stats": map[string]any{
 			"get": op([]string{"Sites"}, "Get site stats", "Aggregated site metrics and charts.", secAnyAuth(), []any{
@@ -413,6 +428,18 @@ func openAPIV1AdminSitePaths() map[string]any {
 		"/api/share/{token}/sites/{id}/funnels/{funnelID}/stats": map[string]any{
 			"get": op([]string{"Share"}, "Shared funnel stats", "Returns funnel stats through share token.", nil, []any{paramRef("#/components/parameters/token"), paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/funnelID"), paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to")}, nil, map[string]any{"200": jsonRefResp("Funnel stats", "#/components/schemas/FunnelStats")}),
 		},
+	}
+}
+
+func activationQueryParams() []any {
+	return []any{
+		map[string]any{"name": "status", "in": "query", "schema": map[string]any{"type": "string", "enum": []string{"waiting", "live", "dormant", "domain_mismatch"}}},
+		map[string]any{"name": "team", "in": "query", "schema": map[string]any{"type": "string"}},
+		map[string]any{"name": "domain", "in": "query", "schema": map[string]any{"type": "string"}},
+		map[string]any{"name": "last_seen_from", "in": "query", "schema": map[string]any{"type": "string", "format": "date-time"}},
+		map[string]any{"name": "last_seen_to", "in": "query", "schema": map[string]any{"type": "string", "format": "date-time"}},
+		paramRef("#/components/parameters/limit"),
+		paramRef("#/components/parameters/offset"),
 	}
 }
 

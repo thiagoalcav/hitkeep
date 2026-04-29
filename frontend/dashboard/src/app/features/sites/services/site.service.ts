@@ -5,6 +5,25 @@ import { Site } from '@models/analytics.types';
 
 const LAST_SITE_KEY = 'hk_last_site_id';
 
+export type TrackingStatusState = 'waiting' | 'live' | 'dormant' | 'domain_mismatch';
+
+export interface SiteTrackingStatus {
+    site_id: string;
+    tenant_id: string;
+    status: TrackingStatusState;
+    first_hit_at?: string;
+    last_hit_at?: string;
+    last_event_at?: string;
+    last_hostname?: string;
+    last_event_name?: string;
+    last_automatic_event_at?: string;
+    last_automatic_event_name?: string;
+    tracker_source?: string;
+    tracker_version?: string;
+    configured_domain: string;
+    updated_at?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SiteService {
     private http = inject(HttpClient);
@@ -66,5 +85,9 @@ export class SiteService {
                 }
             })
         );
+    }
+
+    getTrackingStatus(siteId: string) {
+        return this.http.get<SiteTrackingStatus>(`/api/sites/${siteId}/tracking/status`);
     }
 }

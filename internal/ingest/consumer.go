@@ -32,10 +32,22 @@ func NewConsumer(tenantMgr *database.TenantStoreManager, logger *slog.Logger, le
 		logLevel:  level,
 	}
 	consumer.hitBatcher = newStoreBatcher("hit", logger, ingestBatchSize, ingestBatchFlushInterval, ingestPersistTimeout, func(store *database.Store, ctx context.Context, hits []*api.Hit) error {
-		return store.CreateHitsBulk(ctx, hits)
+		if err := store.CreateHitsBulk(ctx, hits); err != nil {
+			return err
+		}
+		if err := tenantMgr.Shared().RecordHitActivity(ctx, hits); err != nil {
+			logger.Warn("Failed to record hit activity summary after tenant persistence", "count", len(hits), "error", err)
+		}
+		return nil
 	})
 	consumer.eventBatcher = newStoreBatcher("event", logger, ingestBatchSize, ingestBatchFlushInterval, ingestPersistTimeout, func(store *database.Store, ctx context.Context, events []*api.Event) error {
-		return store.CreateEventsBulk(ctx, events)
+		if err := store.CreateEventsBulk(ctx, events); err != nil {
+			return err
+		}
+		if err := tenantMgr.Shared().RecordEventActivity(ctx, events); err != nil {
+			logger.Warn("Failed to record event activity summary after tenant persistence", "count", len(events), "error", err)
+		}
+		return nil
 	})
 	return consumer
 }

@@ -147,11 +147,14 @@
             "close": "Close",
             "downloadXlsx": "Download XLSX",
             "exportCsv": "Export CSV",
+            "open": "Open",
             "refresh": "Refresh",
             "save": "Save"
         },
         "yes": "Yes",
         "no": "No",
+        "previous": "Previous",
+        "next": "Next",
         "enabled": "Enabled",
         "disabled": "Disabled",
         "unknown": "Unknown",
@@ -291,6 +294,27 @@
             "teamDescription": "Create the first site in {{team}} to start collecting analytics data for this team.",
             "getTrackingCode": "Get tracking code",
             "createSite": "Create site"
+        },
+        "onboarding": {
+            "title": "Installation checklist",
+            "description": "A state-driven path from signup to the first verified data point.",
+            "progress": "{{complete}} of {{total}} complete",
+            "dismiss": "Dismiss checklist",
+            "done": "Complete",
+            "steps": {
+                "create_site": "Create first site",
+                "verify_tracking": "Receive first hit",
+                "automatic_events": "Confirm automatic events",
+                "invite_teammate": "Invite a teammate",
+                "schedule_report": "Schedule email report"
+            },
+            "actions": {
+                "create_site": "Create site",
+                "verify_tracking": "Verify tracking",
+                "automatic_events": "Open tracking",
+                "invite_teammate": "Invite",
+                "schedule_report": "Schedule"
+            }
         }
     },
     "goals": {
@@ -862,7 +886,29 @@
             "formTrackingLabel": "Track form submissions",
             "formTrackingDescription": "Send form_submit for browser-observed form submissions without capturing form values.",
             "htmlLabel": "HTML",
-            "copyCode": "Copy code"
+            "copyCode": "Copy code",
+            "verifier": {
+                "title": "Live tracking verifier",
+                "description": "Confirm that this site is receiving operational tracking signals.",
+                "status": {
+                    "waiting": "Waiting",
+                    "live": "Live",
+                    "dormant": "Dormant",
+                    "domain_mismatch": "Domain mismatch"
+                },
+                "waitingHint": "Waiting for the first accepted hit. This panel refreshes automatically for two minutes.",
+                "mismatchHint": "The latest detected hostname does not match this site's configured domain.",
+                "fields": {
+                    "firstHit": "First hit",
+                    "lastHit": "Last hit",
+                    "lastEvent": "Last event",
+                    "detectedHostname": "Detected hostname",
+                    "automaticEvent": "Last automatic event",
+                    "tracker": "Tracker",
+                    "updated": "Updated"
+                },
+                "empty": "Not seen yet"
+            }
         }
     },
     "admin": {
@@ -1326,6 +1372,7 @@
                     "runtime": "Runtime",
                     "operations": "Operations",
                     "access": "Access",
+                    "activation": "Activation",
                     "audit": "Audit"
                 },
                 "status": {
@@ -1348,6 +1395,43 @@
                 "teamsDescription": "Team containers and their operational status.",
                 "auditDescription": "Append-only activity for sensitive instance operations.",
                 "settingsSubtitle": "Manage instance users, sites, teams, and global filters."
+            },
+            "activation": {
+                "title": "User activation",
+                "subtitle": "See which teams and sites are live, waiting, dormant, or stuck without inspecting tenant data.",
+                "empty": "No activation rows match the current filters.",
+                "copySuccess": "Support context copied.",
+                "copyError": "Support context could not be copied.",
+                "pagination": "Showing {{loaded}} of {{total}} rows",
+                "filters": {
+                    "anyStatus": "Any status",
+                    "team": "Filter team",
+                    "domain": "Filter domain"
+                },
+                "metrics": {
+                    "liveSites": "Live loaded sites",
+                    "loadedRows": "Loaded rows",
+                    "totalRows": "Total rows"
+                },
+                "columns": {
+                    "team": "Team",
+                    "lastHit": "Last hit",
+                    "lastEvent": "Last event",
+                    "hits24h": "Hits 24h",
+                    "hits7d": "Hits 7d",
+                    "events7d": "Events 7d"
+                },
+                "status": {
+                    "waiting": "Waiting",
+                    "live": "Live",
+                    "dormant": "Dormant",
+                    "domain_mismatch": "Domain mismatch"
+                },
+                "actions": {
+                    "filterTeam": "Filter to this team",
+                    "copyContext": "Copy support context",
+                    "openTeam": "Open team admin"
+                }
             }
         }
     },

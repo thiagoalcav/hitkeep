@@ -147,9 +147,12 @@
             "close": "Fermer",
             "downloadXlsx": "Télécharger XLSX",
             "exportCsv": "Exporter CSV",
+            "open": "Ouvrir",
             "refresh": "Actualiser",
             "save": "Enregistrer"
         },
+        "previous": "Précédent",
+        "next": "Suivant",
         "saved": "Enregistré",
         "saveFailed": "Échec de l'enregistrement. Veuillez réessayer.",
         "loading": "Chargement...",
@@ -291,6 +294,27 @@
             "teamDescription": "Créez le premier site dans {{team}} pour commencer à collecter des données analytiques pour cette équipe.",
             "getTrackingCode": "Obtenir le code de suivi",
             "createSite": "Créer un site"
+        },
+        "onboarding": {
+            "title": "Checklist d’installation",
+            "description": "Un parcours piloté par l’état, de l’inscription au premier point de données vérifié.",
+            "progress": "{{complete}} sur {{total}} terminé",
+            "dismiss": "Masquer la checklist",
+            "done": "Terminé",
+            "steps": {
+                "create_site": "Créer le premier site",
+                "verify_tracking": "Recevoir le premier hit",
+                "automatic_events": "Confirmer les événements automatiques",
+                "invite_teammate": "Inviter un coéquipier",
+                "schedule_report": "Planifier un rapport e-mail"
+            },
+            "actions": {
+                "create_site": "Créer un site",
+                "verify_tracking": "Vérifier le suivi",
+                "automatic_events": "Ouvrir le suivi",
+                "invite_teammate": "Inviter",
+                "schedule_report": "Planifier"
+            }
         }
     },
     "goals": {
@@ -862,7 +886,29 @@
             "formTrackingLabel": "Suivre les soumissions de formulaires",
             "formTrackingDescription": "Envoie form_submit pour les soumissions de formulaires observées par le navigateur sans capturer les valeurs du formulaire.",
             "htmlLabel": "HTML",
-            "copyCode": "Copier le code"
+            "copyCode": "Copier le code",
+            "verifier": {
+                "title": "Vérificateur de suivi live",
+                "description": "Confirme que ce site reçoit des signaux opérationnels de suivi.",
+                "status": {
+                    "waiting": "En attente",
+                    "live": "Live",
+                    "dormant": "Dormant",
+                    "domain_mismatch": "Domaine différent"
+                },
+                "waitingHint": "En attente du premier hit accepté. Ce panneau s’actualise automatiquement pendant deux minutes.",
+                "mismatchHint": "Le dernier nom d’hôte détecté ne correspond pas au domaine configuré pour ce site.",
+                "fields": {
+                    "firstHit": "Premier hit",
+                    "lastHit": "Dernier hit",
+                    "lastEvent": "Dernier événement",
+                    "detectedHostname": "Nom d’hôte détecté",
+                    "automaticEvent": "Dernier événement automatique",
+                    "tracker": "Tracker",
+                    "updated": "Mis à jour"
+                },
+                "empty": "Pas encore vu"
+            }
         }
     },
     "admin": {
@@ -1326,6 +1372,7 @@
                     "runtime": "Exécution",
                     "operations": "Opérations",
                     "access": "Accès",
+                    "activation": "Activation",
                     "audit": "Audit"
                 },
                 "status": {
@@ -1348,6 +1395,43 @@
                 "teamsDescription": "Conteneurs d’équipe et leur état opérationnel.",
                 "auditDescription": "Activité append-only pour les opérations sensibles de l’instance.",
                 "settingsSubtitle": "Gérez les utilisateurs, sites, équipes et filtres globaux de l’instance."
+            },
+            "activation": {
+                "title": "Activation utilisateur",
+                "subtitle": "Voyez quelles équipes et quels sites sont live, en attente, dormants ou bloqués sans inspecter les données tenant.",
+                "empty": "Aucune ligne d’activation ne correspond aux filtres actuels.",
+                "copySuccess": "Contexte support copié.",
+                "copyError": "Impossible de copier le contexte support.",
+                "pagination": "{{loaded}} lignes sur {{total}} affichées",
+                "filters": {
+                    "anyStatus": "Tout statut",
+                    "team": "Filtrer l’équipe",
+                    "domain": "Filtrer le domaine"
+                },
+                "metrics": {
+                    "liveSites": "Sites live chargés",
+                    "loadedRows": "Lignes chargées",
+                    "totalRows": "Total lignes"
+                },
+                "columns": {
+                    "team": "Équipe",
+                    "lastHit": "Dernier hit",
+                    "lastEvent": "Dernier événement",
+                    "hits24h": "Hits 24h",
+                    "hits7d": "Hits 7j",
+                    "events7d": "Événements 7j"
+                },
+                "status": {
+                    "waiting": "En attente",
+                    "live": "Live",
+                    "dormant": "Dormant",
+                    "domain_mismatch": "Domaine différent"
+                },
+                "actions": {
+                    "filterTeam": "Filtrer sur cette équipe",
+                    "copyContext": "Copier le contexte support",
+                    "openTeam": "Ouvrir l’admin équipe"
+                }
             }
         }
     },

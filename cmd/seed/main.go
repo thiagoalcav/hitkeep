@@ -180,6 +180,8 @@ func main() {
 	stats.hits += aiSeedStats.hits
 	stats.sessions += aiSeedStats.sessions
 
+	seedActivationFixtures(ctx, store, userID, siteID)
+
 	slog.Info("Running rollup backfill...")
 	rollupWorker := worker.NewRollupBackfillWorker(tenantMgr)
 	if err := rollupWorker.Run(ctx); err != nil {

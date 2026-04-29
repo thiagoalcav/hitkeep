@@ -28,6 +28,7 @@ const (
 	PermInstanceViewAllSites         Permission = "instance.view_all_sites"
 	PermInstanceManageSettings       Permission = "instance.manage_settings"
 	PermInstanceViewSystem           Permission = "instance.view_system"
+	PermInstanceViewActivation       Permission = "instance.view_activation"
 	PermInstanceManageSystem         Permission = "instance.manage_system"
 	PermInstanceRunMaintenance       Permission = "instance.run_maintenance"
 	PermInstanceViewAudit            Permission = "instance.view_audit"
@@ -49,6 +50,7 @@ var instancePermissions = map[InstanceRole][]Permission{
 		PermInstanceViewAllSites,
 		PermInstanceManageSettings,
 		PermInstanceViewSystem,
+		PermInstanceViewActivation,
 		PermInstanceManageSystem,
 		PermInstanceRunMaintenance,
 		PermInstanceViewAudit,

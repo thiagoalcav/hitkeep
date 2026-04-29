@@ -26,6 +26,8 @@ var faviconProxyTransport = newFaviconProxyTransport(5 * time.Second)
 
 func Register(mux *http.ServeMux, ctx *shared.Context) {
 	h := &handler{ctx: ctx}
+	requireExclusionAccess := ctx.RequireSiteOrInstancePermission(authcore.PermSiteManageData, authcore.PermInstanceManageSiteExclusions)
+
 	mux.HandleFunc("GET /api/sites", ctx.Handler(shared.HandlerConfig{
 		RequireAuth: true,
 		AllowAPIKey: true,
@@ -79,17 +81,20 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleTransferSiteTeam()))
 	mux.HandleFunc("GET /api/sites/{id}/exclusions", ctx.Handler(shared.HandlerConfig{
-		SitePerm:    authcore.PermSiteManageData,
+		RequireAuth: true,
+		AllowAPIKey: true,
 		RateLimiter: ctx.ApiLimiter,
-	}, h.handleListSiteExclusions()))
+	}, requireExclusionAccess(h.handleListSiteExclusions())))
 	mux.HandleFunc("POST /api/sites/{id}/exclusions", ctx.Handler(shared.HandlerConfig{
-		SitePerm:    authcore.PermSiteManageData,
+		RequireAuth: true,
+		AllowAPIKey: true,
 		RateLimiter: ctx.ApiLimiter,
-	}, h.handleCreateSiteExclusion()))
+	}, requireExclusionAccess(h.handleCreateSiteExclusion())))
 	mux.HandleFunc("DELETE /api/sites/{id}/exclusions/{ruleID}", ctx.Handler(shared.HandlerConfig{
-		SitePerm:    authcore.PermSiteManageData,
+		RequireAuth: true,
+		AllowAPIKey: true,
 		RateLimiter: ctx.ApiLimiter,
-	}, h.handleDeleteSiteExclusion()))
+	}, requireExclusionAccess(h.handleDeleteSiteExclusion())))
 }
 
 var domainRegex = regexp.MustCompile(`^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$`)

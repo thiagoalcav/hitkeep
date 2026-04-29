@@ -203,6 +203,19 @@ func TestOpenAPISpecV1IncludesAdminSystemPaths(t *testing.T) {
 		t.Fatalf("expected mail test description to mention real test email, got %q", postOp["description"])
 	}
 
+	ingestPath := requireMap(t, paths, "/api/admin/system/ingest")
+	ingestOp := requireMap(t, ingestPath, "get")
+	if !strings.Contains(ingestOp["description"].(string), "tenant analytics databases") {
+		t.Fatalf("expected ingest description to mention tenant databases, got %q", ingestOp["description"])
+	}
+
+	auditPath := requireMap(t, paths, "/api/admin/system/audit")
+	auditOp := requireMap(t, auditPath, "get")
+	auditResponses := requireMap(t, auditOp, "responses")
+	if _, ok := auditResponses["400"]; !ok {
+		t.Fatalf("expected audit list to document invalid filter response")
+	}
+
 	auditExportPath := requireMap(t, paths, "/api/admin/system/audit/export")
 	getOp := requireMap(t, auditExportPath, "get")
 	params, ok := getOp["parameters"].([]any)
@@ -211,6 +224,16 @@ func TestOpenAPISpecV1IncludesAdminSystemPaths(t *testing.T) {
 	}
 	if !hasNamedParam(params, "format") {
 		t.Fatalf("expected audit export to include format parameter")
+	}
+	if !hasNamedParam(params, "limit") {
+		t.Fatalf("expected audit export to include limit parameter")
+	}
+	exportResponses := requireMap(t, getOp, "responses")
+	if _, ok := exportResponses["400"]; !ok {
+		t.Fatalf("expected audit export to document invalid filter response")
+	}
+	if _, ok := exportResponses["403"]; !ok {
+		t.Fatalf("expected audit export to document owner-only response")
 	}
 }
 

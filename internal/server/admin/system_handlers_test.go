@@ -139,6 +139,22 @@ func TestHandleGetSystem(t *testing.T) {
 	}
 }
 
+func TestShortBuildRevision(t *testing.T) {
+	tests := map[string]string{
+		"":             "",
+		"abc":          "abc",
+		"12345678":     "12345678",
+		"123456789abc": "12345678",
+		"  abcdefghij": "abcdefgh",
+	}
+
+	for input, want := range tests {
+		if got := shortBuildRevision(input); got != want {
+			t.Fatalf("shortBuildRevision(%q) = %q, want %q", input, got, want)
+		}
+	}
+}
+
 func featureStatusByKey(features []api.SystemFeatureStatus) map[string]api.SystemFeatureStatus {
 	byKey := make(map[string]api.SystemFeatureStatus, len(features))
 	for _, feature := range features {
@@ -186,6 +202,14 @@ func TestHandleGetStorage(t *testing.T) {
 	if storage.SharedDBBytes <= 0 {
 		t.Fatalf("expected positive shared_db_bytes, got %d", storage.SharedDBBytes)
 	}
+	if _, _, err := filesystemUsage(h.ctx.Config.DataPath); err == nil {
+		if storage.DiskTotal <= 0 {
+			t.Fatalf("expected positive disk_total_bytes, got %d", storage.DiskTotal)
+		}
+		if storage.DiskAvailable <= 0 {
+			t.Fatalf("expected positive disk_available_bytes, got %d", storage.DiskAvailable)
+		}
+	}
 }
 
 func TestHandleGetIngestStats(t *testing.T) {
@@ -205,6 +229,67 @@ func TestHandleGetIngestStats(t *testing.T) {
 	// Should have zero values but not error
 	if stats.RecentHits < 0 {
 		t.Fatalf("unexpected negative hits: %d", stats.RecentHits)
+	}
+}
+
+func TestHandleGetIngestStatsAggregatesTenantStores(t *testing.T) {
+	h, store, tenantStores, ownerID, _, _ := setupSystemTestEnv(t)
+	ctx := context.Background()
+
+	team, err := store.CreateTenant(ctx, ownerID, "Tenant Ingest", "")
+	if err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+	if err := store.SetActiveTenantID(ctx, ownerID, team.ID); err != nil {
+		t.Fatalf("set active tenant: %v", err)
+	}
+	site, err := store.CreateSite(ctx, ownerID, "tenant-ingest.test")
+	if err != nil {
+		t.Fatalf("create tenant site: %v", err)
+	}
+
+	tenantStore, _, err := tenantStores.ResolveSiteStore(ctx, site.ID)
+	if err != nil {
+		t.Fatalf("resolve tenant store: %v", err)
+	}
+	now := time.Now().UTC()
+	if err := tenantStore.CreateHit(ctx, &api.Hit{
+		ID:        uuid.New(),
+		SiteID:    site.ID,
+		SessionID: uuid.New(),
+		PageID:    uuid.New(),
+		Timestamp: now,
+		Path:      "/tenant",
+	}); err != nil {
+		t.Fatalf("create tenant hit: %v", err)
+	}
+	if err := tenantStore.CreateEvent(ctx, &api.Event{
+		ID:         uuid.New(),
+		SiteID:     site.ID,
+		SessionID:  uuid.New(),
+		Name:       "tenant.event",
+		Properties: map[string]any{"scope": "tenant"},
+		Timestamp:  now,
+	}); err != nil {
+		t.Fatalf("create tenant event: %v", err)
+	}
+
+	req := withAdminTestUser(httptest.NewRequest(http.MethodGet, "/api/admin/system/ingest", nil), ownerID)
+	w := httptest.NewRecorder()
+	h.handleGetIngestStats().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var stats api.SystemIngestStats
+	if err := json.NewDecoder(w.Body).Decode(&stats); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if stats.RecentHits < 1 {
+		t.Fatalf("expected tenant hit to be counted, got %d", stats.RecentHits)
+	}
+	if stats.RecentEvents < 1 {
+		t.Fatalf("expected tenant event to be counted, got %d", stats.RecentEvents)
 	}
 }
 
@@ -377,6 +462,35 @@ func TestHandleExportAuditJSON(t *testing.T) {
 	}
 }
 
+func TestHandleAuditRejectsInvalidFilters(t *testing.T) {
+	h, _, _, ownerID, _, _ := setupSystemTestEnv(t)
+
+	tests := []struct {
+		name   string
+		path   string
+		handle http.HandlerFunc
+	}{
+		{name: "list actor", path: "/api/admin/system/audit?actor_id=not-a-uuid", handle: h.handleListAudit()},
+		{name: "list from", path: "/api/admin/system/audit?from=not-a-date", handle: h.handleListAudit()},
+		{name: "list to", path: "/api/admin/system/audit?to=not-a-date", handle: h.handleListAudit()},
+		{name: "list offset", path: "/api/admin/system/audit?offset=-1", handle: h.handleListAudit()},
+		{name: "export actor", path: "/api/admin/system/audit/export?actor_id=not-a-uuid", handle: h.handleExportAudit()},
+		{name: "export from", path: "/api/admin/system/audit/export?from=not-a-date", handle: h.handleExportAudit()},
+		{name: "export limit", path: "/api/admin/system/audit/export?limit=-1", handle: h.handleExportAudit()},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := withAdminTestUser(httptest.NewRequest(http.MethodGet, tc.path, nil), ownerID)
+			w := httptest.NewRecorder()
+			tc.handle.ServeHTTP(w, req)
+			if w.Code != http.StatusBadRequest {
+				t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+			}
+		})
+	}
+}
+
 func TestHandleAuditAppendsAndListsEntries(t *testing.T) {
 	h, store, _, ownerID, _, _ := setupSystemTestEnv(t)
 	ctx := context.Background()
@@ -420,6 +534,30 @@ func TestHandleAuditAppendsAndListsEntries(t *testing.T) {
 
 	_ = ctx
 	_ = store
+}
+
+func TestHandleExportAuditHonorsLimit(t *testing.T) {
+	h, _, _, ownerID, _, _ := setupSystemTestEnv(t)
+
+	req := withAdminTestUser(httptest.NewRequest(http.MethodGet, "/api/admin/system", nil), ownerID)
+	h.appendAudit(req, "export.limit", "system", "1", "First", "success", "Export limit test")
+	h.appendAudit(req, "export.limit", "system", "2", "Second", "success", "Export limit test")
+	h.appendAudit(req, "export.limit", "system", "3", "Third", "success", "Export limit test")
+
+	exportReq := withAdminTestUser(httptest.NewRequest(http.MethodGet, "/api/admin/system/audit/export?action=export.limit&limit=2", nil), ownerID)
+	w := httptest.NewRecorder()
+	h.handleExportAudit().ServeHTTP(w, exportReq)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var entries []api.InstanceAuditEntry
+	if err := json.NewDecoder(w.Body).Decode(&entries); err != nil {
+		t.Fatalf("decode export: %v", err)
+	}
+	if len(entries) != 2 {
+		t.Fatalf("expected 2 exported entries, got %d", len(entries))
+	}
 }
 
 func TestHandleExportAuditCSV(t *testing.T) {

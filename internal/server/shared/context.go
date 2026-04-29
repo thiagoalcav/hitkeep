@@ -146,18 +146,11 @@ func (c *Context) RequirePermission(perm auth.Permission) func(http.HandlerFunc)
 				return
 			}
 
-			instanceRole := auth.InstanceUser
-			if userID != uuid.Nil {
-				var err error
-				instanceRole, err = c.Store.GetInstanceRole(r.Context(), userID)
-				if err != nil {
-					slog.Error("Failed to get instance role", "error", err)
-					http.Error(w, "Internal error", http.StatusInternalServerError)
-					return
-				}
-			}
-			if apiClientAuth != nil {
-				instanceRole = auth.MinInstanceRole(instanceRole, apiClientAuth.InstanceRole)
+			instanceRole, err := c.resolveInstanceRole(r.Context(), userID, apiClientAuth)
+			if err != nil {
+				slog.Error("Failed to get instance role", "error", err)
+				http.Error(w, "Internal error", http.StatusInternalServerError)
+				return
 			}
 
 			// Check instance-level permission.
@@ -172,39 +165,16 @@ func (c *Context) RequirePermission(perm auth.Permission) func(http.HandlerFunc)
 
 			// For site-level permissions, check site role.
 			if strings.HasPrefix(string(perm), "site.") {
-				siteIDStr := r.PathValue("id")
-				if siteIDStr == "" {
-					http.Error(w, "Site ID required", http.StatusBadRequest)
-					return
-				}
-
-				siteID, err := uuid.Parse(siteIDStr)
+				siteID, err := siteIDFromRequest(r)
 				if err != nil {
-					http.Error(w, "Invalid site ID", http.StatusBadRequest)
+					http.Error(w, err.Error(), http.StatusBadRequest)
 					return
 				}
 
-				var siteRole auth.SiteRole
-				if userID != uuid.Nil {
-					var err error
-					siteRole, err = c.Store.GetSiteRole(r.Context(), userID, siteID)
-					if err != nil {
-						http.Error(w, "Access denied", http.StatusForbidden)
-						return
-					}
-				}
-
-				if apiClientAuth != nil {
-					delegatedRole, ok := apiClientAuth.SiteRoles[siteID]
-					if !ok {
-						http.Error(w, "Forbidden", http.StatusForbidden)
-						return
-					}
-					if userID == uuid.Nil {
-						siteRole = delegatedRole
-					} else {
-						siteRole = auth.MinSiteRole(siteRole, delegatedRole)
-					}
+				siteRole, err := c.resolveSiteRole(r.Context(), userID, apiClientAuth, siteID)
+				if err != nil {
+					http.Error(w, "Access denied", http.StatusForbidden)
+					return
 				}
 
 				if siteRole.HasPermission(perm) {
@@ -221,6 +191,117 @@ func (c *Context) RequirePermission(perm auth.Permission) func(http.HandlerFunc)
 			http.Error(w, "Forbidden", http.StatusForbidden)
 		}
 	}
+}
+
+// RequireSiteOrInstancePermission allows route-specific exceptions where a site
+// permission can also be satisfied by a narrow instance-level permission.
+func (c *Context) RequireSiteOrInstancePermission(sitePerm, instancePerm auth.Permission) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			userID := GetUserIDFromContext(r)
+			apiClientAuth, _ := r.Context().Value(APIClientAuthKey).(*database.APIClientAuth)
+			if userID == uuid.Nil && apiClientAuth == nil {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			instanceRole, err := c.resolveInstanceRole(r.Context(), userID, apiClientAuth)
+			if err != nil {
+				slog.Error("Failed to get instance role", "error", err)
+				http.Error(w, "Internal error", http.StatusInternalServerError)
+				return
+			}
+
+			if instancePerm != "" && instanceRole.HasPermission(instancePerm) {
+				ctx := context.WithValue(r.Context(), PermissionKey, PermissionContext{
+					UserID:       userID,
+					InstanceRole: instanceRole,
+				})
+				next(w, r.WithContext(ctx))
+				return
+			}
+
+			if sitePerm != "" {
+				siteID, err := siteIDFromRequest(r)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				siteRole, err := c.resolveSiteRole(r.Context(), userID, apiClientAuth, siteID)
+				if err != nil {
+					http.Error(w, "Access denied", http.StatusForbidden)
+					return
+				}
+
+				if siteRole.HasPermission(sitePerm) {
+					ctx := context.WithValue(r.Context(), PermissionKey, PermissionContext{
+						UserID:       userID,
+						InstanceRole: instanceRole,
+						SiteRole:     siteRole,
+					})
+					next(w, r.WithContext(ctx))
+					return
+				}
+			}
+
+			http.Error(w, "Forbidden", http.StatusForbidden)
+		}
+	}
+}
+
+func (c *Context) resolveInstanceRole(ctx context.Context, userID uuid.UUID, apiClientAuth *database.APIClientAuth) (auth.InstanceRole, error) {
+	instanceRole := auth.InstanceUser
+	if userID != uuid.Nil {
+		var err error
+		instanceRole, err = c.Store.GetInstanceRole(ctx, userID)
+		if err != nil {
+			return auth.InstanceUser, err
+		}
+	}
+	if apiClientAuth != nil {
+		instanceRole = auth.MinInstanceRole(instanceRole, apiClientAuth.InstanceRole)
+	}
+	return instanceRole, nil
+}
+
+func (c *Context) resolveSiteRole(ctx context.Context, userID uuid.UUID, apiClientAuth *database.APIClientAuth, siteID uuid.UUID) (auth.SiteRole, error) {
+	var siteRole auth.SiteRole
+	if userID != uuid.Nil {
+		var err error
+		siteRole, err = c.Store.GetSiteRole(ctx, userID, siteID)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	if apiClientAuth != nil {
+		delegatedRole, ok := apiClientAuth.SiteRoles[siteID]
+		if !ok {
+			return "", fmt.Errorf("api client is not allowed for site %s", siteID)
+		}
+		if userID == uuid.Nil {
+			siteRole = delegatedRole
+		} else {
+			siteRole = auth.MinSiteRole(siteRole, delegatedRole)
+		}
+	}
+
+	return siteRole, nil
+}
+
+func siteIDFromRequest(r *http.Request) (uuid.UUID, error) {
+	siteIDStr := r.PathValue("id")
+	if siteIDStr == "" {
+		return uuid.Nil, fmt.Errorf("site ID required")
+	}
+
+	siteID, err := uuid.Parse(siteIDStr)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("invalid site ID")
+	}
+
+	return siteID, nil
 }
 
 // RequireAuth wraps a handler and ensures the user is authenticated.

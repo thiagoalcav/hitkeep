@@ -34,7 +34,7 @@ func openAPIV1AdminSitePaths() map[string]any {
 				map[string]any{"200": jsonRefResp("System storage", "#/components/schemas/SystemStorage")}),
 		},
 		"/api/admin/system/ingest": map[string]any{
-			"get": op([]string{"Admin"}, "Get ingest volume", "Returns recent hit, event, rejection, spam, and hit-rate counters for the instance.", secCookie(), nil, nil,
+			"get": op([]string{"Admin"}, "Get ingest volume", "Returns recent hit, event, rejection, spam, and hit-rate counters across the instance, including tenant analytics databases.", secCookie(), nil, nil,
 				map[string]any{"200": jsonRefResp("System ingest stats", "#/components/schemas/SystemIngestStats")}),
 		},
 		"/api/admin/system/backups": map[string]any{
@@ -70,12 +70,19 @@ func openAPIV1AdminSitePaths() map[string]any {
 				}),
 		},
 		"/api/admin/system/audit": map[string]any{
-			"get": op([]string{"Admin"}, "List instance audit log", "Lists instance-level audit entries for system maintenance and admin operations.", secCookie(), instanceAuditQueryParams(false), nil,
-				map[string]any{"200": jsonRefResp("Instance audit entries", "#/components/schemas/InstanceAuditListResponse")}),
+			"get": op([]string{"Admin"}, "List instance audit log", "Lists instance-level audit entries for system maintenance and admin operations. Malformed actor, date, limit, and offset filters return 400.", secCookie(), instanceAuditQueryParams(false), nil,
+				map[string]any{
+					"200": jsonRefResp("Instance audit entries", "#/components/schemas/InstanceAuditListResponse"),
+					"400": errResp("Invalid audit filter"),
+				}),
 		},
 		"/api/admin/system/audit/export": map[string]any{
-			"get": op([]string{"Admin"}, "Export instance audit log", "Exports matching instance-level audit entries as JSON or CSV.", secCookie(), instanceAuditQueryParams(true), nil,
-				map[string]any{"200": desc("Audit export")}),
+			"get": op([]string{"Admin"}, "Export instance audit log", "Exports matching instance-level audit entries as JSON or CSV. The export limit defaults to 10000 rows and is capped at 50000 rows.", secCookie(), instanceAuditQueryParams(true), nil,
+				map[string]any{
+					"200": desc("Audit export"),
+					"400": errResp("Invalid audit filter"),
+					"403": errResp("Forbidden"),
+				}),
 		},
 		"/api/admin/users": map[string]any{
 			"get": op([]string{"Admin"}, "List users", "Lists users for admin management.", secCookie(), nil, nil, map[string]any{"200": jsonSchemaResp("User list", map[string]any{"type": "array", "items": map[string]any{"type": "object", "additionalProperties": true}})}),
@@ -286,14 +293,14 @@ func openAPIV1AdminSitePaths() map[string]any {
 				}),
 		},
 		"/api/sites/{id}/exclusions": map[string]any{
-			"get": op([]string{"Sites"}, "List site exclusions", "Lists per-site IP/CIDR exclusions used by ingest filtering.", secCookie(), []any{paramRef("#/components/parameters/siteID")}, nil,
+			"get": op([]string{"Sites"}, "List site exclusions", "Lists per-site IP/CIDR exclusions used by ingest filtering. Requires site data-control permission or the narrow instance site-exclusion permission.", secCookie(), []any{paramRef("#/components/parameters/siteID")}, nil,
 				map[string]any{"200": jsonSchemaResp("Site exclusions", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/IPExclusion"}})}),
-			"post": op([]string{"Sites"}, "Create site exclusion", "Creates per-site IP/CIDR exclusion rule.", secCookie(), []any{paramRef("#/components/parameters/siteID")},
+			"post": op([]string{"Sites"}, "Create site exclusion", "Creates per-site IP/CIDR exclusion rule. Requires site data-control permission or the narrow instance site-exclusion permission.", secCookie(), []any{paramRef("#/components/parameters/siteID")},
 				jsonBody(map[string]any{"$ref": "#/components/schemas/IPExclusionCreateRequest"}),
 				map[string]any{"201": jsonRefResp("Created exclusion", "#/components/schemas/IPExclusion"), "400": errResp("Invalid IP/CIDR")}),
 		},
 		"/api/sites/{id}/exclusions/{ruleID}": map[string]any{
-			"delete": op([]string{"Sites"}, "Delete site exclusion", "Deletes a per-site IP/CIDR exclusion rule.", secCookie(), []any{paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/ruleID")}, nil,
+			"delete": op([]string{"Sites"}, "Delete site exclusion", "Deletes a per-site IP/CIDR exclusion rule. Requires site data-control permission or the narrow instance site-exclusion permission.", secCookie(), []any{paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/ruleID")}, nil,
 				map[string]any{"204": desc("Deleted"), "404": errResp("Not found")}),
 		},
 
@@ -420,7 +427,10 @@ func instanceAuditQueryParams(includeFormat bool) []any {
 		map[string]any{"name": "query", "in": "query", "schema": map[string]any{"type": "string"}, "description": "Optional free-text search over action, actor, target, outcome, IP, request ID, and details."},
 	}
 	if includeFormat {
-		params = append(params, map[string]any{"name": "format", "in": "query", "schema": map[string]any{"type": "string", "enum": []string{"json", "csv"}}, "description": "Export format. Defaults to json."})
+		params = append(params,
+			map[string]any{"name": "format", "in": "query", "schema": map[string]any{"type": "string", "enum": []string{"json", "csv"}}, "description": "Export format. Defaults to json."},
+			map[string]any{"name": "limit", "in": "query", "schema": map[string]any{"type": "integer", "minimum": 1, "maximum": 50000}, "description": "Maximum number of exported rows. Defaults to 10000."},
+		)
 	} else {
 		params = append(params,
 			map[string]any{"name": "limit", "in": "query", "schema": map[string]any{"type": "integer", "minimum": 1, "maximum": 200}, "description": "Maximum number of rows to return."},

@@ -340,7 +340,7 @@ func TestSiteExclusionsAllowInstanceAdmin(t *testing.T) {
 	req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, adminID))
 	w := httptest.NewRecorder()
 
-	h.ctx.RequirePermission(auth.PermSiteManageData)(h.handleCreateSiteExclusion()).ServeHTTP(w, req)
+	h.ctx.RequireSiteOrInstancePermission(auth.PermSiteManageData, auth.PermInstanceManageSiteExclusions)(h.handleCreateSiteExclusion()).ServeHTTP(w, req)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("expected instance admin create status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
 	}
@@ -350,9 +350,19 @@ func TestSiteExclusionsAllowInstanceAdmin(t *testing.T) {
 	listReq = listReq.WithContext(context.WithValue(listReq.Context(), shared.UserIDKey, adminID))
 	listW := httptest.NewRecorder()
 
-	h.ctx.RequirePermission(auth.PermSiteManageData)(h.handleListSiteExclusions()).ServeHTTP(listW, listReq)
+	h.ctx.RequireSiteOrInstancePermission(auth.PermSiteManageData, auth.PermInstanceManageSiteExclusions)(h.handleListSiteExclusions()).ServeHTTP(listW, listReq)
 	if listW.Code != http.StatusOK {
 		t.Fatalf("expected instance admin list status %d, got %d: %s", http.StatusOK, listW.Code, listW.Body.String())
+	}
+
+	retentionReq := httptest.NewRequest(http.MethodPut, "/api/sites/"+site.ID.String()+"/retention", bytes.NewReader([]byte(`{"days":30}`)))
+	retentionReq.SetPathValue("id", site.ID.String())
+	retentionReq = retentionReq.WithContext(context.WithValue(retentionReq.Context(), shared.UserIDKey, adminID))
+	retentionW := httptest.NewRecorder()
+
+	h.ctx.RequirePermission(auth.PermSiteManageData)(h.handleUpdateSiteRetention()).ServeHTTP(retentionW, retentionReq)
+	if retentionW.Code != http.StatusForbidden {
+		t.Fatalf("expected instance admin retention status %d, got %d: %s", http.StatusForbidden, retentionW.Code, retentionW.Body.String())
 	}
 }
 
@@ -398,7 +408,7 @@ func TestSiteExclusionsAllowTeamAdminAndRejectUnscopedMember(t *testing.T) {
 	req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, adminID))
 	w := httptest.NewRecorder()
 
-	h.ctx.RequirePermission(auth.PermSiteManageData)(h.handleCreateSiteExclusion()).ServeHTTP(w, req)
+	h.ctx.RequireSiteOrInstancePermission(auth.PermSiteManageData, auth.PermInstanceManageSiteExclusions)(h.handleCreateSiteExclusion()).ServeHTTP(w, req)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("expected team admin create status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
 	}
@@ -408,7 +418,7 @@ func TestSiteExclusionsAllowTeamAdminAndRejectUnscopedMember(t *testing.T) {
 	listReq = listReq.WithContext(context.WithValue(listReq.Context(), shared.UserIDKey, adminID))
 	listW := httptest.NewRecorder()
 
-	h.ctx.RequirePermission(auth.PermSiteManageData)(h.handleListSiteExclusions()).ServeHTTP(listW, listReq)
+	h.ctx.RequireSiteOrInstancePermission(auth.PermSiteManageData, auth.PermInstanceManageSiteExclusions)(h.handleListSiteExclusions()).ServeHTTP(listW, listReq)
 	if listW.Code != http.StatusOK {
 		t.Fatalf("expected team admin list status %d, got %d: %s", http.StatusOK, listW.Code, listW.Body.String())
 	}
@@ -418,7 +428,7 @@ func TestSiteExclusionsAllowTeamAdminAndRejectUnscopedMember(t *testing.T) {
 	memberReq = memberReq.WithContext(context.WithValue(memberReq.Context(), shared.UserIDKey, memberID))
 	memberW := httptest.NewRecorder()
 
-	h.ctx.RequirePermission(auth.PermSiteManageData)(h.handleListSiteExclusions()).ServeHTTP(memberW, memberReq)
+	h.ctx.RequireSiteOrInstancePermission(auth.PermSiteManageData, auth.PermInstanceManageSiteExclusions)(h.handleListSiteExclusions()).ServeHTTP(memberW, memberReq)
 	if memberW.Code != http.StatusForbidden {
 		t.Fatalf("expected unscoped team member status %d, got %d: %s", http.StatusForbidden, memberW.Code, memberW.Body.String())
 	}

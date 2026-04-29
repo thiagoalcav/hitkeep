@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -37,13 +39,21 @@ func (h *handler) handleGetSystem() http.HandlerFunc {
 			info.Build = buildInfo.Main.Version
 			for _, setting := range buildInfo.Settings {
 				if setting.Key == "vcs.revision" {
-					info.Build = setting.Value[:8]
+					info.Build = shortBuildRevision(setting.Value)
 				}
 			}
 		}
 
 		writeJSON(w, http.StatusOK, info)
 	}
+}
+
+func shortBuildRevision(revision string) string {
+	revision = strings.TrimSpace(revision)
+	if len(revision) <= 8 {
+		return revision
+	}
+	return revision[:8]
 }
 
 func systemFeatureStatuses(cfg *config.Config, mailerConfigured bool) []api.SystemFeatureStatus {
@@ -148,7 +158,7 @@ func (h *handler) handleGetStorage() http.HandlerFunc {
 		if err == nil {
 			storage.TenantDBCount = len(tenants)
 			for i, t := range tenants {
-				tenantPath := fmt.Sprintf("%s/tenants/%s/hitkeep.db", cfg.DataPath, t.TenantID.String())
+				tenantPath := filepath.Join(cfg.DataPath, "tenants", t.TenantID.String(), "hitkeep.db")
 				tenants[i].Path = tenantPath
 				if fi, err := os.Stat(tenantPath); err == nil {
 					tenants[i].Bytes = fi.Size()
@@ -163,6 +173,20 @@ func (h *handler) handleGetStorage() http.HandlerFunc {
 		}
 		storage.SpamCachePath = spamCachePath
 
+		diskPath := strings.TrimSpace(cfg.DataPath)
+		if diskPath == "" && strings.TrimSpace(cfg.DBPath) != "" {
+			diskPath = filepath.Dir(cfg.DBPath)
+		}
+		if diskPath == "" {
+			diskPath = "."
+		}
+		if available, total, err := filesystemUsage(diskPath); err == nil {
+			storage.DiskAvailable = available
+			storage.DiskTotal = total
+		} else {
+			slog.Debug("Failed to read filesystem usage", "path", diskPath, "error", err)
+		}
+
 		writeJSON(w, http.StatusOK, storage)
 	}
 }
@@ -174,11 +198,22 @@ func (h *handler) handleGetIngestStats() http.HandlerFunc {
 
 		since := time.Now().UTC().Add(-24 * time.Hour)
 
-		if hits, err := h.ctx.Store.GetRecentHitsCount(ctx, since); err == nil {
-			stats.RecentHits = hits
-		}
-		if events, err := h.ctx.Store.GetRecentEventsCount(ctx, since); err == nil {
-			stats.RecentEvents = events
+		if h.ctx.TenantStores != nil {
+			counts, err := h.ctx.TenantStores.GetRecentIngestCounts(ctx, since)
+			if err == nil {
+				stats.RecentHits = counts.Hits
+				stats.RecentEvents = counts.Events
+			} else {
+				slog.Warn("Failed to read tenant ingest counts", "error", err)
+			}
+		} else {
+			counts, err := h.ctx.Store.GetRecentIngestCounts(ctx, since)
+			if err == nil {
+				stats.RecentHits = counts.Hits
+				stats.RecentEvents = counts.Events
+			} else {
+				slog.Warn("Failed to read ingest counts", "error", err)
+			}
 		}
 
 		if h.ctx.SystemCounters != nil {
@@ -297,42 +332,63 @@ func (h *handler) handleGetMail() http.HandlerFunc {
 	}
 }
 
+func parseInstanceAuditFilter(q url.Values, includeOffset bool) (database.InstanceAuditFilter, error) {
+	filter := database.InstanceAuditFilter{
+		Action:     strings.TrimSpace(q.Get("action")),
+		TargetType: strings.TrimSpace(q.Get("target_type")),
+		Outcome:    strings.TrimSpace(q.Get("outcome")),
+		Query:      strings.TrimSpace(q.Get("query")),
+	}
+
+	if actorIDStr := strings.TrimSpace(q.Get("actor_id")); actorIDStr != "" {
+		actorID, err := uuid.Parse(actorIDStr)
+		if err != nil {
+			return filter, fmt.Errorf("invalid actor_id")
+		}
+		filter.ActorID = actorID
+	}
+	if fromStr := strings.TrimSpace(q.Get("from")); fromStr != "" {
+		t, err := time.Parse(time.RFC3339, fromStr)
+		if err != nil {
+			return filter, fmt.Errorf("invalid from date, expected RFC3339")
+		}
+		filter.From = t
+	}
+	if toStr := strings.TrimSpace(q.Get("to")); toStr != "" {
+		t, err := time.Parse(time.RFC3339, toStr)
+		if err != nil {
+			return filter, fmt.Errorf("invalid to date, expected RFC3339")
+		}
+		filter.To = t
+	}
+	if limitStr := strings.TrimSpace(q.Get("limit")); limitStr != "" {
+		limit, err := strconv.Atoi(limitStr)
+		if err != nil || limit < 0 {
+			return filter, fmt.Errorf("invalid limit")
+		}
+		filter.Limit = limit
+	}
+	if includeOffset {
+		if offsetStr := strings.TrimSpace(q.Get("offset")); offsetStr != "" {
+			offset, err := strconv.Atoi(offsetStr)
+			if err != nil || offset < 0 {
+				return filter, fmt.Errorf("invalid offset")
+			}
+			filter.Offset = offset
+		}
+	}
+
+	return filter, nil
+}
+
 func (h *handler) handleListAudit() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		q := r.URL.Query()
 
-		filter := database.InstanceAuditFilter{
-			Action:     strings.TrimSpace(q.Get("action")),
-			TargetType: strings.TrimSpace(q.Get("target_type")),
-			Outcome:    strings.TrimSpace(q.Get("outcome")),
-			Query:      strings.TrimSpace(q.Get("query")),
-		}
-
-		if actorIDStr := strings.TrimSpace(q.Get("actor_id")); actorIDStr != "" {
-			if actorID, err := uuid.Parse(actorIDStr); err == nil {
-				filter.ActorID = actorID
-			}
-		}
-		if fromStr := strings.TrimSpace(q.Get("from")); fromStr != "" {
-			if t, err := time.Parse(time.RFC3339, fromStr); err == nil {
-				filter.From = t
-			}
-		}
-		if toStr := strings.TrimSpace(q.Get("to")); toStr != "" {
-			if t, err := time.Parse(time.RFC3339, toStr); err == nil {
-				filter.To = t
-			}
-		}
-		if limitStr := strings.TrimSpace(q.Get("limit")); limitStr != "" {
-			if limit, err := strconv.Atoi(limitStr); err == nil {
-				filter.Limit = limit
-			}
-		}
-		if offsetStr := strings.TrimSpace(q.Get("offset")); offsetStr != "" {
-			if offset, err := strconv.Atoi(offsetStr); err == nil {
-				filter.Offset = offset
-			}
+		filter, err := parseInstanceAuditFilter(r.URL.Query(), true)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 
 		entries, total, err := h.ctx.Store.ListInstanceAuditEntries(ctx, filter)
@@ -343,13 +399,10 @@ func (h *handler) handleListAudit() http.HandlerFunc {
 		}
 
 		limit := filter.Limit
-		if limit <= 0 || limit > 200 {
-			limit = 100
+		if limit <= 0 || limit > database.MaxInstanceAuditListLimit {
+			limit = database.DefaultInstanceAuditListLimit
 		}
 		offset := filter.Offset
-		if offset < 0 {
-			offset = 0
-		}
 
 		resp := api.InstanceAuditListResponse{
 			Entries: entries,
@@ -368,28 +421,10 @@ func (h *handler) handleExportAudit() http.HandlerFunc {
 		ctx := r.Context()
 		q := r.URL.Query()
 
-		filter := database.InstanceAuditFilter{
-			Action:     strings.TrimSpace(q.Get("action")),
-			ActorID:    uuid.Nil,
-			TargetType: strings.TrimSpace(q.Get("target_type")),
-			Outcome:    strings.TrimSpace(q.Get("outcome")),
-			Query:      strings.TrimSpace(q.Get("query")),
-		}
-
-		if actorIDStr := strings.TrimSpace(q.Get("actor_id")); actorIDStr != "" {
-			if actorID, err := uuid.Parse(actorIDStr); err == nil {
-				filter.ActorID = actorID
-			}
-		}
-		if fromStr := strings.TrimSpace(q.Get("from")); fromStr != "" {
-			if t, err := time.Parse(time.RFC3339, fromStr); err == nil {
-				filter.From = t
-			}
-		}
-		if toStr := strings.TrimSpace(q.Get("to")); toStr != "" {
-			if t, err := time.Parse(time.RFC3339, toStr); err == nil {
-				filter.To = t
-			}
+		filter, err := parseInstanceAuditFilter(q, false)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
 		}
 
 		entries, err := h.ctx.Store.ExportInstanceAuditEntries(ctx, filter)

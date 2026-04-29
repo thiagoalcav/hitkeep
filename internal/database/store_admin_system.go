@@ -20,6 +20,11 @@ type SystemCounter struct {
 	Spam       atomic.Int64
 }
 
+type RecentIngestCounts struct {
+	Hits   int
+	Events int
+}
+
 // BackupStatusTracker holds the current state of the backup worker.
 type BackupStatusTracker struct {
 	mu             sync.Mutex
@@ -155,4 +160,51 @@ func (s *Store) GetRecentEventsCount(ctx context.Context, since time.Time) (int,
 		return 0, fmt.Errorf("could not count recent events: %w", err)
 	}
 	return count, nil
+}
+
+func (s *Store) GetRecentIngestCounts(ctx context.Context, since time.Time) (RecentIngestCounts, error) {
+	hits, err := s.GetRecentHitsCount(ctx, since)
+	if err != nil {
+		return RecentIngestCounts{}, err
+	}
+	events, err := s.GetRecentEventsCount(ctx, since)
+	if err != nil {
+		return RecentIngestCounts{}, err
+	}
+	return RecentIngestCounts{Hits: hits, Events: events}, nil
+}
+
+func (m *TenantStoreManager) GetRecentIngestCounts(ctx context.Context, since time.Time) (RecentIngestCounts, error) {
+	if m == nil || m.shared == nil {
+		return RecentIngestCounts{}, fmt.Errorf("tenant store manager is not configured")
+	}
+
+	total, err := m.shared.GetRecentIngestCounts(ctx, since)
+	if err != nil {
+		return RecentIngestCounts{}, fmt.Errorf("count shared ingest: %w", err)
+	}
+
+	tenants, err := m.shared.GetTenantList(ctx)
+	if err != nil {
+		return RecentIngestCounts{}, fmt.Errorf("list tenants for ingest counts: %w", err)
+	}
+
+	for _, tenant := range tenants {
+		store, err := m.ForTenant(ctx, tenant.TenantID)
+		if err != nil {
+			return RecentIngestCounts{}, fmt.Errorf("open tenant store %s: %w", tenant.TenantID, err)
+		}
+		if store == m.shared {
+			continue
+		}
+
+		counts, err := store.GetRecentIngestCounts(ctx, since)
+		if err != nil {
+			return RecentIngestCounts{}, fmt.Errorf("count tenant ingest %s: %w", tenant.TenantID, err)
+		}
+		total.Hits += counts.Hits
+		total.Events += counts.Events
+	}
+
+	return total, nil
 }

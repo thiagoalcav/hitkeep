@@ -76,10 +76,17 @@ type InstanceAuditFilter struct {
 	Offset     int
 }
 
+const (
+	DefaultInstanceAuditListLimit   = 100
+	MaxInstanceAuditListLimit       = 200
+	DefaultInstanceAuditExportLimit = 10000
+	MaxInstanceAuditExportLimit     = 50000
+)
+
 func (s *Store) ListInstanceAuditEntries(ctx context.Context, filter InstanceAuditFilter) ([]api.InstanceAuditEntry, int, error) {
 	limit := filter.Limit
-	if limit <= 0 || limit > 200 {
-		limit = 100
+	if limit <= 0 || limit > MaxInstanceAuditListLimit {
+		limit = DefaultInstanceAuditListLimit
 	}
 	offset := filter.Offset
 	if offset < 0 {
@@ -199,6 +206,14 @@ func (s *Store) ListInstanceAuditEntries(ctx context.Context, filter InstanceAud
 }
 
 func (s *Store) ExportInstanceAuditEntries(ctx context.Context, filter InstanceAuditFilter) ([]api.InstanceAuditEntry, error) {
+	limit := filter.Limit
+	if limit <= 0 {
+		limit = DefaultInstanceAuditExportLimit
+	}
+	if limit > MaxInstanceAuditExportLimit {
+		limit = MaxInstanceAuditExportLimit
+	}
+
 	whereClauses := make([]string, 0)
 	args := make([]any, 0)
 
@@ -231,6 +246,7 @@ func (s *Store) ExportInstanceAuditEntries(ctx context.Context, filter InstanceA
 		whereClauses = append(whereClauses, "(ial.actor_email_snapshot ILIKE ? OR ial.target_label ILIKE ? OR ial.details ILIKE ?)")
 		args = append(args, q, q, q)
 	}
+	args = append(args, limit)
 
 	whereSQL := ""
 	if len(whereClauses) > 0 {
@@ -256,6 +272,7 @@ func (s *Store) ExportInstanceAuditEntries(ctx context.Context, filter InstanceA
 		FROM instance_audit_log ial
 		`+whereSQL+`
 		ORDER BY ial.created_at DESC
+		LIMIT ?
 	`, args...)
 	if err != nil {
 		return nil, fmt.Errorf("could not export instance audit entries: %w", err)

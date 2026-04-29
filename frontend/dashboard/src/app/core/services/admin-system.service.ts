@@ -1,0 +1,214 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+
+export interface SystemFeatureStatus {
+    key: string;
+    enabled: boolean;
+    detail?: string;
+}
+
+export interface SystemInfo {
+    version: string;
+    build: string;
+    runtime_mode: string;
+    uptime: string;
+    public_url: string;
+    enabled_features: SystemFeatureStatus[];
+    config_flags: Record<string, unknown>;
+}
+
+export interface SystemHealth {
+    status: string;
+    database: string;
+    workers: string;
+    is_leader: boolean;
+}
+
+export interface TenantDBInfo {
+    tenant_id: string;
+    name: string;
+    bytes: number;
+    path: string;
+}
+
+export interface SystemStorage {
+    shared_db_path: string;
+    shared_db_bytes: number;
+    data_path: string;
+    tenant_db_count: number;
+    tenant_dbs?: TenantDBInfo[];
+    spam_cache_path: string;
+    backup_path: string;
+    disk_available_bytes: number;
+    disk_total_bytes: number;
+}
+
+export interface SystemIngestStats {
+    recent_hits: number;
+    recent_events: number;
+    recent_rejections: number;
+    recent_spam: number;
+    hits_per_second: number;
+}
+
+export interface SystemBackupStatus {
+    enabled: boolean;
+    config_path: string;
+    interval_min: number;
+    retention: number;
+    last_backup?: string;
+    next_backup?: string;
+    last_failed_at?: string;
+    last_error?: string;
+    recent_failures: number;
+}
+
+export interface SystemSpamStatus {
+    db_path: string;
+    last_refresh?: string;
+    rule_count: number;
+    auto_update: boolean;
+    last_error?: string;
+}
+
+export interface SystemCacheEntry {
+    size: number;
+    max_size: number;
+    ttl: string;
+}
+
+export interface SystemCacheStatus {
+    permissions_cache: SystemCacheEntry;
+    api_client_cache: SystemCacheEntry;
+    rate_limiter_cache: SystemCacheEntry;
+    status: string;
+}
+
+export interface SystemMailStatus {
+    configured: boolean;
+    driver: string;
+    host: string;
+    port: number;
+    encryption: string;
+    from_address: string;
+    from_name: string;
+    username: string;
+    password_set: boolean;
+    last_test_at?: string;
+    last_test_ok?: boolean;
+}
+
+export interface InstanceAuditEntry {
+    id: string;
+    created_at: string;
+    actor_id?: string;
+    actor_email_snapshot: string;
+    actor_role_snapshot: string;
+    action: string;
+    target_type: string;
+    target_id: string;
+    target_label: string;
+    outcome: string;
+    ip_address: string;
+    user_agent: string;
+    request_id: string;
+    details: string;
+}
+
+export interface InstanceAuditListResponse {
+    entries: InstanceAuditEntry[];
+    total: number;
+    limit: number;
+    offset: number;
+    has_more: boolean;
+}
+
+export interface AuditFilterParams {
+    action?: string;
+    target_type?: string;
+    outcome?: string;
+    actor_id?: string;
+    from?: string;
+    to?: string;
+    query?: string;
+    limit?: number;
+    offset?: number;
+}
+
+@Injectable({ providedIn: 'root' })
+export class AdminSystemService {
+    private http = inject(HttpClient);
+
+    getSystem() {
+        return this.http.get<SystemInfo>('/api/admin/system');
+    }
+
+    getHealth() {
+        return this.http.get<SystemHealth>('/api/admin/system/health');
+    }
+
+    getStorage() {
+        return this.http.get<SystemStorage>('/api/admin/system/storage');
+    }
+
+    getIngestStats() {
+        return this.http.get<SystemIngestStats>('/api/admin/system/ingest');
+    }
+
+    getBackups() {
+        return this.http.get<SystemBackupStatus>('/api/admin/system/backups');
+    }
+
+    getSpamFilter() {
+        return this.http.get<SystemSpamStatus>('/api/admin/system/spam-filter');
+    }
+
+    refreshSpamFilter() {
+        return this.http.post<{ status: string; message: string }>('/api/admin/system/spam-filter/refresh', {});
+    }
+
+    getCaches() {
+        return this.http.get<SystemCacheStatus>('/api/admin/system/caches');
+    }
+
+    getMail() {
+        return this.http.get<SystemMailStatus>('/api/admin/system/mail');
+    }
+
+    testMail(email: string) {
+        return this.http.post<{ status: string; message: string }>('/api/admin/system/mail/test', { email });
+    }
+
+    listAudit(params?: AuditFilterParams) {
+        let httpParams = new HttpParams();
+        if (params) {
+            if (params.action) httpParams = httpParams.set('action', params.action);
+            if (params.target_type) httpParams = httpParams.set('target_type', params.target_type);
+            if (params.outcome) httpParams = httpParams.set('outcome', params.outcome);
+            if (params.actor_id) httpParams = httpParams.set('actor_id', params.actor_id);
+            if (params.from) httpParams = httpParams.set('from', params.from);
+            if (params.to) httpParams = httpParams.set('to', params.to);
+            if (params.query) httpParams = httpParams.set('query', params.query);
+            if (params.limit !== undefined) httpParams = httpParams.set('limit', params.limit);
+            if (params.offset !== undefined) httpParams = httpParams.set('offset', params.offset);
+        }
+        return this.http.get<InstanceAuditListResponse>('/api/admin/system/audit', { params: httpParams });
+    }
+
+    exportAudit(params?: AuditFilterParams) {
+        let httpParams = new HttpParams();
+        if (params) {
+            if (params.action) httpParams = httpParams.set('action', params.action);
+            if (params.target_type) httpParams = httpParams.set('target_type', params.target_type);
+            if (params.outcome) httpParams = httpParams.set('outcome', params.outcome);
+            if (params.actor_id) httpParams = httpParams.set('actor_id', params.actor_id);
+            if (params.from) httpParams = httpParams.set('from', params.from);
+            if (params.to) httpParams = httpParams.set('to', params.to);
+            if (params.query) httpParams = httpParams.set('query', params.query);
+        }
+        return this.http.get<Blob>('/api/admin/system/audit/export', {
+            params: httpParams.set('format', 'json'),
+            responseType: 'blob' as 'json'
+        });
+    }
+}

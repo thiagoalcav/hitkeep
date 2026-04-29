@@ -2,6 +2,62 @@ package system
 
 func openAPIV1AdminSitePaths() map[string]any {
 	return map[string]any{
+		"/api/admin/system": map[string]any{
+			"get": op([]string{"Admin"}, "Get system overview", "Returns version, build, runtime mode, uptime, public URL, and operator feature switch status.", secCookie(), nil, nil,
+				map[string]any{"200": jsonRefResp("System overview", "#/components/schemas/SystemInfo")}),
+		},
+		"/api/admin/system/health": map[string]any{
+			"get": op([]string{"Admin"}, "Get system health", "Returns instance health, database status, worker status, and cluster leader state.", secCookie(), nil, nil,
+				map[string]any{"200": jsonRefResp("System health", "#/components/schemas/SystemHealth")}),
+		},
+		"/api/admin/system/storage": map[string]any{
+			"get": op([]string{"Admin"}, "Get system storage", "Returns configured data paths, shared and tenant database sizes, backup path, spam cache path, and disk capacity fields when available.", secCookie(), nil, nil,
+				map[string]any{"200": jsonRefResp("System storage", "#/components/schemas/SystemStorage")}),
+		},
+		"/api/admin/system/ingest": map[string]any{
+			"get": op([]string{"Admin"}, "Get ingest volume", "Returns recent hit, event, rejection, spam, and hit-rate counters for the instance.", secCookie(), nil, nil,
+				map[string]any{"200": jsonRefResp("System ingest stats", "#/components/schemas/SystemIngestStats")}),
+		},
+		"/api/admin/system/backups": map[string]any{
+			"get": op([]string{"Admin"}, "Get backup status", "Returns automatic backup configuration and recent backup status.", secCookie(), nil, nil,
+				map[string]any{"200": jsonRefResp("System backup status", "#/components/schemas/SystemBackupStatus")}),
+		},
+		"/api/admin/system/spam-filter": map[string]any{
+			"get": op([]string{"Admin"}, "Get spam filter status", "Returns spam database path, rule count, auto-update state, last refresh time, and last error.", secCookie(), nil, nil,
+				map[string]any{"200": jsonRefResp("Spam filter status", "#/components/schemas/SystemSpamStatus")}),
+		},
+		"/api/admin/system/spam-filter/refresh": map[string]any{
+			"post": op([]string{"Admin"}, "Refresh spam database", "Downloads and rebuilds the spam database from the configured feeds. Writes an instance audit log entry with the actor and outcome.", secCookie(), nil, nil,
+				map[string]any{
+					"200": jsonRefResp("Refresh result", "#/components/schemas/SystemActionResponse"),
+					"503": errResp("Spam filter not available"),
+				}),
+		},
+		"/api/admin/system/caches": map[string]any{
+			"get": op([]string{"Admin"}, "Get cache status", "Returns LRU cache sizes, maximum sizes, TTLs, and pressure status for permissions, API clients, and API rate limiting.", secCookie(), nil, nil,
+				map[string]any{"200": jsonRefResp("System cache status", "#/components/schemas/SystemCacheStatus")}),
+		},
+		"/api/admin/system/mail": map[string]any{
+			"get": op([]string{"Admin"}, "Get mail status", "Returns configured mail driver, host, port, encryption, sender identity, masked username, password presence, and last test result.", secCookie(), nil, nil,
+				map[string]any{"200": jsonRefResp("System mail status", "#/components/schemas/SystemMailStatus")}),
+		},
+		"/api/admin/system/mail/test": map[string]any{
+			"post": op([]string{"Admin"}, "Send test email", "Sends a real test email to the specified recipient using the configured mail transport. Writes an instance audit log entry with the actor and outcome.", secCookie(), nil,
+				jsonBody(map[string]any{"type": "object", "properties": map[string]any{"email": map[string]any{"type": "string", "format": "email"}}}),
+				map[string]any{
+					"200": jsonRefResp("Mail test result", "#/components/schemas/SystemActionResponse"),
+					"400": errResp("Invalid recipient"),
+					"503": errResp("Mailer not configured"),
+				}),
+		},
+		"/api/admin/system/audit": map[string]any{
+			"get": op([]string{"Admin"}, "List instance audit log", "Lists instance-level audit entries for system maintenance and admin operations.", secCookie(), instanceAuditQueryParams(false), nil,
+				map[string]any{"200": jsonRefResp("Instance audit entries", "#/components/schemas/InstanceAuditListResponse")}),
+		},
+		"/api/admin/system/audit/export": map[string]any{
+			"get": op([]string{"Admin"}, "Export instance audit log", "Exports matching instance-level audit entries as JSON or CSV.", secCookie(), instanceAuditQueryParams(true), nil,
+				map[string]any{"200": desc("Audit export")}),
+		},
 		"/api/admin/users": map[string]any{
 			"get": op([]string{"Admin"}, "List users", "Lists users for admin management.", secCookie(), nil, nil, map[string]any{"200": jsonSchemaResp("User list", map[string]any{"type": "array", "items": map[string]any{"type": "object", "additionalProperties": true}})}),
 		},
@@ -292,4 +348,25 @@ func openAPIV1AdminSitePaths() map[string]any {
 			"get": op([]string{"Share"}, "Shared funnel stats", "Returns funnel stats through share token.", nil, []any{paramRef("#/components/parameters/token"), paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/funnelID"), paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to")}, nil, map[string]any{"200": jsonRefResp("Funnel stats", "#/components/schemas/FunnelStats")}),
 		},
 	}
+}
+
+func instanceAuditQueryParams(includeFormat bool) []any {
+	params := []any{
+		map[string]any{"name": "action", "in": "query", "schema": map[string]any{"type": "string"}, "description": "Optional exact action filter."},
+		map[string]any{"name": "target_type", "in": "query", "schema": map[string]any{"type": "string"}, "description": "Optional target type filter."},
+		map[string]any{"name": "outcome", "in": "query", "schema": map[string]any{"type": "string"}, "description": "Optional outcome filter, for example success or failure."},
+		map[string]any{"name": "actor_id", "in": "query", "schema": map[string]any{"type": "string", "format": "uuid"}, "description": "Optional actor user ID filter."},
+		map[string]any{"name": "from", "in": "query", "schema": map[string]any{"type": "string", "format": "date-time"}, "description": "Optional RFC3339 lower time bound."},
+		map[string]any{"name": "to", "in": "query", "schema": map[string]any{"type": "string", "format": "date-time"}, "description": "Optional RFC3339 upper time bound."},
+		map[string]any{"name": "query", "in": "query", "schema": map[string]any{"type": "string"}, "description": "Optional free-text search over action, actor, target, outcome, IP, request ID, and details."},
+	}
+	if includeFormat {
+		params = append(params, map[string]any{"name": "format", "in": "query", "schema": map[string]any{"type": "string", "enum": []string{"json", "csv"}}, "description": "Export format. Defaults to json."})
+	} else {
+		params = append(params,
+			map[string]any{"name": "limit", "in": "query", "schema": map[string]any{"type": "integer", "minimum": 1, "maximum": 200}, "description": "Maximum number of rows to return."},
+			map[string]any{"name": "offset", "in": "query", "schema": map[string]any{"type": "integer", "minimum": 0}, "description": "Zero-based row offset."},
+		)
+	}
+	return params
 }

@@ -45,6 +45,13 @@ func (i *IPRateLimiter) GetLimiter(ip string) *rate.Limiter {
 	return limiter
 }
 
+func (i *IPRateLimiter) Len() int {
+	if i == nil || i.ips == nil {
+		return 0
+	}
+	return i.ips.Len()
+}
+
 func (i *IPRateLimiter) Stop() {
 	// expirable.LRU manages its own bounded lifecycle; nothing to stop here.
 }

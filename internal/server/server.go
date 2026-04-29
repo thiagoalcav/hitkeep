@@ -120,22 +120,36 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStore
 		takeout:        takeoutService,
 	}
 
+	systemCounters := &database.SystemCounter{}
+	backupStatus := &database.BackupStatusTracker{}
+	backupStatus.SetConfig(
+		conf.BackupPath != "",
+		conf.BackupPath,
+		conf.BackupIntervalMinutes,
+		conf.BackupRetentionCount,
+	)
+	mailTestTracker := &database.MailTestTracker{}
+
 	s.ctx = &shared.Context{
-		Store:          store,
-		TenantStores:   tenantStores,
-		Cluster:        cluster,
-		Producer:       producer,
-		Mailer:         mailService,
-		Config:         conf,
-		Takeout:        takeoutService,
-		Entitlements:   ent,
-		IngestLimiter:  ingestLim,
-		ApiLimiter:     apiLim,
-		AuthLimiter:    authLim,
-		WebhookLimiter: webhookLim,
-		AuthState:      authState,
-		IPFilter:       ipFilter,
-		SpamFilter:     spamFilter,
+		Store:           store,
+		TenantStores:    tenantStores,
+		Cluster:         cluster,
+		Producer:        producer,
+		Mailer:          mailService,
+		Config:          conf,
+		Takeout:         takeoutService,
+		Entitlements:    ent,
+		IngestLimiter:   ingestLim,
+		ApiLimiter:      apiLim,
+		AuthLimiter:     authLim,
+		WebhookLimiter:  webhookLim,
+		AuthState:       authState,
+		IPFilter:        ipFilter,
+		SpamFilter:      spamFilter,
+		StartedAt:       time.Now().UTC(),
+		SystemCounters:  systemCounters,
+		BackupStatus:    backupStatus,
+		MailTestTracker: mailTestTracker,
 	}
 
 	// Load static HTML into memory

@@ -22,12 +22,14 @@ import (
 )
 
 type adminTestMailDriver struct {
-	subject  string
-	htmlBody string
-	textBody string
+	recipients []string
+	subject    string
+	htmlBody   string
+	textBody   string
 }
 
-func (d *adminTestMailDriver) Send(_ []string, subject, htmlBody, textBody string) error {
+func (d *adminTestMailDriver) Send(recipients []string, subject, htmlBody, textBody string) error {
+	d.recipients = recipients
 	d.subject = subject
 	d.htmlBody = htmlBody
 	d.textBody = textBody

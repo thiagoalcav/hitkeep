@@ -48,7 +48,9 @@
         "teamSettings": "Team-Einstellungen",
         "teamSettingsAria": "Zu den Team-Einstellungen",
         "ecommerce": "E-Commerce",
-        "ecommerceAria": "Zur E-Commerce-Analyse wechseln"
+        "ecommerceAria": "Zur E-Commerce-Analyse wechseln",
+        "systemStatus": "Systemstatus",
+        "systemStatusAria": "Zum Systemstatus"
     },
     "teams": {
         "switcher": {
@@ -248,7 +250,12 @@
         "unspecified": "Nicht angegeben",
         "visitors": "Besucher",
         "copyLink": "Link kopieren",
-        "copied": "Kopiert!"
+        "copied": "Kopiert!",
+        "yes": "Ja",
+        "no": "Nein",
+        "enabled": "Aktiviert",
+        "disabled": "Deaktiviert",
+        "unknown": "Unbekannt"
     },
     "dashboard": {
         "breadcrumbOverview": "Übersicht",
@@ -449,6 +456,7 @@
             "title": "Sicherheit",
             "loading": "Sicherheitseinstellungen werden geladen...",
             "changePasswordTitle": "Passwort ändern",
+            "changePasswordDescription": "Aktualisiere das Passwort für dieses Konto.",
             "passwordUpdated": "Passwort erfolgreich aktualisiert.",
             "currentPasswordLabel": "Aktuelles Passwort",
             "newPasswordLabel": "Neues Passwort",
@@ -863,7 +871,16 @@
             "users": "Benutzer",
             "sites": "Seiten",
             "teams": "Teams",
-            "globalFilters": "Globale Filter"
+            "globalFilters": "Globale Filter",
+            "overview": "Übersicht",
+            "health": "Zustand",
+            "storage": "Speicher",
+            "ingest": "Erfassung",
+            "backups": "Backups",
+            "spam": "Spam",
+            "caches": "Caches",
+            "mail": "E-Mail",
+            "audit": "Audit"
         },
         "users": {
             "title": "Benutzer",
@@ -901,6 +918,9 @@
                 "createFailed": "Globaler Filter konnte nicht erstellt werden.",
                 "deleteFailed": "Globaler Filter konnte nicht gelöscht werden.",
                 "copyFailed": "Aktuelle IP konnte nicht kopiert werden."
+            },
+            "status": {
+                "deleteSuccess": "Globaler Filter {{cidr}} wurde gelöscht."
             }
         },
         "roles": {
@@ -910,9 +930,15 @@
         },
         "errors": {
             "deleteUserBlockedOwnership": "{{email}} kann erst gelöscht werden, wenn die Eigentümerschaft für folgende Teams übertragen wurde: {{teams}}.",
+            "deleteUserFailed": "Benutzer {{email}} konnte nicht gelöscht werden.",
+            "deleteSiteFailed": "Seite {{domain}} konnte nicht gelöscht werden.",
+            "deleteTeamFailed": "Team \"{{name}}\" konnte nicht gelöscht werden.",
             "disable2faFailed": "MFA konnte für {{email}} nicht deaktiviert werden."
         },
         "status": {
+            "deleteUserSuccess": "Benutzer {{email}} wurde gelöscht.",
+            "deleteSiteSuccess": "Seite {{domain}} wurde gelöscht.",
+            "deleteTeamSuccess": "Team \"{{name}}\" wurde gelöscht.",
             "disable2faSuccess": "MFA wurde für {{email}} deaktiviert."
         },
         "confirmDisable2fa": "Alle MFA-Methoden für {{email}} deaktivieren? Dadurch werden auch gespeicherte Sitzungen ungültig.",
@@ -1062,6 +1088,257 @@
                     "siteTransferredOut": "Website verschoben nach außen",
                     "unknown": "Unbekannte Aktion"
                 }
+            }
+        },
+        "system": {
+            "overview": {
+                "title": "Systemübersicht",
+                "version": "Version",
+                "build": "Build",
+                "uptime": "Laufzeit",
+                "publicUrl": "Öffentliche URL",
+                "runtimeMode": "Modus",
+                "healthStatus": "Zustand",
+                "enabledFeatures": "Feature-Schalter",
+                "actions": {
+                    "refresh": "Aktualisieren"
+                }
+            },
+            "features": {
+                "mcp": {
+                    "label": "MCP-Server"
+                },
+                "mcp_docs": {
+                    "label": "MCP-Dokumentations-Tools"
+                },
+                "automatic_backups": {
+                    "label": "Automatische Backups"
+                },
+                "spam_auto_update": {
+                    "label": "Spam-Auto-Update"
+                },
+                "mail_delivery": {
+                    "label": "E-Mail-Versand"
+                },
+                "managed_cloud": {
+                    "label": "Managed Cloud"
+                },
+                "cloud_signup": {
+                    "label": "Cloud-Registrierung"
+                },
+                "billing": {
+                    "label": "Abrechnung"
+                }
+            },
+            "featureDetails": {
+                "backup": {
+                    "local": "Lokales Ziel",
+                    "s3": "S3-Ziel"
+                },
+                "driver": "{{driver}}-Treiber",
+                "interval": "Alle {{interval}}",
+                "stripe": "Stripe konfiguriert",
+                "plan": "Tarif {{plan}}"
+            },
+            "health": {
+                "title": "Health-Check",
+                "status": "Status",
+                "database": "Datenbank",
+                "workers": "Worker",
+                "isLeader": "Ist Leader",
+                "actions": {
+                    "check": "Prüfen"
+                }
+            },
+            "storage": {
+                "title": "Speicher",
+                "sharedDb": "Geteilte Datenbank",
+                "sharedDbSize": "Größe",
+                "dataPath": "Datenpfad",
+                "tenantDbs": "Mandanten-Datenbanken",
+                "diskUsage": "Speichernutzung",
+                "diskAvailable": "Verfügbar",
+                "columns": {
+                    "tenant": "Mandant",
+                    "size": "Größe",
+                    "path": "Pfad"
+                }
+            },
+            "ingest": {
+                "title": "Erfassung",
+                "hits": "Hits (24 h)",
+                "events": "Events (24 h)",
+                "rejections": "Ablehnungen",
+                "spam": "Spam blockiert",
+                "hitsPerSecond": "Hits/s"
+            },
+            "backups": {
+                "title": "Backups",
+                "configPath": "Pfad / Ziel",
+                "enabled": "Aktiviert",
+                "disabled": "Deaktiviert",
+                "interval": "Intervall",
+                "retention": "Aufbewahrung",
+                "lastBackup": "Letztes Backup",
+                "nextBackup": "Nächstes Backup",
+                "lastFailed": "Letzter Fehler",
+                "lastError": "Fehlermeldung",
+                "recentFailures": "Aktuelle Fehler",
+                "actions": {
+                    "backupNow": "Jetzt sichern",
+                    "backupNowConfirm": "Jetzt ein Backup starten?"
+                },
+                "backupTriggered": "Backup gestartet",
+                "backupFailed": "Backup fehlgeschlagen"
+            },
+            "spam": {
+                "title": "Spamfilter",
+                "dbPath": "Datenbankpfad",
+                "lastRefresh": "Letzte Aktualisierung",
+                "ruleCount": "Regeln",
+                "autoUpdate": "Auto-Update",
+                "lastError": "Letzter Fehler",
+                "actions": {
+                    "refresh": "Spam-Datenbank aktualisieren"
+                },
+                "refreshTriggered": "Spamfilter aktualisiert"
+            },
+            "caches": {
+                "title": "Caches",
+                "status": {
+                    "healthy": "Gesund",
+                    "pressure": "Unter Druck"
+                },
+                "permissions": "Berechtigungen",
+                "apiClients": "API-Clients",
+                "rateLimiter": "Ratenbegrenzung",
+                "columns": {
+                    "cache": "Cache",
+                    "size": "Größe",
+                    "maxSize": "Max. Größe",
+                    "ttl": "TTL"
+                }
+            },
+            "mail": {
+                "title": "E-Mail",
+                "configured": "Konfiguriert",
+                "notConfigured": "Nicht konfiguriert",
+                "driver": "Treiber",
+                "host": "Host",
+                "port": "Port",
+                "encryption": "Verschlüsselung",
+                "fromAddress": "Absenderadresse",
+                "username": "Benutzername",
+                "passwordSet": "Passwort konfiguriert",
+                "lastTest": "Letzter Test",
+                "actions": {
+                    "test": "Test-E-Mail senden"
+                },
+                "testSuccess": "Test-E-Mail gesendet",
+                "testFailed": "Test-E-Mail fehlgeschlagen",
+                "recipientLabel": "Testempfänger",
+                "recipientPlaceholder": "ops@example.com",
+                "recipientInvalid": "Gib eine gültige E-Mail-Adresse ein."
+            },
+            "audit": {
+                "title": "Instanz-Audit-Log",
+                "filters": {
+                    "all": "Alle"
+                },
+                "filter": {
+                    "action": "Aktion",
+                    "targetType": "Zieltyp",
+                    "outcome": "Ergebnis",
+                    "dateRange": "Datumsbereich",
+                    "search": "Suchen..."
+                },
+                "empty": "Keine Audit-Einträge gefunden",
+                "loadError": "Audit-Einträge konnten nicht geladen werden",
+                "loadMore": "Mehr laden",
+                "columns": {
+                    "created": "Zeit",
+                    "actor": "Akteur",
+                    "action": "Aktion",
+                    "targetType": "Bereich",
+                    "target": "Ziel",
+                    "outcome": "Ergebnis",
+                    "details": "Details"
+                },
+                "outcome": {
+                    "success": "Erfolgreich",
+                    "failure": "Fehlgeschlagen",
+                    "denied": "Abgelehnt"
+                },
+                "targetTypes": {
+                    "system": "System",
+                    "mail": "E-Mail",
+                    "user": "Benutzer",
+                    "team": "Team",
+                    "site": "Site",
+                    "backup": "Backup",
+                    "spamFilter": "Spamfilter",
+                    "diagnostics": "Diagnose"
+                },
+                "actions": {
+                    "export": "Exportieren",
+                    "roleUpdated": "Rolle geändert",
+                    "mfaDisabled": "MFA deaktiviert",
+                    "backupTriggered": "Backup gestartet",
+                    "backupCompleted": "Backup abgeschlossen",
+                    "backupFailed": "Backup fehlgeschlagen",
+                    "spamRefreshed": "Spam-Aktualisierung",
+                    "mailTested": "E-Mail-Test",
+                    "diagnosticsExported": "Diagnose exportiert",
+                    "accessDenied": "Zugriff verweigert"
+                },
+                "pagination": {
+                    "total": "{{ loaded }} von {{ total }} Einträgen angezeigt"
+                }
+            },
+            "console": {
+                "eyebrow": "Instanzbetrieb",
+                "title": "Systemstatus",
+                "subtitle": "Überwache Laufzeit, Speicher, E-Mail-Zustellung, Spam-Schutz und Administratoraktivität in einer Oberfläche für Betreiber.",
+                "runtimePosture": "Laufzeitstatus",
+                "summaryAria": "Zusammenfassung des Systemstatus",
+                "healthHint": "Datenbank, Worker und Knotenbereitschaft",
+                "managedData": "verwaltete Daten",
+                "noRecentRun": "Kein aktueller Lauf",
+                "autoUpdated": "Automatisch aktualisiert",
+                "manualOnly": "Manuelle Aktualisierung",
+                "refreshCard": "Status aktualisieren",
+                "leader": "Leader",
+                "follower": "Follower",
+                "loadFailed": "Systemstatus konnte nicht geladen werden.",
+                "noFeatures": "Keine Feature-Schalter gemeldet.",
+                "noTenantDbs": "Keine Mandanten-Datenbanken gemeldet.",
+                "pressure": "Auslastung",
+                "tabs": {
+                    "runtime": "Laufzeit",
+                    "operations": "Betrieb",
+                    "access": "Zugriff",
+                    "audit": "Audit"
+                },
+                "status": {
+                    "healthy": "Gesund",
+                    "attention": "Aufmerksamkeit nötig",
+                    "loading": "Wird geladen",
+                    "unknown": "Unbekannt"
+                },
+                "healthDescription": "Bereitschaftssignale für den aktuellen Knoten und den eingebetteten Datenspeicher.",
+                "overviewDescription": "Build, Version, öffentliche URL und Laufzeitmodus.",
+                "featuresDescription": "Operator-Feature-Schalter und Laufzeitfunktionen der Instanz.",
+                "storageDescription": "DuckDB-Dateien, Mandantenspeicher und freier Speicherplatz.",
+                "ingestDescription": "Aktuelles Trackingvolumen und blockierter Traffic der Instanz.",
+                "cachesDescription": "LRU-Cache-Belegung für Auth, API-Clients und Ratenbegrenzung.",
+                "backupsDescription": "Konfiguriertes Backup-Ziel, Aufbewahrung und Ausführungszustand.",
+                "spamDescription": "Aktualität des Spamfilter-Caches und manuelle Aktualisierung.",
+                "mailDescription": "Redigierte E-Mail-Transportkonfiguration und sicherer Testversand.",
+                "usersDescription": "Instanzrollen, Wiederherstellungsaktionen und Admin-Zugriff.",
+                "sitesDescription": "Alle Websites, die für Instanz-Admins sichtbar sind.",
+                "teamsDescription": "Team-Container und ihr Betriebsstatus.",
+                "auditDescription": "Append-only-Aktivität für sensible Instanzoperationen.",
+                "settingsSubtitle": "Verwalte Instanzbenutzer, Websites, Teams und globale Filter."
             }
         }
     },

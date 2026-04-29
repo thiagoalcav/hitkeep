@@ -137,6 +137,22 @@ func (f *SpamFilter) isBlockedIP(value string) bool {
 	return false
 }
 
+func (f *SpamFilter) RuleCount() int {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	return len(f.referrerHosts) + len(f.networks)
+}
+
+func (f *SpamFilter) LastRefresh() *time.Time {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	if f.data.GeneratedAt.IsZero() {
+		return nil
+	}
+	lastRefresh := f.data.GeneratedAt
+	return &lastRefresh
+}
+
 func (f *SpamFilter) apply(data SpamFeedData) {
 	referrerHosts := make(map[string]struct{}, len(data.ReferrerHostDenylist))
 	for _, host := range data.ReferrerHostDenylist {

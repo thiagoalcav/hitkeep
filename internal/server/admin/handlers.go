@@ -23,6 +23,57 @@ type handler struct {
 
 func Register(mux *http.ServeMux, ctx *shared.Context) {
 	h := &handler{ctx: ctx}
+
+	// System overview and health
+	mux.HandleFunc("GET /api/admin/system", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceViewSystem,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleGetSystem()))
+	mux.HandleFunc("GET /api/admin/system/health", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceViewSystem,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleGetHealth()))
+	mux.HandleFunc("GET /api/admin/system/storage", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceViewSystem,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleGetStorage()))
+	mux.HandleFunc("GET /api/admin/system/ingest", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceViewSystem,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleGetIngestStats()))
+	mux.HandleFunc("GET /api/admin/system/backups", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceViewSystem,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleGetBackups()))
+	mux.HandleFunc("GET /api/admin/system/spam-filter", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceViewSystem,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleGetSpamFilter()))
+	mux.HandleFunc("POST /api/admin/system/spam-filter/refresh", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceRunMaintenance,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleRefreshSpamFilter()))
+	mux.HandleFunc("GET /api/admin/system/caches", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceViewSystem,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleGetCaches()))
+	mux.HandleFunc("GET /api/admin/system/mail", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceViewSystem,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleGetMail()))
+	mux.HandleFunc("POST /api/admin/system/mail/test", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceRunMaintenance,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleTestMail()))
+	mux.HandleFunc("GET /api/admin/system/audit", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceViewAudit,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleListAudit()))
+	mux.HandleFunc("GET /api/admin/system/audit/export", ctx.Handler(shared.HandlerConfig{
+		InstancePerm: authcore.PermInstanceExportAudit,
+		RateLimiter:  ctx.ApiLimiter,
+	}, h.handleExportAudit()))
+
 	mux.HandleFunc("GET /api/admin/users", ctx.Handler(shared.HandlerConfig{
 		InstancePerm: authcore.PermInstanceManageUsers,
 		RateLimiter:  ctx.ApiLimiter,

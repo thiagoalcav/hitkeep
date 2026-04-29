@@ -19,6 +19,16 @@ interface AdminSettingsTestAccess {
         teams: string[];
     } | null;
     deleteUserBlockMessage(): string;
+    userActionStatus: {
+        set(
+            value: {
+                severity: 'success' | 'error';
+                key: string;
+                params?: Record<string, string | number>;
+            } | null
+        ): void;
+    };
+    userActionStatusMessage(): string;
     canDisableUserMfa(): boolean;
     currentUserId: { set(value: string): void };
     users: {
@@ -49,6 +59,9 @@ describe('AdminSettings', () => {
                             admin: {
                                 errors: {
                                     deleteUserBlockedOwnership: 'Cannot delete {{email}} until ownership is transferred for: {{teams}}.'
+                                },
+                                status: {
+                                    deleteUserSuccess: 'Deleted user {{email}}.'
                                 }
                             }
                         }
@@ -125,6 +138,16 @@ describe('AdminSettings', () => {
 
         expect(handled).toBe(false);
         expect(component.deleteUserBlock()).toBeNull();
+    });
+
+    it('renders inline admin action feedback messages', () => {
+        component.userActionStatus.set({
+            severity: 'success',
+            key: 'admin.status.deleteUserSuccess',
+            params: { email: 'owner@example.com' }
+        });
+
+        expect(component.userActionStatusMessage()).toBe('Deleted user owner@example.com.');
     });
 
     it('allows MFA recovery actions when the current user is an instance owner', () => {

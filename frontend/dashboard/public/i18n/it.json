@@ -48,7 +48,9 @@
         "teamSettings": "Impostazioni del team",
         "teamSettingsAria": "Vai alle impostazioni del team",
         "ecommerce": "E-commerce",
-        "ecommerceAria": "Vai all’analisi e-commerce"
+        "ecommerceAria": "Vai all’analisi e-commerce",
+        "systemStatus": "Stato del sistema",
+        "systemStatusAria": "Vai allo stato del sistema"
     },
     "teams": {
         "switcher": {
@@ -248,7 +250,12 @@
         "unspecified": "Non specificato",
         "visitors": "visitatori",
         "copyLink": "Copia link",
-        "copied": "Copiato"
+        "copied": "Copiato",
+        "yes": "Sì",
+        "no": "No",
+        "enabled": "Abilitato",
+        "disabled": "Disabilitato",
+        "unknown": "Sconosciuto"
     },
     "dashboard": {
         "breadcrumbOverview": "Panoramica",
@@ -449,6 +456,7 @@
             "title": "Sicurezza",
             "loading": "Caricamento impostazioni di sicurezza...",
             "changePasswordTitle": "Cambia password",
+            "changePasswordDescription": "Aggiorna la password di questo account.",
             "passwordUpdated": "Password aggiornata con successo.",
             "currentPasswordLabel": "Password attuale",
             "newPasswordLabel": "Nuova password",
@@ -863,7 +871,16 @@
             "users": "Utenti",
             "sites": "Siti",
             "teams": "Team",
-            "globalFilters": "Filtri globali"
+            "globalFilters": "Filtri globali",
+            "overview": "Panoramica",
+            "health": "Stato",
+            "storage": "Storage",
+            "ingest": "Ingestione",
+            "backups": "Backup",
+            "spam": "Spam",
+            "caches": "Cache",
+            "mail": "E-mail",
+            "audit": "Audit"
         },
         "users": {
             "title": "Utenti",
@@ -901,6 +918,9 @@
                 "createFailed": "Impossibile creare il filtro globale.",
                 "deleteFailed": "Impossibile eliminare il filtro globale.",
                 "copyFailed": "Impossibile copiare l'IP attuale."
+            },
+            "status": {
+                "deleteSuccess": "Filtro globale {{cidr}} eliminato."
             }
         },
         "roles": {
@@ -910,9 +930,15 @@
         },
         "errors": {
             "deleteUserBlockedOwnership": "Impossibile eliminare {{email}} finché la proprietà non viene trasferita per: {{teams}}.",
+            "deleteUserFailed": "Impossibile eliminare l'utente {{email}}.",
+            "deleteSiteFailed": "Impossibile eliminare il sito {{domain}}.",
+            "deleteTeamFailed": "Impossibile eliminare il team \"{{name}}\".",
             "disable2faFailed": "Impossibile disattivare MFA per {{email}}."
         },
         "status": {
+            "deleteUserSuccess": "Utente {{email}} eliminato.",
+            "deleteSiteSuccess": "Sito {{domain}} eliminato.",
+            "deleteTeamSuccess": "Team \"{{name}}\" eliminato.",
             "disable2faSuccess": "MFA è stata disattivata per {{email}}."
         },
         "confirmDisable2fa": "Disattivare tutti i metodi MFA per {{email}}? Questa azione invalida anche le sessioni ricordate.",
@@ -1062,6 +1088,257 @@
                     "siteTransferredOut": "Sito spostato altrove",
                     "unknown": "Azione sconosciuta"
                 }
+            }
+        },
+        "system": {
+            "overview": {
+                "title": "Panoramica sistema",
+                "version": "Versione",
+                "build": "Build",
+                "uptime": "Uptime",
+                "publicUrl": "URL pubblico",
+                "runtimeMode": "Modalità",
+                "healthStatus": "Salute",
+                "enabledFeatures": "Interruttori funzionalità",
+                "actions": {
+                    "refresh": "Aggiorna"
+                }
+            },
+            "features": {
+                "mcp": {
+                    "label": "Server MCP"
+                },
+                "mcp_docs": {
+                    "label": "Strumenti documentazione MCP"
+                },
+                "automatic_backups": {
+                    "label": "Backup automatici"
+                },
+                "spam_auto_update": {
+                    "label": "Aggiornamento automatico spam"
+                },
+                "mail_delivery": {
+                    "label": "Invio email"
+                },
+                "managed_cloud": {
+                    "label": "Cloud gestito"
+                },
+                "cloud_signup": {
+                    "label": "Registrazione cloud"
+                },
+                "billing": {
+                    "label": "Fatturazione"
+                }
+            },
+            "featureDetails": {
+                "backup": {
+                    "local": "Destinazione locale",
+                    "s3": "Destinazione S3"
+                },
+                "driver": "Driver {{driver}}",
+                "interval": "Ogni {{interval}}",
+                "stripe": "Stripe configurato",
+                "plan": "Piano {{plan}}"
+            },
+            "health": {
+                "title": "Controllo salute",
+                "status": "Stato",
+                "database": "Database",
+                "workers": "Worker",
+                "isLeader": "È leader",
+                "actions": {
+                    "check": "Controlla"
+                }
+            },
+            "storage": {
+                "title": "Storage",
+                "sharedDb": "Database condiviso",
+                "sharedDbSize": "Dimensione",
+                "dataPath": "Percorso dati",
+                "tenantDbs": "Database tenant",
+                "diskUsage": "Uso disco",
+                "diskAvailable": "Disponibile",
+                "columns": {
+                    "tenant": "Tenant",
+                    "size": "Dimensione",
+                    "path": "Percorso"
+                }
+            },
+            "ingest": {
+                "title": "Ingestione",
+                "hits": "Hit (24 h)",
+                "events": "Eventi (24 h)",
+                "rejections": "Rifiuti",
+                "spam": "Spam bloccato",
+                "hitsPerSecond": "Hit/s"
+            },
+            "backups": {
+                "title": "Backup",
+                "configPath": "Percorso / destinazione",
+                "enabled": "Abilitato",
+                "disabled": "Disabilitato",
+                "interval": "Intervallo",
+                "retention": "Retention",
+                "lastBackup": "Ultimo backup",
+                "nextBackup": "Prossimo backup",
+                "lastFailed": "Ultimo errore",
+                "lastError": "Errore",
+                "recentFailures": "Errori recenti",
+                "actions": {
+                    "backupNow": "Esegui backup",
+                    "backupNowConfirm": "Avviare un backup ora?"
+                },
+                "backupTriggered": "Backup avviato",
+                "backupFailed": "Backup non riuscito"
+            },
+            "spam": {
+                "title": "Filtro spam",
+                "dbPath": "Percorso database",
+                "lastRefresh": "Ultimo aggiornamento",
+                "ruleCount": "Regole",
+                "autoUpdate": "Aggiornamento auto",
+                "lastError": "Ultimo errore",
+                "actions": {
+                    "refresh": "Aggiorna database spam"
+                },
+                "refreshTriggered": "Filtro spam aggiornato"
+            },
+            "caches": {
+                "title": "Cache",
+                "status": {
+                    "healthy": "Sana",
+                    "pressure": "Sotto pressione"
+                },
+                "permissions": "Permessi",
+                "apiClients": "Client API",
+                "rateLimiter": "Rate limiter",
+                "columns": {
+                    "cache": "Cache",
+                    "size": "Dimensione",
+                    "maxSize": "Dimensione max",
+                    "ttl": "TTL"
+                }
+            },
+            "mail": {
+                "title": "E-mail",
+                "configured": "Configurata",
+                "notConfigured": "Non configurata",
+                "driver": "Driver",
+                "host": "Host",
+                "port": "Porta",
+                "encryption": "Crittografia",
+                "fromAddress": "Mittente",
+                "username": "Nome utente",
+                "passwordSet": "Password configurata",
+                "lastTest": "Ultimo test",
+                "actions": {
+                    "test": "Invia e-mail di test"
+                },
+                "testSuccess": "E-mail di test inviata",
+                "testFailed": "Test e-mail non riuscito",
+                "recipientLabel": "Destinatario test",
+                "recipientPlaceholder": "ops@example.com",
+                "recipientInvalid": "Inserisci un indirizzo e-mail valido."
+            },
+            "audit": {
+                "title": "Registro audit istanza",
+                "filters": {
+                    "all": "Tutto"
+                },
+                "filter": {
+                    "action": "Azione",
+                    "targetType": "Tipo target",
+                    "outcome": "Esito",
+                    "dateRange": "Intervallo date",
+                    "search": "Cerca..."
+                },
+                "empty": "Nessuna voce di audit trovata",
+                "loadError": "Impossibile caricare le voci di audit",
+                "loadMore": "Carica altro",
+                "columns": {
+                    "created": "Ora",
+                    "actor": "Attore",
+                    "action": "Azione",
+                    "targetType": "Area",
+                    "target": "Target",
+                    "outcome": "Esito",
+                    "details": "Dettagli"
+                },
+                "outcome": {
+                    "success": "Successo",
+                    "failure": "Errore",
+                    "denied": "Negato"
+                },
+                "targetTypes": {
+                    "system": "Sistema",
+                    "mail": "E-mail",
+                    "user": "Utente",
+                    "team": "Team",
+                    "site": "Sito",
+                    "backup": "Backup",
+                    "spamFilter": "Filtro spam",
+                    "diagnostics": "Diagnostica"
+                },
+                "actions": {
+                    "export": "Esporta",
+                    "roleUpdated": "Ruolo modificato",
+                    "mfaDisabled": "MFA disabilitata",
+                    "backupTriggered": "Backup avviato",
+                    "backupCompleted": "Backup completato",
+                    "backupFailed": "Backup non riuscito",
+                    "spamRefreshed": "Aggiornamento spam",
+                    "mailTested": "Test e-mail",
+                    "diagnosticsExported": "Diagnostica esportata",
+                    "accessDenied": "Accesso negato"
+                },
+                "pagination": {
+                    "total": "Mostrate {{ loaded }} di {{ total }} voci"
+                }
+            },
+            "console": {
+                "eyebrow": "Operazioni istanza",
+                "title": "Stato del sistema",
+                "subtitle": "Monitora salute runtime, storage, recapito e-mail, protezione spam e attività amministrative da un’unica superficie operativa.",
+                "runtimePosture": "Postura runtime",
+                "summaryAria": "Riepilogo dello stato del sistema",
+                "healthHint": "Database, worker e prontezza del nodo",
+                "managedData": "dati gestiti",
+                "noRecentRun": "Nessuna esecuzione recente",
+                "autoUpdated": "Aggiornato automaticamente",
+                "manualOnly": "Aggiornamento manuale",
+                "refreshCard": "Aggiorna stato",
+                "leader": "Leader",
+                "follower": "Follower",
+                "loadFailed": "Impossibile caricare lo stato del sistema.",
+                "noFeatures": "Nessun interruttore di funzionalità segnalato.",
+                "noTenantDbs": "Nessun database tenant segnalato.",
+                "pressure": "Pressione",
+                "tabs": {
+                    "runtime": "Runtime",
+                    "operations": "Operazioni",
+                    "access": "Accesso",
+                    "audit": "Audit"
+                },
+                "status": {
+                    "healthy": "Sano",
+                    "attention": "Richiede attenzione",
+                    "loading": "Caricamento",
+                    "unknown": "Sconosciuto"
+                },
+                "healthDescription": "Segnali di prontezza del nodo corrente e dello storage integrato.",
+                "overviewDescription": "Build, versione, URL pubblico e modalità runtime.",
+                "featuresDescription": "Interruttori funzionalità per operatori e capacità runtime dell’istanza.",
+                "storageDescription": "File DuckDB, storage tenant e disponibilità disco.",
+                "ingestDescription": "Volume di tracking recente e traffico bloccato sull’istanza.",
+                "cachesDescription": "Occupazione cache LRU per auth, client API e rate limiting.",
+                "backupsDescription": "Destinazione backup, retention e salute delle esecuzioni recenti.",
+                "spamDescription": "Freschezza della cache antispam e controllo di aggiornamento manuale.",
+                "mailDescription": "Configurazione di trasporto e-mail redatta e test di invio sicuro.",
+                "usersDescription": "Ruoli istanza, azioni di recupero e accesso amministratore.",
+                "sitesDescription": "Tutti i siti visibili agli amministratori di istanza.",
+                "teamsDescription": "Contenitori team e relativo stato operativo.",
+                "auditDescription": "Attività append-only per operazioni sensibili dell’istanza.",
+                "settingsSubtitle": "Gestisci utenti, siti, team e filtri globali dell’istanza."
             }
         }
     },

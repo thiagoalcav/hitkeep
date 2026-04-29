@@ -16,8 +16,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/argon2"
 
+	"hitkeep/internal/auth"
 	"hitkeep/internal/database"
 	"hitkeep/internal/worker"
 )
@@ -102,7 +104,31 @@ func main() {
 	slog.Info("Creating demo user", "email", *email)
 	userID := ensureUser(ctx, store, *email, *password)
 
+	if err := store.UpdateInstanceRole(ctx, userID, auth.InstanceOwner, userID); err != nil {
+		slog.Error("Failed to set demo user as instance owner", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("Demo user promoted to instance owner", "user_id", userID)
+
+	adminEmail := "admin@example.com"
+	adminPassword := "admin1234"
+	adminID := ensureUser(ctx, store, adminEmail, adminPassword)
+	if err := store.UpdateInstanceRole(ctx, adminID, auth.InstanceAdmin, userID); err != nil {
+		slog.Error("Failed to set admin user role", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("Admin user created with instance admin role", "email", adminEmail, "user_id", adminID)
+
 	seedTeam(ctx, store, userID)
+
+	ownerTeamID, err := store.GetActiveTenantID(ctx, userID)
+	if err == nil && ownerTeamID != uuid.Nil {
+		if err := store.AddTeamMember(ctx, ownerTeamID, adminID, database.TenantRoleAdmin, userID); err != nil {
+			slog.Warn("Failed to add admin user to demo team", "error", err)
+		} else {
+			slog.Info("Admin user added to demo team", "team_id", ownerTeamID, "role", "admin")
+		}
+	}
 
 	slog.Info("Creating demo site", "domain", *domain)
 	site, err := ensureSiteInActiveTeam(ctx, store, userID, *domain)

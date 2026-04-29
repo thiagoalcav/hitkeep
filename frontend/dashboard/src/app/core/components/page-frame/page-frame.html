@@ -1,0 +1,11 @@
+<div class="page-frame">
+    <app-page-header>
+        <ng-template appPageHeaderLeft>
+            <app-page-breadcrumb [items]="breadcrumbItems()" />
+        </ng-template>
+    </app-page-header>
+
+    <div class="page-frame__body">
+        <ng-content />
+    </div>
+</div>

@@ -1,200 +1,232 @@
 <p-confirmpopup key="admin-delete" />
 <p-confirmpopup key="admin-disable-mfa" />
-<div class="flex flex-col w-full">
-    <app-page-header>
-        <ng-template appPageHeaderLeft>
-            <div>
-                <app-page-breadcrumb [items]="breadcrumbItems()" />
-            </div>
-        </ng-template>
-    </app-page-header>
 
-    <div class="max-w-6xl mx-auto w-full">
-        <p-tabs value="0">
+<app-admin-page-frame [breadcrumbItems]="breadcrumbItems()">
+    <div class="admin-status">
+        @if (isSettingsPage()) {
+        <div class="admin-settings-summary">
+            <div class="admin-settings-summary__item">
+                <span class="admin-settings-summary__value">{{ users().length | number }}</span>
+                <span class="admin-settings-summary__label">{{ "admin.tabs.users" | transloco }}</span>
+            </div>
+            <div class="admin-settings-summary__item">
+                <span class="admin-settings-summary__value">{{ instanceAdmins() | number }}</span>
+                <span class="admin-settings-summary__label">{{ "admin.roles.instanceAdmin" | transloco }}</span>
+            </div>
+            <div class="admin-settings-summary__item">
+                <span class="admin-settings-summary__value">{{ totalSites() | number }}</span>
+                <span class="admin-settings-summary__label">{{ "admin.tabs.sites" | transloco }}</span>
+            </div>
+            <div class="admin-settings-summary__item">
+                <span class="admin-settings-summary__value">{{ activeTeams() | number }}</span>
+                <span class="admin-settings-summary__label">{{ "admin.tabs.teams" | transloco }}</span>
+            </div>
+        </div>
+
+        <p-tabs [(value)]="activeSettingsTab" class="hk-admin-tabs">
             <p-tablist>
-                <p-tab value="0">{{ "admin.tabs.users" | transloco }}</p-tab>
-                <p-tab value="1">{{ "admin.tabs.sites" | transloco }}</p-tab>
-                <p-tab value="2">{{ "admin.tabs.teams" | transloco }}</p-tab>
-                <p-tab value="3">{{ "admin.tabs.globalFilters" | transloco }}</p-tab>
+                <p-tab value="users">{{ "admin.tabs.users" | transloco }}</p-tab>
+                <p-tab value="sites">{{ "admin.tabs.sites" | transloco }}</p-tab>
+                <p-tab value="teams">{{ "admin.tabs.teams" | transloco }}</p-tab>
+                <p-tab value="globalFilters">{{ "admin.tabs.globalFilters" | transloco }}</p-tab>
             </p-tablist>
+
             <p-tabpanels>
-                <p-tabpanel value="0">
-                    <p-card>
-                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                            <h2 class="text-lg font-semibold m-0">{{ "admin.users.title" | transloco }}</h2>
-                            <span class="p-input-icon-left hk-crud-search">
-                                <i class="pi pi-search"></i>
-                                <input pInputText #usersSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="usersTable.filterGlobal($any($event.target).value, 'contains')" />
-                            </span>
+                <p-tabpanel value="users">
+                    <section class="admin-panel admin-panel--wide admin-panel--table" aria-labelledby="settings-users-title">
+                        <div class="admin-panel__header">
+                            <div class="admin-panel__title-block">
+                                <h2 id="settings-users-title">{{ "admin.users.title" | transloco }}</h2>
+                                <span class="admin-panel__meta">{{ users().length | number }} {{ "admin.tabs.users" | transloco }}</span>
+                            </div>
+                            <p-iconfield class="admin-search">
+                                <p-inputicon class="pi pi-search" />
+                                <input pInputText #settingsUsersSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="settingsUsersTable.filterGlobal($any($event.target).value, 'contains')" />
+                            </p-iconfield>
                         </div>
 
-                        @if (deleteUserBlock()) {
-                        <p-message severity="warn" styleClass="w-full mb-4" [text]="deleteUserBlockMessage()" />
-                        } @if (userMfaStatus(); as status) {
-                        <p-message [severity]="status.severity" styleClass="w-full mb-4" [text]="userMfaStatusMessage()" />
+                        @if (deleteUserBlock() || userMfaStatus() || userActionStatus()) {
+                        <div class="admin-panel__messages">
+                            @if (deleteUserBlock()) {
+                            <p-message severity="warn" styleClass="w-full" [text]="deleteUserBlockMessage()" />
+                            } @if (userMfaStatus(); as status) {
+                            <p-message [severity]="status.severity" styleClass="w-full" [text]="userMfaStatusMessage()" />
+                            } @if (userActionStatus(); as status) {
+                            <p-message [severity]="status.severity" styleClass="w-full" [text]="userActionStatusMessage()" />
+                            }
+                        </div>
                         }
 
-                        <div class="hk-crud-table-wrap">
+                        <div class="admin-table-wrap">
                             <p-table
-                                #usersTable
+                                #settingsUsersTable
                                 [value]="users()"
                                 [loading]="isLoading()"
-                                [scrollable]="false"
                                 [globalFilterFields]="['email', 'instance_role', 'created_at']"
                                 [sortField]="'created_at'"
                                 [sortOrder]="-1"
-                                styleClass="hk-crud-table p-datatable-sm"
+                                [rowHover]="true"
+                                styleClass="p-datatable-sm admin-data-table"
                             >
                                 <ng-template pTemplate="header">
                                     <tr>
-                                        <th pSortableColumn="email">
-                                            {{ "common.columns.email" | transloco }}
-                                            <p-sortIcon field="email" />
-                                        </th>
-                                        <th pSortableColumn="instance_role">
-                                            {{ "common.columns.role" | transloco }}
-                                            <p-sortIcon field="instance_role" />
-                                        </th>
-                                        <th pSortableColumn="instance_role">
-                                            {{ "common.columns.owner" | transloco }}
-                                            <p-sortIcon field="instance_role" />
-                                        </th>
-                                        <th pSortableColumn="created_at">
-                                            {{ "common.columns.created" | transloco }}
-                                            <p-sortIcon field="created_at" />
-                                        </th>
+                                        <th pSortableColumn="email">{{ "common.columns.email" | transloco }}<p-sortIcon field="email" /></th>
+                                        <th pSortableColumn="instance_role">{{ "common.columns.role" | transloco }}<p-sortIcon field="instance_role" /></th>
+                                        <th pSortableColumn="created_at">{{ "common.columns.created" | transloco }}<p-sortIcon field="created_at" /></th>
                                         <th>{{ "common.columns.actions" | transloco }}</th>
                                     </tr>
                                 </ng-template>
-
                                 <ng-template pTemplate="body" let-user>
                                     <tr>
-                                        <td>{{ user.email }}</td>
                                         <td>
-                                            <p-select [options]="roleOptions()" [formControl]="roleControl(user.id)" (onChange)="onRoleChange(user, $event.value)" optionLabel="label" optionValue="value" class="w-40" appendTo="body" />
+                                            <div class="admin-user-cell">
+                                                <span>{{ user.email }}</span>
+                                                @if (isInstanceOwner(user)) {
+                                                <span class="hk-owner-chip">{{ "admin.roles.instanceOwner" | transloco }}</span>
+                                                }
+                                            </div>
                                         </td>
                                         <td>
-                                            @if (isInstanceOwner(user)) {
-                                            <span class="hk-owner-chip">{{ "admin.roles.instanceOwner" | transloco }}</span>
-                                            } @else {
-                                            <span class="text-sm text-[var(--p-text-muted-color)]">-</span>
-                                            }
+                                            <p-select [options]="roleOptions()" [formControl]="roleControl(user.id)" (onChange)="onRoleChange(user, $event.value)" optionLabel="label" optionValue="value" class="admin-role-select" appendTo="body" />
                                         </td>
                                         <td><app-relative-date-time [value]="user.created_at" /></td>
                                         <td>
-                                            <div class="flex flex-wrap items-center justify-end gap-2">
+                                            <div class="admin-row-actions">
                                                 @if (canDisableUserMfa()) {
-                                                <p-button icon="pi pi-shield" severity="warn" [text]="true" [label]="'admin.users.disable2faAction' | transloco" [loading]="isDisablingUser(user)" (onClick)="confirmDisableUserMfa($event, user)" />
+                                                <p-button
+                                                    icon="pi pi-shield"
+                                                    severity="warn"
+                                                    [text]="true"
+                                                    [rounded]="true"
+                                                    [pTooltip]="'admin.users.disable2faAction' | transloco"
+                                                    tooltipPosition="top"
+                                                    [ariaLabel]="'admin.users.disable2faAction' | transloco"
+                                                    [loading]="isDisablingUser(user)"
+                                                    (onClick)="confirmDisableUserMfa($event, user)"
+                                                />
                                                 }
-                                                <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="confirmDeleteUser($event, user)" [disabled]="user.id === currentUserId()" />
+                                                <p-button
+                                                    icon="pi pi-trash"
+                                                    severity="danger"
+                                                    [text]="true"
+                                                    [rounded]="true"
+                                                    [pTooltip]="'share.dialog.deleteAction' | transloco"
+                                                    tooltipPosition="top"
+                                                    [ariaLabel]="'share.dialog.deleteAction' | transloco"
+                                                    (onClick)="confirmDeleteUser($event, user)"
+                                                    [loading]="isDeletingUser(user)"
+                                                    [disabled]="user.id === currentUserId() || isDeletingUser(user)"
+                                                />
                                             </div>
                                         </td>
                                     </tr>
                                 </ng-template>
                             </p-table>
                         </div>
-                    </p-card>
+                    </section>
                 </p-tabpanel>
-                <p-tabpanel value="1">
-                    <p-card>
-                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                            <h2 class="text-lg font-semibold m-0">{{ "admin.sites.title" | transloco }}</h2>
-                            <span class="p-input-icon-left hk-crud-search">
-                                <i class="pi pi-search"></i>
-                                <input pInputText #sitesSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="sitesTable.filterGlobal($any($event.target).value, 'contains')" />
-                            </span>
-                        </div>
 
-                        <div class="hk-crud-table-wrap">
+                <p-tabpanel value="sites">
+                    <section class="admin-panel admin-panel--wide admin-panel--table" aria-labelledby="settings-sites-title">
+                        <div class="admin-panel__header">
+                            <div class="admin-panel__title-block">
+                                <h2 id="settings-sites-title">{{ "admin.sites.title" | transloco }}</h2>
+                                <span class="admin-panel__meta">{{ sites().length | number }} {{ "admin.tabs.sites" | transloco }}</span>
+                            </div>
+                            <p-iconfield class="admin-search">
+                                <p-inputicon class="pi pi-search" />
+                                <input pInputText #settingsSitesSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="settingsSitesTable.filterGlobal($any($event.target).value, 'contains')" />
+                            </p-iconfield>
+                        </div>
+                        @if (siteActionStatus(); as status) {
+                        <div class="admin-panel__messages">
+                            <p-message [severity]="status.severity" styleClass="w-full" [text]="siteActionStatusMessage()" />
+                        </div>
+                        }
+                        <div class="admin-table-wrap">
                             <p-table
-                                #sitesTable
+                                #settingsSitesTable
                                 [value]="sites()"
                                 [loading]="isLoadingSites()"
-                                [scrollable]="false"
                                 [globalFilterFields]="['domain', 'owner_email', 'created_at']"
                                 [sortField]="'created_at'"
                                 [sortOrder]="-1"
-                                styleClass="hk-crud-table p-datatable-sm"
+                                [rowHover]="true"
+                                styleClass="p-datatable-sm admin-data-table"
                             >
                                 <ng-template pTemplate="header">
                                     <tr>
-                                        <th pSortableColumn="domain">
-                                            {{ "common.columns.domain" | transloco }}
-                                            <p-sortIcon field="domain" />
-                                        </th>
-                                        <th pSortableColumn="owner_email">
-                                            {{ "common.columns.owner" | transloco }}
-                                            <p-sortIcon field="owner_email" />
-                                        </th>
-                                        <th pSortableColumn="created_at">
-                                            {{ "common.columns.created" | transloco }}
-                                            <p-sortIcon field="created_at" />
-                                        </th>
+                                        <th pSortableColumn="domain">{{ "common.columns.domain" | transloco }}<p-sortIcon field="domain" /></th>
+                                        <th pSortableColumn="owner_email">{{ "common.columns.owner" | transloco }}<p-sortIcon field="owner_email" /></th>
+                                        <th pSortableColumn="created_at">{{ "common.columns.created" | transloco }}<p-sortIcon field="created_at" /></th>
                                         <th>{{ "common.columns.actions" | transloco }}</th>
                                     </tr>
                                 </ng-template>
-
                                 <ng-template pTemplate="body" let-site>
                                     <tr>
-                                        <td>
-                                            <a [href]="'https://' + site.domain" target="_blank" class="text-primary hover:underline"> {{ site.domain }} </a>
-                                        </td>
-                                        <td>
-                                            <div class="flex flex-wrap items-center gap-2">
-                                                <span>{{ siteOwnerEmail(site) }}</span>
-                                                @if (siteOwnerInstanceRole(site) === "owner") {
-                                                <span class="hk-owner-chip">{{ roleLabel("owner") }}</span>
-                                                }
-                                            </div>
-                                        </td>
+                                        <td><a [href]="'https://' + site.domain" target="_blank" rel="noopener" class="admin-link">{{ site.domain }}</a></td>
+                                        <td>{{ siteOwnerEmail(site) }}</td>
                                         <td><app-relative-date-time [value]="site.created_at" /></td>
                                         <td>
-                                            <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="confirmDeleteSite($event, site)" />
+                                            <div class="admin-row-actions">
+                                                <p-button
+                                                    icon="pi pi-trash"
+                                                    severity="danger"
+                                                    [text]="true"
+                                                    [rounded]="true"
+                                                    [pTooltip]="'share.dialog.deleteAction' | transloco"
+                                                    tooltipPosition="top"
+                                                    [ariaLabel]="'share.dialog.deleteAction' | transloco"
+                                                    (onClick)="confirmDeleteSite($event, site)"
+                                                    [loading]="isDeletingSite(site)"
+                                                    [disabled]="isDeletingSite(site)"
+                                                />
+                                            </div>
                                         </td>
                                     </tr>
                                 </ng-template>
                             </p-table>
                         </div>
-                    </p-card>
+                    </section>
                 </p-tabpanel>
-                <p-tabpanel value="2">
-                    <p-card>
-                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-                            <h2 class="text-lg font-semibold m-0">{{ "admin.teams.title" | transloco }}</h2>
-                            <span class="p-input-icon-left hk-crud-search">
-                                <i class="pi pi-search"></i>
-                                <input pInputText #teamsSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="teamsTable.filterGlobal($any($event.target).value, 'contains')" />
-                            </span>
-                        </div>
 
-                        <div class="hk-crud-table-wrap">
-                            <p-table #teamsTable [value]="teams()" [loading]="isLoadingTeams()" [scrollable]="false" [globalFilterFields]="['name', 'created_at']" [sortField]="'created_at'" [sortOrder]="-1" styleClass="hk-crud-table p-datatable-sm">
+                <p-tabpanel value="teams">
+                    <section class="admin-panel admin-panel--wide admin-panel--table" aria-labelledby="settings-teams-title">
+                        <div class="admin-panel__header">
+                            <div class="admin-panel__title-block">
+                                <h2 id="settings-teams-title">{{ "admin.teams.title" | transloco }}</h2>
+                                <span class="admin-panel__meta">{{ teams().length | number }} {{ "admin.tabs.teams" | transloco }}</span>
+                            </div>
+                            <p-iconfield class="admin-search">
+                                <p-inputicon class="pi pi-search" />
+                                <input pInputText #settingsTeamsSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="settingsTeamsTable.filterGlobal($any($event.target).value, 'contains')" />
+                            </p-iconfield>
+                        </div>
+                        @if (teamActionStatus(); as status) {
+                        <div class="admin-panel__messages">
+                            <p-message [severity]="status.severity" styleClass="w-full" [text]="teamActionStatusMessage()" />
+                        </div>
+                        }
+                        <div class="admin-table-wrap">
+                            <p-table
+                                #settingsTeamsTable
+                                [value]="teams()"
+                                [loading]="isLoadingTeams()"
+                                [globalFilterFields]="['name', 'created_at']"
+                                [sortField]="'created_at'"
+                                [sortOrder]="-1"
+                                [rowHover]="true"
+                                styleClass="p-datatable-sm admin-data-table"
+                            >
                                 <ng-template pTemplate="header">
                                     <tr>
-                                        <th pSortableColumn="name">
-                                            {{ "common.columns.name" | transloco }}
-                                            <p-sortIcon field="name" />
-                                        </th>
-                                        <th pSortableColumn="member_count">
-                                            {{ "common.columns.members" | transloco }}
-                                            <p-sortIcon field="member_count" />
-                                        </th>
-                                        <th pSortableColumn="site_count">
-                                            {{ "common.columns.sites" | transloco }}
-                                            <p-sortIcon field="site_count" />
-                                        </th>
-                                        <th pSortableColumn="is_archived">
-                                            {{ "common.columns.status" | transloco }}
-                                            <p-sortIcon field="is_archived" />
-                                        </th>
-                                        <th pSortableColumn="created_at">
-                                            {{ "common.columns.created" | transloco }}
-                                            <p-sortIcon field="created_at" />
-                                        </th>
+                                        <th pSortableColumn="name">{{ "common.columns.name" | transloco }}<p-sortIcon field="name" /></th>
+                                        <th pSortableColumn="member_count">{{ "common.columns.members" | transloco }}<p-sortIcon field="member_count" /></th>
+                                        <th pSortableColumn="site_count">{{ "common.columns.sites" | transloco }}<p-sortIcon field="site_count" /></th>
+                                        <th pSortableColumn="is_archived">{{ "common.columns.status" | transloco }}<p-sortIcon field="is_archived" /></th>
                                         <th>{{ "common.columns.actions" | transloco }}</th>
                                     </tr>
                                 </ng-template>
-
                                 <ng-template pTemplate="body" let-team>
                                     <tr>
                                         <td>{{ team.name }}</td>
@@ -209,26 +241,494 @@
                                             <p-tag [value]="'admin.teams.status.active' | transloco" severity="success" />
                                             }
                                         </td>
-                                        <td><app-relative-date-time [value]="team.created_at" /></td>
                                         <td>
-                                            <div class="flex flex-wrap items-center justify-end gap-2">
-                                                @if (!team.is_default) {
-                                                <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="confirmDeleteTeam($event, team)" />
-                                                }
+                                            @if (!team.is_default) {
+                                            <div class="admin-row-actions">
+                                                <p-button
+                                                    icon="pi pi-trash"
+                                                    severity="danger"
+                                                    [text]="true"
+                                                    [rounded]="true"
+                                                    [pTooltip]="'share.dialog.deleteAction' | transloco"
+                                                    tooltipPosition="top"
+                                                    [ariaLabel]="'share.dialog.deleteAction' | transloco"
+                                                    (onClick)="confirmDeleteTeam($event, team)"
+                                                    [loading]="isDeletingTeam(team)"
+                                                    [disabled]="isDeletingTeam(team)"
+                                                />
                                             </div>
+                                            }
                                         </td>
                                     </tr>
                                 </ng-template>
                             </p-table>
                         </div>
-                    </p-card>
+                    </section>
                 </p-tabpanel>
-                <p-tabpanel value="3">
-                    <p-card>
-                        <app-admin-global-exclusion-settings />
-                    </p-card>
+
+                <p-tabpanel value="globalFilters">
+                    @if (activeSettingsTab() === "globalFilters") {
+                    <section class="admin-panel admin-panel--wide admin-panel--form" aria-labelledby="settings-filters-title">
+                        <div class="admin-panel__header">
+                            <div class="admin-panel__title-block">
+                                <h2 id="settings-filters-title">{{ "admin.exclusions.title" | transloco }}</h2>
+                            </div>
+                        </div>
+                        <div class="admin-panel__content">
+                            <app-admin-global-exclusion-settings />
+                        </div>
+                    </section>
+                    }
                 </p-tabpanel>
             </p-tabpanels>
         </p-tabs>
+        } @else {
+        <div class="admin-status-summary">
+            <div class="admin-status-summary__item">
+                <span class="admin-status-summary__label">{{ "admin.system.health.title" | transloco }}</span>
+                <p-tag [value]="runtimeStatusKey() | transloco" [severity]="runtimeStatusSeverity()" />
+            </div>
+            <div class="admin-status-summary__item">
+                <span class="admin-status-summary__label">{{ "admin.system.overview.version" | transloco }}</span>
+                <span class="admin-status-summary__value">{{ systemInfo()?.version || "-" }}</span>
+            </div>
+            <div class="admin-status-summary__item">
+                <span class="admin-status-summary__label">{{ "admin.system.ingest.hits" | transloco }}</span>
+                <span class="admin-status-summary__value">{{ recentHits() | number }}</span>
+            </div>
+            <div class="admin-status-summary__item">
+                <span class="admin-status-summary__label">{{ "admin.system.storage.diskUsage" | transloco }}</span>
+                <span class="admin-status-summary__value">{{ diskUsedPercent() }}%</span>
+            </div>
+        </div>
+
+        <p-tabs [(value)]="activeAdminTab" class="hk-admin-tabs">
+            <p-tablist>
+                <p-tab value="runtime">{{ "admin.system.console.tabs.runtime" | transloco }}</p-tab>
+                <p-tab value="operations">{{ "admin.system.console.tabs.operations" | transloco }}</p-tab>
+                <p-tab value="audit">{{ "admin.system.console.tabs.audit" | transloco }}</p-tab>
+            </p-tablist>
+
+            <p-tabpanels>
+                <p-tabpanel value="runtime">
+                    <div class="admin-status__panel-grid admin-status__panel-grid--runtime">
+                        <app-system-status-card
+                            titleId="runtime-health-title"
+                            [title]="'admin.system.health.title' | transloco"
+                            [wide]="true"
+                            [loading]="isLoadingHealth()"
+                            [refreshLabel]="'admin.system.console.refreshCard' | transloco"
+                            (refreshClicked)="loadSystemHealth()"
+                        >
+                            @if (systemHealth(); as health) {
+                            <div class="admin-health-grid">
+                                <div class="admin-health-tile">
+                                    <span>{{ "admin.system.health.status" | transloco }}</span>
+                                    <p-tag [value]="health.status" [severity]="statusSeverity(health.status)" />
+                                </div>
+                                <div class="admin-health-tile">
+                                    <span>{{ "admin.system.health.database" | transloco }}</span>
+                                    <p-tag [value]="health.database" [severity]="statusSeverity(health.database)" />
+                                </div>
+                                <div class="admin-health-tile">
+                                    <span>{{ "admin.system.health.workers" | transloco }}</span>
+                                    <p-tag [value]="health.workers" [severity]="statusSeverity(health.workers)" />
+                                </div>
+                                <div class="admin-health-tile">
+                                    <span>{{ "admin.system.health.isLeader" | transloco }}</span>
+                                    <p-tag [value]="health.is_leader ? ('admin.system.console.leader' | transloco) : ('admin.system.console.follower' | transloco)" [severity]="health.is_leader ? 'info' : 'warn'" />
+                                </div>
+                            </div>
+                            } @else if (isLoadingHealth()) {
+                            <div class="admin-loading"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i>{{ "common.loading" | transloco }}</div>
+                            } @else {
+                            <p-message severity="error" [text]="'admin.system.console.loadFailed' | transloco" styleClass="w-full" />
+                            }
+                        </app-system-status-card>
+
+                        <app-system-status-card
+                            titleId="runtime-overview-title"
+                            [title]="'admin.system.overview.title' | transloco"
+                            [loading]="isLoadingSystem()"
+                            [refreshLabel]="'admin.system.console.refreshCard' | transloco"
+                            (refreshClicked)="loadSystemInfo()"
+                        >
+                            @if (systemInfo(); as info) {
+                            <dl class="admin-definition-list">
+                                <div>
+                                    <dt>{{ "admin.system.overview.version" | transloco }}</dt>
+                                    <dd>{{ info.version || "-" }}</dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.overview.build" | transloco }}</dt>
+                                    <dd>{{ info.build || "-" }}</dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.overview.uptime" | transloco }}</dt>
+                                    <dd>{{ info.uptime || "-" }}</dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.overview.runtimeMode" | transloco }}</dt>
+                                    <dd>{{ info.runtime_mode || "-" }}</dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.overview.publicUrl" | transloco }}</dt>
+                                    <dd class="admin-mono" [pTooltip]="info.public_url" tooltipPosition="top">{{ info.public_url || "-" }}</dd>
+                                </div>
+                            </dl>
+                            } @else if (isLoadingSystem()) {
+                            <div class="admin-loading"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i>{{ "common.loading" | transloco }}</div>
+                            }
+                        </app-system-status-card>
+
+                        <app-system-status-card
+                            titleId="runtime-features-title"
+                            [title]="'admin.system.overview.enabledFeatures' | transloco"
+                            [loading]="isLoadingSystem()"
+                            [refreshLabel]="'admin.system.console.refreshCard' | transloco"
+                            (refreshClicked)="loadSystemInfo()"
+                        >
+                            <div class="admin-feature-list">
+                                @for (feature of enabledFeatureRows(); track feature.label) {
+                                <div class="admin-feature">
+                                    <span class="feature-copy">
+                                        <span class="feature-label">{{ feature.label }}</span>
+                                        @if (feature.detail) {
+                                        <br />
+                                        <small class="feature-detail">{{ feature.detail }}</small>
+                                        }
+                                    </span>
+                                    <p-tag [value]="feature.value" [severity]="feature.enabled ? 'success' : 'secondary'" />
+                                </div>
+                                } @empty {
+                                <div class="admin-empty">{{ "admin.system.console.noFeatures" | transloco }}</div>
+                                }
+                            </div>
+                        </app-system-status-card>
+
+                        <app-system-status-card
+                            titleId="runtime-storage-title"
+                            [title]="'admin.system.storage.title' | transloco"
+                            [wide]="true"
+                            [loading]="isLoadingStorage()"
+                            [refreshLabel]="'admin.system.console.refreshCard' | transloco"
+                            [metricLabel]="'admin.system.storage.diskUsage' | transloco"
+                            [metricValue]="diskUsedPercent() + '%'"
+                            (refreshClicked)="loadSystemStorage()"
+                        >
+                            @if (systemStorage(); as storage) {
+                            <div class="admin-storage-layout">
+                                <dl class="admin-definition-list admin-definition-list--compact">
+                                    <div>
+                                        <dt>{{ "admin.system.storage.sharedDb" | transloco }}</dt>
+                                        <dd class="admin-mono" [pTooltip]="storage.shared_db_path" tooltipPosition="top">{{ storage.shared_db_path }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt>{{ "admin.system.storage.sharedDbSize" | transloco }}</dt>
+                                        <dd>{{ formatBytesValue(storage.shared_db_bytes) }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt>{{ "admin.system.storage.dataPath" | transloco }}</dt>
+                                        <dd class="admin-mono" [pTooltip]="storage.data_path" tooltipPosition="top">{{ storage.data_path }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt>{{ "admin.system.storage.diskAvailable" | transloco }}</dt>
+                                        <dd>{{ formatBytesValue(storage.disk_available_bytes) }} / {{ formatBytesValue(storage.disk_total_bytes) }}</dd>
+                                    </div>
+                                </dl>
+
+                                <div class="admin-table-wrap">
+                                    <p-table [value]="storage.tenant_dbs ?? []" [rowHover]="true" styleClass="p-datatable-sm admin-data-table">
+                                        <ng-template pTemplate="header">
+                                            <tr>
+                                                <th>{{ "admin.system.storage.columns.tenant" | transloco }}</th>
+                                                <th>{{ "admin.system.storage.columns.size" | transloco }}</th>
+                                                <th>{{ "admin.system.storage.columns.path" | transloco }}</th>
+                                            </tr>
+                                        </ng-template>
+                                        <ng-template pTemplate="body" let-db>
+                                            <tr>
+                                                <td>{{ db.name }}</td>
+                                                <td>{{ formatBytesValue(db.bytes) }}</td>
+                                                <td class="admin-mono admin-path-cell" [pTooltip]="db.path" tooltipPosition="top">{{ db.path }}</td>
+                                            </tr>
+                                        </ng-template>
+                                        <ng-template pTemplate="emptymessage">
+                                            <tr>
+                                                <td colspan="3" class="admin-empty-cell">{{ "admin.system.console.noTenantDbs" | transloco }}</td>
+                                            </tr>
+                                        </ng-template>
+                                    </p-table>
+                                </div>
+                            </div>
+                            } @else if (isLoadingStorage()) {
+                            <div class="admin-loading"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i>{{ "common.loading" | transloco }}</div>
+                            }
+                        </app-system-status-card>
+
+                        <app-system-status-card
+                            titleId="runtime-ingest-title"
+                            [title]="'admin.system.ingest.title' | transloco"
+                            [loading]="isLoadingIngest()"
+                            [refreshLabel]="'admin.system.console.refreshCard' | transloco"
+                            (refreshClicked)="loadSystemIngest()"
+                        >
+                            @if (systemIngest(); as ingest) {
+                            <div class="admin-metric-grid">
+                                <div class="admin-metric">
+                                    <span>{{ "admin.system.ingest.hits" | transloco }}</span>
+                                    <strong>{{ ingest.recent_hits | number }}</strong>
+                                </div>
+                                <div class="admin-metric">
+                                    <span>{{ "admin.system.ingest.events" | transloco }}</span>
+                                    <strong>{{ ingest.recent_events | number }}</strong>
+                                </div>
+                                <div class="admin-metric">
+                                    <span>{{ "admin.system.ingest.rejections" | transloco }}</span>
+                                    <strong>{{ ingest.recent_rejections | number }}</strong>
+                                </div>
+                                <div class="admin-metric">
+                                    <span>{{ "admin.system.ingest.spam" | transloco }}</span>
+                                    <strong>{{ ingest.recent_spam | number }}</strong>
+                                </div>
+                            </div>
+                            } @else if (isLoadingIngest()) {
+                            <div class="admin-loading"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i>{{ "common.loading" | transloco }}</div>
+                            }
+                        </app-system-status-card>
+
+                        <app-system-status-card
+                            titleId="runtime-caches-title"
+                            [title]="'admin.system.caches.title' | transloco"
+                            [loading]="isLoadingCaches()"
+                            [refreshLabel]="'admin.system.console.refreshCard' | transloco"
+                            (refreshClicked)="loadSystemCaches()"
+                        >
+                            @if (systemCaches(); as caches) {
+                            <p-tag system-status-card-status [value]="'admin.system.caches.status.' + caches.status | transloco" [severity]="statusSeverity(caches.status)" />
+                            } @if (isLoadingCaches() && !systemCaches()) {
+                            <div class="admin-loading"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i>{{ "common.loading" | transloco }}</div>
+                            } @else {
+                            <div class="admin-table-wrap">
+                                <p-table [value]="cacheRows()" [rowHover]="true" styleClass="p-datatable-sm admin-data-table">
+                                    <ng-template pTemplate="header">
+                                        <tr>
+                                            <th>{{ "admin.system.caches.columns.cache" | transloco }}</th>
+                                            <th>{{ "admin.system.caches.columns.size" | transloco }}</th>
+                                            <th>{{ "admin.system.caches.columns.maxSize" | transloco }}</th>
+                                            <th>{{ "admin.system.caches.columns.ttl" | transloco }}</th>
+                                            <th>{{ "admin.system.console.pressure" | transloco }}</th>
+                                        </tr>
+                                    </ng-template>
+                                    <ng-template pTemplate="body" let-row>
+                                        <tr>
+                                            <td>{{ row.name }}</td>
+                                            <td>{{ row.size | number }}</td>
+                                            <td>{{ row.maxSize | number }}</td>
+                                            <td>{{ row.ttl }}</td>
+                                            <td>{{ row.pressure }}%</td>
+                                        </tr>
+                                    </ng-template>
+                                </p-table>
+                            </div>
+                            }
+                        </app-system-status-card>
+                    </div>
+                </p-tabpanel>
+
+                <p-tabpanel value="operations">
+                    @if (activeAdminTab() === "operations") {
+                    <div class="admin-status__panel-grid admin-status__panel-grid--operations">
+                        <app-system-status-card
+                            titleId="operations-backups-title"
+                            [title]="'admin.system.backups.title' | transloco"
+                            [loading]="isLoadingBackups()"
+                            [refreshLabel]="'admin.system.console.refreshCard' | transloco"
+                            (refreshClicked)="loadSystemBackups()"
+                        >
+                            @if (systemBackups(); as backups) {
+                            <dl class="admin-definition-list">
+                                <div>
+                                    <dt>{{ "admin.system.backups.enabled" | transloco }}</dt>
+                                    <dd><p-tag [value]="backups.enabled ? ('common.yes' | transloco) : ('common.no' | transloco)" [severity]="backups.enabled ? 'success' : 'warn'" /></dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.backups.configPath" | transloco }}</dt>
+                                    <dd class="admin-mono" [pTooltip]="backups.config_path" tooltipPosition="top">{{ backups.config_path || ("admin.system.backups.disabled" | transloco) }}</dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.backups.interval" | transloco }}</dt>
+                                    <dd>{{ backups.interval_min }} min</dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.backups.retention" | transloco }}</dt>
+                                    <dd>{{ backups.retention }}</dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.backups.lastBackup" | transloco }}</dt>
+                                    <dd>
+                                        @if (backups.last_backup) {
+                                        <app-relative-date-time [value]="backups.last_backup" />
+                                        } @else { - }
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.backups.recentFailures" | transloco }}</dt>
+                                    <dd>{{ backups.recent_failures }}</dd>
+                                </div>
+                            </dl>
+                            @if (backups.last_error) {
+                            <p-message severity="error" styleClass="w-full mt-3" [text]="backups.last_error" />
+                            } } @else if (isLoadingBackups()) {
+                            <div class="admin-loading"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i>{{ "common.loading" | transloco }}</div>
+                            }
+                        </app-system-status-card>
+
+                        <app-system-status-card
+                            titleId="operations-spam-title"
+                            [title]="'admin.system.spam.title' | transloco"
+                            [loading]="isLoadingSpam()"
+                            [refreshLabel]="'admin.system.console.refreshCard' | transloco"
+                            [actionLabel]="perms.isInstanceAdmin() ? ('admin.system.spam.actions.refresh' | transloco) : ''"
+                            actionIcon="pi pi-sync"
+                            [actionLoading]="isRefreshingSpam()"
+                            (refreshClicked)="loadSystemSpam()"
+                            (actionClicked)="refreshSpamFilter()"
+                        >
+                            @if (systemSpam(); as spam) {
+                            <dl class="admin-definition-list">
+                                <div>
+                                    <dt>{{ "admin.system.spam.ruleCount" | transloco }}</dt>
+                                    <dd>{{ spam.rule_count | number }}</dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.spam.autoUpdate" | transloco }}</dt>
+                                    <dd><p-tag [value]="spam.auto_update ? ('common.yes' | transloco) : ('common.no' | transloco)" [severity]="spam.auto_update ? 'success' : 'warn'" /></dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.spam.lastRefresh" | transloco }}</dt>
+                                    <dd>
+                                        @if (spam.last_refresh) {
+                                        <app-relative-date-time [value]="spam.last_refresh" />
+                                        } @else { - }
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.spam.dbPath" | transloco }}</dt>
+                                    <dd class="admin-mono" [pTooltip]="spam.db_path" tooltipPosition="top">{{ spam.db_path }}</dd>
+                                </div>
+                            </dl>
+                            @if (spam.last_error) {
+                            <p-message severity="error" styleClass="w-full mt-3" [text]="spam.last_error" />
+                            } } @else if (isLoadingSpam()) {
+                            <div class="admin-loading"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i>{{ "common.loading" | transloco }}</div>
+                            }
+                        </app-system-status-card>
+
+                        <app-system-status-card
+                            titleId="operations-mail-title"
+                            [title]="'admin.system.mail.title' | transloco"
+                            [wide]="true"
+                            [loading]="isLoadingMail()"
+                            [refreshLabel]="'admin.system.console.refreshCard' | transloco"
+                            (refreshClicked)="loadSystemMail()"
+                        >
+                            @if (systemMail(); as mail) {
+                            <dl class="admin-definition-list">
+                                <div>
+                                    <dt>{{ "admin.system.mail.configured" | transloco }}</dt>
+                                    <dd><p-tag [value]="mail.configured ? ('common.yes' | transloco) : ('common.no' | transloco)" [severity]="mail.configured ? 'success' : 'warn'" /></dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.mail.driver" | transloco }}</dt>
+                                    <dd>{{ mail.driver || "-" }}</dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.mail.host" | transloco }}</dt>
+                                    <dd>
+                                        <span>{{ mail.host || "-" }}</span>
+                                        @if (mail.port) {
+                                        <span>:{{ mail.port }}</span>
+                                        }
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.mail.encryption" | transloco }}</dt>
+                                    <dd>{{ mail.encryption || "-" }}</dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.mail.fromAddress" | transloco }}</dt>
+                                    <dd>{{ mail.from_name }} &lt;{{ mail.from_address }}&gt;</dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.mail.passwordSet" | transloco }}</dt>
+                                    <dd><p-tag [value]="mail.password_set ? ('common.yes' | transloco) : ('common.no' | transloco)" [severity]="mail.password_set ? 'success' : 'warn'" /></dd>
+                                </div>
+                                @if (mail.last_test_at) {
+                                <div>
+                                    <dt>{{ "admin.system.mail.lastTest" | transloco }}</dt>
+                                    <dd>
+                                        <app-relative-date-time [value]="mail.last_test_at" />
+                                        @if (mail.last_test_ok !== undefined) {
+                                        <p-tag [value]="mail.last_test_ok ? ('admin.system.audit.outcome.success' | transloco) : ('admin.system.audit.outcome.failure' | transloco)" [severity]="mail.last_test_ok ? 'success' : 'danger'" />
+                                        }
+                                    </dd>
+                                </div>
+                                }
+                            </dl>
+                            @if (mailTestResult(); as result) {
+                            <p-message [severity]="result.severity" styleClass="w-full mt-3" [text]="result.message" />
+                            } @if (perms.isInstanceAdmin() && mail.configured) {
+                            <div system-status-card-footer class="admin-mail-test">
+                                <div class="admin-mail-test__field">
+                                    <label for="admin-mail-test-recipient">{{ "admin.system.mail.recipientLabel" | transloco }}</label>
+                                    <input
+                                        pInputText
+                                        id="admin-mail-test-recipient"
+                                        type="email"
+                                        inputmode="email"
+                                        autocomplete="email"
+                                        [formControl]="mailTestRecipient"
+                                        [placeholder]="'admin.system.mail.recipientPlaceholder' | transloco"
+                                        [class.ng-invalid]="mailTestRecipient.touched && mailTestRecipient.invalid"
+                                        [class.ng-dirty]="mailTestRecipient.dirty"
+                                    />
+                                    @if (mailTestRecipient.touched && mailTestRecipient.invalid) {
+                                    <small>{{ "admin.system.mail.recipientInvalid" | transloco }}</small>
+                                    }
+                                </div>
+                                <p-button
+                                    icon="pi pi-send"
+                                    [label]="'admin.system.mail.actions.test' | transloco"
+                                    severity="secondary"
+                                    size="small"
+                                    (onClick)="testMail()"
+                                    [loading]="isTestingMail()"
+                                    [disabled]="mailTestRecipient.invalid || isTestingMail()"
+                                />
+                            </div>
+                            } } @else if (isLoadingMail()) {
+                            <div class="admin-loading"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i>{{ "common.loading" | transloco }}</div>
+                            }
+                        </app-system-status-card>
+                    </div>
+                    }
+                </p-tabpanel>
+
+                <p-tabpanel value="audit">
+                    @if (activeAdminTab() === "audit") {
+                    <section class="admin-panel admin-panel--wide" aria-labelledby="audit-title">
+                        <div class="admin-panel__header">
+                            <div>
+                                <h2 id="audit-title">{{ "admin.system.audit.title" | transloco }}</h2>
+                            </div>
+                        </div>
+                        <app-system-audit />
+                    </section>
+                    }
+                </p-tabpanel>
+            </p-tabpanels>
+        </p-tabs>
+        }
     </div>
-</div>
+</app-admin-page-frame>

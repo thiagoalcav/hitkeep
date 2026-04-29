@@ -63,6 +63,12 @@ type Context struct {
 	AuthState      *AuthStateStore
 	IPFilter       *blocking.IPFilter
 	SpamFilter     *blocking.SpamFilter
+
+	// Runtime system monitoring
+	StartedAt       time.Time
+	SystemCounters  *database.SystemCounter
+	BackupStatus    *database.BackupStatusTracker
+	MailTestTracker *database.MailTestTracker
 }
 
 // AnalyticsStore resolves the tenant-specific store that holds analytics data for the given site.

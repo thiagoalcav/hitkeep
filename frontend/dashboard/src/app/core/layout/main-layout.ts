@@ -58,6 +58,8 @@ export class MainLayout {
     protected readonly isSiteSettingsVisible = this.context.isSiteSettingsVisible;
     protected readonly siteSettingsTab = this.context.siteSettingsTab;
     protected readonly beforeTeamSwitch = this.context.beforeTeamSwitch;
+    protected readonly canViewSystemStatus = this.perms.isInstanceAdmin;
+    protected readonly isAdministrationVisible = computed(() => this.canViewSystemStatus() || this.isTeamAdmin());
 
     handleKeyboard(event: KeyboardEvent) {
         if ((event.metaKey || event.ctrlKey) && event.key === 'k') {

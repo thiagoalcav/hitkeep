@@ -122,16 +122,23 @@ export const routes: Routes = [
             },
             {
                 path: 'admin',
-                canActivate: [teamAdminGuard],
                 children: [
+                    {
+                        path: 'status',
+                        loadComponent: () => import('@pages/admin/admin-settings').then((m) => m.AdminSettings),
+                        canActivate: [adminGuard],
+                        data: { adminPage: 'status' }
+                    },
                     {
                         path: 'system',
                         loadComponent: () => import('@pages/admin/admin-settings').then((m) => m.AdminSettings),
-                        canActivate: [adminGuard]
+                        canActivate: [adminGuard],
+                        data: { adminPage: 'settings' }
                     },
                     {
                         path: 'team',
-                        loadComponent: () => import('@pages/admin/team/team-admin').then((m) => m.TeamAdminPage)
+                        loadComponent: () => import('@pages/admin/team/team-admin').then((m) => m.TeamAdminPage),
+                        canActivate: [teamAdminGuard]
                     },
                     { path: 'team/overview', redirectTo: 'team', pathMatch: 'full' },
                     { path: 'team/members', redirectTo: 'team', pathMatch: 'full' },

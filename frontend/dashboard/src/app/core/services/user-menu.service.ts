@@ -4,14 +4,12 @@ import { Router } from '@angular/router';
 import { MenuItem } from 'primeng/api';
 import { TranslocoService } from '@jsverse/transloco';
 import { formatDurationInterval } from '@core/i18n/duration-format';
-import { PermissionService } from '@services/permission.service';
 import { AuthService } from '@services/auth.service';
 import { catchError, finalize, of } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class UserMenuService {
     private router = inject(Router);
-    private perms = inject(PermissionService);
     private auth = inject(AuthService);
     private transloco = inject(TranslocoService);
     private isSigningOut = false;
@@ -40,12 +38,6 @@ export class UserMenuService {
             : [];
 
         return [
-            {
-                label: this.transloco.translate('userMenu.administration'),
-                icon: 'pi pi-shield',
-                visible: this.perms.isInstanceAdmin(),
-                command: () => this.router.navigate(['/admin/system'])
-            },
             {
                 label: this.transloco.translate('userMenu.userSettings'),
                 icon: 'pi pi-user',

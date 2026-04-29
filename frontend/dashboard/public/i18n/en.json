@@ -48,7 +48,9 @@
         "teamSettings": "Team Settings",
         "teamSettingsAria": "Go to team settings",
         "ecommerce": "Ecommerce",
-        "ecommerceAria": "Go to ecommerce analytics"
+        "ecommerceAria": "Go to ecommerce analytics",
+        "systemStatus": "System status",
+        "systemStatusAria": "Go to system status"
     },
     "teams": {
         "switcher": {
@@ -148,6 +150,11 @@
             "refresh": "Refresh",
             "save": "Save"
         },
+        "yes": "Yes",
+        "no": "No",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "unknown": "Unknown",
         "saved": "Saved",
         "saveFailed": "Save failed. Please try again.",
         "loading": "Loading...",
@@ -449,6 +456,7 @@
             "title": "Security",
             "loading": "Loading security settings...",
             "changePasswordTitle": "Change password",
+            "changePasswordDescription": "Update the password for this account.",
             "passwordUpdated": "Password updated successfully.",
             "currentPasswordLabel": "Current password",
             "newPasswordLabel": "New password",
@@ -863,7 +871,16 @@
             "users": "Users",
             "sites": "Sites",
             "teams": "Teams",
-            "globalFilters": "Global filters"
+            "globalFilters": "Global filters",
+            "overview": "Overview",
+            "health": "Health",
+            "storage": "Storage",
+            "ingest": "Ingest",
+            "backups": "Backups",
+            "spam": "Spam",
+            "caches": "Caches",
+            "mail": "Mail",
+            "audit": "Audit"
         },
         "users": {
             "title": "Users",
@@ -901,6 +918,9 @@
                 "createFailed": "Failed to create global filter.",
                 "deleteFailed": "Failed to delete global filter.",
                 "copyFailed": "Failed to copy current IP."
+            },
+            "status": {
+                "deleteSuccess": "Deleted global filter {{cidr}}."
             }
         },
         "roles": {
@@ -910,9 +930,15 @@
         },
         "errors": {
             "deleteUserBlockedOwnership": "Cannot delete {{email}} until ownership is transferred for: {{teams}}.",
+            "deleteUserFailed": "Could not delete user {{email}}.",
+            "deleteSiteFailed": "Could not delete site {{domain}}.",
+            "deleteTeamFailed": "Could not delete team \"{{name}}\".",
             "disable2faFailed": "Failed to disable MFA for {{email}}."
         },
         "status": {
+            "deleteUserSuccess": "Deleted user {{email}}.",
+            "deleteSiteSuccess": "Deleted site {{domain}}.",
+            "deleteTeamSuccess": "Deleted team \"{{name}}\".",
             "disable2faSuccess": "MFA was disabled for {{email}}."
         },
         "confirmDisable2fa": "Disable all MFA methods for {{email}}? This also invalidates remembered sessions.",
@@ -1062,6 +1088,257 @@
                     "siteTransferredOut": "Site moved out",
                     "unknown": "Unknown action"
                 }
+            }
+        },
+        "system": {
+            "overview": {
+                "title": "System Overview",
+                "version": "Version",
+                "build": "Build",
+                "uptime": "Uptime",
+                "publicUrl": "Public URL",
+                "runtimeMode": "Mode",
+                "healthStatus": "Health",
+                "enabledFeatures": "Feature switches",
+                "actions": {
+                    "refresh": "Refresh"
+                }
+            },
+            "features": {
+                "mcp": {
+                    "label": "MCP server"
+                },
+                "mcp_docs": {
+                    "label": "MCP docs tools"
+                },
+                "automatic_backups": {
+                    "label": "Automatic backups"
+                },
+                "spam_auto_update": {
+                    "label": "Spam auto-update"
+                },
+                "mail_delivery": {
+                    "label": "Mail delivery"
+                },
+                "managed_cloud": {
+                    "label": "Managed cloud"
+                },
+                "cloud_signup": {
+                    "label": "Cloud signup"
+                },
+                "billing": {
+                    "label": "Billing"
+                }
+            },
+            "featureDetails": {
+                "backup": {
+                    "local": "Local target",
+                    "s3": "S3 target"
+                },
+                "driver": "{{driver}} driver",
+                "interval": "Every {{interval}}",
+                "stripe": "Stripe configured",
+                "plan": "{{plan}} plan"
+            },
+            "health": {
+                "title": "Health Check",
+                "status": "Status",
+                "database": "Database",
+                "workers": "Workers",
+                "isLeader": "Is Leader",
+                "actions": {
+                    "check": "Run check"
+                }
+            },
+            "storage": {
+                "title": "Storage",
+                "sharedDb": "Shared database",
+                "sharedDbSize": "Size",
+                "dataPath": "Data path",
+                "tenantDbs": "Tenant databases",
+                "diskUsage": "Disk usage",
+                "diskAvailable": "Available",
+                "columns": {
+                    "tenant": "Tenant",
+                    "size": "Size",
+                    "path": "Path"
+                }
+            },
+            "ingest": {
+                "title": "Ingest",
+                "hits": "Hits (24h)",
+                "events": "Events (24h)",
+                "rejections": "Rejections",
+                "spam": "Spam blocked",
+                "hitsPerSecond": "Hits/sec"
+            },
+            "backups": {
+                "title": "Backups",
+                "configPath": "Path / target",
+                "enabled": "Enabled",
+                "disabled": "Disabled",
+                "interval": "Interval",
+                "retention": "Retention",
+                "lastBackup": "Last backup",
+                "nextBackup": "Next backup",
+                "lastFailed": "Last failure",
+                "lastError": "Last error",
+                "recentFailures": "Recent failures",
+                "actions": {
+                    "backupNow": "Backup now",
+                    "backupNowConfirm": "Start a backup now?"
+                },
+                "backupTriggered": "Backup started",
+                "backupFailed": "Backup failed"
+            },
+            "spam": {
+                "title": "Spam Filter",
+                "dbPath": "Database path",
+                "lastRefresh": "Last refresh",
+                "ruleCount": "Rules",
+                "autoUpdate": "Auto-update",
+                "lastError": "Last error",
+                "actions": {
+                    "refresh": "Refresh spam database"
+                },
+                "refreshTriggered": "Spam filter refreshed"
+            },
+            "caches": {
+                "title": "Caches",
+                "status": {
+                    "healthy": "Healthy",
+                    "pressure": "Under pressure"
+                },
+                "permissions": "Permissions",
+                "apiClients": "API clients",
+                "rateLimiter": "Rate limiter",
+                "columns": {
+                    "cache": "Cache",
+                    "size": "Size",
+                    "maxSize": "Max size",
+                    "ttl": "TTL"
+                }
+            },
+            "mail": {
+                "title": "Mail",
+                "configured": "Configured",
+                "notConfigured": "Not configured",
+                "driver": "Driver",
+                "host": "Host",
+                "port": "Port",
+                "encryption": "Encryption",
+                "fromAddress": "From address",
+                "username": "Username",
+                "passwordSet": "Password configured",
+                "lastTest": "Last test",
+                "actions": {
+                    "test": "Send test email"
+                },
+                "testSuccess": "Test email sent",
+                "testFailed": "Test email failed",
+                "recipientLabel": "Test recipient",
+                "recipientPlaceholder": "ops@example.com",
+                "recipientInvalid": "Enter a valid email address."
+            },
+            "audit": {
+                "title": "Instance Audit Log",
+                "filters": {
+                    "all": "All"
+                },
+                "filter": {
+                    "action": "Action",
+                    "targetType": "Target type",
+                    "outcome": "Outcome",
+                    "dateRange": "Date range",
+                    "search": "Search..."
+                },
+                "empty": "No audit entries found",
+                "loadError": "Failed to load audit entries",
+                "loadMore": "Load more",
+                "columns": {
+                    "created": "Time",
+                    "actor": "Actor",
+                    "action": "Action",
+                    "targetType": "Area",
+                    "target": "Target",
+                    "outcome": "Outcome",
+                    "details": "Details"
+                },
+                "outcome": {
+                    "success": "Success",
+                    "failure": "Failure",
+                    "denied": "Denied"
+                },
+                "targetTypes": {
+                    "system": "System",
+                    "mail": "Email",
+                    "user": "User",
+                    "team": "Team",
+                    "site": "Site",
+                    "backup": "Backup",
+                    "spamFilter": "Spam filter",
+                    "diagnostics": "Diagnostics"
+                },
+                "actions": {
+                    "export": "Export",
+                    "roleUpdated": "Role changed",
+                    "mfaDisabled": "MFA disabled",
+                    "backupTriggered": "Backup triggered",
+                    "backupCompleted": "Backup completed",
+                    "backupFailed": "Backup failed",
+                    "spamRefreshed": "Spam refresh",
+                    "mailTested": "Mail test",
+                    "diagnosticsExported": "Diagnostics exported",
+                    "accessDenied": "Access denied"
+                },
+                "pagination": {
+                    "total": "Showing {{ loaded }} of {{ total }} entries"
+                }
+            },
+            "console": {
+                "eyebrow": "Instance operations",
+                "title": "System status",
+                "subtitle": "Monitor runtime health, storage posture, mail delivery, spam protection, and administrator activity from one operator surface.",
+                "runtimePosture": "Runtime posture",
+                "summaryAria": "System status summary",
+                "healthHint": "Database, workers, and node readiness",
+                "managedData": "managed data",
+                "noRecentRun": "No recent run",
+                "autoUpdated": "Auto-updated",
+                "manualOnly": "Manual refresh",
+                "refreshCard": "Refresh status",
+                "leader": "Leader",
+                "follower": "Follower",
+                "loadFailed": "System status could not be loaded.",
+                "noFeatures": "No feature switches reported.",
+                "noTenantDbs": "No tenant databases reported.",
+                "pressure": "Pressure",
+                "tabs": {
+                    "runtime": "Runtime",
+                    "operations": "Operations",
+                    "access": "Access",
+                    "audit": "Audit"
+                },
+                "status": {
+                    "healthy": "Healthy",
+                    "attention": "Needs attention",
+                    "loading": "Loading",
+                    "unknown": "Unknown"
+                },
+                "healthDescription": "Readiness signals for the current node and embedded data store.",
+                "overviewDescription": "Build, version, public URL, and runtime mode.",
+                "featuresDescription": "Operator feature switches and runtime capabilities reported by the instance.",
+                "storageDescription": "DuckDB files, tenant storage, and disk availability.",
+                "ingestDescription": "Recent tracking volume and blocked traffic across the instance.",
+                "cachesDescription": "LRU cache occupancy for auth, API clients, and rate limiting.",
+                "backupsDescription": "Configured backup target, retention, and recent execution health.",
+                "spamDescription": "Spam filter cache freshness and manual refresh control.",
+                "mailDescription": "Redacted mail transport configuration and a safe test-send action.",
+                "usersDescription": "Instance roles, recovery actions, and administrator access.",
+                "sitesDescription": "All sites visible to instance administrators.",
+                "teamsDescription": "Team containers and their operational status.",
+                "auditDescription": "Append-only activity for sensitive instance operations.",
+                "settingsSubtitle": "Manage instance users, sites, teams, and global filters."
             }
         }
     },

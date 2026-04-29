@@ -287,3 +287,19 @@ func (s *Store) invalidateAllSiteRolesForUser(userID uuid.UUID) {
 
 	s.runtime.siteRoles.Remove(userID)
 }
+
+func (s *Store) CacheInstanceRoleSize() int {
+	if s == nil || s.runtime == nil || s.runtime.instanceRoles == nil {
+		return 0
+	}
+	return s.runtime.instanceRoles.Len()
+}
+
+func (s *Store) CacheAPIClientAuthSize() int {
+	if s == nil || s.runtime == nil || s.runtime.apiClientAuthByToken == nil {
+		return 0
+	}
+	s.runtime.apiClientAuthMu.Lock()
+	defer s.runtime.apiClientAuthMu.Unlock()
+	return s.runtime.apiClientAuthByToken.Len()
+}

@@ -652,3 +652,132 @@ type ReportSubscriptions struct {
 	Sites  []SiteReportSubscription `json:"sites"`
 	Digest DigestSubscription       `json:"digest"`
 }
+
+// Instance audit log types
+type InstanceAuditEntry struct {
+	ID                 uuid.UUID  `json:"id"`
+	CreatedAt          time.Time  `json:"created_at"`
+	ActorID            *uuid.UUID `json:"actor_id,omitempty"`
+	ActorEmailSnapshot string     `json:"actor_email_snapshot"`
+	ActorRoleSnapshot  string     `json:"actor_role_snapshot"`
+	Action             string     `json:"action"`
+	TargetType         string     `json:"target_type,omitempty"`
+	TargetID           string     `json:"target_id,omitempty"`
+	TargetLabel        string     `json:"target_label,omitempty"`
+	Outcome            string     `json:"outcome"`
+	IPAddress          string     `json:"ip_address,omitempty"`
+	UserAgent          string     `json:"user_agent,omitempty"`
+	RequestID          string     `json:"request_id,omitempty"`
+	Details            string     `json:"details,omitempty"`
+}
+
+type InstanceAuditListResponse struct {
+	Entries []InstanceAuditEntry `json:"entries"`
+	Total   int                  `json:"total"`
+	Limit   int                  `json:"limit"`
+	Offset  int                  `json:"offset"`
+	HasMore bool                 `json:"has_more"`
+}
+
+// System health types
+type SystemFeatureStatus struct {
+	Key     string `json:"key"`
+	Enabled bool   `json:"enabled"`
+	Detail  string `json:"detail,omitempty"`
+}
+
+type SystemInfo struct {
+	Version         string                `json:"version"`
+	Build           string                `json:"build"`
+	RuntimeMode     string                `json:"runtime_mode"`
+	Uptime          string                `json:"uptime"`
+	PublicURL       string                `json:"public_url"`
+	EnabledFeatures []SystemFeatureStatus `json:"enabled_features"`
+	ConfigFlags     map[string]any        `json:"config_flags"`
+}
+
+type SystemHealth struct {
+	Status   string `json:"status"`
+	Database string `json:"database"`
+	Workers  string `json:"workers"`
+	IsLeader bool   `json:"is_leader"`
+}
+
+type TenantDBInfo struct {
+	TenantID uuid.UUID `json:"tenant_id"`
+	Name     string    `json:"name"`
+	Bytes    int64     `json:"bytes"`
+	Path     string    `json:"path"`
+}
+
+type SystemStorage struct {
+	SharedDBPath  string         `json:"shared_db_path"`
+	SharedDBBytes int64          `json:"shared_db_bytes"`
+	DataPath      string         `json:"data_path"`
+	TenantDBCount int            `json:"tenant_db_count"`
+	TenantDBs     []TenantDBInfo `json:"tenant_dbs,omitempty"`
+	SpamCachePath string         `json:"spam_cache_path"`
+	BackupPath    string         `json:"backup_path"`
+	DiskAvailable int64          `json:"disk_available_bytes"`
+	DiskTotal     int64          `json:"disk_total_bytes"`
+}
+
+type SystemIngestStats struct {
+	RecentHits       int     `json:"recent_hits"`
+	RecentEvents     int     `json:"recent_events"`
+	RecentRejections int     `json:"recent_rejections"`
+	RecentSpam       int     `json:"recent_spam"`
+	HitsPerSecond    float64 `json:"hits_per_second"`
+}
+
+type SystemBackupStatus struct {
+	Enabled        bool       `json:"enabled"`
+	ConfigPath     string     `json:"config_path"`
+	IntervalMin    int        `json:"interval_min"`
+	Retention      int        `json:"retention"`
+	LastBackup     *time.Time `json:"last_backup,omitempty"`
+	NextBackup     *time.Time `json:"next_backup,omitempty"`
+	LastFailedAt   *time.Time `json:"last_failed_at,omitempty"`
+	LastError      string     `json:"last_error,omitempty"`
+	RecentFailures int        `json:"recent_failures"`
+}
+
+type SystemSpamStatus struct {
+	DBPath      string     `json:"db_path"`
+	LastRefresh *time.Time `json:"last_refresh,omitempty"`
+	RuleCount   int        `json:"rule_count"`
+	AutoUpdate  bool       `json:"auto_update"`
+	LastError   string     `json:"last_error,omitempty"`
+}
+
+type SystemCacheEntry struct {
+	Size    int    `json:"size"`
+	MaxSize int    `json:"max_size"`
+	TTL     string `json:"ttl"`
+}
+
+type SystemCacheStatus struct {
+	PermissionsCache SystemCacheEntry `json:"permissions_cache"`
+	APIClientCache   SystemCacheEntry `json:"api_client_cache"`
+	RateLimiterCache SystemCacheEntry `json:"rate_limiter_cache"`
+	Status           string           `json:"status"`
+}
+
+type SystemMailStatus struct {
+	Configured  bool       `json:"configured"`
+	Driver      string     `json:"driver"`
+	Host        string     `json:"host"`
+	Port        int        `json:"port"`
+	Encryption  string     `json:"encryption"`
+	FromAddress string     `json:"from_address"`
+	FromName    string     `json:"from_name"`
+	Username    string     `json:"username"`
+	PasswordSet bool       `json:"password_set"`
+	LastTestAt  *time.Time `json:"last_test_at,omitempty"`
+	LastTestOK  *bool      `json:"last_test_ok,omitempty"`
+}
+
+type SystemActionResponse struct {
+	Status  string `json:"status"`
+	Message string `json:"message,omitempty"`
+}

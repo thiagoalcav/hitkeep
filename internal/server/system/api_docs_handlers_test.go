@@ -151,6 +151,69 @@ func TestOpenAPISpecV1IncludesCloudSignupPaths(t *testing.T) {
 	assertCloudOperation(t, requireMap(t, webhookPath.(map[string]any), "post"))
 }
 
+func TestOpenAPISpecV1IncludesAdminSystemPaths(t *testing.T) {
+	spec := openAPISpecV1("http://localhost:8080")
+	paths := requireMap(t, spec, "paths")
+	components := requireMap(t, spec, "components")
+	schemas := requireMap(t, components, "schemas")
+
+	expectedSchemas := []string{
+		"SystemFeatureStatus",
+		"SystemInfo",
+		"SystemHealth",
+		"SystemStorage",
+		"SystemIngestStats",
+		"SystemBackupStatus",
+		"SystemSpamStatus",
+		"SystemCacheStatus",
+		"SystemMailStatus",
+		"SystemActionResponse",
+		"InstanceAuditEntry",
+		"InstanceAuditListResponse",
+	}
+	for _, schemaName := range expectedSchemas {
+		if _, ok := schemas[schemaName]; !ok {
+			t.Fatalf("expected %s schema to exist", schemaName)
+		}
+	}
+
+	expectedPaths := []string{
+		"/api/admin/system",
+		"/api/admin/system/health",
+		"/api/admin/system/storage",
+		"/api/admin/system/ingest",
+		"/api/admin/system/backups",
+		"/api/admin/system/spam-filter",
+		"/api/admin/system/spam-filter/refresh",
+		"/api/admin/system/caches",
+		"/api/admin/system/mail",
+		"/api/admin/system/mail/test",
+		"/api/admin/system/audit",
+		"/api/admin/system/audit/export",
+	}
+	for _, path := range expectedPaths {
+		if _, ok := paths[path]; !ok {
+			t.Fatalf("expected %s path to exist", path)
+		}
+	}
+
+	mailTestPath := requireMap(t, paths, "/api/admin/system/mail/test")
+	postOp := requireMap(t, mailTestPath, "post")
+	if !strings.Contains(postOp["description"].(string), "real test email") {
+		t.Fatalf("expected mail test description to mention real test email, got %q", postOp["description"])
+	}
+
+	auditExportPath := requireMap(t, paths, "/api/admin/system/audit/export")
+	getOp := requireMap(t, auditExportPath, "get")
+	params, ok := getOp["parameters"].([]any)
+	if !ok {
+		t.Fatalf("expected audit export parameters to be []any, got %T", getOp["parameters"])
+	}
+	if !hasNamedParam(params, "format") {
+		t.Fatalf("expected audit export to include format parameter")
+	}
+}
+
 func TestOpenAPISpecV1IncludesAIFetchCorrelationPath(t *testing.T) {
 	spec := openAPISpecV1("http://localhost:8080")
 	paths := requireMap(t, spec, "paths")
@@ -265,6 +328,19 @@ func hasFormatParamRef(params []any) bool {
 			continue
 		}
 		if ref == "#/components/parameters/format" {
+			return true
+		}
+	}
+	return false
+}
+
+func hasNamedParam(params []any, name string) bool {
+	for _, p := range params {
+		pm, ok := p.(map[string]any)
+		if !ok {
+			continue
+		}
+		if pm["name"] == name {
 			return true
 		}
 	}

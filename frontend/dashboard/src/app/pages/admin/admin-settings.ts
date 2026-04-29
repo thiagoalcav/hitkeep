@@ -1,29 +1,39 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, OnInit, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { DecimalPipe } from '@angular/common';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ConfirmationService } from 'primeng/api';
 import { ConfirmPopupModule } from 'primeng/confirmpopup';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
-import { CardModule } from 'primeng/card';
 import { TabsModule } from 'primeng/tabs';
+import { IconFieldModule } from 'primeng/iconfield';
+import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
 import { TagModule } from 'primeng/tag';
+import { TooltipModule } from 'primeng/tooltip';
 import { HttpClient } from '@angular/common/http';
 import { HttpErrorResponse } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
-import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
+import { PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
 import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
 import { PermissionService } from '@services/permission.service';
 import { UserProfileService } from '@services/user-profile.service';
+import { AdminPageFrame } from './components/admin-page-frame';
 import { AdminGlobalExclusionSettings } from './components/admin-global-exclusion-settings';
+import { SystemStatusCard } from './components/system-status-card';
+import { SystemAudit } from './components/system-audit';
+import { AdminSystemService, SystemFeatureStatus, SystemInfo, SystemHealth, SystemStorage, SystemIngestStats, SystemBackupStatus, SystemSpamStatus, SystemCacheStatus, SystemMailStatus } from '@services/admin-system.service';
+import { formatBytes } from '@pages/ai-visibility/ai-visibility.utils';
 import { finalize } from 'rxjs';
 
 type InstanceRole = 'owner' | 'admin' | 'user';
+type AdminStatusTab = 'runtime' | 'operations' | 'audit';
+type AdminSettingsTab = 'users' | 'sites' | 'teams' | 'globalFilters';
 
 interface User {
     id: string;
@@ -81,20 +91,23 @@ interface StatusState {
 @Component({
     selector: 'app-admin-settings',
     imports: [
+        DecimalPipe,
         ReactiveFormsModule,
         ConfirmPopupModule,
         TableModule,
         ButtonModule,
         SelectModule,
-        CardModule,
         TabsModule,
+        IconFieldModule,
+        InputIconModule,
         InputTextModule,
         MessageModule,
         TagModule,
-        PageHeader,
-        PageHeaderLeft,
-        PageBreadcrumb,
+        TooltipModule,
+        AdminPageFrame,
         AdminGlobalExclusionSettings,
+        SystemStatusCard,
+        SystemAudit,
         RelativeDateTime,
         TranslocoPipe
     ],
@@ -107,9 +120,119 @@ export class AdminSettings implements OnInit {
     private http = inject(HttpClient);
     private confirmationService = inject(ConfirmationService);
     private transloco = inject(TranslocoService);
+    private route = inject(ActivatedRoute);
     private profile = inject(UserProfileService);
-    private perms = inject(PermissionService);
+    protected perms = inject(PermissionService);
+    private system = inject(AdminSystemService);
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+
+    protected activeAdminTab = signal<AdminStatusTab>('runtime');
+    protected activeSettingsTab = signal<AdminSettingsTab>('users');
+    private routeData = toSignal(this.route.data, { initialValue: this.route.snapshot.data });
+    private loadedRuntime = signal(false);
+    private loadedOperations = signal(false);
+    private loadedSettings = signal(false);
+
+    // System console data
+    protected systemInfo = signal<SystemInfo | null>(null);
+    protected systemHealth = signal<SystemHealth | null>(null);
+    protected systemStorage = signal<SystemStorage | null>(null);
+    protected systemIngest = signal<SystemIngestStats | null>(null);
+    protected systemBackups = signal<SystemBackupStatus | null>(null);
+    protected systemSpam = signal<SystemSpamStatus | null>(null);
+    protected systemCaches = signal<SystemCacheStatus | null>(null);
+    protected systemMail = signal<SystemMailStatus | null>(null);
+
+    protected isLoadingSystem = signal(false);
+    protected isLoadingHealth = signal(false);
+    protected isLoadingStorage = signal(false);
+    protected isLoadingIngest = signal(false);
+    protected isLoadingBackups = signal(false);
+    protected isLoadingSpam = signal(false);
+    protected isLoadingCaches = signal(false);
+    protected isLoadingMail = signal(false);
+    protected isRefreshingSpam = signal(false);
+    protected isTestingMail = signal(false);
+
+    protected mailTestResult = signal<{ severity: 'success' | 'error'; message: string } | null>(null);
+    protected mailTestRecipient = new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email, Validators.maxLength(320)] });
+
+    protected readonly cacheRows = computed(() => {
+        this.activeLanguage();
+        const caches = this.systemCaches();
+        if (!caches) return [];
+        return [
+            {
+                name: this.transloco.translate('admin.system.caches.permissions'),
+                size: caches.permissions_cache.size,
+                maxSize: caches.permissions_cache.max_size,
+                ttl: caches.permissions_cache.ttl,
+                pressure: this.cachePressure(caches.permissions_cache.size, caches.permissions_cache.max_size)
+            },
+            {
+                name: this.transloco.translate('admin.system.caches.apiClients'),
+                size: caches.api_client_cache.size,
+                maxSize: caches.api_client_cache.max_size,
+                ttl: caches.api_client_cache.ttl,
+                pressure: this.cachePressure(caches.api_client_cache.size, caches.api_client_cache.max_size)
+            },
+            {
+                name: this.transloco.translate('admin.system.caches.rateLimiter'),
+                size: caches.rate_limiter_cache.size,
+                maxSize: caches.rate_limiter_cache.max_size,
+                ttl: caches.rate_limiter_cache.ttl,
+                pressure: this.cachePressure(caches.rate_limiter_cache.size, caches.rate_limiter_cache.max_size)
+            }
+        ];
+    });
+    protected readonly enabledFeatureRows = computed(() => {
+        this.activeLanguage();
+        const info = this.systemInfo();
+        if (!info) return [];
+
+        return (info.enabled_features ?? []).map((feature) => ({
+            label: this.featureLabel(feature),
+            detail: this.featureDetail(feature),
+            value: this.transloco.translate(feature.enabled ? 'common.enabled' : 'common.disabled'),
+            enabled: feature.enabled
+        }));
+    });
+    protected readonly instanceOwners = computed(() => this.users().filter((user) => user.instance_role === 'owner').length);
+    protected readonly instanceAdmins = computed(() => this.users().filter((user) => user.instance_role === 'admin').length);
+    protected readonly activeTeams = computed(() => this.teams().filter((team) => !team.is_archived).length);
+    protected readonly totalSites = computed(() => this.sites().length);
+    protected readonly totalStorageBytes = computed(() => {
+        const storage = this.systemStorage();
+        if (!storage) return 0;
+        return storage.shared_db_bytes + (storage.tenant_dbs ?? []).reduce((total, db) => total + db.bytes, 0);
+    });
+    protected readonly diskUsedPercent = computed(() => {
+        const storage = this.systemStorage();
+        if (!storage || storage.disk_total_bytes <= 0) return 0;
+        const used = Math.max(storage.disk_total_bytes - storage.disk_available_bytes, 0);
+        return Math.round((used / storage.disk_total_bytes) * 100);
+    });
+    protected readonly recentHits = computed(() => this.systemIngest()?.recent_hits ?? 0);
+    protected readonly runtimeStatusKey = computed(() => {
+        const health = this.systemHealth();
+        if (this.isLoadingHealth() && !health) {
+            return 'admin.system.console.status.loading';
+        }
+        if (!health) {
+            return 'admin.system.console.status.unknown';
+        }
+        if (health.status === 'healthy' && health.database === 'ok' && health.workers === 'ok') {
+            return 'admin.system.console.status.healthy';
+        }
+        return 'admin.system.console.status.attention';
+    });
+    protected readonly runtimeStatusSeverity = computed(() => {
+        const health = this.systemHealth();
+        if (!health) return 'secondary';
+        return health.status === 'healthy' && health.database === 'ok' && health.workers === 'ok' ? 'success' : 'warn';
+    });
+    protected readonly pageTitleKey = computed(() => (this.routeData()['adminPage'] === 'settings' ? 'nav.systemSettings' : 'nav.systemStatus'));
+    protected readonly isSettingsPage = computed(() => this.routeData()['adminPage'] === 'settings');
 
     protected users = signal<User[]>([]);
     protected sites = signal<Site[]>([]);
@@ -118,10 +241,16 @@ export class AdminSettings implements OnInit {
     protected isLoadingSites = signal(false);
     protected isLoadingTeams = signal(false);
     protected disablingUserId = signal('');
+    protected deletingUserId = signal('');
+    protected deletingSiteId = signal('');
+    protected deletingTeamId = signal('');
     protected currentUserId = signal<string>('');
     protected roleControls = signal<Record<string, FormControl<InstanceRole>>>({});
     protected deleteUserBlock = signal<DeleteUserBlockState | null>(null);
     protected userMfaStatus = signal<StatusState | null>(null);
+    protected userActionStatus = signal<StatusState | null>(null);
+    protected siteActionStatus = signal<StatusState | null>(null);
+    protected teamActionStatus = signal<StatusState | null>(null);
     protected readonly usersByID = computed(() => new Map(this.users().map((user) => [user.id, user] as const)));
     protected readonly deleteUserBlockMessage = computed(() => {
         const block = this.deleteUserBlock();
@@ -135,17 +264,14 @@ export class AdminSettings implements OnInit {
         });
     });
     protected readonly userMfaStatusMessage = computed(() => {
-        const state = this.userMfaStatus();
-        this.activeLanguage();
-        if (!state) {
-            return '';
-        }
-
-        return this.transloco.translate(state.key, state.params);
+        return this.actionStatusMessage(this.userMfaStatus());
     });
+    protected readonly userActionStatusMessage = computed(() => this.actionStatusMessage(this.userActionStatus()));
+    protected readonly siteActionStatusMessage = computed(() => this.actionStatusMessage(this.siteActionStatus()));
+    protected readonly teamActionStatusMessage = computed(() => this.actionStatusMessage(this.teamActionStatus()));
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         this.activeLanguage();
-        return [{ label: this.transloco.translate('nav.administration') }, { label: this.transloco.translate('nav.systemSettings'), isCurrent: true }];
+        return [{ label: this.transloco.translate('nav.administration') }, { label: this.transloco.translate(this.pageTitleKey()), isCurrent: true }];
     });
     protected readonly canDisableUserMfa = computed(() => this.perms.isInstanceOwner() || this.usersByID().get(this.currentUserId())?.instance_role === 'owner');
 
@@ -158,9 +284,29 @@ export class AdminSettings implements OnInit {
         ];
     });
 
+    protected readonly localeTag = computed(() => {
+        const lang = this.activeLanguage();
+        switch (lang) {
+            case 'de':
+                return 'de-DE';
+            case 'es':
+                return 'es-ES';
+            case 'fr':
+                return 'fr-FR';
+            case 'it':
+                return 'it-IT';
+            default:
+                return 'en-US';
+        }
+    });
+
     constructor() {
         effect(() => {
-            this.currentUserId.set(this.profile.profile()?.id ?? '');
+            const profile = this.profile.profile();
+            this.currentUserId.set(profile?.id ?? '');
+            if (profile?.email && (this.mailTestRecipient.pristine || !this.mailTestRecipient.value)) {
+                this.mailTestRecipient.setValue(profile.email, { emitEvent: false });
+            }
         });
 
         effect(() => {
@@ -180,16 +326,234 @@ export class AdminSettings implements OnInit {
                 }
             }
         });
+
+        effect(() => {
+            if (this.isSettingsPage()) {
+                this.activeSettingsTab.set('users');
+                if (!this.loadedSettings()) {
+                    this.loadedSettings.set(true);
+                    this.loadUsers();
+                    this.loadSites();
+                    this.loadTeams();
+                }
+                return;
+            }
+
+            switch (this.activeAdminTab()) {
+                case 'runtime':
+                    if (!this.loadedRuntime()) {
+                        this.loadedRuntime.set(true);
+                        this.refreshRuntime();
+                    }
+                    break;
+                case 'operations':
+                    if (!this.loadedOperations()) {
+                        this.loadedOperations.set(true);
+                        this.refreshOperations();
+                    }
+                    break;
+            }
+        });
     }
 
     ngOnInit() {
         if (!this.profile.profile()) {
             this.profile.loadProfile().subscribe({ error: (err) => console.error('Failed to load profile', err) });
         }
+    }
 
-        this.loadUsers();
-        this.loadSites();
-        this.loadTeams();
+    protected loadSystemInfo() {
+        this.isLoadingSystem.set(true);
+        this.system.getSystem().subscribe({
+            next: (info) => {
+                this.systemInfo.set(info);
+                this.isLoadingSystem.set(false);
+            },
+            error: () => this.isLoadingSystem.set(false)
+        });
+    }
+
+    protected loadSystemHealth() {
+        this.isLoadingHealth.set(true);
+        this.system.getHealth().subscribe({
+            next: (h) => {
+                this.systemHealth.set(h);
+                this.isLoadingHealth.set(false);
+            },
+            error: () => this.isLoadingHealth.set(false)
+        });
+    }
+
+    protected loadSystemStorage() {
+        this.isLoadingStorage.set(true);
+        this.system.getStorage().subscribe({
+            next: (s) => {
+                this.systemStorage.set(s);
+                this.isLoadingStorage.set(false);
+            },
+            error: () => this.isLoadingStorage.set(false)
+        });
+    }
+
+    protected loadSystemIngest() {
+        this.isLoadingIngest.set(true);
+        this.system
+            .getIngestStats()
+            .pipe(finalize(() => this.isLoadingIngest.set(false)))
+            .subscribe({
+                next: (s) => this.systemIngest.set(s)
+            });
+    }
+
+    protected loadSystemBackups() {
+        this.isLoadingBackups.set(true);
+        this.system
+            .getBackups()
+            .pipe(finalize(() => this.isLoadingBackups.set(false)))
+            .subscribe({
+                next: (b) => this.systemBackups.set(b)
+            });
+    }
+
+    protected loadSystemSpam() {
+        this.isLoadingSpam.set(true);
+        this.system
+            .getSpamFilter()
+            .pipe(finalize(() => this.isLoadingSpam.set(false)))
+            .subscribe({
+                next: (s) => this.systemSpam.set(s)
+            });
+    }
+
+    protected loadSystemCaches() {
+        this.isLoadingCaches.set(true);
+        this.system
+            .getCaches()
+            .pipe(finalize(() => this.isLoadingCaches.set(false)))
+            .subscribe({
+                next: (c) => this.systemCaches.set(c)
+            });
+    }
+
+    protected loadSystemMail() {
+        this.isLoadingMail.set(true);
+        this.system
+            .getMail()
+            .pipe(finalize(() => this.isLoadingMail.set(false)))
+            .subscribe({
+                next: (m) => this.systemMail.set(m)
+            });
+    }
+
+    protected refreshSpamFilter() {
+        this.isRefreshingSpam.set(true);
+        this.system
+            .refreshSpamFilter()
+            .pipe(finalize(() => this.isRefreshingSpam.set(false)))
+            .subscribe({
+                next: () => this.loadSystemSpam()
+            });
+    }
+
+    protected testMail() {
+        this.mailTestRecipient.markAsTouched();
+        if (this.mailTestRecipient.invalid) {
+            this.mailTestResult.set({ severity: 'error', message: this.transloco.translate('admin.system.mail.recipientInvalid') });
+            return;
+        }
+
+        const recipient = this.mailTestRecipient.value.trim();
+        this.isTestingMail.set(true);
+        this.mailTestResult.set(null);
+        this.system
+            .testMail(recipient)
+            .pipe(finalize(() => this.isTestingMail.set(false)))
+            .subscribe({
+                next: (res) => {
+                    this.mailTestResult.set({ severity: 'success', message: res.message });
+                    this.loadSystemMail();
+                },
+                error: (err) => {
+                    this.mailTestResult.set({ severity: 'error', message: err.error?.message || this.transloco.translate('admin.system.mail.testFailed') });
+                }
+            });
+    }
+
+    protected refreshRuntime() {
+        this.loadSystemInfo();
+        this.loadSystemHealth();
+        this.loadSystemStorage();
+        this.loadSystemIngest();
+    }
+
+    protected refreshOperations() {
+        this.loadSystemBackups();
+        this.loadSystemSpam();
+        this.loadSystemCaches();
+        this.loadSystemMail();
+    }
+
+    protected formatBytesValue(value: number | null | undefined): string {
+        return formatBytes(value ?? 0, this.localeTag());
+    }
+
+    protected statusSeverity(status: string | null | undefined): 'success' | 'danger' | 'warn' | 'secondary' | 'info' | 'contrast' {
+        switch ((status ?? '').toLowerCase()) {
+            case 'healthy':
+            case 'ok':
+            case 'success':
+            case 'active':
+                return 'success';
+            case 'failed':
+            case 'failure':
+            case 'error':
+            case 'unhealthy':
+                return 'danger';
+            case 'warn':
+            case 'warning':
+            case 'pressure':
+                return 'warn';
+            default:
+                return 'secondary';
+        }
+    }
+
+    private cachePressure(size: number, maxSize: number): number {
+        if (maxSize <= 0) return 0;
+        return Math.round((size / maxSize) * 100);
+    }
+
+    private featureLabel(feature: SystemFeatureStatus): string {
+        const key = `admin.system.features.${feature.key}.label`;
+        const label = this.transloco.translate(key);
+        return label === key ? feature.key.replaceAll('_', ' ') : label;
+    }
+
+    private featureDetail(feature: SystemFeatureStatus): string {
+        const detail = feature.detail?.trim();
+        if (!detail) {
+            return '';
+        }
+
+        if (feature.key === 'automatic_backups') {
+            const key = `admin.system.featureDetails.backup.${detail}`;
+            const label = this.transloco.translate(key);
+            return label === key ? detail : label;
+        }
+        if (feature.key === 'mail_delivery') {
+            return this.transloco.translate('admin.system.featureDetails.driver', { driver: detail });
+        }
+        if (feature.key === 'spam_auto_update') {
+            return this.transloco.translate('admin.system.featureDetails.interval', { interval: detail });
+        }
+        if (feature.key === 'billing' && detail === 'stripe') {
+            return this.transloco.translate('admin.system.featureDetails.stripe');
+        }
+        if (feature.key === 'managed_cloud') {
+            return this.transloco.translate('admin.system.featureDetails.plan', { plan: detail });
+        }
+
+        return detail;
     }
 
     loadUsers() {
@@ -292,6 +656,18 @@ export class AdminSettings implements OnInit {
         return this.disablingUserId() === user.id;
     }
 
+    protected isDeletingUser(user: User): boolean {
+        return this.deletingUserId() === user.id;
+    }
+
+    protected isDeletingSite(site: Site): boolean {
+        return this.deletingSiteId() === site.id;
+    }
+
+    protected isDeletingTeam(team: AdminTeam): boolean {
+        return this.deletingTeamId() === team.id;
+    }
+
     protected siteOwnerEmail(site: Site): string {
         return site.owner_email || this.usersByID().get(site.user_id)?.email || this.transloco.translate('admin.sites.ownerUnknown');
     }
@@ -374,15 +750,33 @@ export class AdminSettings implements OnInit {
             },
             accept: () => {
                 this.deleteUserBlock.set(null);
-                this.http.delete(`/api/admin/users/${user.id}?force=true`).subscribe({
-                    next: () => this.loadUsers(),
-                    error: (err) => {
-                        if (this.handleDeleteUserError(err, user)) {
-                            return;
+                this.userMfaStatus.set(null);
+                this.userActionStatus.set(null);
+                this.deletingUserId.set(user.id);
+                this.http
+                    .delete(`/api/admin/users/${user.id}?force=true`)
+                    .pipe(finalize(() => this.deletingUserId.set('')))
+                    .subscribe({
+                        next: () => {
+                            this.userActionStatus.set({
+                                severity: 'success',
+                                key: 'admin.status.deleteUserSuccess',
+                                params: { email: user.email }
+                            });
+                            this.loadUsers();
+                        },
+                        error: (err) => {
+                            if (this.handleDeleteUserError(err, user)) {
+                                return;
+                            }
+                            this.userActionStatus.set({
+                                severity: 'error',
+                                key: 'admin.errors.deleteUserFailed',
+                                params: { email: user.email }
+                            });
+                            console.error('Failed to delete user', err);
                         }
-                        console.error('Failed to delete user', err);
-                    }
-                });
+                    });
             }
         });
     }
@@ -403,10 +797,29 @@ export class AdminSettings implements OnInit {
                 severity: 'danger'
             },
             accept: () => {
-                this.http.delete(`/api/admin/sites/${site.id}`).subscribe({
-                    next: () => this.loadSites(),
-                    error: (err) => console.error('Failed to delete site', err)
-                });
+                this.siteActionStatus.set(null);
+                this.deletingSiteId.set(site.id);
+                this.http
+                    .delete(`/api/admin/sites/${site.id}`)
+                    .pipe(finalize(() => this.deletingSiteId.set('')))
+                    .subscribe({
+                        next: () => {
+                            this.siteActionStatus.set({
+                                severity: 'success',
+                                key: 'admin.status.deleteSiteSuccess',
+                                params: { domain: site.domain }
+                            });
+                            this.loadSites();
+                        },
+                        error: (err) => {
+                            this.siteActionStatus.set({
+                                severity: 'error',
+                                key: 'admin.errors.deleteSiteFailed',
+                                params: { domain: site.domain }
+                            });
+                            console.error('Failed to delete site', err);
+                        }
+                    });
             }
         });
     }
@@ -443,15 +856,41 @@ export class AdminSettings implements OnInit {
                 severity: 'danger'
             },
             accept: () => {
-                this.http.delete(`/api/admin/teams/${team.id}?force=true`).subscribe({
-                    next: () => {
-                        this.loadTeams();
-                        this.loadSites();
-                    },
-                    error: (err) => console.error('Failed to delete team', err)
-                });
+                this.teamActionStatus.set(null);
+                this.deletingTeamId.set(team.id);
+                this.http
+                    .delete(`/api/admin/teams/${team.id}?force=true`)
+                    .pipe(finalize(() => this.deletingTeamId.set('')))
+                    .subscribe({
+                        next: () => {
+                            this.teamActionStatus.set({
+                                severity: 'success',
+                                key: 'admin.status.deleteTeamSuccess',
+                                params: { name: team.name }
+                            });
+                            this.loadTeams();
+                            this.loadSites();
+                        },
+                        error: (err) => {
+                            this.teamActionStatus.set({
+                                severity: 'error',
+                                key: 'admin.errors.deleteTeamFailed',
+                                params: { name: team.name }
+                            });
+                            console.error('Failed to delete team', err);
+                        }
+                    });
             }
         });
+    }
+
+    private actionStatusMessage(state: StatusState | null): string {
+        this.activeLanguage();
+        if (!state) {
+            return '';
+        }
+
+        return this.transloco.translate(state.key, state.params);
     }
 
     private handleDeleteUserError(err: unknown, user: User): boolean {

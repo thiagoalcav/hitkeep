@@ -1,0 +1,46 @@
+<section class="system-status-card" [attr.aria-labelledby]="titleId()" [attr.aria-busy]="loading()">
+    <div class="system-status-card__header">
+        <div class="system-status-card__title-row">
+            <h2 [id]="titleId()">{{ title() }}</h2>
+            <ng-content select="[system-status-card-status]" />
+        </div>
+
+        <div class="system-status-card__tools">
+            @if (hasMetric()) {
+            <div class="system-status-card__metric">
+                <span>{{ metricLabel() }}</span>
+                <strong>{{ metricValue() }}</strong>
+            </div>
+            }
+
+            <ng-content select="[system-status-card-header]" />
+
+            @if (refreshable()) {
+            <p-button
+                icon="pi pi-refresh"
+                severity="secondary"
+                [text]="true"
+                [rounded]="true"
+                [loading]="loading()"
+                [disabled]="refreshDisabled() || loading()"
+                [pTooltip]="refreshLabel()"
+                tooltipPosition="top"
+                [ariaLabel]="refreshLabel()"
+                (onClick)="refreshClicked.emit()"
+            />
+            }
+        </div>
+    </div>
+
+    <div class="system-status-card__body">
+        <ng-content />
+    </div>
+
+    @if (hasAction()) {
+    <div class="system-status-card__action">
+        <p-button [icon]="actionIcon()" [label]="actionLabel()" [severity]="actionSeverity()" size="small" [loading]="actionLoading()" [disabled]="actionDisabled() || actionLoading()" (onClick)="actionClicked.emit()" />
+    </div>
+    }
+
+    <ng-content select="[system-status-card-footer]" />
+</section>

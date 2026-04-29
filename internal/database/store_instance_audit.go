@@ -88,10 +88,7 @@ func (s *Store) ListInstanceAuditEntries(ctx context.Context, filter InstanceAud
 	if limit <= 0 || limit > MaxInstanceAuditListLimit {
 		limit = DefaultInstanceAuditListLimit
 	}
-	offset := filter.Offset
-	if offset < 0 {
-		offset = 0
-	}
+	offset := max(filter.Offset, 0)
 
 	whereClauses := make([]string, 0)
 	args := make([]any, 0)

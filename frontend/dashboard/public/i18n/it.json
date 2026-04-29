@@ -297,7 +297,6 @@
         },
         "onboarding": {
             "title": "Checklist di installazione",
-            "description": "Un percorso guidato dallo stato, dalla registrazione al primo dato verificato.",
             "progress": "{{complete}} di {{total}} completati",
             "dismiss": "Nascondi checklist",
             "done": "Completato",
@@ -604,12 +603,18 @@
                 "empty": "Nessun sito trovato. Aggiungi un sito per configurare i report."
             },
             "frequency": {
-                "daily": "Giornaliero",
-                "weekly": "Settimanale",
-                "monthly": "Mensile",
-                "daily.hint": "Statistiche del giorno precedente",
-                "weekly.hint": "Ogni lunedì, ultimi 7 giorni",
-                "monthly.hint": "Il 1° del mese, mese precedente"
+                "daily": {
+                    "label": "Giornaliero",
+                    "hint": "Statistiche del giorno precedente"
+                },
+                "weekly": {
+                    "label": "Settimanale",
+                    "hint": "Ogni lunedì, ultimi 7 giorni"
+                },
+                "monthly": {
+                    "label": "Mensile",
+                    "hint": "Il 1° del mese, mese precedente"
+                }
             }
         },
         "apiClients": {

@@ -1,4 +1,4 @@
-<div class="flex flex-col h-full w-full bg-[var(--p-surface-ground)] transition-colors duration-200">
+<div class="utm-builder-page">
     <app-page-header>
         <ng-template appPageHeaderLeft>
             <div>
@@ -7,159 +7,141 @@
         </ng-template>
     </app-page-header>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        <!-- Form card -->
-        <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card">
-            <div class="mb-6">
-                <h3 class="text-lg font-semibold mb-1">{{ "utmBuilder.form.title" | transloco }}</h3>
-                <p class="text-sm text-[var(--p-text-muted-color)]">{{ "utmBuilder.subtitle" | transloco }}</p>
+    <div class="utm-builder-grid">
+        <form [formGroup]="form" class="utm-builder-panel utm-builder-form" autocomplete="off">
+            <div class="utm-builder-panel-header">
+                <h3>{{ "utmBuilder.form.title" | transloco }}</h3>
+                <p>{{ "utmBuilder.subtitle" | transloco }}</p>
             </div>
 
-            <form [formGroup]="form" class="flex flex-col gap-5" autocomplete="off">
-                @if (siteService.sites().length) {
-                <div class="flex flex-col gap-1">
-                    <p-iftalabel class="w-full">
-                        <p-select
-                            inputId="utm-site"
-                            [options]="siteService.sites()"
-                            optionLabel="domain"
-                            [ngModel]="selectedSite()"
-                            [ngModelOptions]="{ standalone: true }"
-                            (ngModelChange)="prefillFromSite($event)"
-                            [placeholder]="'utmBuilder.form.siteSelectPlaceholder' | transloco"
-                            [fluid]="true"
-                            appendTo="body"
-                        >
-                            <ng-template #selecteditem let-site>
-                                <div class="flex items-center gap-2">
-                                    <app-site-favicon [site]="site" />
-                                    <span>{{ site.domain }}</span>
-                                </div>
-                            </ng-template>
-                            <ng-template #item let-site>
-                                <div class="flex items-center gap-2">
-                                    <app-site-favicon [site]="site" />
-                                    <span>{{ site.domain }}</span>
-                                </div>
-                            </ng-template>
-                        </p-select>
-                        <label for="utm-site">{{ "utmBuilder.form.siteSelectLabel" | transloco }}</label>
-                    </p-iftalabel>
-                    <small class="text-[var(--p-text-muted-color)] text-xs">{{ "utmBuilder.form.siteSelectHint" | transloco }}</small>
-                </div>
+            @if (siteService.sites().length) {
+            <div class="utm-builder-field">
+                <label for="utm-site">{{ "utmBuilder.form.siteSelectLabel" | transloco }}</label>
+                <p-select
+                    inputId="utm-site"
+                    class="w-full"
+                    styleClass="w-full"
+                    [options]="siteService.sites()"
+                    optionLabel="domain"
+                    [ngModel]="selectedSite()"
+                    [ngModelOptions]="{ standalone: true }"
+                    (ngModelChange)="prefillFromSite($event)"
+                    [placeholder]="'utmBuilder.form.siteSelectPlaceholder' | transloco"
+                    [fluid]="true"
+                    appendTo="body"
+                >
+                    <ng-template #selecteditem let-site>
+                        <div class="utm-builder-site-option">
+                            <app-site-favicon [site]="site" />
+                            <span>{{ site.domain }}</span>
+                        </div>
+                    </ng-template>
+                    <ng-template #item let-site>
+                        <div class="utm-builder-site-option">
+                            <app-site-favicon [site]="site" />
+                            <span>{{ site.domain }}</span>
+                        </div>
+                    </ng-template>
+                </p-select>
+                <small>{{ "utmBuilder.form.siteSelectHint" | transloco }}</small>
+            </div>
+            }
+
+            <div class="utm-builder-field">
+                <label for="utm-url">{{ "utmBuilder.form.websiteUrlLabel" | transloco }} *</label>
+                <input pInputText id="utm-url" formControlName="url" class="w-full" [class.ng-invalid]="form.controls.url.invalid && form.controls.url.touched" autocomplete="url" type="url" />
+                @if (form.controls.url.errors?.["required"] && form.controls.url.touched) {
+                <small class="utm-builder-error">{{ "utmBuilder.validation.urlRequired" | transloco }}</small>
+                } @else if (form.controls.url.errors?.["urlInvalid"] && form.controls.url.touched) {
+                <small class="utm-builder-error">{{ "utmBuilder.validation.urlInvalid" | transloco }}</small>
+                } @else {
+                <small>{{ "utmBuilder.form.websiteUrlHint" | transloco }}</small>
                 }
+            </div>
 
-                <div class="flex flex-col gap-1">
-                    <p-iftalabel class="w-full">
-                        <input pInputText id="utm-url" formControlName="url" class="w-full" [class.ng-invalid]="form.controls.url.invalid && form.controls.url.touched" autocomplete="url" type="url" />
-                        <label for="utm-url">{{ "utmBuilder.form.websiteUrlLabel" | transloco }} *</label>
-                    </p-iftalabel>
-                    @if (form.controls.url.errors?.["required"] && form.controls.url.touched) {
-                    <small class="text-red-500 text-xs">{{ "utmBuilder.validation.urlRequired" | transloco }}</small>
-                    } @else if (form.controls.url.errors?.["urlInvalid"] && form.controls.url.touched) {
-                    <small class="text-red-500 text-xs">{{ "utmBuilder.validation.urlInvalid" | transloco }}</small>
-                    } @else {
-                    <small class="text-[var(--p-text-muted-color)] text-xs">{{ "utmBuilder.form.websiteUrlHint" | transloco }}</small>
-                    }
+            <div class="utm-builder-field">
+                <label for="utm-source">{{ "utmBuilder.form.sourceLabel" | transloco }} *</label>
+                <input pInputText id="utm-source" formControlName="source" class="w-full" [class.ng-invalid]="form.controls.source.invalid && form.controls.source.touched" />
+                @if (form.controls.source.errors?.["required"] && form.controls.source.touched) {
+                <small class="utm-builder-error">{{ "utmBuilder.validation.sourceRequired" | transloco }}</small>
+                } @else {
+                <small>{{ "utmBuilder.form.sourceHint" | transloco }}</small>
+                }
+            </div>
+
+            <div class="utm-builder-field-grid">
+                <div class="utm-builder-field">
+                    <label for="utm-medium">{{ "utmBuilder.form.mediumLabel" | transloco }}</label>
+                    <input pInputText id="utm-medium" formControlName="medium" class="w-full" />
+                    <small>{{ "utmBuilder.form.mediumHint" | transloco }}</small>
                 </div>
 
-                <div class="flex flex-col gap-1">
-                    <p-iftalabel class="w-full">
-                        <input pInputText id="utm-source" formControlName="source" class="w-full" [class.ng-invalid]="form.controls.source.invalid && form.controls.source.touched" />
-                        <label for="utm-source">{{ "utmBuilder.form.sourceLabel" | transloco }} *</label>
-                    </p-iftalabel>
-                    @if (form.controls.source.errors?.["required"] && form.controls.source.touched) {
-                    <small class="text-red-500 text-xs">{{ "utmBuilder.validation.sourceRequired" | transloco }}</small>
-                    } @else {
-                    <small class="text-[var(--p-text-muted-color)] text-xs">{{ "utmBuilder.form.sourceHint" | transloco }}</small>
-                    }
+                <div class="utm-builder-field">
+                    <label for="utm-campaign">{{ "utmBuilder.form.campaignLabel" | transloco }}</label>
+                    <input pInputText id="utm-campaign" formControlName="campaign" class="w-full" />
+                    <small>{{ "utmBuilder.form.campaignHint" | transloco }}</small>
+                </div>
+            </div>
+
+            <div class="utm-builder-field-grid">
+                <div class="utm-builder-field">
+                    <label for="utm-term">{{ "utmBuilder.form.termLabel" | transloco }}</label>
+                    <input pInputText id="utm-term" formControlName="term" class="w-full" />
+                    <small>{{ "utmBuilder.form.termHint" | transloco }}</small>
                 </div>
 
-                <div class="flex flex-col gap-1">
-                    <p-iftalabel class="w-full">
-                        <input pInputText id="utm-medium" formControlName="medium" class="w-full" />
-                        <label for="utm-medium">{{ "utmBuilder.form.mediumLabel" | transloco }}</label>
-                    </p-iftalabel>
-                    <small class="text-[var(--p-text-muted-color)] text-xs">{{ "utmBuilder.form.mediumHint" | transloco }}</small>
+                <div class="utm-builder-field">
+                    <label for="utm-content">{{ "utmBuilder.form.contentLabel" | transloco }}</label>
+                    <input pInputText id="utm-content" formControlName="content" class="w-full" />
+                    <small>{{ "utmBuilder.form.contentHint" | transloco }}</small>
                 </div>
+            </div>
 
-                <div class="flex flex-col gap-1">
-                    <p-iftalabel class="w-full">
-                        <input pInputText id="utm-campaign" formControlName="campaign" class="w-full" />
-                        <label for="utm-campaign">{{ "utmBuilder.form.campaignLabel" | transloco }}</label>
-                    </p-iftalabel>
-                    <small class="text-[var(--p-text-muted-color)] text-xs">{{ "utmBuilder.form.campaignHint" | transloco }}</small>
+            <div class="utm-builder-form-actions">
+                <p-button severity="secondary" [label]="'common.actions.clearAll' | transloco" (onClick)="clearForm()" icon="pi pi-times" styleClass="utm-builder-clear-button" />
+            </div>
+        </form>
+
+        <aside class="utm-builder-side">
+            <section class="utm-builder-panel">
+                <div class="utm-builder-panel-header">
+                    <h3>{{ "utmBuilder.preview.title" | transloco }}</h3>
                 </div>
-
-                <div class="flex flex-col gap-1">
-                    <p-iftalabel class="w-full">
-                        <input pInputText id="utm-term" formControlName="term" class="w-full" />
-                        <label for="utm-term">{{ "utmBuilder.form.termLabel" | transloco }}</label>
-                    </p-iftalabel>
-                    <small class="text-[var(--p-text-muted-color)] text-xs">{{ "utmBuilder.form.termHint" | transloco }}</small>
-                </div>
-
-                <div class="flex flex-col gap-1">
-                    <p-iftalabel class="w-full">
-                        <input pInputText id="utm-content" formControlName="content" class="w-full" />
-                        <label for="utm-content">{{ "utmBuilder.form.contentLabel" | transloco }}</label>
-                    </p-iftalabel>
-                    <small class="text-[var(--p-text-muted-color)] text-xs">{{ "utmBuilder.form.contentHint" | transloco }}</small>
-                </div>
-
-                <div class="flex justify-end pt-2">
-                    <p-button severity="secondary" [label]="'common.actions.clearAll' | transloco" (onClick)="clearForm()" icon="pi pi-times" />
-                </div>
-            </form>
-        </p-card>
-
-        <!-- Right column: preview + reference -->
-        <div class="flex flex-col gap-6">
-            <!-- Generated URL card -->
-            <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card">
-                <h3 class="text-lg font-semibold mb-4">{{ "utmBuilder.preview.title" | transloco }}</h3>
 
                 @if (generatedUrl()) {
-                <div
-                    class="bg-[var(--p-surface-ground)] border border-surface-200 dark:border-surface-700 rounded-lg p-4 font-mono text-sm break-all leading-relaxed text-[var(--p-text-color)] select-all min-h-16 mb-4"
-                    role="textbox"
-                    aria-readonly="true"
-                    [attr.aria-label]="'utmBuilder.preview.title' | transloco"
-                >
-                    {{ generatedUrl() }}
-                </div>
+                <div class="utm-builder-generated-url" role="textbox" aria-readonly="true" [attr.aria-label]="'utmBuilder.preview.title' | transloco">{{ generatedUrl() }}</div>
 
                 <p-button
                     [icon]="copied() ? 'pi pi-check' : 'pi pi-copy'"
                     [label]="(copied() ? 'common.copied' : 'utmBuilder.preview.copyAction') | transloco"
                     [severity]="copied() ? 'success' : 'primary'"
-                    class="w-full"
                     styleClass="w-full justify-center"
                     (onClick)="copyUrl()"
                 />
                 } @else {
-                <div class="flex flex-col items-center justify-center py-10 gap-3 text-center">
-                    <i class="pi pi-link text-5xl opacity-20" style="color: var(--p-primary-color)" aria-hidden="true"></i>
-                    <p class="text-sm text-[var(--p-text-muted-color)] max-w-xs">{{ "utmBuilder.preview.description" | transloco }}</p>
+                <div class="utm-builder-empty-preview">
+                    <i class="pi pi-link" style="color: var(--p-primary-color)" aria-hidden="true"></i>
+                    <p>{{ "utmBuilder.preview.description" | transloco }}</p>
                 </div>
                 }
-            </p-card>
+            </section>
 
-            <!-- Parameter reference card -->
-            <p-card class="shadow-sm border border-surface-200 dark:border-surface-700 surface-card">
-                <h4 class="text-base font-semibold mb-4">{{ "utmBuilder.reference.title" | transloco }}</h4>
-                <div class="flex flex-col divide-y divide-surface-200 dark:divide-surface-700">
+            <section class="utm-builder-panel">
+                <div class="utm-builder-panel-header">
+                    <h3>{{ "utmBuilder.reference.title" | transloco }}</h3>
+                </div>
+                <div class="utm-builder-reference-list">
                     @for (key of utmParamKeys; track key) {
-                    <div class="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-                        <code class="shrink-0 text-xs bg-[var(--p-surface-ground)] border border-surface-200 dark:border-surface-700 rounded px-2 py-1 font-mono text-[var(--p-primary-color)] mt-0.5 whitespace-nowrap">utm_{{ key }}</code>
+                    <div class="utm-builder-reference-item">
+                        <code>utm_{{ key }}</code>
                         <div>
-                            <p class="text-sm font-medium">{{ "utm.kpis." + key | transloco }}</p>
-                            <p class="text-xs text-[var(--p-text-muted-color)] mt-0.5">{{ "utmBuilder.reference." + key | transloco }}</p>
+                            <p>{{ "utm.kpis." + key | transloco }}</p>
+                            <span>{{ "utmBuilder.reference." + key | transloco }}</span>
                         </div>
                     </div>
                     }
                 </div>
-            </p-card>
-        </div>
+            </section>
+        </aside>
     </div>
 </div>

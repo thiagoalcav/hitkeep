@@ -14,29 +14,29 @@
             <app-settings-card [title]="'settings.reports.digest.title' | transloco" [subtitle]="'settings.reports.digest.description' | transloco" icon="pi pi-envelope">
                 <div settings-card-body class="flex flex-col gap-4">
                     @if (digestSaveState() === "saved") {
-                    <div class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{{ "common.saved" | transloco }}</div>
+                    <div class="settings-status settings-status--success">{{ "common.saved" | transloco }}</div>
                     } @if (digestSaveState() === "error") {
-                    <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ "common.saveFailed" | transloco }}</div>
+                    <div class="settings-status settings-status--error">{{ "common.saveFailed" | transloco }}</div>
                     } @if (isLoading()) {
                     <div class="text-sm text-[var(--p-text-muted-color)]">{{ "common.loading" | transloco }}</div>
                     } @else {
-                    <div class="flex flex-col gap-4">
-                        <div class="flex items-center justify-between">
-                            <div>
+                    <div class="frequency-list">
+                        <div class="frequency-row">
+                            <div class="frequency-copy">
                                 <div class="font-medium">{{ "settings.reports.frequency.daily.label" | transloco }}</div>
                                 <div class="text-sm text-[var(--p-text-muted-color)]">{{ "settings.reports.frequency.daily.hint" | transloco }}</div>
                             </div>
                             <p-toggleswitch [ngModel]="digestPrefs().daily" (ngModelChange)="setDigestFreq('daily', $event)" [disabled]="isDigestSaving()" />
                         </div>
-                        <div class="flex items-center justify-between">
-                            <div>
+                        <div class="frequency-row">
+                            <div class="frequency-copy">
                                 <div class="font-medium">{{ "settings.reports.frequency.weekly.label" | transloco }}</div>
                                 <div class="text-sm text-[var(--p-text-muted-color)]">{{ "settings.reports.frequency.weekly.hint" | transloco }}</div>
                             </div>
                             <p-toggleswitch [ngModel]="digestPrefs().weekly" (ngModelChange)="setDigestFreq('weekly', $event)" [disabled]="isDigestSaving()" />
                         </div>
-                        <div class="flex items-center justify-between">
-                            <div>
+                        <div class="frequency-row">
+                            <div class="frequency-copy">
                                 <div class="font-medium">{{ "settings.reports.frequency.monthly.label" | transloco }}</div>
                                 <div class="text-sm text-[var(--p-text-muted-color)]">{{ "settings.reports.frequency.monthly.hint" | transloco }}</div>
                             </div>
@@ -56,9 +56,9 @@
             <app-settings-card [title]="'settings.reports.perSite.title' | transloco" [subtitle]="'settings.reports.perSite.description' | transloco" icon="pi pi-chart-bar">
                 <div settings-card-body class="flex flex-col gap-4">
                     @if (sitesSaveState() === "saved") {
-                    <div class="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{{ "common.saved" | transloco }}</div>
+                    <div class="settings-status settings-status--success">{{ "common.saved" | transloco }}</div>
                     } @if (sitesSaveState() === "error") {
-                    <div class="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ "common.saveFailed" | transloco }}</div>
+                    <div class="settings-status settings-status--error">{{ "common.saveFailed" | transloco }}</div>
                     } @if (isLoading()) {
                     <div class="text-sm text-[var(--p-text-muted-color)]">{{ "common.loading" | transloco }}</div>
                     } @else if (sitePrefs().length === 0) {

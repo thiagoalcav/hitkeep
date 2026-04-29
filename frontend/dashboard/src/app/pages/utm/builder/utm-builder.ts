@@ -4,9 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
-import { CardModule } from 'primeng/card';
 import { InputTextModule } from 'primeng/inputtext';
-import { IftaLabelModule } from 'primeng/iftalabel';
 import { SelectModule } from 'primeng/select';
 import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
 import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
@@ -32,7 +30,7 @@ function urlValidator(): ValidatorFn {
     templateUrl: './utm-builder.html',
     styleUrl: './utm-builder.css',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [FormsModule, ReactiveFormsModule, TranslocoPipe, ButtonModule, CardModule, InputTextModule, IftaLabelModule, SelectModule, SiteFavicon, PageHeader, PageHeaderLeft, PageBreadcrumb]
+    imports: [FormsModule, ReactiveFormsModule, TranslocoPipe, ButtonModule, InputTextModule, SelectModule, SiteFavicon, PageHeader, PageHeaderLeft, PageBreadcrumb]
 })
 export class UtmBuilder {
     private transloco = inject(TranslocoService);

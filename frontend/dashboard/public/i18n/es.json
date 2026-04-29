@@ -297,7 +297,6 @@
         },
         "onboarding": {
             "title": "Lista de instalación",
-            "description": "Un camino basado en estado desde el registro hasta el primer dato verificado.",
             "progress": "{{complete}} de {{total}} completados",
             "dismiss": "Ocultar lista",
             "done": "Completo",
@@ -604,12 +603,18 @@
                 "empty": "No hay sitios. Añade un sitio para configurar informes."
             },
             "frequency": {
-                "daily": "Diario",
-                "weekly": "Semanal",
-                "monthly": "Mensual",
-                "daily.hint": "Estadísticas del día anterior",
-                "weekly.hint": "Cada lunes, últimos 7 días",
-                "monthly.hint": "El 1 de cada mes, mes anterior"
+                "daily": {
+                    "label": "Diario",
+                    "hint": "Estadísticas del día anterior"
+                },
+                "weekly": {
+                    "label": "Semanal",
+                    "hint": "Cada lunes, últimos 7 días"
+                },
+                "monthly": {
+                    "label": "Mensual",
+                    "hint": "El 1 de cada mes, mes anterior"
+                }
             }
         },
         "apiClients": {

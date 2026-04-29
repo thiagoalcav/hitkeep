@@ -297,7 +297,6 @@
         },
         "onboarding": {
             "title": "Installation checklist",
-            "description": "A state-driven path from signup to the first verified data point.",
             "progress": "{{complete}} of {{total}} complete",
             "dismiss": "Dismiss checklist",
             "done": "Complete",
@@ -604,12 +603,18 @@
                 "empty": "No sites found. Add a site to configure per-site reports."
             },
             "frequency": {
-                "daily": "Daily",
-                "weekly": "Weekly",
-                "monthly": "Monthly",
-                "daily.hint": "Previous day's stats",
-                "weekly.hint": "Every Monday, covers past 7 days",
-                "monthly.hint": "1st of each month, covers last month"
+                "daily": {
+                    "label": "Daily",
+                    "hint": "Previous day's stats"
+                },
+                "weekly": {
+                    "label": "Weekly",
+                    "hint": "Every Monday, covers past 7 days"
+                },
+                "monthly": {
+                    "label": "Monthly",
+                    "hint": "1st of each month, covers last month"
+                }
             }
         },
         "apiClients": {

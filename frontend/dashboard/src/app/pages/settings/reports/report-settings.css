@@ -7,6 +7,41 @@
     gap: 1.5rem;
 }
 
+.settings-status {
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+}
+
+.settings-status--success {
+    border: 1px solid color-mix(in srgb, var(--p-green-500) 28%, var(--p-content-border-color));
+    background: color-mix(in srgb, var(--p-green-500) 8%, var(--p-content-background));
+    color: var(--p-green-700);
+}
+
+.settings-status--error {
+    border: 1px solid color-mix(in srgb, var(--p-red-500) 28%, var(--p-content-border-color));
+    background: color-mix(in srgb, var(--p-red-500) 8%, var(--p-content-background));
+    color: var(--p-red-700);
+}
+
+.frequency-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.frequency-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.frequency-copy {
+    min-width: 0;
+}
+
 .settings-card-action {
     display: flex;
     flex-direction: column;
@@ -20,11 +55,12 @@
 }
 
 .site-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    justify-content: space-between;
     gap: 1rem;
     padding: 0.75rem 0;
+    min-width: 0;
 }
 
 .site-domain {
@@ -33,7 +69,6 @@
     gap: 0.5rem;
     font-weight: 500;
     min-width: 0;
-    flex: 1;
 }
 
 .site-domain i {
@@ -49,10 +84,11 @@
 }
 
 .site-toggles {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(4.5rem, 1fr));
     align-items: center;
-    gap: 1.5rem;
-    flex-shrink: 0;
+    gap: 0.75rem;
+    min-width: min(100%, 15rem);
 }
 
 .site-toggle-item {
@@ -68,4 +104,36 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--p-text-muted-color);
+    line-height: 1.2;
+    text-align: center;
+}
+
+@media (prefers-color-scheme: dark) {
+    .settings-status--success {
+        color: var(--p-green-300);
+    }
+
+    .settings-status--error {
+        color: var(--p-red-300);
+    }
+}
+
+@media (max-width: 640px) {
+    .settings-card-action {
+        align-items: stretch;
+    }
+
+    :host ::ng-deep .settings-action-btn {
+        width: 100%;
+    }
+
+    .frequency-row,
+    .site-row {
+        grid-template-columns: 1fr;
+    }
+
+    .site-toggles {
+        width: 100%;
+        min-width: 0;
+    }
 }

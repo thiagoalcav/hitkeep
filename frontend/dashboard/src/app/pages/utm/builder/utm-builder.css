@@ -1,3 +1,221 @@
 :host {
     display: block;
+    min-width: 0;
+}
+
+.utm-builder-page {
+    width: 100%;
+    min-height: 100%;
+    background: var(--p-surface-ground);
+    color: var(--p-text-color);
+}
+
+.utm-builder-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.18fr) minmax(20rem, 0.82fr);
+    align-items: start;
+    gap: 1rem;
+}
+
+.utm-builder-panel {
+    min-width: 0;
+    border: 1px solid var(--p-content-border-color);
+    border-radius: 8px;
+    background: var(--p-content-background);
+    padding: 1rem;
+    box-shadow: 0 1px 2px color-mix(in srgb, var(--p-surface-950) 6%, transparent);
+}
+
+.utm-builder-form,
+.utm-builder-side {
+    display: grid;
+    gap: 1rem;
+}
+
+.utm-builder-panel-header {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.utm-builder-panel-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 650;
+    line-height: 1.35;
+}
+
+.utm-builder-panel-header p {
+    margin: 0;
+    color: var(--p-text-muted-color);
+    font-size: 0.875rem;
+    line-height: 1.45;
+}
+
+.utm-builder-field,
+.utm-builder-field-grid {
+    min-width: 0;
+}
+
+.utm-builder-field {
+    display: grid;
+    gap: 0.4rem;
+}
+
+.utm-builder-field-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.875rem;
+}
+
+.utm-builder-field label {
+    color: var(--p-text-color);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.utm-builder-field small {
+    color: var(--p-text-muted-color);
+    font-size: 0.75rem;
+    line-height: 1.35;
+}
+
+.utm-builder-field .utm-builder-error {
+    color: var(--p-red-500);
+}
+
+.utm-builder-site-option {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.utm-builder-site-option span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.utm-builder-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 0.25rem;
+}
+
+.utm-builder-generated-url {
+    min-height: 5rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--p-content-border-color);
+    border-radius: 8px;
+    background: var(--p-surface-ground);
+    color: var(--p-text-color);
+    padding: 0.85rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+    user-select: all;
+}
+
+.utm-builder-empty-preview {
+    display: grid;
+    min-height: 10rem;
+    place-items: center;
+    gap: 0.75rem;
+    text-align: center;
+}
+
+.utm-builder-empty-preview i {
+    font-size: 2rem;
+    opacity: 0.28;
+}
+
+.utm-builder-empty-preview p {
+    max-width: 20rem;
+    margin: 0;
+    color: var(--p-text-muted-color);
+    font-size: 0.875rem;
+    line-height: 1.45;
+}
+
+.utm-builder-reference-list {
+    display: grid;
+    gap: 0;
+}
+
+.utm-builder-reference-item {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 0.75rem;
+    align-items: start;
+    padding: 0.75rem 0;
+    border-top: 1px solid var(--p-content-border-color);
+}
+
+.utm-builder-reference-item:first-child {
+    border-top: 0;
+    padding-top: 0.25rem;
+}
+
+.utm-builder-reference-item:last-child {
+    padding-bottom: 0;
+}
+
+.utm-builder-reference-item code {
+    margin-top: 0.1rem;
+    border: 1px solid var(--p-content-border-color);
+    border-radius: 6px;
+    background: var(--p-surface-ground);
+    color: var(--p-primary-color);
+    padding: 0.25rem 0.45rem;
+    font-size: 0.75rem;
+}
+
+.utm-builder-reference-item p {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.utm-builder-reference-item span {
+    display: block;
+    margin-top: 0.15rem;
+    color: var(--p-text-muted-color);
+    font-size: 0.75rem;
+    line-height: 1.4;
+}
+
+:host ::ng-deep .utm-builder-clear-button {
+    justify-content: center;
+}
+
+:host ::ng-deep .utm-builder-field .p-inputtext,
+:host ::ng-deep .utm-builder-field .p-select {
+    min-height: 2.625rem;
+}
+
+@media (max-width: 1024px) {
+    .utm-builder-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .utm-builder-panel {
+        padding: 0.875rem;
+    }
+
+    .utm-builder-field-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .utm-builder-form-actions {
+        justify-content: stretch;
+    }
+
+    :host ::ng-deep .utm-builder-clear-button {
+        width: 100%;
+    }
 }

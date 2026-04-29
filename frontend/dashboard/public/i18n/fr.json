@@ -297,7 +297,6 @@
         },
         "onboarding": {
             "title": "Checklist d’installation",
-            "description": "Un parcours piloté par l’état, de l’inscription au premier point de données vérifié.",
             "progress": "{{complete}} sur {{total}} terminé",
             "dismiss": "Masquer la checklist",
             "done": "Terminé",
@@ -604,12 +603,18 @@
                 "empty": "Aucun site trouvé. Ajoutez un site pour configurer des rapports."
             },
             "frequency": {
-                "daily": "Quotidien",
-                "weekly": "Hebdomadaire",
-                "monthly": "Mensuel",
-                "daily.hint": "Statistiques du jour précédent",
-                "weekly.hint": "Chaque lundi, les 7 derniers jours",
-                "monthly.hint": "Le 1er du mois, mois précédent"
+                "daily": {
+                    "label": "Quotidien",
+                    "hint": "Statistiques du jour précédent"
+                },
+                "weekly": {
+                    "label": "Hebdomadaire",
+                    "hint": "Chaque lundi, les 7 derniers jours"
+                },
+                "monthly": {
+                    "label": "Mensuel",
+                    "hint": "Le 1er du mois, mois précédent"
+                }
             }
         },
         "apiClients": {

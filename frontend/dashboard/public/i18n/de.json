@@ -297,7 +297,6 @@
         },
         "onboarding": {
             "title": "Installations-Checkliste",
-            "description": "Ein zustandsbasierter Weg von der Anmeldung bis zum ersten verifizierten Datenpunkt.",
             "progress": "{{complete}} von {{total}} erledigt",
             "dismiss": "Checkliste ausblenden",
             "done": "Erledigt",
@@ -604,12 +603,18 @@
                 "empty": "Keine Websites gefunden. Füge eine Website hinzu."
             },
             "frequency": {
-                "daily": "Täglich",
-                "weekly": "Wöchentlich",
-                "monthly": "Monatlich",
-                "daily.hint": "Statistiken des Vortages",
-                "weekly.hint": "Jeden Montag, die letzten 7 Tage",
-                "monthly.hint": "Am 1. des Monats, letzter Monat"
+                "daily": {
+                    "label": "Täglich",
+                    "hint": "Statistiken des Vortages"
+                },
+                "weekly": {
+                    "label": "Wöchentlich",
+                    "hint": "Jeden Montag, die letzten 7 Tage"
+                },
+                "monthly": {
+                    "label": "Monatlich",
+                    "hint": "Am 1. des Monats, letzter Monat"
+                }
             }
         },
         "apiClients": {

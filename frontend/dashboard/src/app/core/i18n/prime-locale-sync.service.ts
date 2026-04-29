@@ -1,25 +1,45 @@
 import { Injectable, effect, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { PrimeNG } from 'primeng/config';
 import { Translation } from 'primeng/api';
 import { TranslocoLocaleService } from '@jsverse/transloco-locale';
 import { TranslocoService } from '@jsverse/transloco';
-import { injectActiveLang } from '@core/i18n/active-lang';
+import { map, switchMap } from 'rxjs';
+
+type TranslationDictionary = Record<string, unknown>;
 
 @Injectable({ providedIn: 'root' })
 export class PrimeLocaleSyncService {
     private readonly primeNg = inject(PrimeNG);
     private readonly transloco = inject(TranslocoService);
     private readonly localeService = inject(TranslocoLocaleService);
-    private readonly activeLanguage = injectActiveLang();
+    private readonly translationState = toSignal(
+        this.transloco.langChanges$.pipe(
+            switchMap((lang) =>
+                this.transloco.selectTranslation(lang).pipe(
+                    map((translation) => ({
+                        lang,
+                        translation: translation as TranslationDictionary
+                    }))
+                )
+            )
+        ),
+        {
+            initialValue: {
+                lang: this.transloco.getActiveLang(),
+                translation: this.readTranslation(this.transloco.getActiveLang())
+            }
+        }
+    );
 
     constructor() {
         effect(() => {
-            this.activeLanguage();
-            this.primeNg.setTranslation(this.buildTranslation(this.localeService.getLocale()));
+            const { translation } = this.translationState();
+            this.primeNg.setTranslation(this.buildTranslation(this.localeService.getLocale(), translation));
         });
     }
 
-    private buildTranslation(locale: string): Translation {
+    private buildTranslation(locale: string, translation: TranslationDictionary): Translation {
         return {
             dayNames: this.buildWeekdayNames(locale, 'long'),
             dayNamesShort: this.buildWeekdayNames(locale, 'short'),
@@ -28,13 +48,33 @@ export class PrimeLocaleSyncService {
             monthNamesShort: this.buildMonthNames(locale, 'short'),
             firstDayOfWeek: this.resolveFirstDayOfWeek(locale),
             dateFormat: this.buildDatePickerDateFormat(locale),
-            clear: this.transloco.translate('common.actions.clearAll'),
-            apply: this.transloco.translate('common.actions.apply'),
-            cancel: this.transloco.translate('common.actions.cancel'),
-            chooseDate: this.transloco.translate('common.selectDateRange'),
+            clear: this.translationValue(translation, 'common.actions.clearAll', 'Clear all'),
+            apply: this.translationValue(translation, 'common.actions.apply', 'Apply'),
+            cancel: this.translationValue(translation, 'common.actions.cancel', 'Cancel'),
+            chooseDate: this.translationValue(translation, 'common.selectDateRange', 'Select date range'),
             am: this.buildDayPeriod(locale, 'am'),
             pm: this.buildDayPeriod(locale, 'pm')
         };
+    }
+
+    private readTranslation(lang: string): TranslationDictionary {
+        try {
+            const translation = this.transloco.getTranslation(lang);
+            return translation && typeof translation === 'object' ? (translation as TranslationDictionary) : {};
+        } catch {
+            return {};
+        }
+    }
+
+    private translationValue(translation: TranslationDictionary, key: string, fallback: string): string {
+        const value = key.split('.').reduce<unknown>((current, segment) => {
+            if (!current || typeof current !== 'object') {
+                return undefined;
+            }
+            return (current as TranslationDictionary)[segment];
+        }, translation);
+
+        return typeof value === 'string' && value.trim() ? value : fallback;
     }
 
     private buildWeekdayNames(locale: string, width: 'long' | 'short' | 'narrow'): string[] {

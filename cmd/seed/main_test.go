@@ -57,6 +57,39 @@ func TestEnsureUserResetsExistingUserPassword(t *testing.T) {
 	}
 }
 
+func TestSeedActivationFixturesKeepsPrimaryDemoSiteFirst(t *testing.T) {
+	ctx := context.Background()
+	store := database.NewStore(filepath.Join(t.TempDir(), "seed.db"))
+	if err := store.Connect(); err != nil {
+		t.Fatalf("connect store: %v", err)
+	}
+	defer store.Close()
+	if err := store.Migrate(ctx); err != nil {
+		t.Fatalf("migrate store: %v", err)
+	}
+
+	userID := ensureUser(ctx, store, "demo@example.com", "demo1234")
+	seedTeam(ctx, store, userID)
+
+	primary, err := ensureSiteInActiveTeam(ctx, store, userID, "acme-analytics.io")
+	if err != nil {
+		t.Fatalf("ensure primary site: %v", err)
+	}
+
+	seedActivationFixtures(ctx, store, userID, primary.ID)
+
+	sites, err := store.GetSites(ctx, userID)
+	if err != nil {
+		t.Fatalf("get sites: %v", err)
+	}
+	if len(sites) < 3 {
+		t.Fatalf("expected primary and activation fixture sites, got %d", len(sites))
+	}
+	if sites[0].ID != primary.ID {
+		t.Fatalf("expected primary demo site first, got %s (%s)", sites[0].Domain, sites[0].ID)
+	}
+}
+
 func seedPasswordMatches(t *testing.T, password string, encoded string) bool {
 	t.Helper()
 

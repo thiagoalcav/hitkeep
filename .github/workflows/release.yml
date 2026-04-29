@@ -56,6 +56,7 @@ jobs:
       - name: Add release blog link to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GHT }}
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.release-please.outputs.tag_name }}
         run: |
           set -euo pipefail

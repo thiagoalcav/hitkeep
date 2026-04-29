@@ -197,6 +197,22 @@ func seedActivationFixtures(ctx context.Context, store *database.Store, userID, 
 	if dormant != nil {
 		sitesToReset = append(sitesToReset, dormant.ID)
 	}
+
+	// Keep the analytics-rich primary site first in freshly seeded dashboards.
+	if err := store.Exec(ctx, "UPDATE sites SET created_at = ? WHERE id = ?", now, primarySiteID); err != nil {
+		slog.Warn("Failed to refresh primary demo site timestamp", "site_id", primarySiteID, "error", err)
+	}
+	if waiting != nil {
+		if err := store.Exec(ctx, "UPDATE sites SET created_at = ? WHERE id = ?", now.Add(-2*time.Hour), waiting.ID); err != nil {
+			slog.Warn("Failed to age waiting activation site", "site_id", waiting.ID, "error", err)
+		}
+	}
+	if dormant != nil {
+		if err := store.Exec(ctx, "UPDATE sites SET created_at = ? WHERE id = ?", now.Add(-3*time.Hour), dormant.ID); err != nil {
+			slog.Warn("Failed to age dormant activation site", "site_id", dormant.ID, "error", err)
+		}
+	}
+
 	for _, siteID := range sitesToReset {
 		_ = store.Exec(ctx, "DELETE FROM site_activity_hourly_counts WHERE site_id = ?", siteID)
 		_ = store.Exec(ctx, "DELETE FROM site_activity_summary WHERE site_id = ?", siteID)

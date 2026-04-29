@@ -262,6 +262,83 @@ func TestSetActiveTenantIDAndScopedSites(t *testing.T) {
 	}
 }
 
+func TestTeamAdminsGetEffectiveSiteAccessForActiveTeam(t *testing.T) {
+	store := setupTenantStore(t)
+	ctx := context.Background()
+
+	ownerID, err := store.CreateUser(ctx, "team-site-owner@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create owner: %v", err)
+	}
+	adminID, err := store.CreateUser(ctx, "team-site-admin@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create admin: %v", err)
+	}
+	memberID, err := store.CreateUser(ctx, "team-site-member@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create member: %v", err)
+	}
+
+	team, err := store.CreateTenant(ctx, ownerID, "Managed Sites", "")
+	if err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+	if err := store.AddTeamMember(ctx, team.ID, adminID, TenantRoleAdmin, ownerID); err != nil {
+		t.Fatalf("add admin: %v", err)
+	}
+	if err := store.AddTeamMember(ctx, team.ID, memberID, TenantRoleMember, ownerID); err != nil {
+		t.Fatalf("add member: %v", err)
+	}
+	if err := store.SetActiveTenantID(ctx, ownerID, team.ID); err != nil {
+		t.Fatalf("set owner active team: %v", err)
+	}
+
+	firstSite, err := store.CreateSite(ctx, ownerID, "team-admin-first.test")
+	if err != nil {
+		t.Fatalf("create first site: %v", err)
+	}
+	secondSite, err := store.CreateSite(ctx, ownerID, "team-admin-second.test")
+	if err != nil {
+		t.Fatalf("create second site: %v", err)
+	}
+	if err := store.AddSiteMember(ctx, firstSite.ID, memberID, auth.SiteViewer, ownerID); err != nil {
+		t.Fatalf("add explicit member site access: %v", err)
+	}
+
+	if err := store.SetActiveTenantID(ctx, adminID, team.ID); err != nil {
+		t.Fatalf("set admin active team: %v", err)
+	}
+	adminRole, err := store.GetSiteRole(ctx, adminID, firstSite.ID)
+	if err != nil {
+		t.Fatalf("get admin site role: %v", err)
+	}
+	if adminRole != auth.SiteAdmin {
+		t.Fatalf("expected team admin to resolve as site admin, got %q", adminRole)
+	}
+
+	adminSites, err := store.GetSites(ctx, adminID)
+	if err != nil {
+		t.Fatalf("get admin sites: %v", err)
+	}
+	if len(adminSites) != 2 {
+		t.Fatalf("expected team admin to see both team sites, got %+v", adminSites)
+	}
+
+	if err := store.SetActiveTenantID(ctx, memberID, team.ID); err != nil {
+		t.Fatalf("set member active team: %v", err)
+	}
+	memberSites, err := store.GetSites(ctx, memberID)
+	if err != nil {
+		t.Fatalf("get member sites: %v", err)
+	}
+	if len(memberSites) != 1 || memberSites[0].ID != firstSite.ID {
+		t.Fatalf("expected team member to see only explicitly assigned site %s, got %+v", firstSite.ID, memberSites)
+	}
+	if _, err := store.GetSiteRole(ctx, memberID, secondSite.ID); err == nil {
+		t.Fatal("expected team member without site role to be denied")
+	}
+}
+
 func TestArchiveTenantHidesArchivedTeamAndResetsActiveTeam(t *testing.T) {
 	store := setupTenantStore(t)
 	ctx := context.Background()

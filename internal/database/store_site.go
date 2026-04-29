@@ -157,8 +157,13 @@ func (s *Store) GetSites(ctx context.Context, userID uuid.UUID) ([]api.Site, err
 		return nil, fmt.Errorf("could not resolve default tenant: %w", err)
 	}
 
+	canManageActiveTenantSites := false
+	if tenantRole, err := s.GetTenantRole(ctx, activeTenantID, userID); err == nil {
+		_, canManageActiveTenantSites = tenantRoleSiteRole(tenantRole)
+	}
+
 	var rows *sql.Rows
-	if instanceRole.HasPermission(auth.PermInstanceViewAllSites) {
+	if instanceRole.HasPermission(auth.PermInstanceViewAllSites) || canManageActiveTenantSites {
 		rows, err = s.db.QueryContext(ctx, `
 			SELECT s.id, s.user_id, s.domain, s.data_retention_days, s.created_at
 			FROM sites s

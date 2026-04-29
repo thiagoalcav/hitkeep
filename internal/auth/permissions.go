@@ -27,6 +27,11 @@ const (
 	PermInstanceManageUsers    Permission = "instance.manage_users"
 	PermInstanceViewAllSites   Permission = "instance.view_all_sites"
 	PermInstanceManageSettings Permission = "instance.manage_settings"
+	PermInstanceViewSystem     Permission = "instance.view_system"
+	PermInstanceManageSystem   Permission = "instance.manage_system"
+	PermInstanceRunMaintenance Permission = "instance.run_maintenance"
+	PermInstanceViewAudit      Permission = "instance.view_audit"
+	PermInstanceExportAudit    Permission = "instance.export_audit"
 
 	// Site permissions
 	PermSiteView        Permission = "site.view"
@@ -42,9 +47,24 @@ var instancePermissions = map[InstanceRole][]Permission{
 		PermInstanceManageUsers,
 		PermInstanceViewAllSites,
 		PermInstanceManageSettings,
+		PermInstanceViewSystem,
+		PermInstanceManageSystem,
+		PermInstanceRunMaintenance,
+		PermInstanceViewAudit,
+		PermInstanceExportAudit,
+		PermSiteView,
+		PermSiteManageData,
+		PermSiteManageGoals,
+		PermSiteManageTeam,
+		PermSiteDelete,
 	},
 	InstanceAdmin: {
 		PermInstanceViewAllSites,
+		PermInstanceViewSystem,
+		PermInstanceRunMaintenance,
+		PermInstanceViewAudit,
+		PermSiteView,
+		PermSiteManageData,
 	},
 	InstanceUser: {},
 }

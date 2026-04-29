@@ -145,6 +145,7 @@ func (s *Store) AddTeamMember(ctx context.Context, tenantID, userID uuid.UUID, r
 	if err != nil {
 		return fmt.Errorf("could not add tenant member: %w", err)
 	}
+	s.invalidateAllSiteRolesForUser(userID)
 
 	return nil
 }
@@ -430,7 +431,7 @@ func (s *Store) AcceptTeamInvitesByEmail(ctx context.Context, email string, user
 }
 
 func (s *Store) RemoveTeamMember(ctx context.Context, tenantID, userID uuid.UUID) error {
-	return s.Transact(ctx, func(tx *sql.Tx) error {
+	err := s.Transact(ctx, func(tx *sql.Tx) error {
 		result, err := tx.ExecContext(ctx, "DELETE FROM tenant_members WHERE tenant_id = ? AND user_id = ?", tenantID, userID)
 		if err != nil {
 			return fmt.Errorf("could not remove tenant member: %w", err)
@@ -449,6 +450,11 @@ func (s *Store) RemoveTeamMember(ctx context.Context, tenantID, userID uuid.UUID
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	s.invalidateAllSiteRolesForUser(userID)
+	return nil
 }
 
 func (s *Store) LeaveTeam(ctx context.Context, tenantID, userID uuid.UUID) (uuid.UUID, error) {
@@ -533,6 +539,7 @@ func (s *Store) LeaveTeam(ctx context.Context, tenantID, userID uuid.UUID) (uuid
 	if err != nil {
 		return uuid.Nil, err
 	}
+	s.invalidateAllSiteRolesForUser(userID)
 
 	return nextActiveTenantID, nil
 }
@@ -542,7 +549,7 @@ func (s *Store) TransferTeamOwnership(ctx context.Context, tenantID, actorID, ta
 		return ErrTeamTransferSelf
 	}
 
-	return s.Transact(ctx, func(tx *sql.Tx) error {
+	err := s.Transact(ctx, func(tx *sql.Tx) error {
 		var actorRole string
 		if err := tx.QueryRowContext(ctx,
 			"SELECT role FROM tenant_members WHERE tenant_id = ? AND user_id = ?",
@@ -586,6 +593,12 @@ func (s *Store) TransferTeamOwnership(ctx context.Context, tenantID, actorID, ta
 
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	s.invalidateAllSiteRolesForUser(actorID)
+	s.invalidateAllSiteRolesForUser(targetUserID)
+	return nil
 }
 
 func (s *Store) CountTeamOwners(ctx context.Context, tenantID uuid.UUID) (int, error) {

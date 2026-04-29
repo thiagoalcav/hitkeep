@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/auth"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
 	"hitkeep/internal/exportfmt"
@@ -314,6 +315,112 @@ func TestHandleGetSites(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestSiteExclusionsAllowInstanceAdmin(t *testing.T) {
+	h, store, ownerID := setupTestEnv(t)
+	defer store.Close()
+
+	site, err := store.CreateSite(context.Background(), ownerID, "instance-admin-exclusions.test")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+	adminID, err := store.CreateUser(context.Background(), "instance-admin-exclusions@example.com", "hashed_secret")
+	if err != nil {
+		t.Fatalf("create admin user: %v", err)
+	}
+	if err := store.UpdateInstanceRole(context.Background(), adminID, auth.InstanceAdmin, ownerID); err != nil {
+		t.Fatalf("promote instance admin: %v", err)
+	}
+
+	body := bytes.NewReader([]byte(`{"cidr":"203.0.113.7","description":"office"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/sites/"+site.ID.String()+"/exclusions", body)
+	req.SetPathValue("id", site.ID.String())
+	req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, adminID))
+	w := httptest.NewRecorder()
+
+	h.ctx.RequirePermission(auth.PermSiteManageData)(h.handleCreateSiteExclusion()).ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected instance admin create status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/sites/"+site.ID.String()+"/exclusions", nil)
+	listReq.SetPathValue("id", site.ID.String())
+	listReq = listReq.WithContext(context.WithValue(listReq.Context(), shared.UserIDKey, adminID))
+	listW := httptest.NewRecorder()
+
+	h.ctx.RequirePermission(auth.PermSiteManageData)(h.handleListSiteExclusions()).ServeHTTP(listW, listReq)
+	if listW.Code != http.StatusOK {
+		t.Fatalf("expected instance admin list status %d, got %d: %s", http.StatusOK, listW.Code, listW.Body.String())
+	}
+}
+
+func TestSiteExclusionsAllowTeamAdminAndRejectUnscopedMember(t *testing.T) {
+	h, store, ownerID := setupTestEnv(t)
+	defer store.Close()
+
+	adminID, err := store.CreateUser(context.Background(), "team-admin-exclusions@example.com", "hashed_secret")
+	if err != nil {
+		t.Fatalf("create team admin: %v", err)
+	}
+	memberID, err := store.CreateUser(context.Background(), "team-member-exclusions@example.com", "hashed_secret")
+	if err != nil {
+		t.Fatalf("create team member: %v", err)
+	}
+	team, err := store.CreateTenant(context.Background(), ownerID, "Exclusion Team", "")
+	if err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+	if err := store.AddTeamMember(context.Background(), team.ID, adminID, database.TenantRoleAdmin, ownerID); err != nil {
+		t.Fatalf("add team admin: %v", err)
+	}
+	if err := store.AddTeamMember(context.Background(), team.ID, memberID, database.TenantRoleMember, ownerID); err != nil {
+		t.Fatalf("add team member: %v", err)
+	}
+	if err := store.SetActiveTenantID(context.Background(), ownerID, team.ID); err != nil {
+		t.Fatalf("set owner active team: %v", err)
+	}
+	site, err := store.CreateSite(context.Background(), ownerID, "team-admin-exclusions.test")
+	if err != nil {
+		t.Fatalf("create team site: %v", err)
+	}
+	if err := store.SetActiveTenantID(context.Background(), adminID, team.ID); err != nil {
+		t.Fatalf("set admin active team: %v", err)
+	}
+	if err := store.SetActiveTenantID(context.Background(), memberID, team.ID); err != nil {
+		t.Fatalf("set member active team: %v", err)
+	}
+
+	body := bytes.NewReader([]byte(`{"cidr":"198.51.100.0/24","description":"partner"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/sites/"+site.ID.String()+"/exclusions", body)
+	req.SetPathValue("id", site.ID.String())
+	req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, adminID))
+	w := httptest.NewRecorder()
+
+	h.ctx.RequirePermission(auth.PermSiteManageData)(h.handleCreateSiteExclusion()).ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected team admin create status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/api/sites/"+site.ID.String()+"/exclusions", nil)
+	listReq.SetPathValue("id", site.ID.String())
+	listReq = listReq.WithContext(context.WithValue(listReq.Context(), shared.UserIDKey, adminID))
+	listW := httptest.NewRecorder()
+
+	h.ctx.RequirePermission(auth.PermSiteManageData)(h.handleListSiteExclusions()).ServeHTTP(listW, listReq)
+	if listW.Code != http.StatusOK {
+		t.Fatalf("expected team admin list status %d, got %d: %s", http.StatusOK, listW.Code, listW.Body.String())
+	}
+
+	memberReq := httptest.NewRequest(http.MethodGet, "/api/sites/"+site.ID.String()+"/exclusions", nil)
+	memberReq.SetPathValue("id", site.ID.String())
+	memberReq = memberReq.WithContext(context.WithValue(memberReq.Context(), shared.UserIDKey, memberID))
+	memberW := httptest.NewRecorder()
+
+	h.ctx.RequirePermission(auth.PermSiteManageData)(h.handleListSiteExclusions()).ServeHTTP(memberW, memberReq)
+	if memberW.Code != http.StatusForbidden {
+		t.Fatalf("expected unscoped team member status %d, got %d: %s", http.StatusForbidden, memberW.Code, memberW.Body.String())
 	}
 }
 

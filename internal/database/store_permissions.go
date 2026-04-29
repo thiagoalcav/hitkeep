@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -65,7 +66,18 @@ func (s *Store) UpdateInstanceRole(ctx context.Context, targetUserID uuid.UUID, 
 	return nil
 }
 
-// GetSiteRole returns the user's role for a specific site
+func tenantRoleSiteRole(role string) (auth.SiteRole, bool) {
+	switch strings.TrimSpace(strings.ToLower(role)) {
+	case TenantRoleOwner:
+		return auth.SiteOwner, true
+	case TenantRoleAdmin:
+		return auth.SiteAdmin, true
+	default:
+		return "", false
+	}
+}
+
+// GetSiteRole returns the user's effective role for a specific site.
 func (s *Store) GetSiteRole(ctx context.Context, userID uuid.UUID, siteID uuid.UUID) (auth.SiteRole, error) {
 	if cached, ok := s.getCachedSiteRole(userID, siteID); ok {
 		return cached, nil
@@ -80,7 +92,18 @@ func (s *Store) GetSiteRole(ctx context.Context, userID uuid.UUID, siteID uuid.U
 		return "", fmt.Errorf("failed to resolve default tenant: %w", err)
 	}
 
-	var role string
+	var effectiveRole auth.SiteRole
+	hasEffectiveRole := false
+	mergeRole := func(role auth.SiteRole) {
+		if !hasEffectiveRole {
+			effectiveRole = role
+			hasEffectiveRole = true
+			return
+		}
+		effectiveRole = auth.MinSiteRole(effectiveRole, role)
+	}
+
+	var explicitRole string
 	err = s.db.QueryRowContext(ctx, `
 		SELECT sm.role
 		FROM site_members sm
@@ -91,35 +114,60 @@ func (s *Store) GetSiteRole(ctx context.Context, userID uuid.UUID, siteID uuid.U
 			AND COALESCE(st.tenant_id, ?) = ?
 	`,
 		userID, siteID, defaultTenantID, activeTenantID,
-	).Scan(&role)
+	).Scan(&explicitRole)
 
-	if err == sql.ErrNoRows {
-		// Check if user is site owner (backward compatibility)
-		var ownerID uuid.UUID
-		err2 := s.db.QueryRowContext(ctx, `
-			SELECT user_id
-			FROM sites s
-			LEFT JOIN site_tenants st ON st.site_id = s.id
-			WHERE s.id = ?
-				AND COALESCE(st.tenant_id, ?) = ?
-		`,
-			siteID, defaultTenantID, activeTenantID,
-		).Scan(&ownerID)
-
-		if err2 == nil && ownerID == userID {
-			s.cacheSiteRole(userID, siteID, auth.SiteOwner)
-			return auth.SiteOwner, nil
-		}
-
-		return "", fmt.Errorf("no access to site")
-	}
-	if err != nil {
+	if err == nil {
+		mergeRole(auth.SiteRole(explicitRole))
+	} else if err != sql.ErrNoRows {
 		return "", fmt.Errorf("failed to get site role: %w", err)
 	}
 
-	resolved := auth.SiteRole(role)
-	s.cacheSiteRole(userID, siteID, resolved)
-	return resolved, nil
+	// Check if user is site owner (backward compatibility).
+	var ownerID uuid.UUID
+	err = s.db.QueryRowContext(ctx, `
+		SELECT user_id
+		FROM sites s
+		LEFT JOIN site_tenants st ON st.site_id = s.id
+		WHERE s.id = ?
+			AND COALESCE(st.tenant_id, ?) = ?
+	`,
+		siteID, defaultTenantID, activeTenantID,
+	).Scan(&ownerID)
+	if err == nil && ownerID == userID {
+		mergeRole(auth.SiteOwner)
+	} else if err != nil && err != sql.ErrNoRows {
+		return "", fmt.Errorf("failed to resolve site owner: %w", err)
+	}
+
+	var tenantRole string
+	err = s.db.QueryRowContext(ctx, `
+		SELECT tm.role
+		FROM sites s
+		LEFT JOIN site_tenants st ON st.site_id = s.id
+		JOIN tenant_members tm
+			ON tm.tenant_id = COALESCE(st.tenant_id, ?)
+			AND tm.user_id = ?
+		LEFT JOIN tenant_archives ta ON ta.tenant_id = tm.tenant_id
+		WHERE s.id = ?
+			AND COALESCE(st.tenant_id, ?) = ?
+			AND ta.tenant_id IS NULL
+	`,
+		defaultTenantID, userID, siteID, defaultTenantID, activeTenantID,
+	).Scan(&tenantRole)
+	if err == nil {
+		if role, ok := tenantRoleSiteRole(tenantRole); ok {
+			mergeRole(role)
+		}
+	} else if err != sql.ErrNoRows {
+		return "", fmt.Errorf("failed to resolve tenant site role: %w", err)
+	}
+
+	if !hasEffectiveRole {
+		return "", fmt.Errorf("no access to site")
+	}
+
+	s.cacheSiteRole(userID, siteID, effectiveRole)
+	return effectiveRole, nil
 }
 
 // AddSiteMember grants a user access to a site

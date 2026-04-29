@@ -174,7 +174,7 @@ func loadEnvDefaults(conf *Config) {
 	t := v.Type()
 	for i := range t.NumField() {
 		f := t.Field(i)
-		if !f.IsExported() || f.Tag.Get("cloud") == "true" {
+		if !shouldLoadEnvField(f) {
 			continue
 		}
 		def := f.Tag.Get("default")
@@ -210,7 +210,7 @@ func loadEnvOverrides(conf *Config, getEnv func(string, string) string) {
 	t := v.Type()
 	for i := range t.NumField() {
 		f := t.Field(i)
-		if !f.IsExported() || f.Tag.Get("cloud") == "true" {
+		if !shouldLoadEnvField(f) {
 			continue
 		}
 		env := f.Tag.Get("env")
@@ -226,6 +226,16 @@ func loadEnvOverrides(conf *Config, getEnv func(string, string) string) {
 			slog.Warn("Invalid value in env var, using default", "key", env, "val", val)
 		}
 	}
+}
+
+func shouldLoadEnvField(f reflect.StructField) bool {
+	if !f.IsExported() {
+		return false
+	}
+	if f.Tag.Get("cloud") == "true" {
+		return includeCloudConfigFields()
+	}
+	return true
 }
 
 func setEnvValue(fv reflect.Value, val string) bool {

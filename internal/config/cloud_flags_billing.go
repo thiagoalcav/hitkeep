@@ -7,6 +7,10 @@ import (
 	"reflect"
 )
 
+func includeCloudConfigFields() bool {
+	return true
+}
+
 func registerCloudFlags(fs *flag.FlagSet, conf *Config) {
 	v := reflect.ValueOf(conf).Elem()
 	t := v.Type()

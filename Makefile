@@ -65,21 +65,32 @@ update-default-spam-filter:
 	@./scripts/update-default-spam-filter.sh
 
 dev-cloud:
-	@echo "Starting development environment (cloud/billing)..."
-	@if ! command -v air > /dev/null; then \
-		echo "Air is not installed. Installing..."; \
-		go install github.com/air-verse/air@latest; \
-	fi
-	@make -j2 dev-cloud-backend dev-frontend
+	@bash ./scripts/dev.sh --cloud
+
+dev-cloud-seed:
+	@bash ./scripts/dev.sh --cloud --seed
 
 dev-cloud-backend:
 	@echo "Starting Backend with Live Reload (billing tags)..."
 	@HITKEEP_JWT_SECRET=$${HITKEEP_JWT_SECRET:-hitkeep-dev-jwt-secret} \
 		HITKEEP_PUBLIC_URL=$${HITKEEP_PUBLIC_URL:-http://localhost:4200} \
+		HITKEEP_MAIL_DRIVER=$${HITKEEP_MAIL_DRIVER:-smtp} \
+		HITKEEP_MAIL_HOST=$${HITKEEP_MAIL_HOST:-localhost} \
+		HITKEEP_MAIL_PORT=$${HITKEEP_MAIL_PORT:-1025} \
+		HITKEEP_MAIL_ENCRYPTION=$${HITKEEP_MAIL_ENCRYPTION:-none} \
+		HITKEEP_MCP_ENABLED=$${HITKEEP_MCP_ENABLED:-true} \
+		HITKEEP_CLOUD_HOSTED=$${HITKEEP_CLOUD_HOSTED:-true} \
+		HITKEEP_CLOUD_SIGNUP_ENABLED=$${HITKEEP_CLOUD_SIGNUP_ENABLED:-true} \
+		HITKEEP_CLOUD_JURISDICTION=$${HITKEEP_CLOUD_JURISDICTION:-EU} \
+		HITKEEP_CLOUD_REGION=$${HITKEEP_CLOUD_REGION:-eu-central-1} \
+		HITKEEP_CLOUD_UPGRADE_URL=$${HITKEEP_CLOUD_UPGRADE_URL:-http://localhost:4200/admin/team} \
+		HITKEEP_CLOUD_SUPPORT_URL=$${HITKEEP_CLOUD_SUPPORT_URL:-https://hitkeep.com/support/help/} \
+		HITKEEP_CLOUD_CHECKOUT_SUCCESS_URL=$${HITKEEP_CLOUD_CHECKOUT_SUCCESS_URL:-http://localhost:4200/admin/team?checkout=success} \
+		HITKEEP_CLOUD_CHECKOUT_CANCEL_URL=$${HITKEEP_CLOUD_CHECKOUT_CANCEL_URL:-http://localhost:4200/admin/team?checkout=cancelled} \
 		air -c .air-cloud.toml
 
 staticcheck:
 	@echo "Running Staticcheck..."
 	go run honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION) ./...
 
-.PHONY: all build go-build frontend-build frontend-dashboard-build run clean update-default-spam-filter dev dev-seed dev-backend dev-frontend dev-cloud dev-cloud-backend staticcheck
+.PHONY: all build go-build frontend-build frontend-dashboard-build run clean update-default-spam-filter dev dev-seed dev-backend dev-frontend dev-cloud dev-cloud-seed dev-cloud-backend staticcheck

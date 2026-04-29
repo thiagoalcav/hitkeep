@@ -5,7 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-SEED_DB="${HITKEEP_DB:-$REPO_DIR/hitkeep.db}"
+SEED_DB="${HITKEEP_DB:-${HITKEEP_DB_PATH:-$REPO_DIR/hitkeep.db}}"
 SEED_DATA_PATH="${HITKEEP_DATA_PATH:-$REPO_DIR/data}"
 SEED_EMAIL="${HITKEEP_SEED_EMAIL:-demo@example.com}"
 SEED_PASSWORD="${HITKEEP_SEED_PASSWORD:-demo1234}"
@@ -13,15 +13,20 @@ SEED_DOMAIN="${HITKEEP_SEED_DOMAIN:-acme-analytics.io}"
 SEED_DAYS="${HITKEEP_SEED_DAYS:-90}"
 BACKEND_ADDR="${HITKEEP_HTTP_ADDR:-:8080}"
 RUN_SEED=0
+RUN_CLOUD=0
 
 usage() {
   cat <<'EOF'
 Usage:
   make dev
   make dev DEV_ARGS=--seed
+  make dev DEV_ARGS="--cloud --seed"
   make dev-seed
+  make dev-cloud
+  make dev-cloud-seed
 
 Options:
+  --cloud   Start the backend with cloud/billing build tags and local cloud defaults
   --seed    Seed the development database before starting backend/frontend
   --help    Show this help
 
@@ -39,6 +44,12 @@ Backend mail defaults for local dev:
   HITKEEP_MAIL_HOST=localhost
   HITKEEP_MAIL_PORT=1025
   HITKEEP_MAIL_ENCRYPTION=none
+
+Cloud defaults for local dev:
+  HITKEEP_CLOUD_HOSTED=true
+  HITKEEP_CLOUD_SIGNUP_ENABLED=true
+  HITKEEP_CLOUD_JURISDICTION=EU
+  HITKEEP_CLOUD_REGION=eu-central-1
 EOF
 }
 
@@ -74,6 +85,10 @@ EOF
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --cloud)
+      RUN_CLOUD=1
+      shift
+      ;;
     --seed)
       RUN_SEED=1
       shift
@@ -110,15 +125,42 @@ if (( RUN_SEED )); then
     -days "$SEED_DAYS"
 fi
 
-echo "Starting development environment..."
+backend_target="dev-backend"
+env_args=(
+  "HITKEEP_DB_PATH=$SEED_DB"
+  "HITKEEP_DATA_PATH=$SEED_DATA_PATH"
+  "HITKEEP_JWT_SECRET=${HITKEEP_JWT_SECRET:-hitkeep-dev-jwt-secret}"
+  "HITKEEP_PUBLIC_URL=${HITKEEP_PUBLIC_URL:-http://localhost:4200}"
+  "HITKEEP_MAIL_DRIVER=${HITKEEP_MAIL_DRIVER:-smtp}"
+  "HITKEEP_MAIL_HOST=${HITKEEP_MAIL_HOST:-localhost}"
+  "HITKEEP_MAIL_PORT=${HITKEEP_MAIL_PORT:-1025}"
+  "HITKEEP_MAIL_ENCRYPTION=${HITKEEP_MAIL_ENCRYPTION:-none}"
+  "HITKEEP_MCP_ENABLED=${HITKEEP_MCP_ENABLED:-true}"
+)
+
+if (( RUN_CLOUD )); then
+  backend_target="dev-cloud-backend"
+  env_args+=(
+    "HITKEEP_CLOUD_HOSTED=${HITKEEP_CLOUD_HOSTED:-true}"
+    "HITKEEP_CLOUD_SIGNUP_ENABLED=${HITKEEP_CLOUD_SIGNUP_ENABLED:-true}"
+    "HITKEEP_CLOUD_JURISDICTION=${HITKEEP_CLOUD_JURISDICTION:-EU}"
+    "HITKEEP_CLOUD_REGION=${HITKEEP_CLOUD_REGION:-eu-central-1}"
+    "HITKEEP_CLOUD_UPGRADE_URL=${HITKEEP_CLOUD_UPGRADE_URL:-http://localhost:4200/admin/team}"
+    "HITKEEP_CLOUD_SUPPORT_URL=${HITKEEP_CLOUD_SUPPORT_URL:-https://hitkeep.com/support/help/}"
+    "HITKEEP_CLOUD_CHECKOUT_SUCCESS_URL=${HITKEEP_CLOUD_CHECKOUT_SUCCESS_URL:-http://localhost:4200/admin/team?checkout=success}"
+    "HITKEEP_CLOUD_CHECKOUT_CANCEL_URL=${HITKEEP_CLOUD_CHECKOUT_CANCEL_URL:-http://localhost:4200/admin/team?checkout=cancelled}"
+  )
+fi
+
+if (( RUN_CLOUD )); then
+  echo "Starting development environment (cloud/billing)..."
+else
+  echo "Starting development environment..."
+fi
 echo "Mail defaults: smtp via Mailpit on localhost:1025 (no TLS)"
 
-exec env \
-  HITKEEP_DB_PATH="$SEED_DB" \
-  HITKEEP_DATA_PATH="$SEED_DATA_PATH" \
-  HITKEEP_PUBLIC_URL="${HITKEEP_PUBLIC_URL:-http://localhost:4200}" \
-  HITKEEP_MAIL_DRIVER="${HITKEEP_MAIL_DRIVER:-smtp}" \
-  HITKEEP_MAIL_HOST="${HITKEEP_MAIL_HOST:-localhost}" \
-  HITKEEP_MAIL_PORT="${HITKEEP_MAIL_PORT:-1025}" \
-  HITKEEP_MAIL_ENCRYPTION="${HITKEEP_MAIL_ENCRYPTION:-none}" \
-  make -j2 dev-backend dev-frontend
+if (( RUN_CLOUD )); then
+  echo "Cloud defaults: hosted signup in EU / eu-central-1"
+fi
+
+exec env "${env_args[@]}" make -j2 "$backend_target" dev-frontend

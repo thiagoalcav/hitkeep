@@ -148,4 +148,34 @@ describe('Events', () => {
         expect(optionValues).toContain('form_submit');
         expect(optionValues).toContain('newsletter_signup');
     });
+
+    it('keeps multiple audience dimension filters active together', () => {
+        const events = component as unknown as {
+            toggleAudienceDimFilter: (type: 'path' | 'referrer' | 'device' | 'country', item: { name: string; value: number }) => void;
+            audienceDimFilters: () => { type: string; value: string }[];
+            activeDimensionFilterValue: (type: 'path' | 'referrer' | 'device' | 'country') => string | null;
+        };
+
+        events.toggleAudienceDimFilter('path', { name: '/pricing', value: 8 });
+        events.toggleAudienceDimFilter('device', { name: 'Desktop', value: 7 });
+
+        expect(events.audienceDimFilters()).toEqual([
+            { type: 'path', value: '/pricing' },
+            { type: 'device', value: 'Desktop' }
+        ]);
+        expect(events.activeDimensionFilterValue('path')).toBe('/pricing');
+        expect(events.activeDimensionFilterValue('device')).toBe('Desktop');
+    });
+
+    it('replaces a filter value for the same audience dimension', () => {
+        const events = component as unknown as {
+            toggleAudienceDimFilter: (type: 'path' | 'referrer' | 'device' | 'country', item: { name: string; value: number }) => void;
+            audienceDimFilters: () => { type: string; value: string }[];
+        };
+
+        events.toggleAudienceDimFilter('path', { name: '/pricing', value: 8 });
+        events.toggleAudienceDimFilter('path', { name: '/docs', value: 4 });
+
+        expect(events.audienceDimFilters()).toEqual([{ type: 'path', value: '/docs' }]);
+    });
 });

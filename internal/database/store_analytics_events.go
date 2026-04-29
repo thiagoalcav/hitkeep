@@ -106,6 +106,16 @@ func (s *Store) GetEventPropertyBreakdown(ctx context.Context, params api.EventB
 	return results, nil
 }
 
+func eventDimensionFilters(filters []api.Filter, legacyKey, legacyValue string) []api.Filter {
+	if legacyKey == "" || legacyValue == "" {
+		return filters
+	}
+	next := make([]api.Filter, 0, len(filters)+1)
+	next = append(next, filters...)
+	next = append(next, api.Filter{Type: legacyKey, Value: legacyValue})
+	return next
+}
+
 // GetEventAudience returns the top pages, referrers, devices, and countries for sessions
 // that contain a specific event name (with an optional property filter).
 func (s *Store) GetEventAudience(ctx context.Context, params api.EventAudienceParams) (*api.EventAudience, error) {
@@ -124,28 +134,9 @@ func (s *Store) GetEventAudience(ctx context.Context, params api.EventAudiencePa
 		eventArgs = append(eventArgs, jsonPath, params.PropertyValue)
 	}
 
-	// Build an optional WHERE filter on the pre-processed dimension value.
-	// DimensionKey is validated against a fixed set so it is safe to interpolate.
-	dimClause := ""
-	var dimArgs []any
-	if params.DimensionKey != "" && params.DimensionValue != "" {
-		switch params.DimensionKey {
-		case "path":
-			dimClause = " AND h.path = ?"
-			dimArgs = []any{params.DimensionValue}
-		case "referrer":
-			dimClause = " AND hk_referrer(h.referrer) = ?"
-			dimArgs = []any{params.DimensionValue}
-		case "device":
-			dimClause = " AND hk_device(h.viewport_width) = ?"
-			dimArgs = []any{params.DimensionValue}
-		case "country":
-			dimClause = " AND hk_country(h.country_code) = ?"
-			dimArgs = []any{params.DimensionValue}
-		}
-	}
+	filterSQL, filterArgs := buildHitFilters(eventDimensionFilters(params.Filters, params.DimensionKey, params.DimensionValue), "h")
 
-	//nolint:gosec // propClause and dimClause are fixed literal SQL fragments with no user content interpolated
+	//nolint:gosec // propClause and filterSQL are fixed literal SQL fragments with no user content interpolated
 	query := fmt.Sprintf(`
 		WITH event_sessions AS (
 			SELECT DISTINCT session_id
@@ -182,9 +173,9 @@ func (s *Store) GetEventAudience(ctx context.Context, params api.EventAudiencePa
 			FROM agg
 		)
 		SELECT dim, name, val FROM ranked WHERE rn <= 10 ORDER BY dim, val DESC
-	`, propClause, dimClause)
+	`, propClause, filterSQL)
 
-	hitsArgs := append([]any{params.SiteID, params.Start, params.End}, dimArgs...)
+	hitsArgs := append([]any{params.SiteID, params.Start, params.End}, filterArgs...)
 	args := append(eventArgs, hitsArgs...)
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -236,28 +227,13 @@ func (s *Store) GetEventTimeseries(ctx context.Context, params api.EventTimeseri
 		args = append(args, jsonPath, params.PropertyValue)
 	}
 
-	// DimensionKey is validated against a fixed set so it is safe to interpolate.
 	dimClause := ""
-	if params.DimensionKey != "" && params.DimensionValue != "" {
-		var dimCol string
-		switch params.DimensionKey {
-		case "path":
-			dimCol = "path = ?"
-		case "referrer":
-			dimCol = "hk_referrer(referrer) = ?"
-		case "device":
-			dimCol = "hk_device(viewport_width) = ?"
-		case "country":
-			dimCol = "hk_country(country_code) = ?"
-		}
-		if dimCol != "" {
-			//nolint:gosec // dimCol is selected from a fixed allowlist above
-			dimClause = fmt.Sprintf(
-				" AND session_id IN (SELECT DISTINCT session_id FROM hits WHERE site_id = ? AND timestamp >= ? AND timestamp <= ? AND %s)",
-				dimCol,
-			)
-			args = append(args, params.SiteID, params.Start, params.End, params.DimensionValue)
-		}
+	filterSQL, filterArgs := buildHitFilters(eventDimensionFilters(params.Filters, params.DimensionKey, params.DimensionValue), "")
+	if filterSQL != "" {
+		//nolint:gosec // filterSQL is built from fixed allowlisted filter fragments with parameterized values
+		dimClause = fmt.Sprintf(" AND session_id IN (SELECT DISTINCT session_id FROM hits WHERE site_id = ? AND timestamp >= ? AND timestamp <= ?%s)", filterSQL)
+		args = append(args, params.SiteID, params.Start, params.End)
+		args = append(args, filterArgs...)
 	}
 
 	//nolint:gosec // truncUnit is from a fixed allowlist; propClause/dimClause are literal SQL fragments with no user content

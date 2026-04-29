@@ -266,7 +266,8 @@ type EventTimeseriesParams struct {
 	EventName      string
 	PropertyKey    string // optional — filter to events with this property key
 	PropertyValue  string // optional — requires PropertyKey; filter to events where key == value
-	DimensionKey   string // optional: "path" | "referrer" | "device" | "country"
+	Filters        []Filter
+	DimensionKey   string // deprecated optional single dimension filter
 	DimensionValue string // optional — restrict to sessions where hits match this pre-processed dimension value
 }
 
@@ -277,7 +278,8 @@ type EventAudienceParams struct {
 	EventName      string
 	PropertyKey    string // optional — filter sessions by property
 	PropertyValue  string // optional — requires PropertyKey
-	DimensionKey   string // optional: "path" | "referrer" | "device" | "country"
+	Filters        []Filter
+	DimensionKey   string // deprecated optional single dimension filter
 	DimensionValue string // optional — filter hits to this pre-processed dimension value
 }
 

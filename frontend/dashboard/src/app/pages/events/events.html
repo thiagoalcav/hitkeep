@@ -143,7 +143,7 @@
         @if (hasActiveFilters()) { @for (chip of filterChips(); track chip.key) {
         <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--p-primary-color)] text-sm">
             <span class="font-medium text-[var(--p-text-color)]">{{ chip.label }}</span>
-            <button type="button" class="text-muted-color hover:text-[var(--p-text-color)]" (click)="removeFilter(chip.remove)" [attr.aria-label]="'common.removeFilterAria' | transloco">
+            <button type="button" class="text-muted-color hover:text-[var(--p-text-color)]" (click)="chip.remove()" [attr.aria-label]="'common.removeFilterAria' | transloco">
                 <i class="pi pi-times" aria-hidden="true"></i>
             </button>
         </span>
@@ -182,7 +182,7 @@
             [linkMode]="'path'"
             [siteDomain]="activeSite()?.domain ?? null"
             [isRowClickable]="true"
-            [activeValue]="audienceDimFilter()?.dim === 'path' ? audienceDimFilter()!.value : null"
+            [activeValue]="activeDimensionFilterValue('path')"
             (rowClicked)="toggleAudienceDimFilter('path', $event)"
         />
         <app-metric-list
@@ -192,7 +192,7 @@
             [isLoading]="isLoadingAudience()"
             [linkMode]="'url'"
             [isRowClickable]="true"
-            [activeValue]="audienceDimFilter()?.dim === 'referrer' ? audienceDimFilter()!.value : null"
+            [activeValue]="activeDimensionFilterValue('referrer')"
             (rowClicked)="toggleAudienceDimFilter('referrer', $event)"
         />
         <app-metric-list
@@ -201,7 +201,7 @@
             [data]="audience()?.top_devices ?? []"
             [isLoading]="isLoadingAudience()"
             [isRowClickable]="true"
-            [activeValue]="audienceDimFilter()?.dim === 'device' ? audienceDimFilter()!.value : null"
+            [activeValue]="activeDimensionFilterValue('device')"
             (rowClicked)="toggleAudienceDimFilter('device', $event)"
         />
         <app-metric-list
@@ -212,7 +212,7 @@
             [showCountryFlags]="true"
             [showCountryNames]="true"
             [isRowClickable]="true"
-            [activeValue]="audienceDimFilter()?.dim === 'country' ? audienceDimFilter()!.value : null"
+            [activeValue]="activeDimensionFilterValue('country')"
             (rowClicked)="toggleAudienceDimFilter('country', $event)"
         />
     </div>

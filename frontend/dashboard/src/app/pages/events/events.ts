@@ -7,7 +7,7 @@ import { CardModule } from 'primeng/card';
 import { SkeletonModule } from 'primeng/skeleton';
 import { ButtonModule } from 'primeng/button';
 import { SiteService } from '@features/sites/services/site.service';
-import { AnalyticsService } from '@core/services/analytics.service';
+import { AnalyticsService, EventDimensionFilter } from '@core/services/analytics.service';
 import { MetricList } from '@features/analytics/components/metric-list';
 import { DEFAULT_RANGE_OPTIONS, RangeToolbar, RangeOption } from '@components/range-toolbar/range-toolbar';
 import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
@@ -20,8 +20,10 @@ import { injectActiveLang } from '@core/i18n/active-lang';
 interface EventFilterChip {
     key: string;
     label: string;
-    remove: 'property' | 'dimension';
+    remove: () => void;
 }
+
+type EventDimensionFilterType = 'path' | 'referrer' | 'device' | 'country';
 
 interface EventOption {
     label: string;
@@ -79,7 +81,7 @@ export class Events {
     protected eventSeries = signal<EventSeriesPoint[]>([]);
     protected comparisonEventSeries = signal<EventSeriesPoint[]>([]);
     protected audience = signal<EventAudience | null>(null);
-    protected audienceDimFilter = signal<{ dim: string; value: string } | null>(null);
+    protected audienceDimFilters = signal<EventDimensionFilter[]>([]);
 
     protected isLoadingNames = signal(false);
     protected isLoadingKeys = signal(false);
@@ -152,11 +154,14 @@ export class Events {
         const propKey = this.selectedPropertyKey();
         const propValue = this.selectedPropertyValue();
         if (propKey && propValue) {
-            chips.push({ key: 'property', label: `${propKey}: ${propValue}`, remove: 'property' });
+            chips.push({ key: `property:${propKey}:${propValue}`, label: `${propKey}: ${propValue}`, remove: () => this.selectedPropertyValue.set(null) });
         }
-        const dim = this.audienceDimFilter();
-        if (dim) {
-            chips.push({ key: 'dimension', label: this.dimFilterLabel(dim.dim, dim.value), remove: 'dimension' });
+        for (const dim of this.audienceDimFilters()) {
+            chips.push({
+                key: `dimension:${dim.type}:${dim.value}`,
+                label: this.dimFilterLabel(dim.type, dim.value),
+                remove: () => this.removeDimensionFilter(dim.type, dim.value)
+            });
         }
         return chips;
     });
@@ -217,7 +222,7 @@ export class Events {
         // Reset audience dimension filter when event changes
         effect(() => {
             this.selectedEvent();
-            untracked(() => this.audienceDimFilter.set(null));
+            untracked(() => this.audienceDimFilters.set([]));
         });
 
         // Load event timeseries (primary + comparison) when event/range/propertyFilter/dimFilter changes
@@ -226,7 +231,7 @@ export class Events {
             const eventName = this.selectedEvent();
             const propKey = this.selectedPropertyKey();
             const propValue = this.selectedPropertyValue();
-            const dimFilter = this.audienceDimFilter();
+            const dimFilters = this.audienceDimFilters();
             this.selectedRange();
 
             if (!site || !eventName) {
@@ -243,10 +248,8 @@ export class Events {
 
             const filterKey = propKey && propValue ? propKey : undefined;
             const filterVal = propKey && propValue ? propValue : undefined;
-            const dimKey = dimFilter?.dim;
-            const dimVal = dimFilter?.value;
-            this.loadEventTimeseries(site.id, dates.from, dates.to, eventName, filterKey, filterVal, dimKey, dimVal);
-            this.loadComparisonEventTimeseries(site.id, cmpRange.from, cmpRange.to, eventName, filterKey, filterVal, dimKey, dimVal);
+            this.loadEventTimeseries(site.id, dates.from, dates.to, eventName, filterKey, filterVal, dimFilters);
+            this.loadComparisonEventTimeseries(site.id, cmpRange.from, cmpRange.to, eventName, filterKey, filterVal, dimFilters);
         });
 
         // Load breakdown when event/propertyKey/range changes
@@ -270,7 +273,7 @@ export class Events {
             const eventName = this.selectedEvent();
             const propKey = this.selectedPropertyKey();
             const propValue = this.selectedPropertyValue();
-            const dimFilter = this.audienceDimFilter();
+            const dimFilters = this.audienceDimFilters();
             this.selectedRange();
 
             if (!site || !eventName) {
@@ -282,7 +285,7 @@ export class Events {
 
             const filterKey = propKey && propValue ? propKey : undefined;
             const filterVal = propKey && propValue ? propValue : undefined;
-            this.loadAudience(site.id, dates.from, dates.to, eventName, filterKey, filterVal, dimFilter?.dim, dimFilter?.value);
+            this.loadAudience(site.id, dates.from, dates.to, eventName, filterKey, filterVal, dimFilters);
         });
     }
 
@@ -291,14 +294,9 @@ export class Events {
         return ((current - previous) / previous) * 100;
     }
 
-    protected removeFilter(type: 'property' | 'dimension') {
-        if (type === 'property') this.selectedPropertyValue.set(null);
-        if (type === 'dimension') this.audienceDimFilter.set(null);
-    }
-
     protected clearAllFilters() {
         this.selectedPropertyValue.set(null);
-        this.audienceDimFilter.set(null);
+        this.audienceDimFilters.set([]);
     }
 
     private computeComparisonPeriod(from: string, to: string): { from: string; to: string } {
@@ -317,13 +315,29 @@ export class Events {
         this.selectedPropertyValue.set(current === value ? null : value);
     }
 
-    protected toggleAudienceDimFilter(dim: string, item: MetricStat) {
-        const current = this.audienceDimFilter();
-        if (current?.dim === dim && current?.value === item.name) {
-            this.audienceDimFilter.set(null);
-        } else {
-            this.audienceDimFilter.set({ dim, value: item.name });
-        }
+    protected toggleAudienceDimFilter(type: EventDimensionFilterType, item: MetricStat) {
+        if (!item.name) return;
+        this.audienceDimFilters.update((filters) => {
+            const existingIndex = filters.findIndex((filter) => filter.type === type);
+            if (existingIndex >= 0) {
+                const existing = filters[existingIndex];
+                if (existing.value === item.name) {
+                    return filters.filter((_, idx) => idx !== existingIndex);
+                }
+                const next = [...filters];
+                next[existingIndex] = { type, value: item.name };
+                return next;
+            }
+            return [...filters, { type, value: item.name }];
+        });
+    }
+
+    protected activeDimensionFilterValue(type: EventDimensionFilterType): string | null {
+        return this.audienceDimFilters().find((filter) => filter.type === type)?.value ?? null;
+    }
+
+    private removeDimensionFilter(type: string, value: string) {
+        this.audienceDimFilters.update((filters) => filters.filter((filter) => !(filter.type === type && filter.value === value)));
     }
 
     private dimFilterLabel(dim: string, value: string): string {
@@ -413,10 +427,10 @@ export class Events {
         });
     }
 
-    private loadEventTimeseries(siteId: string, from: string, to: string, eventName: string, propertyKey?: string, propertyValue?: string, dimensionKey?: string, dimensionValue?: string) {
+    private loadEventTimeseries(siteId: string, from: string, to: string, eventName: string, propertyKey?: string, propertyValue?: string, filters: EventDimensionFilter[] = []) {
         this.isLoadingEventSeries.set(true);
         this.analyticsService
-            .getEventTimeseries(siteId, from, to, eventName, propertyKey, propertyValue, dimensionKey, dimensionValue)
+            .getEventTimeseries(siteId, from, to, eventName, propertyKey, propertyValue, filters)
             .pipe(finalize(() => this.isLoadingEventSeries.set(false)))
             .subscribe({
                 next: (data) => this.eventSeries.set(data ?? []),
@@ -424,10 +438,10 @@ export class Events {
             });
     }
 
-    private loadComparisonEventTimeseries(siteId: string, from: string, to: string, eventName: string, propertyKey?: string, propertyValue?: string, dimensionKey?: string, dimensionValue?: string) {
+    private loadComparisonEventTimeseries(siteId: string, from: string, to: string, eventName: string, propertyKey?: string, propertyValue?: string, filters: EventDimensionFilter[] = []) {
         this.isLoadingComparisonSeries.set(true);
         this.analyticsService
-            .getEventTimeseries(siteId, from, to, eventName, propertyKey, propertyValue, dimensionKey, dimensionValue)
+            .getEventTimeseries(siteId, from, to, eventName, propertyKey, propertyValue, filters)
             .pipe(finalize(() => this.isLoadingComparisonSeries.set(false)))
             .subscribe({
                 next: (data) => this.comparisonEventSeries.set(data ?? []),
@@ -435,10 +449,10 @@ export class Events {
             });
     }
 
-    private loadAudience(siteId: string, from: string, to: string, eventName: string, propertyKey?: string, propertyValue?: string, dimensionKey?: string, dimensionValue?: string) {
+    private loadAudience(siteId: string, from: string, to: string, eventName: string, propertyKey?: string, propertyValue?: string, filters: EventDimensionFilter[] = []) {
         this.isLoadingAudience.set(true);
         this.analyticsService
-            .getEventAudience(siteId, from, to, eventName, propertyKey, propertyValue, dimensionKey, dimensionValue)
+            .getEventAudience(siteId, from, to, eventName, propertyKey, propertyValue, filters)
             .pipe(finalize(() => this.isLoadingAudience.set(false)))
             .subscribe({
                 next: (data) => this.audience.set(data),

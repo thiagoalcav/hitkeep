@@ -100,6 +100,22 @@ func openAPIV1AnalyticsSchemas() map[string]any {
 				"value": map[string]any{"type": "integer"},
 			},
 		},
+		"EventSeriesPoint": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"time":  map[string]any{"type": "string", "format": "date-time"},
+				"count": map[string]any{"type": "integer"},
+			},
+		},
+		"EventAudience": map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"top_pages":     map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
+				"top_referrers": map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
+				"top_devices":   map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
+				"top_countries": map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}},
+			},
+		},
 		"AIFetch": map[string]any{
 			"type": "object",
 			"properties": map[string]any{

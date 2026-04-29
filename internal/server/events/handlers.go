@@ -17,6 +17,7 @@ import (
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/database"
 	"hitkeep/internal/exportfmt"
+	"hitkeep/internal/server/filterparams"
 	"hitkeep/internal/server/shared"
 )
 
@@ -218,6 +219,7 @@ type eventQueryParams struct {
 	EventName      string
 	PropertyKey    string
 	PropertyValue  string
+	Filters        []api.Filter
 	DimensionKey   string
 	DimensionValue string
 }
@@ -278,16 +280,25 @@ func (h *handler) parseEventQueryParams(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "event_name is required", http.StatusBadRequest)
 		return eventQueryParams{}, false
 	}
+	filters, err := filterparams.ParseHitFilters(q, filterparams.LegacyPair{
+		TypeParam:          "dimension_key",
+		ValueParam:         "dimension_value",
+		MissingMessage:     "filter type and value are required together",
+		InvalidTypeMessage: "invalid filter type",
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return eventQueryParams{}, false
+	}
 
 	return eventQueryParams{
-		SiteID:         siteID,
-		Start:          start,
-		End:            end,
-		EventName:      eventName,
-		PropertyKey:    q.Get("property_key"),
-		PropertyValue:  q.Get("property_value"),
-		DimensionKey:   q.Get("dimension_key"),
-		DimensionValue: q.Get("dimension_value"),
+		SiteID:        siteID,
+		Start:         start,
+		End:           end,
+		EventName:     eventName,
+		PropertyKey:   q.Get("property_key"),
+		PropertyValue: q.Get("property_value"),
+		Filters:       filters,
 	}, true
 }
 

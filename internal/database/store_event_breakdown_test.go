@@ -489,6 +489,89 @@ func TestGetEventAudienceWithPropertyFilter(t *testing.T) {
 	}
 }
 
+func TestEventQueriesApplyMultipleDimensionFilters(t *testing.T) {
+	store, userID := setupEventBreakdownStore(t)
+	ctx := context.Background()
+
+	site, err := store.CreateSite(ctx, userID, "events-multi-filter.example.com")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	now := time.Now().UTC()
+	cases := []struct {
+		session uuid.UUID
+		path    string
+		width   int
+	}{
+		{session: uuid.New(), path: "/pricing", width: 1200},
+		{session: uuid.New(), path: "/pricing", width: 390},
+		{session: uuid.New(), path: "/docs", width: 1200},
+	}
+
+	for _, tc := range cases {
+		width := tc.width
+		if err := store.CreateHit(ctx, &api.Hit{
+			SiteID:        site.ID,
+			SessionID:     tc.session,
+			PageID:        uuid.New(),
+			Timestamp:     now.Add(-2 * time.Hour),
+			Path:          tc.path,
+			ViewportWidth: &width,
+		}); err != nil {
+			t.Fatalf("create hit %s/%d: %v", tc.path, tc.width, err)
+		}
+		if err := store.CreateEvent(ctx, &api.Event{
+			SiteID:     site.ID,
+			SessionID:  tc.session,
+			Name:       "newsletter_signup",
+			Properties: map[string]any{"plan": "pro"},
+			Timestamp:  now.Add(-2 * time.Hour),
+		}); err != nil {
+			t.Fatalf("create event %s/%d: %v", tc.path, tc.width, err)
+		}
+	}
+
+	filters := []api.Filter{
+		{Type: "path", Value: "/pricing"},
+		{Type: "device", Value: "Desktop"},
+	}
+	series, err := store.GetEventTimeseries(ctx, api.EventTimeseriesParams{
+		SiteID:    site.ID,
+		Start:     now.Add(-24 * time.Hour),
+		End:       now,
+		EventName: "newsletter_signup",
+		Filters:   filters,
+	})
+	if err != nil {
+		t.Fatalf("GetEventTimeseries: %v", err)
+	}
+	total := 0
+	for _, point := range series {
+		total += point.Count
+	}
+	if total != 1 {
+		t.Fatalf("expected only the /pricing desktop event to match, got total %d from %+v", total, series)
+	}
+
+	audience, err := store.GetEventAudience(ctx, api.EventAudienceParams{
+		SiteID:    site.ID,
+		Start:     now.Add(-24 * time.Hour),
+		End:       now,
+		EventName: "newsletter_signup",
+		Filters:   filters,
+	})
+	if err != nil {
+		t.Fatalf("GetEventAudience: %v", err)
+	}
+	if len(audience.TopPages) != 1 || audience.TopPages[0].Name != "/pricing" || audience.TopPages[0].Value != 1 {
+		t.Fatalf("expected only /pricing desktop audience row, got %+v", audience.TopPages)
+	}
+	if len(audience.TopDevices) != 1 || audience.TopDevices[0].Name != "Desktop" || audience.TopDevices[0].Value != 1 {
+		t.Fatalf("expected only Desktop audience row, got %+v", audience.TopDevices)
+	}
+}
+
 func TestGetEventAudienceEmpty(t *testing.T) {
 	store, userID := setupEventBreakdownStore(t)
 	ctx := context.Background()

@@ -3,7 +3,6 @@ package sites
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -15,6 +14,7 @@ import (
 
 	"hitkeep/internal/api"
 	"hitkeep/internal/database"
+	"hitkeep/internal/server/filterparams"
 	"hitkeep/internal/server/shared"
 )
 
@@ -235,46 +235,10 @@ func (h *handler) handleGetSiteEcommerce(load func(context.Context, *database.St
 }
 
 func parseFilters(q url.Values) ([]api.Filter, error) {
-	var filters []api.Filter
-
-	for _, raw := range q["filter"] {
-		raw = strings.TrimSpace(raw)
-		if raw == "" {
-			continue
-		}
-		parts := strings.SplitN(raw, ":", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("invalid filter format")
-		}
-		filterType := strings.ToLower(strings.TrimSpace(parts[0]))
-		filterValue := strings.TrimSpace(parts[1])
-		if err := validateFilter(filterType, filterValue); err != nil {
-			return nil, err
-		}
-		filters = append(filters, api.Filter{Type: filterType, Value: filterValue})
-	}
-
-	filterType := strings.ToLower(strings.TrimSpace(q.Get("filter_type")))
-	filterValue := strings.TrimSpace(q.Get("filter_value"))
-	if filterType != "" || filterValue != "" {
-		if err := validateFilter(filterType, filterValue); err != nil {
-			return nil, err
-		}
-		filters = append(filters, api.Filter{Type: filterType, Value: filterValue})
-	}
-
-	return filters, nil
-}
-
-func validateFilter(filterType, filterValue string) error {
-	if filterType == "" || filterValue == "" {
-		return fmt.Errorf("filter_type and filter_value are required together")
-	}
-
-	switch filterType {
-	case "path", "hostname", "referrer", "referrer_host", "device", "country", "browser", "language", "utm_campaign", "utm_content", "utm_medium", "utm_source", "utm_term":
-		return nil
-	default:
-		return fmt.Errorf("invalid filter_type")
-	}
+	return filterparams.ParseHitFilters(q, filterparams.LegacyPair{
+		TypeParam:          "filter_type",
+		ValueParam:         "filter_value",
+		MissingMessage:     "filter_type and filter_value are required together",
+		InvalidTypeMessage: "invalid filter_type",
+	})
 }

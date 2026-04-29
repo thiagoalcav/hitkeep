@@ -317,7 +317,53 @@ func TestOpenAPISpecV1IncludesAIFetchExportPath(t *testing.T) {
 	}
 }
 
+func TestOpenAPISpecV1IncludesEventAnalyticsPaths(t *testing.T) {
+	spec := openAPISpecV1("http://localhost:8080")
+	paths := requireMap(t, spec, "paths")
+	components := requireMap(t, spec, "components")
+	schemas := requireMap(t, components, "schemas")
+
+	for _, schemaName := range []string{"EventSeriesPoint", "EventAudience"} {
+		if _, ok := schemas[schemaName]; !ok {
+			t.Fatalf("expected %s schema to exist", schemaName)
+		}
+	}
+
+	for _, path := range []string{
+		"/api/sites/{id}/events/names",
+		"/api/sites/{id}/events/properties",
+		"/api/sites/{id}/events/breakdown",
+		"/api/sites/{id}/events/timeseries",
+		"/api/sites/{id}/events/audience",
+		"/api/share/{token}/sites/{id}/events/names",
+		"/api/share/{token}/sites/{id}/events/properties",
+		"/api/share/{token}/sites/{id}/events/breakdown",
+		"/api/share/{token}/sites/{id}/events/timeseries",
+		"/api/share/{token}/sites/{id}/events/audience",
+	} {
+		pathItem := requireMap(t, paths, path)
+		getOp := requireMap(t, pathItem, "get")
+		if _, ok := getOp["parameters"].([]any); !ok {
+			t.Fatalf("expected parameters for %s to be []any", path)
+		}
+	}
+
+	timeseriesPath := requireMap(t, paths, "/api/sites/{id}/events/timeseries")
+	timeseriesOp := requireMap(t, timeseriesPath, "get")
+	timeseriesParams := requireParams(t, timeseriesOp)
+	if !hasParamRef(timeseriesParams, "#/components/parameters/filter") {
+		t.Fatalf("expected event timeseries to document repeatable filter parameter")
+	}
+	if !hasParamRef(timeseriesParams, "#/components/parameters/eventDimensionKey") {
+		t.Fatalf("expected event timeseries to document deprecated dimension_key parameter")
+	}
+}
+
 func hasFormatParamRef(params []any) bool {
+	return hasParamRef(params, "#/components/parameters/format")
+}
+
+func hasParamRef(params []any, want string) bool {
 	for _, p := range params {
 		pm, ok := p.(map[string]any)
 		if !ok {
@@ -327,7 +373,7 @@ func hasFormatParamRef(params []any) bool {
 		if !ok {
 			continue
 		}
-		if ref == "#/components/parameters/format" {
+		if ref == want {
 			return true
 		}
 	}
@@ -345,6 +391,15 @@ func hasNamedParam(params []any, name string) bool {
 		}
 	}
 	return false
+}
+
+func requireParams(t *testing.T, op map[string]any) []any {
+	t.Helper()
+	params, ok := op["parameters"].([]any)
+	if !ok {
+		t.Fatalf("expected parameters to be []any, got %T", op["parameters"])
+	}
+	return params
 }
 
 func requireMap(t *testing.T, m map[string]any, key string) map[string]any {

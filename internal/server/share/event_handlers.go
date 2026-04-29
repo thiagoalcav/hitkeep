@@ -13,6 +13,7 @@ import (
 
 	"hitkeep/internal/api"
 	"hitkeep/internal/database"
+	"hitkeep/internal/server/filterparams"
 )
 
 func (h *handler) handleGetShareEventNames() http.HandlerFunc {
@@ -150,6 +151,7 @@ type shareEventQueryParams struct {
 	EventName      string
 	PropertyKey    string
 	PropertyValue  string
+	Filters        []api.Filter
 	DimensionKey   string
 	DimensionValue string
 }
@@ -169,18 +171,27 @@ func (h *handler) parseShareEventQueryParams(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "event_name is required", http.StatusBadRequest)
 		return nil, shareEventQueryParams{}, false
 	}
+	filters, err := filterparams.ParseHitFilters(q, filterparams.LegacyPair{
+		TypeParam:          "dimension_key",
+		ValueParam:         "dimension_value",
+		MissingMessage:     "filter type and value are required together",
+		InvalidTypeMessage: "invalid filter type",
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return nil, shareEventQueryParams{}, false
+	}
 
 	start, end := parseTimeseriesRange(q)
 
 	return site, shareEventQueryParams{
-		SiteID:         site.ID,
-		Start:          start,
-		End:            end,
-		EventName:      eventName,
-		PropertyKey:    q.Get("property_key"),
-		PropertyValue:  q.Get("property_value"),
-		DimensionKey:   q.Get("dimension_key"),
-		DimensionValue: q.Get("dimension_value"),
+		SiteID:        site.ID,
+		Start:         start,
+		End:           end,
+		EventName:     eventName,
+		PropertyKey:   q.Get("property_key"),
+		PropertyValue: q.Get("property_value"),
+		Filters:       filters,
 	}, true
 }
 
@@ -194,6 +205,7 @@ func (h *handler) handleGetShareEventTimeseries() http.HandlerFunc {
 				EventName:      p.EventName,
 				PropertyKey:    p.PropertyKey,
 				PropertyValue:  p.PropertyValue,
+				Filters:        p.Filters,
 				DimensionKey:   p.DimensionKey,
 				DimensionValue: p.DimensionValue,
 			})
@@ -210,6 +222,7 @@ func (h *handler) handleGetShareEventAudience() http.HandlerFunc {
 				EventName:      p.EventName,
 				PropertyKey:    p.PropertyKey,
 				PropertyValue:  p.PropertyValue,
+				Filters:        p.Filters,
 				DimensionKey:   p.DimensionKey,
 				DimensionValue: p.DimensionValue,
 			})

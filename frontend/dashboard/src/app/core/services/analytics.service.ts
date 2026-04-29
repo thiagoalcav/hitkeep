@@ -135,6 +135,11 @@ export interface AIFetchFilters {
     resourceType?: string | null;
 }
 
+export interface EventDimensionFilter {
+    type: string;
+    value: string;
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -195,21 +200,23 @@ export class AnalyticsService {
         return this.http.get<MetricStat[]>(`/api/sites/${siteId}/events/breakdown`, { params });
     }
 
-    getEventTimeseries(siteId: string, from: string, to: string, eventName: string, propertyKey?: string, propertyValue?: string, dimensionKey?: string, dimensionValue?: string): Observable<EventSeriesPoint[]> {
+    getEventTimeseries(siteId: string, from: string, to: string, eventName: string, propertyKey?: string, propertyValue?: string, filters: EventDimensionFilter[] = []): Observable<EventSeriesPoint[]> {
         let params = new HttpParams().set('from', from).set('to', to).set('event_name', eventName);
         if (propertyKey) params = params.set('property_key', propertyKey);
         if (propertyValue) params = params.set('property_value', propertyValue);
-        if (dimensionKey) params = params.set('dimension_key', dimensionKey);
-        if (dimensionValue) params = params.set('dimension_value', dimensionValue);
+        for (const filter of filters) {
+            params = params.append('filter', `${filter.type}:${filter.value}`);
+        }
         return this.http.get<EventSeriesPoint[]>(`/api/sites/${siteId}/events/timeseries`, { params });
     }
 
-    getEventAudience(siteId: string, from: string, to: string, eventName: string, propertyKey?: string, propertyValue?: string, dimensionKey?: string, dimensionValue?: string): Observable<EventAudience> {
+    getEventAudience(siteId: string, from: string, to: string, eventName: string, propertyKey?: string, propertyValue?: string, filters: EventDimensionFilter[] = []): Observable<EventAudience> {
         let params = new HttpParams().set('from', from).set('to', to).set('event_name', eventName);
         if (propertyKey) params = params.set('property_key', propertyKey);
         if (propertyValue) params = params.set('property_value', propertyValue);
-        if (dimensionKey) params = params.set('dimension_key', dimensionKey);
-        if (dimensionValue) params = params.set('dimension_value', dimensionValue);
+        for (const filter of filters) {
+            params = params.append('filter', `${filter.type}:${filter.value}`);
+        }
         return this.http.get<EventAudience>(`/api/sites/${siteId}/events/audience`, { params });
     }
 

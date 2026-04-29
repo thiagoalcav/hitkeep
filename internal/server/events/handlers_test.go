@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -130,5 +131,67 @@ func TestHandleExportAIChatbotsRejectsInvalidScopeKey(t *testing.T) {
 
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected %d, got %d body=%s", http.StatusBadRequest, rec.Code, rec.Body.String())
+	}
+}
+
+func TestHandleGetEventTimeseriesAcceptsMultipleFilters(t *testing.T) {
+	store, ctx, _, siteID, _ := setupEventHandlerTestEnv(t)
+
+	now := time.Now().UTC()
+	for _, tc := range []struct {
+		session uuid.UUID
+		path    string
+		width   int
+	}{
+		{session: uuid.New(), path: "/pricing", width: 1200},
+		{session: uuid.New(), path: "/pricing", width: 390},
+		{session: uuid.New(), path: "/docs", width: 1200},
+	} {
+		width := tc.width
+		if err := store.CreateHit(context.Background(), &api.Hit{
+			SiteID:        siteID,
+			SessionID:     tc.session,
+			PageID:        uuid.New(),
+			Timestamp:     now.Add(-time.Hour),
+			Path:          tc.path,
+			ViewportWidth: &width,
+		}); err != nil {
+			t.Fatalf("CreateHit: %v", err)
+		}
+		if err := store.CreateEvent(context.Background(), &api.Event{
+			SiteID:     siteID,
+			SessionID:  tc.session,
+			Name:       "signup",
+			Properties: map[string]any{},
+			Timestamp:  now.Add(-time.Hour),
+		}); err != nil {
+			t.Fatalf("CreateEvent: %v", err)
+		}
+	}
+
+	h := &handler{ctx: ctx}
+	req := httptest.NewRequest(
+		http.MethodGet,
+		"/api/sites/"+siteID.String()+"/events/timeseries?from="+now.Add(-24*time.Hour).Format(time.RFC3339)+"&to="+now.Format(time.RFC3339)+"&event_name=signup&filter=path:/pricing&filter=device:Desktop",
+		nil,
+	)
+	req.SetPathValue("id", siteID.String())
+	rec := httptest.NewRecorder()
+	h.handleGetEventTimeseries().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected %d, got %d body=%s", http.StatusOK, rec.Code, rec.Body.String())
+	}
+
+	var series []api.EventSeriesPoint
+	if err := json.NewDecoder(rec.Body).Decode(&series); err != nil {
+		t.Fatalf("decode series: %v", err)
+	}
+	total := 0
+	for _, point := range series {
+		total += point.Count
+	}
+	if total != 1 {
+		t.Fatalf("expected one matching event for combined filters, got %d from %+v", total, series)
 	}
 }

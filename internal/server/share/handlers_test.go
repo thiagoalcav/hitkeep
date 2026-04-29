@@ -284,6 +284,75 @@ func TestHandleGetShareEventTimeseries(t *testing.T) {
 		}
 	})
 
+	t.Run("multiple filters", func(t *testing.T) {
+		now := time.Now().UTC()
+		extraCases := []struct {
+			session uuid.UUID
+			path    string
+			country string
+		}{
+			{session: uuid.New(), path: "/pricing", country: "DE"},
+			{session: uuid.New(), path: "/docs", country: "US"},
+		}
+		for _, tc := range extraCases {
+			country := tc.country
+			if err := store.CreateHit(context.Background(), &api.Hit{
+				SiteID:      siteID,
+				SessionID:   tc.session,
+				PageID:      uuid.New(),
+				Timestamp:   now,
+				Path:        tc.path,
+				CountryCode: &country,
+			}); err != nil {
+				t.Fatalf("create filtered hit: %v", err)
+			}
+			if err := store.CreateEvent(context.Background(), &api.Event{
+				SiteID:     siteID,
+				SessionID:  tc.session,
+				Name:       "newsletter_signup",
+				Timestamp:  now.Add(time.Minute),
+				Properties: map[string]any{},
+			}); err != nil {
+				t.Fatalf("create filtered event: %v", err)
+			}
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/api/share/"+token+"/sites/"+siteID.String()+"/events/timeseries?event_name=newsletter_signup&filter=path:/pricing&filter=country:US", nil)
+		req.SetPathValue("token", token)
+		req.SetPathValue("id", siteID.String())
+
+		w := httptest.NewRecorder()
+		h.handleGetShareEventTimeseries().ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		var series []api.EventSeriesPoint
+		if err := json.NewDecoder(w.Body).Decode(&series); err != nil {
+			t.Fatalf("decode timeseries: %v", err)
+		}
+		total := 0
+		for _, point := range series {
+			total += point.Count
+		}
+		if total != 1 {
+			t.Fatalf("expected exactly one matching shared event, got %d from %+v", total, series)
+		}
+	})
+
+	t.Run("invalid filter", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/share/"+token+"/sites/"+siteID.String()+"/events/timeseries?event_name=newsletter_signup&filter=unknown:value", nil)
+		req.SetPathValue("token", token)
+		req.SetPathValue("id", siteID.String())
+
+		w := httptest.NewRecorder()
+		h.handleGetShareEventTimeseries().ServeHTTP(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
+
 	t.Run("missing event_name", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/share/"+token+"/sites/"+siteID.String()+"/events/timeseries", nil)
 		req.SetPathValue("token", token)
@@ -315,19 +384,42 @@ func TestHandleGetShareEventAudience(t *testing.T) {
 	h, store, token, siteID := setupShareEventsTestEnv(t)
 	t.Cleanup(func() { _ = store.Close() })
 
-	req := httptest.NewRequest(http.MethodGet, "/api/share/"+token+"/sites/"+siteID.String()+"/events/audience?event_name=newsletter_signup", nil)
-	req.SetPathValue("token", token)
-	req.SetPathValue("id", siteID.String())
+	t.Run("multiple filters", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/share/"+token+"/sites/"+siteID.String()+"/events/audience?event_name=newsletter_signup&filter=path:/pricing&filter=country:US", nil)
+		req.SetPathValue("token", token)
+		req.SetPathValue("id", siteID.String())
 
-	w := httptest.NewRecorder()
-	h.handleGetShareEventAudience().ServeHTTP(w, req)
+		w := httptest.NewRecorder()
+		h.handleGetShareEventAudience().ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
-	}
-	if w.Body.Len() == 0 {
-		t.Fatal("expected non-empty response body")
-	}
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+		}
+		if w.Body.Len() == 0 {
+			t.Fatal("expected non-empty response body")
+		}
+
+		var audience api.EventAudience
+		if err := json.NewDecoder(w.Body).Decode(&audience); err != nil {
+			t.Fatalf("decode audience: %v", err)
+		}
+		if len(audience.TopPages) != 1 || audience.TopPages[0].Name != "/pricing" {
+			t.Fatalf("expected filtered audience to contain only /pricing, got %+v", audience.TopPages)
+		}
+	})
+
+	t.Run("invalid filter", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/share/"+token+"/sites/"+siteID.String()+"/events/audience?event_name=newsletter_signup&filter=unknown:value", nil)
+		req.SetPathValue("token", token)
+		req.SetPathValue("id", siteID.String())
+
+		w := httptest.NewRecorder()
+		h.handleGetShareEventAudience().ServeHTTP(w, req)
+
+		if w.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+		}
+	})
 }
 
 // setupShareEcommerceTestEnv creates a store with a site, share link, hits, and

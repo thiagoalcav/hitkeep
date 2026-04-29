@@ -1,5 +1,24 @@
 package system
 
+func eventRangeParams(prefix ...any) []any {
+	params := append([]any{}, prefix...)
+	return append(params, paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to"))
+}
+
+func eventNameParams(prefix ...any) []any {
+	return append(eventRangeParams(prefix...), paramRef("#/components/parameters/eventName"))
+}
+
+func eventFilteredParams(prefix ...any) []any {
+	return append(eventNameParams(prefix...),
+		paramRef("#/components/parameters/eventPropertyKey"),
+		paramRef("#/components/parameters/eventPropertyValue"),
+		paramRef("#/components/parameters/filter"),
+		paramRef("#/components/parameters/eventDimensionKey"),
+		paramRef("#/components/parameters/eventDimensionValue"),
+	)
+}
+
 func openAPIV1AdminSitePaths() map[string]any {
 	return map[string]any{
 		"/api/admin/system": map[string]any{
@@ -142,6 +161,26 @@ func openAPIV1AdminSitePaths() map[string]any {
 				paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to"),
 				paramRef("#/components/parameters/query"), paramRef("#/components/parameters/filter"), paramRef("#/components/parameters/filterType"), paramRef("#/components/parameters/filterValue"), paramRef("#/components/parameters/format"),
 			}, nil, map[string]any{"200": desc("Export file stream")}),
+		},
+		"/api/sites/{id}/events/names": map[string]any{
+			"get": op([]string{"Sites"}, "List event names", "Lists custom and automatic event names observed for a site in the selected date range.", secAnyAuth(), eventRangeParams(paramRef("#/components/parameters/siteID")), nil,
+				map[string]any{"200": jsonSchemaResp("Event names", map[string]any{"type": "array", "items": map[string]any{"type": "string"}})}),
+		},
+		"/api/sites/{id}/events/properties": map[string]any{
+			"get": op([]string{"Sites"}, "List event property keys", "Lists JSON property keys observed for an event name in the selected date range.", secAnyAuth(), eventNameParams(paramRef("#/components/parameters/siteID")), nil,
+				map[string]any{"200": jsonSchemaResp("Event property keys", map[string]any{"type": "array", "items": map[string]any{"type": "string"}})}),
+		},
+		"/api/sites/{id}/events/breakdown": map[string]any{
+			"get": op([]string{"Sites"}, "Get event property breakdown", "Returns distinct property values for one event property key, ordered by session count.", secAnyAuth(), append(eventNameParams(paramRef("#/components/parameters/siteID")), paramRef("#/components/parameters/eventPropertyKeyRequired")), nil,
+				map[string]any{"200": jsonSchemaResp("Event property breakdown", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}})}),
+		},
+		"/api/sites/{id}/events/timeseries": map[string]any{
+			"get": op([]string{"Sites"}, "Get event timeseries", "Returns event occurrence counts over time. Optional property filters and repeatable filter=type:value hit-dimension filters restrict the sessions counted.", secAnyAuth(), eventFilteredParams(paramRef("#/components/parameters/siteID")), nil,
+				map[string]any{"200": jsonSchemaResp("Event timeseries", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/EventSeriesPoint"}})}),
+		},
+		"/api/sites/{id}/events/audience": map[string]any{
+			"get": op([]string{"Sites"}, "Get event audience", "Returns top pages, referrers, devices, and countries for sessions containing the selected event. Optional property filters and repeatable filter=type:value hit-dimension filters restrict the sessions included.", secAnyAuth(), eventFilteredParams(paramRef("#/components/parameters/siteID")), nil,
+				map[string]any{"200": jsonRefResp("Event audience", "#/components/schemas/EventAudience")}),
 		},
 		"/api/sites/{id}/ecommerce": map[string]any{
 			"get": op([]string{"Sites"}, "Get ecommerce summary", "Returns revenue, orders, average order value, checkout starts, and checkout conversion for a site.", secAnyAuth(), []any{
@@ -331,6 +370,26 @@ func openAPIV1AdminSitePaths() map[string]any {
 		},
 		"/api/share/{token}/sites/{id}/hits/export": map[string]any{
 			"get": op([]string{"Share"}, "Export shared hits", "Exports hits through share token in csv/xlsx/parquet/json/ndjson.", nil, []any{paramRef("#/components/parameters/token"), paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to"), paramRef("#/components/parameters/query"), paramRef("#/components/parameters/filter"), paramRef("#/components/parameters/filterType"), paramRef("#/components/parameters/filterValue"), paramRef("#/components/parameters/format")}, nil, map[string]any{"200": desc("Export file stream")}),
+		},
+		"/api/share/{token}/sites/{id}/events/names": map[string]any{
+			"get": op([]string{"Share"}, "Shared event names", "Lists event names through share token.", nil, eventRangeParams(paramRef("#/components/parameters/token"), paramRef("#/components/parameters/siteID")), nil,
+				map[string]any{"200": jsonSchemaResp("Event names", map[string]any{"type": "array", "items": map[string]any{"type": "string"}})}),
+		},
+		"/api/share/{token}/sites/{id}/events/properties": map[string]any{
+			"get": op([]string{"Share"}, "Shared event property keys", "Lists event property keys through share token.", nil, eventNameParams(paramRef("#/components/parameters/token"), paramRef("#/components/parameters/siteID")), nil,
+				map[string]any{"200": jsonSchemaResp("Event property keys", map[string]any{"type": "array", "items": map[string]any{"type": "string"}})}),
+		},
+		"/api/share/{token}/sites/{id}/events/breakdown": map[string]any{
+			"get": op([]string{"Share"}, "Shared event property breakdown", "Returns event property value breakdown through share token.", nil, append(eventNameParams(paramRef("#/components/parameters/token"), paramRef("#/components/parameters/siteID")), paramRef("#/components/parameters/eventPropertyKeyRequired")), nil,
+				map[string]any{"200": jsonSchemaResp("Event property breakdown", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/MetricStat"}})}),
+		},
+		"/api/share/{token}/sites/{id}/events/timeseries": map[string]any{
+			"get": op([]string{"Share"}, "Shared event timeseries", "Returns event timeseries through share token. Optional property filters and repeatable filter=type:value hit-dimension filters restrict the sessions counted.", nil, eventFilteredParams(paramRef("#/components/parameters/token"), paramRef("#/components/parameters/siteID")), nil,
+				map[string]any{"200": jsonSchemaResp("Event timeseries", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/EventSeriesPoint"}})}),
+		},
+		"/api/share/{token}/sites/{id}/events/audience": map[string]any{
+			"get": op([]string{"Share"}, "Shared event audience", "Returns event audience through share token. Optional property filters and repeatable filter=type:value hit-dimension filters restrict the sessions included.", nil, eventFilteredParams(paramRef("#/components/parameters/token"), paramRef("#/components/parameters/siteID")), nil,
+				map[string]any{"200": jsonRefResp("Event audience", "#/components/schemas/EventAudience")}),
 		},
 		"/api/share/{token}/sites/{id}/goals": map[string]any{
 			"get": op([]string{"Share"}, "Shared goals", "Lists goals through share token.", nil, []any{paramRef("#/components/parameters/token"), paramRef("#/components/parameters/siteID")}, nil, map[string]any{"200": jsonSchemaResp("Goals", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/Goal"}})}),

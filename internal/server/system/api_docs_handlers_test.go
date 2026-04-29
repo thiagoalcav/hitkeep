@@ -373,7 +373,10 @@ func TestOpenAPISpecV1IncludesEventAnalyticsPaths(t *testing.T) {
 
 	timeseriesPath := requireMap(t, paths, "/api/sites/{id}/events/timeseries")
 	timeseriesOp := requireMap(t, timeseriesPath, "get")
-	timeseriesParams := requireParams(t, timeseriesOp)
+	timeseriesParams, ok := timeseriesOp["parameters"].([]any)
+	if !ok {
+		t.Fatalf("expected parameters to be []any, got %T", timeseriesOp["parameters"])
+	}
 	if !hasParamRef(timeseriesParams, "#/components/parameters/filter") {
 		t.Fatalf("expected event timeseries to document repeatable filter parameter")
 	}
@@ -414,15 +417,6 @@ func hasNamedParam(params []any, name string) bool {
 		}
 	}
 	return false
-}
-
-func requireParams(t *testing.T, op map[string]any) []any {
-	t.Helper()
-	params, ok := op["parameters"].([]any)
-	if !ok {
-		t.Fatalf("expected parameters to be []any, got %T", op["parameters"])
-	}
-	return params
 }
 
 func requireMap(t *testing.T, m map[string]any, key string) map[string]any {

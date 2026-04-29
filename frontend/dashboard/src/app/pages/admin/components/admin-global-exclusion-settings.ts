@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
@@ -7,7 +8,10 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { ConfirmationService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { ConfirmPopupModule } from 'primeng/confirmpopup';
+import { IconFieldModule } from 'primeng/iconfield';
+import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
+import { MessageModule } from 'primeng/message';
 import { TableModule } from 'primeng/table';
 
 import { IPExclusion } from '@models/analytics.types';
@@ -16,10 +20,16 @@ import { RelativeDateTime } from '@components/relative-date-time/relative-date-t
 
 const ipOrCIDRPattern = /^(([0-9]{1,3}\.){3}[0-9]{1,3}(\/(3[0-2]|[12]?[0-9]))?|([0-9A-Fa-f:]+)(\/(12[0-8]|1[01][0-9]|[1-9]?[0-9]))?)$/;
 
+interface ActionStatus {
+    severity: 'success' | 'error';
+    key: string;
+    params?: Record<string, string | number>;
+}
+
 @Component({
     selector: 'app-admin-global-exclusion-settings',
     standalone: true,
-    imports: [ReactiveFormsModule, ButtonModule, ConfirmPopupModule, InputTextModule, TableModule, RelativeDateTime, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, ConfirmPopupModule, IconFieldModule, InputIconModule, InputTextModule, MessageModule, TableModule, RelativeDateTime, TranslocoPipe],
     templateUrl: './admin-global-exclusion-settings.html',
     styleUrl: './admin-global-exclusion-settings.css',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -29,13 +39,24 @@ export class AdminGlobalExclusionSettings {
     private exclusionsService = inject(ExclusionsService);
     private confirmationService = inject(ConfirmationService);
     private transloco = inject(TranslocoService);
+    private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
     protected readonly exclusions = signal<IPExclusion[]>([]);
     protected readonly isLoading = signal(false);
     protected readonly isSaving = signal(false);
     protected readonly error = signal<string | null>(null);
+    protected readonly actionStatus = signal<ActionStatus | null>(null);
     protected readonly isCurrentIPLoading = signal(false);
     protected readonly currentIPCIDR = signal('');
+    protected readonly actionStatusMessage = computed(() => {
+        this.activeLanguage();
+        const status = this.actionStatus();
+        if (!status) {
+            return '';
+        }
+
+        return this.transloco.translate(status.key, status.params);
+    });
 
     protected readonly form = new FormGroup({
         cidr: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(ipOrCIDRPattern)] }),
@@ -54,6 +75,7 @@ export class AdminGlobalExclusionSettings {
         }
 
         this.error.set(null);
+        this.actionStatus.set(null);
         this.isSaving.set(true);
 
         this.exclusionsService
@@ -68,6 +90,7 @@ export class AdminGlobalExclusionSettings {
                     this.form.reset({ cidr: '', description: '' });
                 },
                 error: () => {
+                    this.actionStatus.set(null);
                     this.error.set('admin.exclusions.errors.createFailed');
                 }
             });
@@ -94,11 +117,18 @@ export class AdminGlobalExclusionSettings {
 
     private deleteRule(rule: IPExclusion): void {
         this.error.set(null);
+        this.actionStatus.set(null);
         this.exclusionsService.deleteInstanceExclusion(rule.id).subscribe({
             next: () => {
                 this.exclusions.update((current) => current.filter((entry) => entry.id !== rule.id));
+                this.actionStatus.set({
+                    severity: 'success',
+                    key: 'admin.exclusions.status.deleteSuccess',
+                    params: { cidr: rule.cidr }
+                });
             },
             error: () => {
+                this.actionStatus.set(null);
                 this.error.set('admin.exclusions.errors.deleteFailed');
             }
         });
@@ -114,6 +144,7 @@ export class AdminGlobalExclusionSettings {
             return;
         }
 
+        this.actionStatus.set(null);
         navigator.clipboard.writeText(cidr).catch(() => {
             this.error.set('admin.exclusions.errors.copyFailed');
         });
@@ -139,6 +170,7 @@ export class AdminGlobalExclusionSettings {
     private loadExclusions(): void {
         this.isLoading.set(true);
         this.error.set(null);
+        this.actionStatus.set(null);
 
         this.exclusionsService
             .listInstanceExclusions()

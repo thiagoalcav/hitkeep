@@ -52,14 +52,14 @@
 }
 
 <div class="flex justify-end mb-3">
-    <span class="p-input-icon-left hk-crud-search">
-        <i class="pi pi-search"></i>
+    <p-iconfield class="hk-crud-search">
+        <p-inputicon class="pi pi-search" />
         <input pInputText id="team-members-search" #membersSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="membersTable.filterGlobal($any($event.target).value, 'contains')" class="w-full" />
-    </span>
+    </p-iconfield>
 </div>
 
 <div class="hk-crud-table-wrap">
-    <p-table #membersTable [value]="members()" [loading]="isLoading()" [globalFilterFields]="['email', 'role', 'added_at']" [sortField]="'added_at'" [sortOrder]="-1" styleClass="hk-crud-table p-datatable-sm">
+    <p-table #membersTable [value]="members()" [loading]="isLoading()" [globalFilterFields]="['email', 'role', 'added_at']" [sortField]="'added_at'" [sortOrder]="-1" [rowHover]="true" styleClass="hk-crud-table p-datatable-sm">
         <ng-template pTemplate="header">
             <tr>
                 <th pSortableColumn="email">
@@ -144,7 +144,7 @@
     </div>
 
     <div class="hk-crud-table-wrap">
-        <p-table [value]="pendingInvites()" [loading]="isLoading()" [sortField]="'created_at'" [sortOrder]="-1" styleClass="hk-crud-table p-datatable-sm">
+        <p-table [value]="pendingInvites()" [loading]="isLoading()" [sortField]="'created_at'" [sortOrder]="-1" [rowHover]="true" styleClass="hk-crud-table p-datatable-sm">
             <ng-template pTemplate="header">
                 <tr>
                     <th>{{ "common.columns.email" | transloco }}</th>

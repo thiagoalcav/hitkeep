@@ -1,56 +1,53 @@
-<p-drawer [visible]="visible()" (visibleChange)="onVisibleChange($event)" position="right" [style]="{ width: 'var(--site-settings-drawer-width)', maxWidth: '90vw' }">
-    <div class="flex flex-col h-full">
-        <div class="flex items-center gap-2 text-sm text-muted-color mb-4">
-            <span>{{ "sites.settings.breadcrumb.sites" | transloco }}</span>
-            <i class="pi pi-angle-right"></i>
-            <span class="font-medium text-primary">{{ site()?.domain }}</span>
-            <i class="pi pi-angle-right"></i>
-            <span>{{ "sites.settings.breadcrumb.settings" | transloco }}</span>
-        </div>
+<p-drawer [visible]="visible()" (visibleChange)="onVisibleChange($event)" position="right" [style]="{ width: 'var(--site-settings-drawer-width)', maxWidth: '100vw' }">
+    <div class="site-settings-shell">
+        <header class="site-settings-header">
+            <nav class="site-settings-breadcrumb" aria-label="Breadcrumb">
+                <span>{{ "sites.settings.breadcrumb.sites" | transloco }}</span>
+                <i class="pi pi-angle-right" aria-hidden="true"></i>
+                <span class="site-settings-breadcrumb__current">{{ site()?.domain }}</span>
+                <i class="pi pi-angle-right" aria-hidden="true"></i>
+                <span>{{ "sites.settings.breadcrumb.settings" | transloco }}</span>
+            </nav>
+            <h2>{{ "sites.settings.title" | transloco }}</h2>
+        </header>
 
-        <div class="flex items-center justify-between mb-6">
-            <div>
-                <h2 class="text-xl font-bold">{{ "sites.settings.title" | transloco }}</h2>
-            </div>
-        </div>
-
-        <p-tabs [value]="activeTab()" (valueChange)="onActiveTabChange($event)" styleClass="flex-1">
+        <p-tabs class="site-settings-tabs" [value]="activeTab()" (valueChange)="onActiveTabChange($event)">
             <p-tablist>
                 <p-tab value="0">
-                    <div class="flex items-center gap-2">
-                        <i class="pi pi-cog"></i>
+                    <span class="site-settings-tab-label">
+                        <i class="pi pi-cog" aria-hidden="true"></i>
                         <span>{{ "sites.settings.tabs.general" | transloco }}</span>
-                    </div>
+                    </span>
                 </p-tab>
                 <p-tab value="1">
-                    <div class="flex items-center gap-2">
-                        <i class="pi pi-code"></i>
+                    <span class="site-settings-tab-label">
+                        <i class="pi pi-code" aria-hidden="true"></i>
                         <span>{{ "sites.settings.tabs.tracking" | transloco }}</span>
-                    </div>
+                    </span>
                 </p-tab>
                 <p-tab value="2">
-                    <div class="flex items-center gap-2">
-                        <i class="pi pi-filter-slash"></i>
+                    <span class="site-settings-tab-label">
+                        <i class="pi pi-filter-slash" aria-hidden="true"></i>
                         <span>{{ "sites.settings.tabs.filtering" | transloco }}</span>
-                    </div>
+                    </span>
                 </p-tab>
                 <p-tab value="3">
-                    <div class="flex items-center gap-2">
-                        <i class="pi pi-history"></i>
+                    <span class="site-settings-tab-label">
+                        <i class="pi pi-history" aria-hidden="true"></i>
                         <span>{{ "sites.settings.tabs.retention" | transloco }}</span>
-                    </div>
+                    </span>
                 </p-tab>
                 <p-tab value="4">
-                    <div class="flex items-center gap-2">
-                        <i class="pi pi-users"></i>
+                    <span class="site-settings-tab-label">
+                        <i class="pi pi-users" aria-hidden="true"></i>
                         <span>{{ "sites.settings.tabs.team" | transloco }}</span>
-                    </div>
+                    </span>
                 </p-tab>
                 <p-tab value="5">
-                    <div class="flex items-center gap-2">
-                        <i class="pi pi-exclamation-triangle"></i>
+                    <span class="site-settings-tab-label site-settings-tab-label--danger">
+                        <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
                         <span>{{ "sites.settings.tabs.dangerZone" | transloco }}</span>
-                    </div>
+                    </span>
                 </p-tab>
             </p-tablist>
             <p-tabpanels>

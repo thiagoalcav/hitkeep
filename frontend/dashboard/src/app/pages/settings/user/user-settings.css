@@ -1,34 +1,147 @@
-.settings-content {
-    container-type: inline-size;
+:host {
+    display: block;
+    width: 100%;
 }
 
-.settings-grid {
+.settings-tabs {
+    display: block;
+}
+
+:host ::ng-deep .settings-tabs .p-tabpanels {
+    display: block;
+    padding-top: 1.35rem;
+}
+
+:host ::ng-deep .settings-tabs .p-tabpanel-active {
+    display: block;
+}
+
+.settings-panel-grid {
     display: grid;
-    gap: 1.5rem;
+    gap: 1rem;
 }
 
-.settings-card-action {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.35rem;
+.settings-panel-grid--account {
+    grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.85fr);
+    align-items: stretch;
 }
 
-.settings-status {
-    font-size: 0.75rem;
-    line-height: 1rem;
+.settings-panel-grid--single {
+    max-width: 46rem;
+}
+
+.settings-form-stack {
+    display: grid;
+    gap: 1rem;
+}
+
+.settings-field {
+    display: grid;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.settings-field label {
+    color: var(--p-text-color);
+    font-size: 0.84rem;
+    line-height: 1.2;
+    font-weight: 650;
+}
+
+.settings-field-hint {
+    margin: 0;
+    color: var(--p-text-muted-color);
+    font-size: 0.78rem;
+    line-height: 1.35;
 }
 
 .settings-field-error {
-    color: #b91c1c;
+    color: var(--p-red-600);
     font-size: 0.75rem;
 }
 
+:host-context(.p-dark) .settings-field-error {
+    color: var(--p-red-300);
+}
+
+.settings-alert {
+    border: 1px solid;
+    border-radius: 8px;
+    padding: 0.7rem 0.8rem;
+    font-size: 0.84rem;
+    line-height: 1.35;
+    font-weight: 550;
+}
+
+.settings-alert--success {
+    border-color: color-mix(in srgb, var(--p-green-500) 28%, var(--p-content-border-color));
+    background: color-mix(in srgb, var(--p-green-500) 8%, var(--p-content-background));
+    color: var(--p-green-600);
+}
+
+.settings-alert--error {
+    border-color: color-mix(in srgb, var(--p-red-500) 28%, var(--p-content-border-color));
+    background: color-mix(in srgb, var(--p-red-500) 8%, var(--p-content-background));
+    color: var(--p-red-600);
+}
+
+.settings-inline-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 6px;
+    background: var(--p-surface-100);
+    color: var(--p-text-muted-color);
+    padding: 0.1rem 0.35rem;
+    font-size: 0.68rem;
+    line-height: 1.15;
+    font-weight: 750;
+    text-transform: uppercase;
+}
+
+:host-context(.p-dark) .settings-alert--success {
+    background: color-mix(in srgb, var(--p-green-950) 44%, var(--p-content-background));
+    color: var(--p-green-300);
+}
+
+:host-context(.p-dark) .settings-alert--error {
+    background: color-mix(in srgb, var(--p-red-950) 46%, var(--p-content-background));
+    color: var(--p-red-300);
+}
+
+:host-context(.p-dark) .settings-inline-badge {
+    background: color-mix(in srgb, var(--p-surface-800) 85%, var(--p-content-background));
+    color: var(--p-text-color);
+}
+
+.settings-export-title {
+    color: var(--p-text-color);
+    font-size: 0.9rem;
+    line-height: 1.35;
+    font-weight: 700;
+}
+
 :host ::ng-deep .settings-action-btn {
-    min-width: 11rem;
+    min-width: 10rem;
     justify-content: center;
 }
 
 :host ::ng-deep .settings-action-split {
     width: fit-content;
+}
+
+@media (max-width: 960px) {
+    .settings-panel-grid--account {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-panel-grid--single {
+        max-width: none;
+    }
+}
+
+@media (max-width: 640px) {
+    :host ::ng-deep .settings-action-btn,
+    :host ::ng-deep .settings-action-split {
+        width: 100%;
+    }
 }

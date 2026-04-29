@@ -1,98 +1,131 @@
 <p-confirmpopup key="site-exclusion-delete" />
-<div class="site-exclusions">
-    <div class="site-exclusions__intro">
-        <p>{{ "sites.exclusions.description" | transloco }}</p>
-    </div>
-
+<div class="site-settings-stack site-exclusions">
     @if (error(); as errorKey) {
-    <div class="site-exclusions__error">{{ errorKey | transloco }}</div>
+    <div class="site-settings-alert site-settings-alert--error">{{ errorKey | transloco }}</div>
     }
 
-    <div class="site-exclusions__current-ip">
-        <div class="site-exclusions__current-ip-header">
-            <div>
-                <h4>{{ "sites.exclusions.suggestionsTitle" | transloco }}</h4>
-                <p>{{ "sites.exclusions.suggestionsHint" | transloco }}</p>
+    <section class="site-settings-card">
+        <header class="site-settings-card__header">
+            <div class="site-settings-card__title-row">
+                <span class="site-settings-card__icon"><i class="pi pi-map-marker" aria-hidden="true"></i></span>
+                <div>
+                    <h3>{{ "sites.exclusions.suggestionsTitle" | transloco }}</h3>
+                    <p>{{ "sites.exclusions.suggestionsHint" | transloco }}</p>
+                </div>
             </div>
             <p-button [label]="'sites.exclusions.copySuggestionsAction' | transloco" icon="pi pi-copy" [text]="true" [type]="'button'" [disabled]="isCurrentIPLoading() || !currentIPCIDR()" (onClick)="copyCurrentIP()" />
+        </header>
+        <div class="site-settings-card__body">
+            <code class="site-exclusions__code">
+                @if (isCurrentIPLoading()) { {{ "sites.exclusions.currentIpLoading" | transloco }} } @else if (currentIPCIDR(); as currentIPCIDR) { {{ currentIPCIDR }} } @else { {{ "sites.exclusions.currentIpUnavailable" | transloco }} }
+            </code>
         </div>
-        <div class="site-exclusions__current-ip-value">
-            <code> @if (isCurrentIPLoading()) { {{ "sites.exclusions.currentIpLoading" | transloco }} } @else if (currentIPCIDR(); as currentIPCIDR) { {{ currentIPCIDR }} } @else { {{ "sites.exclusions.currentIpUnavailable" | transloco }} } </code>
-        </div>
-    </div>
+    </section>
 
-    <form [formGroup]="form" class="site-exclusions__form" (ngSubmit)="addRule()">
-        <div class="site-exclusions__field-grid">
-            <div class="site-exclusions__field">
-                <label for="site-exclusion-cidr">{{ "sites.exclusions.cidrLabel" | transloco }}</label>
-                <input id="site-exclusion-cidr" pInputText formControlName="cidr" [placeholder]="'sites.exclusions.cidrPlaceholder' | transloco" />
-                @if (form.controls.cidr.touched && form.controls.cidr.invalid) {
-                <small>{{ "sites.exclusions.errors.invalidCidr" | transloco }}</small>
-                }
+    <form [formGroup]="form" class="site-settings-card" (ngSubmit)="addRule()">
+        <header class="site-settings-card__header">
+            <div class="site-settings-card__title-row">
+                <span class="site-settings-card__icon"><i class="pi pi-filter-slash" aria-hidden="true"></i></span>
+                <div>
+                    <h3>{{ "sites.exclusions.addAction" | transloco }}</h3>
+                    <p>{{ "sites.exclusions.description" | transloco }}</p>
+                </div>
             </div>
+        </header>
+        <div class="site-settings-card__body">
+            <div class="site-settings-field-grid site-exclusions__field-grid">
+                <div class="site-settings-field">
+                    <label for="site-exclusion-cidr">{{ "sites.exclusions.cidrLabel" | transloco }}</label>
+                    <input id="site-exclusion-cidr" pInputText formControlName="cidr" [placeholder]="'sites.exclusions.cidrPlaceholder' | transloco" />
+                    @if (form.controls.cidr.touched && form.controls.cidr.invalid) {
+                    <small class="site-exclusions__error-text">{{ "sites.exclusions.errors.invalidCidr" | transloco }}</small>
+                    }
+                </div>
 
-            <div class="site-exclusions__field">
-                <label for="site-exclusion-description">{{ "sites.exclusions.descriptionLabel" | transloco }}</label>
-                <input id="site-exclusion-description" pInputText formControlName="description" [placeholder]="'sites.exclusions.descriptionPlaceholder' | transloco" />
-                @if (form.controls.description.touched && form.controls.description.invalid) {
-                <small>{{ "sites.exclusions.errors.descriptionTooLong" | transloco }}</small>
-                }
+                <div class="site-settings-field">
+                    <label for="site-exclusion-description">{{ "sites.exclusions.descriptionLabel" | transloco }}</label>
+                    <input id="site-exclusion-description" pInputText formControlName="description" [placeholder]="'sites.exclusions.descriptionPlaceholder' | transloco" />
+                    @if (form.controls.description.touched && form.controls.description.invalid) {
+                    <small class="site-exclusions__error-text">{{ "sites.exclusions.errors.descriptionTooLong" | transloco }}</small>
+                    }
+                </div>
             </div>
         </div>
-
-        <div class="site-exclusions__actions">
-            <p-button [label]="'sites.exclusions.addAction' | transloco" icon="pi pi-plus" [loading]="isSaving()" [disabled]="isSaving()" [type]="'submit'" />
-        </div>
+        <footer class="site-settings-card__footer">
+            <p-button styleClass="site-settings-action-btn" [label]="'sites.exclusions.addAction' | transloco" icon="pi pi-plus" [loading]="isSaving()" [disabled]="isSaving()" [type]="'submit'" />
+        </footer>
     </form>
 
-    @if (isLoading()) {
-    <p class="site-exclusions__state">{{ "sites.exclusions.loading" | transloco }}</p>
-    } @else if (exclusions().length === 0) {
-    <p class="site-exclusions__state">{{ "sites.exclusions.empty" | transloco }}</p>
-    } @else {
-    <div class="flex justify-end mb-3">
-        <span class="p-input-icon-left hk-crud-search">
-            <i class="pi pi-search"></i>
-            <input pInputText #siteExclusionsSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="siteExclusionsTable.filterGlobal($any($event.target).value, 'contains')" class="w-full" />
-        </span>
-    </div>
-    <div class="hk-crud-table-wrap">
-        <p-table #siteExclusionsTable [value]="exclusions()" [globalFilterFields]="['cidr', 'description', 'created_at']" [sortField]="'created_at'" [sortOrder]="-1" styleClass="hk-crud-table p-datatable-sm">
-            <ng-template pTemplate="header">
-                <tr>
-                    <th pSortableColumn="cidr">
-                        {{ "sites.exclusions.columns.cidr" | transloco }}
-                        <p-sortIcon field="cidr" />
-                    </th>
-                    <th pSortableColumn="description">
-                        {{ "sites.exclusions.columns.description" | transloco }}
-                        <p-sortIcon field="description" />
-                    </th>
-                    <th pSortableColumn="created_at">
-                        {{ "sites.exclusions.columns.created" | transloco }}
-                        <p-sortIcon field="created_at" />
-                    </th>
-                    <th>{{ "common.columns.actions" | transloco }}</th>
-                </tr>
-            </ng-template>
-            <ng-template pTemplate="body" let-rule>
-                <tr>
-                    <td>
-                        <code>{{ rule.cidr }}</code>
-                    </td>
-                    <td>{{ rule.description || "-" }}</td>
-                    <td><app-relative-date-time [value]="rule.created_at" /></td>
-                    <td>
-                        <p-button icon="pi pi-trash" severity="danger" [text]="true" [type]="'button'" (onClick)="confirmDeleteRule($event, rule)" />
-                    </td>
-                </tr>
-            </ng-template>
-            <ng-template pTemplate="emptymessage">
-                <tr>
-                    <td colspan="4" class="text-center text-muted-color py-4">{{ "sites.exclusions.empty" | transloco }}</td>
-                </tr>
-            </ng-template>
-        </p-table>
-    </div>
-    }
+    <section class="site-settings-card">
+        <header class="site-settings-card__header">
+            <div class="site-settings-card__title-row">
+                <span class="site-settings-card__icon"><i class="pi pi-list-check" aria-hidden="true"></i></span>
+                <div>
+                    <h3>{{ "sites.settings.tabs.filtering" | transloco }}</h3>
+                    <p>{{ "sites.exclusions.description" | transloco }}</p>
+                </div>
+            </div>
+        </header>
+        <div class="site-settings-card__body">
+            @if (isLoading()) {
+            <div class="site-settings-empty">
+                <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+                <span>{{ "sites.exclusions.loading" | transloco }}</span>
+            </div>
+            } @else if (exclusions().length === 0) {
+            <div class="site-settings-empty">
+                <i class="pi pi-filter-slash" aria-hidden="true"></i>
+                <span>{{ "sites.exclusions.empty" | transloco }}</span>
+            </div>
+            } @else {
+            <div class="site-settings-table-shell">
+                <div class="site-settings-table-toolbar">
+                    <span class="site-settings-chip">{{ exclusions().length }}</span>
+                    <span class="p-input-icon-left hk-crud-search">
+                        <i class="pi pi-search"></i>
+                        <input pInputText #siteExclusionsSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="siteExclusionsTable.filterGlobal($any($event.target).value, 'contains')" class="w-full" />
+                    </span>
+                </div>
+                <div class="hk-crud-table-wrap">
+                    <p-table #siteExclusionsTable [value]="exclusions()" [globalFilterFields]="['cidr', 'description', 'created_at']" [sortField]="'created_at'" [sortOrder]="-1" styleClass="hk-crud-table p-datatable-sm">
+                        <ng-template pTemplate="header">
+                            <tr>
+                                <th pSortableColumn="cidr">
+                                    {{ "sites.exclusions.columns.cidr" | transloco }}
+                                    <p-sortIcon field="cidr" />
+                                </th>
+                                <th pSortableColumn="description">
+                                    {{ "sites.exclusions.columns.description" | transloco }}
+                                    <p-sortIcon field="description" />
+                                </th>
+                                <th pSortableColumn="created_at">
+                                    {{ "sites.exclusions.columns.created" | transloco }}
+                                    <p-sortIcon field="created_at" />
+                                </th>
+                                <th>{{ "common.columns.actions" | transloco }}</th>
+                            </tr>
+                        </ng-template>
+                        <ng-template pTemplate="body" let-rule>
+                            <tr>
+                                <td>
+                                    <code>{{ rule.cidr }}</code>
+                                </td>
+                                <td>{{ rule.description || "-" }}</td>
+                                <td><app-relative-date-time [value]="rule.created_at" /></td>
+                                <td>
+                                    <p-button icon="pi pi-trash" severity="danger" [text]="true" [type]="'button'" (onClick)="confirmDeleteRule($event, rule)" />
+                                </td>
+                            </tr>
+                        </ng-template>
+                        <ng-template pTemplate="emptymessage">
+                            <tr>
+                                <td colspan="4" class="text-center text-muted-color py-4">{{ "sites.exclusions.empty" | transloco }}</td>
+                            </tr>
+                        </ng-template>
+                    </p-table>
+                </div>
+            </div>
+            }
+        </div>
+    </section>
 </div>

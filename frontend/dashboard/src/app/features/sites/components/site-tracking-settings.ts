@@ -4,82 +4,90 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { compatForm } from '@angular/forms/signals/compat';
 import { Site } from '@models/analytics.types';
 import { TranslocoPipe } from '@jsverse/transloco';
+import { ButtonModule } from 'primeng/button';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 
 @Component({
     selector: 'app-site-tracking-settings',
     standalone: true,
-    imports: [ReactiveFormsModule, ToggleSwitchModule, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, ToggleSwitchModule, TranslocoPipe],
     template: `
-        <div class="flex flex-col gap-6">
-            <div class="text-[var(--p-text-muted-color)] leading-relaxed">
-                <p>{{ "sites.tracking.description" | transloco }}</p>
-            </div>
-
-            <div class="flex flex-col gap-4 py-4">
-                <h4 class="sr-only">{{ "sites.tracking.trackingCodeConfiguration" | transloco }}</h4>
-
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex min-w-0 flex-col pr-3">
-                        <label id="collect-dnt-label" for="collect-dnt-switch" class="font-medium">{{ "sites.tracking.collectDntLabel" | transloco }}</label>
-                        <span class="text-xs text-[var(--p-text-muted-color)]">{{ "sites.tracking.collectDntDescription" | transloco }}</span>
+        <div class="site-settings-stack">
+            <section class="site-settings-card">
+                <header class="site-settings-card__header">
+                    <div class="site-settings-card__title-row">
+                        <span class="site-settings-card__icon"><i class="pi pi-sliders-h" aria-hidden="true"></i></span>
+                        <div>
+                            <h3>{{ "sites.tracking.trackingCodeConfiguration" | transloco }}</h3>
+                            <p>{{ "sites.tracking.description" | transloco }}</p>
+                        </div>
                     </div>
-                    <p-toggleswitch inputId="collect-dnt-switch" ariaLabelledBy="collect-dnt-label" styleClass="shrink-0" [formControl]="trackingForm.collectDnt().control()"></p-toggleswitch>
-                </div>
+                </header>
+                <div class="site-settings-card__body">
+                    <div class="site-settings-toggle-list">
+                        <div class="site-settings-toggle-row">
+                            <div class="site-settings-toggle-row__text">
+                                <label id="collect-dnt-label" for="collect-dnt-switch" class="site-settings-toggle-row__title">{{ "sites.tracking.collectDntLabel" | transloco }}</label>
+                                <span class="site-settings-field-hint">{{ "sites.tracking.collectDntDescription" | transloco }}</span>
+                            </div>
+                            <p-toggleswitch inputId="collect-dnt-switch" ariaLabelledBy="collect-dnt-label" styleClass="shrink-0" [formControl]="trackingForm.collectDnt().control()"></p-toggleswitch>
+                        </div>
 
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex min-w-0 flex-col pr-3">
-                        <label id="disable-beacon-label" for="disable-beacon-switch" class="font-medium">{{ "sites.tracking.disableBeaconLabel" | transloco }}</label>
-                        <span class="text-xs text-[var(--p-text-muted-color)]">{{ "sites.tracking.disableBeaconDescription" | transloco }}</span>
+                        <div class="site-settings-toggle-row">
+                            <div class="site-settings-toggle-row__text">
+                                <label id="disable-beacon-label" for="disable-beacon-switch" class="site-settings-toggle-row__title">{{ "sites.tracking.disableBeaconLabel" | transloco }}</label>
+                                <span class="site-settings-field-hint">{{ "sites.tracking.disableBeaconDescription" | transloco }}</span>
+                            </div>
+                            <p-toggleswitch inputId="disable-beacon-switch" ariaLabelledBy="disable-beacon-label" styleClass="shrink-0" [formControl]="trackingForm.disableBeacon().control()"></p-toggleswitch>
+                        </div>
+
+                        <div class="site-settings-subsection">
+                            <h4>{{ "sites.tracking.autoTrackingTitle" | transloco }}</h4>
+                            <p>{{ "sites.tracking.autoTrackingDescription" | transloco }}</p>
+                        </div>
+
+                        <div class="site-settings-toggle-row">
+                            <div class="site-settings-toggle-row__text">
+                                <label id="outbound-tracking-label" for="outbound-tracking-switch" class="site-settings-toggle-row__title">{{ "sites.tracking.outboundTrackingLabel" | transloco }}</label>
+                                <span class="site-settings-field-hint">{{ "sites.tracking.outboundTrackingDescription" | transloco }}</span>
+                            </div>
+                            <p-toggleswitch inputId="outbound-tracking-switch" ariaLabelledBy="outbound-tracking-label" styleClass="shrink-0" [formControl]="trackingForm.trackOutbound().control()"></p-toggleswitch>
+                        </div>
+
+                        <div class="site-settings-toggle-row">
+                            <div class="site-settings-toggle-row__text">
+                                <label id="download-tracking-label" for="download-tracking-switch" class="site-settings-toggle-row__title">{{ "sites.tracking.downloadTrackingLabel" | transloco }}</label>
+                                <span class="site-settings-field-hint">{{ "sites.tracking.downloadTrackingDescription" | transloco }}</span>
+                            </div>
+                            <p-toggleswitch inputId="download-tracking-switch" ariaLabelledBy="download-tracking-label" styleClass="shrink-0" [formControl]="trackingForm.trackDownloads().control()"></p-toggleswitch>
+                        </div>
+
+                        <div class="site-settings-toggle-row">
+                            <div class="site-settings-toggle-row__text">
+                                <label id="form-tracking-label" for="form-tracking-switch" class="site-settings-toggle-row__title">{{ "sites.tracking.formTrackingLabel" | transloco }}</label>
+                                <span class="site-settings-field-hint">{{ "sites.tracking.formTrackingDescription" | transloco }}</span>
+                            </div>
+                            <p-toggleswitch inputId="form-tracking-switch" ariaLabelledBy="form-tracking-label" styleClass="shrink-0" [formControl]="trackingForm.trackForms().control()"></p-toggleswitch>
+                        </div>
                     </div>
-                    <p-toggleswitch inputId="disable-beacon-switch" ariaLabelledBy="disable-beacon-label" styleClass="shrink-0" [formControl]="trackingForm.disableBeacon().control()"></p-toggleswitch>
                 </div>
+            </section>
 
-                <div class="pt-2 border-t border-[var(--p-surface-border)]">
-                    <p class="text-sm font-medium">{{ "sites.tracking.autoTrackingTitle" | transloco }}</p>
-                    <p class="text-xs text-[var(--p-text-muted-color)] mt-1">{{ "sites.tracking.autoTrackingDescription" | transloco }}</p>
-                </div>
-
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex min-w-0 flex-col pr-3">
-                        <label id="outbound-tracking-label" for="outbound-tracking-switch" class="font-medium">{{ "sites.tracking.outboundTrackingLabel" | transloco }}</label>
-                        <span class="text-xs text-[var(--p-text-muted-color)]">{{ "sites.tracking.outboundTrackingDescription" | transloco }}</span>
+            <section class="site-settings-card">
+                <header class="site-settings-card__header">
+                    <div class="site-settings-card__title-row">
+                        <span class="site-settings-card__icon"><i class="pi pi-code" aria-hidden="true"></i></span>
+                        <div>
+                            <h3>{{ "sites.tracking.htmlLabel" | transloco }}</h3>
+                            <p>{{ "sites.tracking.trackingCodeConfiguration" | transloco }}</p>
+                        </div>
                     </div>
-                    <p-toggleswitch inputId="outbound-tracking-switch" ariaLabelledBy="outbound-tracking-label" styleClass="shrink-0" [formControl]="trackingForm.trackOutbound().control()"></p-toggleswitch>
+                    <p-button [label]="copyButtonLabel() | transloco" [icon]="copyButtonIcon()" [text]="true" [type]="'button'" size="small" (onClick)="copySnippet()" />
+                </header>
+                <div class="site-settings-card__body">
+                    <pre class="site-settings-code-panel">{{ snippetCode() }}</pre>
                 </div>
-
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex min-w-0 flex-col pr-3">
-                        <label id="download-tracking-label" for="download-tracking-switch" class="font-medium">{{ "sites.tracking.downloadTrackingLabel" | transloco }}</label>
-                        <span class="text-xs text-[var(--p-text-muted-color)]">{{ "sites.tracking.downloadTrackingDescription" | transloco }}</span>
-                    </div>
-                    <p-toggleswitch inputId="download-tracking-switch" ariaLabelledBy="download-tracking-label" styleClass="shrink-0" [formControl]="trackingForm.trackDownloads().control()"></p-toggleswitch>
-                </div>
-
-                <div class="flex items-center justify-between gap-3">
-                    <div class="flex min-w-0 flex-col pr-3">
-                        <label id="form-tracking-label" for="form-tracking-switch" class="font-medium">{{ "sites.tracking.formTrackingLabel" | transloco }}</label>
-                        <span class="text-xs text-[var(--p-text-muted-color)]">{{ "sites.tracking.formTrackingDescription" | transloco }}</span>
-                    </div>
-                    <p-toggleswitch inputId="form-tracking-switch" ariaLabelledBy="form-tracking-label" styleClass="shrink-0" [formControl]="trackingForm.trackForms().control()"></p-toggleswitch>
-                </div>
-            </div>
-
-            <div class="rounded-md border border-[var(--p-surface-border)] bg-[var(--p-surface-50)] dark:bg-[var(--p-surface-900)] overflow-hidden">
-                <div class="flex justify-between items-center px-3 py-2 border-b border-[var(--p-surface-border)] bg-[var(--p-surface-100)] dark:bg-[var(--p-surface-800)]">
-                    <span class="text-xs font-mono font-medium text-[var(--p-text-muted-color)]">{{ "sites.tracking.htmlLabel" | transloco }}</span>
-                    <button
-                        class="flex items-center gap-2 px-3 py-1.5 rounded hover:bg-[var(--p-surface-200)] dark:hover:bg-[var(--p-surface-700)] transition-colors text-xs font-medium text-[var(--p-text-color)] cursor-pointer focus:outline-none focus:ring-2 focus:ring-[var(--p-primary-color)]"
-                        (click)="copySnippet()"
-                        [attr.aria-label]="copyButtonLabel() | transloco"
-                    >
-                        <i [class]="copyButtonIcon()"></i>
-                        <span>{{ copyButtonLabel() | transloco }}</span>
-                    </button>
-                </div>
-
-                <pre class="p-4 m-0 text-sm overflow-x-auto font-mono whitespace-pre-wrap break-all text-[var(--p-text-color)]">{{ snippetCode() }}</pre>
-            </div>
+            </section>
         </div>
     `,
     changeDetection: ChangeDetectionStrategy.OnPush

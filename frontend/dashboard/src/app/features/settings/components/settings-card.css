@@ -1,42 +1,103 @@
+:host {
+    display: block;
+    min-width: 0;
+    height: 100%;
+}
+
 .settings-card {
-    border-radius: 0.75rem;
-    padding: 1.5rem;
-    box-shadow: var(--p-overlay-shadow);
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 100%;
+    border: 1px solid var(--p-content-border-color);
+    border-radius: 8px;
+    background: var(--p-content-background);
+    overflow: hidden;
 }
 
 .settings-card-header {
     display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+    gap: 1rem;
+    align-items: flex-start;
+    justify-content: space-between;
+    min-width: 0;
+    padding: 0.95rem 1.05rem;
+    border-bottom: 1px solid var(--p-surface-100);
+}
+
+:host-context(.p-dark) .settings-card-header,
+:host-context(.p-dark) .settings-card-footer {
+    border-color: var(--p-surface-800);
+}
+
+.settings-card-title-row {
+    display: flex;
+    gap: 0.65rem;
+    align-items: flex-start;
+    min-width: 0;
+}
+
+.settings-card-title-copy {
+    display: grid;
+    gap: 0.25rem;
+    min-width: 0;
 }
 
 .settings-card-title {
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
     margin: 0;
-    font-size: 1.125rem;
-    font-weight: 600;
     color: var(--p-text-color);
+    font-size: 1rem;
+    line-height: 1.25;
+    font-weight: 750;
 }
 
 .settings-card-icon {
+    margin-top: 0.1rem;
     color: var(--p-primary-color);
-    font-size: 1rem;
+    font-size: 0.95rem;
+    line-height: 1;
 }
 
 .settings-card-subtitle {
     margin: 0;
-    font-size: 0.875rem;
     color: var(--p-text-muted-color);
+    font-size: 0.82rem;
+    line-height: 1.35;
+    font-weight: 500;
 }
 
 .settings-card-body {
-    margin-top: 1rem;
+    flex: 1;
+    min-width: 0;
+    padding: 1rem 1.05rem;
 }
 
 .settings-card-footer {
     display: flex;
     justify-content: flex-end;
-    margin-top: 1rem;
+    min-width: 0;
+    padding: 0.85rem 1.05rem;
+    border-top: 1px solid var(--p-surface-100);
+}
+
+.settings-card-footer:not(:has(*)) {
+    display: none;
+}
+
+@media (max-width: 640px) {
+    .settings-card-header {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .settings-card-footer {
+        display: block;
+    }
+
+    :host ::ng-deep .settings-card-footer p-button,
+    :host ::ng-deep .settings-card-footer p-splitbutton,
+    :host ::ng-deep .settings-card-footer .settings-action-btn,
+    :host ::ng-deep .settings-card-footer .settings-action-split {
+        width: 100%;
+    }
 }

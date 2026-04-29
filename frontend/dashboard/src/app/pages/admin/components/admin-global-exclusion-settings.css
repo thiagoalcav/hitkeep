@@ -1,85 +1,55 @@
 .admin-exclusions {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.15rem;
+    --admin-exclusions-divider: var(--p-surface-100);
+    --admin-exclusions-field-error: #b91c1c;
 }
 
-.admin-exclusions__header h3 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin: 0;
-}
-
-.admin-exclusions__header p {
-    color: var(--p-text-muted-color);
-    line-height: 1.5;
-    margin: 0.35rem 0 0;
-}
-
-.admin-exclusions__error {
-    border: 1px solid #fecaca;
-    border-radius: 0.5rem;
-    background: #fef2f2;
-    color: #991b1b;
-    font-size: 0.875rem;
-    padding: 0.75rem;
+:host-context(.p-dark) .admin-exclusions {
+    --admin-exclusions-divider: var(--p-surface-800);
+    --admin-exclusions-field-error: var(--p-red-300);
 }
 
 .admin-exclusions__current-ip {
-    border: 1px solid var(--p-content-border-color);
-    border-radius: 0.75rem;
-    background: var(--p-content-background);
-    overflow: hidden;
+    border-block: 1px solid var(--admin-exclusions-divider);
+    padding: 0.85rem 0;
 }
 
-.admin-exclusions__current-ip-header {
+.admin-exclusions__current-ip-copy {
     align-items: center;
-    background: var(--p-content-hover-background);
-    border-bottom: 1px solid var(--p-content-border-color);
     display: flex;
     gap: 0.75rem;
     justify-content: space-between;
-    padding: 0.75rem;
 }
 
-.admin-exclusions__current-ip-header h4 {
-    font-size: 0.95rem;
-    font-weight: 600;
-    margin: 0;
-}
-
-.admin-exclusions__current-ip-header p {
+.admin-exclusions__eyebrow {
     color: var(--p-text-muted-color);
-    font-size: 0.8rem;
-    margin: 0.15rem 0 0;
-}
-
-.admin-exclusions__current-ip-value {
-    padding: 0.75rem;
-}
-
-.admin-exclusions__current-ip-value code {
-    background: var(--p-content-hover-background);
-    border: 1px solid var(--p-content-border-color);
-    border-radius: 0.5rem;
-    color: var(--p-text-color);
     display: block;
+    font-size: 0.76rem;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
+}
+
+.admin-exclusions__current-ip code {
+    color: var(--p-text-color);
+    display: inline-block;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-    font-size: 0.85rem;
-    padding: 0.5rem 0.625rem;
+    font-size: 0.9rem;
+    font-weight: 600;
     overflow-wrap: anywhere;
 }
 
 .admin-exclusions__form {
-    border: 1px solid var(--p-surface-border);
-    border-radius: 0.75rem;
-    padding: 0.75rem;
+    padding: 0.1rem 0 0;
 }
 
-.admin-exclusions__field-grid {
+.admin-exclusions__composer {
     display: grid;
     gap: 0.75rem;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: minmax(12rem, 0.9fr) minmax(14rem, 1fr) auto;
+    align-items: end;
 }
 
 .admin-exclusions__field {
@@ -94,7 +64,7 @@
 }
 
 .admin-exclusions__field small {
-    color: #b91c1c;
+    color: var(--admin-exclusions-field-error);
     font-size: 0.75rem;
 }
 
@@ -102,10 +72,21 @@
     display: flex;
     gap: 0.5rem;
     justify-content: flex-end;
-    margin-top: 0.75rem;
 }
 
 .admin-exclusions__state {
     color: var(--p-text-muted-color);
     font-size: 0.9rem;
+}
+
+@media (max-width: 720px) {
+    .admin-exclusions__composer {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-exclusions__current-ip-copy,
+    .admin-exclusions__actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
 }

@@ -1,11 +1,10 @@
-import { Component, inject, signal, effect, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, effect, input } from '@angular/core';
 
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { compatForm } from '@angular/forms/signals/compat';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
 import { InputNumberModule } from 'primeng/inputnumber';
-import { MessageModule } from 'primeng/message';
 import { SiteService } from '@features/sites/services/site.service';
 import { AnalyticsService } from '@services/analytics.service';
 import { Site } from '@models/analytics.types';
@@ -13,45 +12,50 @@ import { Site } from '@models/analytics.types';
 @Component({
     selector: 'app-site-retention-settings',
     standalone: true,
-    imports: [ReactiveFormsModule, ButtonModule, InputNumberModule, MessageModule, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, InputNumberModule, TranslocoPipe],
     template: `
-        <div class="flex flex-col gap-4">
-            <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg flex gap-3">
-                <i class="pi pi-info-circle text-blue-600 dark:text-blue-400 mt-0.5"></i>
-                <div class="text-sm text-blue-800 dark:text-blue-300">
-                    <p class="font-semibold mb-1">{{ "sites.retention.infoTitle" | transloco }}</p>
-                    <p class="opacity-90">{{ "sites.retention.infoDescription" | transloco }}</p>
+        <div class="site-settings-stack">
+            <section class="site-settings-card">
+                <header class="site-settings-card__header">
+                    <div class="site-settings-card__title-row">
+                        <span class="site-settings-card__icon"><i class="pi pi-history" aria-hidden="true"></i></span>
+                        <div>
+                            <h3>{{ "sites.retention.infoTitle" | transloco }}</h3>
+                            <p>{{ "sites.retention.infoDescription" | transloco }}</p>
+                        </div>
+                    </div>
+                </header>
+                <div class="site-settings-card__body">
+                    <div class="site-settings-field">
+                        <label for="retentionDays">{{ "sites.retention.periodLabel" | transloco }}</label>
+                        <div class="site-settings-inline-control site-settings-inline-control--retention">
+                            <p-inputnumber
+                                inputId="retentionDays"
+                                [formControl]="retentionForm.retentionDays().control()"
+                                [min]="1"
+                                [max]="3650"
+                                [showButtons]="true"
+                                buttonLayout="horizontal"
+                                spinnerMode="horizontal"
+                                decrementButtonClass="p-button-secondary"
+                                incrementButtonClass="p-button-secondary"
+                                incrementButtonIcon="pi pi-plus"
+                                decrementButtonIcon="pi pi-minus"
+                                styleClass="site-settings-number-input"
+                            >
+                            </p-inputnumber>
+                            <span class="site-settings-field-hint">{{ "sites.retention.hotDataSuffix" | transloco }}</span>
+                        </div>
+                        <small class="site-settings-field-hint">{{ "sites.retention.defaultHint" | transloco }}</small>
+                    </div>
                 </div>
-            </div>
-
-            <div class="flex flex-col gap-2 mt-2">
-                <label for="retentionDays" class="font-medium">{{ "sites.retention.periodLabel" | transloco }}</label>
-                <div class="flex items-center gap-4">
-                    <p-inputnumber
-                        inputId="retentionDays"
-                        [formControl]="retentionForm.retentionDays().control()"
-                        [min]="1"
-                        [max]="3650"
-                        [showButtons]="true"
-                        buttonLayout="horizontal"
-                        spinnerMode="horizontal"
-                        decrementButtonClass="p-button-secondary"
-                        incrementButtonClass="p-button-secondary"
-                        incrementButtonIcon="pi pi-plus"
-                        decrementButtonIcon="pi pi-minus"
-                        class="w-48"
-                    >
-                    </p-inputnumber>
-                    <span class="text-sm text-muted-color">{{ "sites.retention.hotDataSuffix" | transloco }}</span>
-                </div>
-                <small class="text-xs text-muted-color">{{ "sites.retention.defaultHint" | transloco }}</small>
-            </div>
-
-            <div class="flex justify-end mt-4 pt-4 border-t border-surface-200 dark:border-surface-700">
-                <p-button [label]="'sites.retention.savePolicy' | transloco" icon="pi pi-check" (onClick)="savePolicy()" [loading]="saving()" [disabled]="!hasChanged()"> </p-button>
-            </div>
+                <footer class="site-settings-card__footer">
+                    <p-button styleClass="site-settings-action-btn" [label]="'sites.retention.savePolicy' | transloco" icon="pi pi-check" (onClick)="savePolicy()" [loading]="saving()" [disabled]="!hasChanged()" />
+                </footer>
+            </section>
         </div>
-    `
+    `,
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SiteRetentionSettings {
     site = input.required<Site | null>();

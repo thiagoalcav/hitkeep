@@ -1,29 +1,25 @@
 <p-confirmpopup key="global-exclusion-delete" />
 <div class="admin-exclusions">
-    <div class="admin-exclusions__header">
-        <h3>{{ "admin.exclusions.title" | transloco }}</h3>
-        <p>{{ "admin.exclusions.description" | transloco }}</p>
-    </div>
-
-    @if (error(); as errorKey) {
-    <div class="admin-exclusions__error">{{ errorKey | transloco }}</div>
+    @if (actionStatus(); as status) {
+    <p-message [severity]="status.severity" styleClass="w-full" [text]="actionStatusMessage()" />
+    } @if (error(); as errorKey) {
+    <p-message severity="error" styleClass="w-full" [text]="errorKey | transloco" />
     }
 
     <div class="admin-exclusions__current-ip">
-        <div class="admin-exclusions__current-ip-header">
+        <div class="admin-exclusions__current-ip-copy">
             <div>
-                <h4>{{ "admin.exclusions.suggestionsTitle" | transloco }}</h4>
-                <p>{{ "admin.exclusions.suggestionsHint" | transloco }}</p>
+                <span class="admin-exclusions__eyebrow">{{ "admin.exclusions.suggestionsTitle" | transloco }}</span>
+                <code>
+                    @if (isCurrentIPLoading()) { {{ "admin.exclusions.currentIpLoading" | transloco }} } @else if (currentIPCIDR(); as currentIPCIDR) { {{ currentIPCIDR }} } @else { {{ "admin.exclusions.currentIpUnavailable" | transloco }} }
+                </code>
             </div>
-            <p-button [label]="'admin.exclusions.copySuggestionsAction' | transloco" icon="pi pi-copy" [text]="true" [type]="'button'" [disabled]="isCurrentIPLoading() || !currentIPCIDR()" (onClick)="copyCurrentIP()" />
-        </div>
-        <div class="admin-exclusions__current-ip-value">
-            <code> @if (isCurrentIPLoading()) { {{ "admin.exclusions.currentIpLoading" | transloco }} } @else if (currentIPCIDR(); as currentIPCIDR) { {{ currentIPCIDR }} } @else { {{ "admin.exclusions.currentIpUnavailable" | transloco }} } </code>
+            <p-button [label]="'admin.exclusions.copySuggestionsAction' | transloco" icon="pi pi-copy" [text]="true" size="small" [type]="'button'" [disabled]="isCurrentIPLoading() || !currentIPCIDR()" (onClick)="copyCurrentIP()" />
         </div>
     </div>
 
     <form [formGroup]="form" class="admin-exclusions__form" (ngSubmit)="addRule()">
-        <div class="admin-exclusions__field-grid">
+        <div class="admin-exclusions__composer">
             <div class="admin-exclusions__field">
                 <label for="instance-exclusion-cidr">{{ "admin.exclusions.cidrLabel" | transloco }}</label>
                 <input id="instance-exclusion-cidr" pInputText formControlName="cidr" [placeholder]="'admin.exclusions.cidrPlaceholder' | transloco" />
@@ -39,11 +35,11 @@
                 <small>{{ "admin.exclusions.errors.descriptionTooLong" | transloco }}</small>
                 }
             </div>
-        </div>
 
-        <div class="admin-exclusions__actions">
-            <p-button [label]="'admin.exclusions.addAction' | transloco" icon="pi pi-plus" [loading]="isSaving()" [disabled]="isSaving()" [type]="'submit'" />
-            <p-button [label]="'settings.apiClients.actions.refresh' | transloco" icon="pi pi-refresh" [text]="true" [type]="'button'" [disabled]="isLoading()" (onClick)="reload()" />
+            <div class="admin-exclusions__actions">
+                <p-button [label]="'admin.exclusions.addAction' | transloco" icon="pi pi-plus" size="small" [loading]="isSaving()" [disabled]="isSaving()" [type]="'submit'" />
+                <p-button [label]="'settings.apiClients.actions.refresh' | transloco" icon="pi pi-refresh" [text]="true" size="small" [type]="'button'" [disabled]="isLoading()" (onClick)="reload()" />
+            </div>
         </div>
     </form>
 
@@ -53,13 +49,13 @@
     <p class="admin-exclusions__state">{{ "admin.exclusions.empty" | transloco }}</p>
     } @else {
     <div class="flex justify-end mb-3">
-        <span class="p-input-icon-left hk-crud-search">
-            <i class="pi pi-search"></i>
+        <p-iconfield class="hk-crud-search">
+            <p-inputicon class="pi pi-search" />
             <input pInputText #exclusionsSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="exclusionsTable.filterGlobal($any($event.target).value, 'contains')" class="w-full" />
-        </span>
+        </p-iconfield>
     </div>
     <div class="hk-crud-table-wrap">
-        <p-table #exclusionsTable [value]="exclusions()" [globalFilterFields]="['cidr', 'description', 'created_at']" [sortField]="'created_at'" [sortOrder]="-1" styleClass="hk-crud-table p-datatable-sm">
+        <p-table #exclusionsTable [value]="exclusions()" [globalFilterFields]="['cidr', 'description', 'created_at']" [sortField]="'created_at'" [sortOrder]="-1" [rowHover]="true" styleClass="hk-crud-table p-datatable-sm">
             <ng-template pTemplate="header">
                 <tr>
                     <th pSortableColumn="cidr">
@@ -85,7 +81,7 @@
                     <td>{{ rule.description || "-" }}</td>
                     <td><app-relative-date-time [value]="rule.created_at" /></td>
                     <td>
-                        <p-button icon="pi pi-trash" severity="danger" [text]="true" [type]="'button'" (onClick)="confirmDeleteRule($event, rule)" />
+                        <p-button icon="pi pi-trash" severity="danger" [text]="true" [rounded]="true" [type]="'button'" (onClick)="confirmDeleteRule($event, rule)" />
                     </td>
                 </tr>
             </ng-template>

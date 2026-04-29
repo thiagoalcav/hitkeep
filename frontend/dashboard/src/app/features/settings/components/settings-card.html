@@ -1,13 +1,17 @@
-<article class="settings-card border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900">
+<article class="settings-card">
     <header class="settings-card-header">
-        <h2 class="settings-card-title">
+        <div class="settings-card-title-row">
             @if (icon()) {
             <i [class]="icon() + ' settings-card-icon'" aria-hidden="true"></i>
-            } {{ title() }}
-        </h2>
-        @if (subtitle()) {
-        <p class="settings-card-subtitle">{{ subtitle() }}</p>
-        }
+            }
+            <div class="settings-card-title-copy">
+                <h2 class="settings-card-title">{{ title() }}</h2>
+                @if (subtitle()) {
+                <p class="settings-card-subtitle">{{ subtitle() }}</p>
+                }
+            </div>
+        </div>
+        <ng-content select="[settings-card-header]" />
     </header>
 
     <div class="settings-card-body">

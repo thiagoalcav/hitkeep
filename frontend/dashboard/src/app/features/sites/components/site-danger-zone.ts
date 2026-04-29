@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
 import { finalize } from 'rxjs';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
@@ -14,26 +14,32 @@ import { InputTextModule } from 'primeng/inputtext';
     standalone: true,
     imports: [ButtonModule, InputTextModule, TranslocoPipe],
     template: `
-        <div class="flex flex-col gap-6">
+        <div class="site-settings-stack">
             @if (canDeleteSite()) {
-                <div class="border border-red-200 rounded-lg p-4 bg-red-50">
-                    <div class="flex flex-col gap-4">
-                        <div>
-                            <h4 class="font-semibold text-red-700 mb-1">{{ 'sites.danger.deleteTitle' | transloco }}</h4>
-                            <p class="text-sm text-red-600">{{ 'sites.danger.deleteDescription' | transloco }}</p>
+                <section class="site-settings-card site-settings-card--danger">
+                    <header class="site-settings-card__header">
+                        <div class="site-settings-card__title-row">
+                            <span class="site-settings-card__icon site-settings-card__icon--danger"><i class="pi pi-trash" aria-hidden="true"></i></span>
+                            <div>
+                                <h3>{{ 'sites.danger.deleteTitle' | transloco }}</h3>
+                                <p>{{ 'sites.danger.deleteDescription' | transloco }}</p>
+                            </div>
                         </div>
-                        <div>
-                            <label class="text-sm font-medium text-red-700 mb-2 block" for="delete-site-confirm"> {{ 'sites.danger.confirmLabel' | transloco: { domain: site()?.domain } }} </label>
+                    </header>
+                    <div class="site-settings-card__body">
+                        <div class="site-settings-field">
+                            <label for="delete-site-confirm">{{ 'sites.danger.confirmLabel' | transloco: { domain: site()?.domain } }}</label>
                             <input id="delete-site-confirm" pInputText class="w-full" [value]="confirmValue()" #confirmInput (input)="confirmValue.set(confirmInput.value)" [placeholder]="'sites.danger.confirmPlaceholder' | transloco" />
                         </div>
-                        <div class="flex items-center justify-end">
-                            <p-button [label]="'sites.danger.deleteAction' | transloco" icon="pi pi-trash" severity="danger" [disabled]="!canConfirmDelete()" [loading]="isDeleting()" (onClick)="deleteSite()" />
-                        </div>
                     </div>
-                </div>
+                    <footer class="site-settings-card__footer">
+                        <p-button styleClass="site-settings-danger-action" [label]="'sites.danger.deleteAction' | transloco" icon="pi pi-trash" severity="danger" [disabled]="!canConfirmDelete()" [loading]="isDeleting()" (onClick)="deleteSite()" />
+                    </footer>
+                </section>
             }
         </div>
-    `
+    `,
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SiteDangerZone {
     private perms = inject(PermissionService);

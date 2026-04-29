@@ -6,8 +6,8 @@ import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, D
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { compatForm } from '@angular/forms/signals/compat';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
-import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
+import { PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
+import { PageFrame } from '@components/page-frame/page-frame';
 import { localeFlagUrl } from '@core/i18n/flag-utils';
 import { getBaseLanguage, getLocaleDirection, normalizeLocaleTag, TextDirection } from '@core/i18n/locale-utils';
 import { buildTakeoutExportMenuItems, DEFAULT_TAKEOUT_EXPORT_FORMAT, TakeoutExportFormat } from '@core/export/export-formats';
@@ -21,6 +21,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { SplitButtonModule } from 'primeng/splitbutton';
+import { TabsModule } from 'primeng/tabs';
 import { finalize } from 'rxjs';
 
 interface LanguageOption {
@@ -37,10 +38,11 @@ interface EditableProfile {
 }
 
 type AvailableLang = string | { id: string; label: string };
+type UserSettingsTab = 'account' | 'security' | 'export';
 
 @Component({
     selector: 'app-user-settings',
-    imports: [ReactiveFormsModule, ButtonModule, InputTextModule, SelectModule, SplitButtonModule, SettingsCard, SettingsSecurity, PageHeader, PageHeaderLeft, PageBreadcrumb, TranslocoPipe, NgOptimizedImage],
+    imports: [ReactiveFormsModule, ButtonModule, InputTextModule, SelectModule, SplitButtonModule, TabsModule, SettingsCard, SettingsSecurity, PageFrame, TranslocoPipe, NgOptimizedImage],
     templateUrl: './user-settings.html',
     styleUrl: './user-settings.css',
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -79,6 +81,7 @@ export class UserSettings {
     protected readonly initialPreferences = signal<UserPreferences | null>(null);
     protected readonly isExporting = signal(false);
     protected readonly exportState = signal<'idle' | 'success' | 'error'>('idle');
+    protected readonly activeTab = signal<UserSettingsTab>('account');
 
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         this.activeLanguage();

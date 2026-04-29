@@ -10,6 +10,8 @@ import { TeamService } from '@services/team.service';
 import { ConfirmationService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
 import { ConfirmPopupModule } from 'primeng/confirmpopup';
+import { IconFieldModule } from 'primeng/iconfield';
+import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
@@ -23,7 +25,7 @@ interface TeamRoleOption {
 
 @Component({
     selector: 'app-team-members',
-    imports: [ReactiveFormsModule, ButtonModule, ConfirmPopupModule, InputTextModule, SelectModule, TableModule, TagModule, RelativeDateTime, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, ConfirmPopupModule, IconFieldModule, InputIconModule, InputTextModule, SelectModule, TableModule, TagModule, RelativeDateTime, TranslocoPipe],
     templateUrl: './team-members.html',
     styleUrl: './team-members.css',
     changeDetection: ChangeDetectionStrategy.OnPush,

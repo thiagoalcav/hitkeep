@@ -16,10 +16,31 @@
     grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
 }
 
+:host ::ng-deep .team-overview__cards .p-card,
+:host ::ng-deep .team-overview__cloud-card.p-card,
+:host ::ng-deep .team-overview__usage-card.p-card,
+:host ::ng-deep .plan-comparison__card.p-card {
+    border: 1px solid var(--p-content-border-color);
+    border-radius: 8px;
+    box-shadow: none;
+}
+
+:host ::ng-deep .team-overview__cards .p-card-body,
+:host ::ng-deep .team-overview__cloud-card .p-card-body,
+:host ::ng-deep .team-overview__usage-card .p-card-body,
+:host ::ng-deep .plan-comparison__card .p-card-body {
+    padding: 1rem;
+}
+
 .team-overview__card-body {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+}
+
+:host ::ng-deep .team-overview__card-body .p-tag {
+    align-self: flex-start;
+    width: fit-content;
 }
 
 .team-overview__card-label {
@@ -106,6 +127,11 @@
 .team-overview__cloud-link--primary {
     background: linear-gradient(135deg, color-mix(in srgb, var(--p-primary-color) 16%, white), color-mix(in srgb, var(--p-primary-color) 10%, transparent));
     border-color: color-mix(in srgb, var(--p-primary-color) 32%, transparent);
+}
+
+:host-context(.p-dark) .team-overview__cloud-link--primary {
+    background: color-mix(in srgb, var(--p-primary-color) 18%, var(--p-content-background));
+    border-color: color-mix(in srgb, var(--p-primary-color) 42%, var(--p-surface-700));
 }
 
 .team-overview__usage-header {

@@ -31,22 +31,27 @@ interface SiteMember {
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <p-confirmpopup key="site-member-remove" />
-        <div class="flex flex-col gap-4">
+        <div class="site-settings-stack">
             @if (availableTransferTeams().length) {
-                <div class="rounded-xl border border-surface-200 bg-surface-50 p-4 flex flex-col gap-3">
-                    <div>
-                        <h3 class="text-base font-semibold">{{ "sites.team.transfer.title" | transloco }}</h3>
-                        <p class="text-sm text-muted-color">{{ "sites.team.transfer.description" | transloco }}</p>
-                    </div>
+                <section class="site-settings-card">
+                    <header class="site-settings-card__header">
+                        <div class="site-settings-card__title-row">
+                            <span class="site-settings-card__icon"><i class="pi pi-arrow-right-arrow-left" aria-hidden="true"></i></span>
+                            <div>
+                                <h3>{{ "sites.team.transfer.title" | transloco }}</h3>
+                                <p>{{ "sites.team.transfer.description" | transloco }}</p>
+                            </div>
+                        </div>
+                    </header>
+                    <div class="site-settings-card__body">
                     @if (transferSuccessKey(); as key) {
                         <p-message severity="success" [text]="key | transloco" />
                     }
                     @if (transferErrorKey(); as key) {
                         <p-message severity="error" [text]="key | transloco" />
                     }
-                    <div class="flex flex-col md:flex-row gap-3 md:items-end">
-                        <div class="flex-1">
-                            <label for="site-transfer-team" class="text-sm font-medium mb-2 block">{{ "sites.team.transfer.teamLabel" | transloco }}</label>
+                        <div class="site-settings-field">
+                            <label for="site-transfer-team">{{ "sites.team.transfer.teamLabel" | transloco }}</label>
                             <p-select
                                 inputId="site-transfer-team"
                                 [options]="availableTransferTeams()"
@@ -57,69 +62,98 @@ interface SiteMember {
                                 class="w-full"
                             />
                         </div>
-
-                        <p-button [label]="'sites.team.transfer.action' | transloco" icon="pi pi-arrow-right-arrow-left" [loading]="isTransferring()" [disabled]="isTransferring() || transferForm().invalid()" (onClick)="transferSite()" />
                     </div>
-                </div>
+                    <footer class="site-settings-card__footer">
+                        <p-button styleClass="site-settings-action-btn" [label]="'sites.team.transfer.action' | transloco" icon="pi pi-arrow-right-arrow-left" [loading]="isTransferring()" [disabled]="isTransferring() || transferForm().invalid()" (onClick)="transferSite()" />
+                    </footer>
+                </section>
             }
 
-            <div class="flex items-end gap-2">
-                <div class="flex-1">
-                    <label for="member-email" class="text-sm font-medium mb-2 block">{{ "common.emailAddress" | transloco }}</label>
-                    <input id="member-email" pInputText [formControl]="memberForm.email().control()" [placeholder]="'sites.team.emailPlaceholder' | transloco" class="w-full" />
+            <section class="site-settings-card">
+                <header class="site-settings-card__header">
+                    <div class="site-settings-card__title-row">
+                        <span class="site-settings-card__icon"><i class="pi pi-user-plus" aria-hidden="true"></i></span>
+                        <div>
+                            <h3>{{ "sites.team.addMemberAction" | transloco }}</h3>
+                            <p>{{ "sites.team.emailPlaceholder" | transloco }}</p>
+                        </div>
+                    </div>
+                </header>
+                <div class="site-settings-card__body">
+                    <div class="site-settings-field-grid site-settings-member-grid">
+                        <div class="site-settings-field">
+                            <label for="member-email">{{ "common.emailAddress" | transloco }}</label>
+                            <input id="member-email" pInputText [formControl]="memberForm.email().control()" [placeholder]="'sites.team.emailPlaceholder' | transloco" class="w-full" />
+                        </div>
+
+                        <div class="site-settings-field">
+                            <label for="member-role">{{ "common.columns.role" | transloco }}</label>
+                            <p-select inputId="member-role" [options]="roleOptions()" [formControl]="memberForm.role().control()" optionLabel="label" optionValue="value" class="w-full" />
+                        </div>
+                    </div>
                 </div>
+                <footer class="site-settings-card__footer">
+                    <p-button styleClass="site-settings-action-btn" [label]="'sites.team.addMemberAction' | transloco" icon="pi pi-plus" (onClick)="addMember()" [loading]="isAdding()" [disabled]="isAdding() || memberForm().invalid()" />
+                </footer>
+            </section>
 
-                <div class="w-40">
-                    <label for="member-role" class="text-sm font-medium mb-2 block">{{ "common.columns.role" | transloco }}</label>
-                    <p-select inputId="member-role" [options]="roleOptions()" [formControl]="memberForm.role().control()" optionLabel="label" optionValue="value" class="w-full" />
+            <section class="site-settings-card">
+                <header class="site-settings-card__header">
+                    <div class="site-settings-card__title-row">
+                        <span class="site-settings-card__icon"><i class="pi pi-users" aria-hidden="true"></i></span>
+                        <div>
+                            <h3>{{ "sites.settings.tabs.team" | transloco }}</h3>
+                        </div>
+                    </div>
+                </header>
+                <div class="site-settings-card__body">
+                    <div class="site-settings-table-shell">
+                        <div class="site-settings-table-toolbar">
+                            <span class="site-settings-chip">{{ members().length }}</span>
+                            <span class="p-input-icon-left hk-crud-search">
+                                <i class="pi pi-search"></i>
+                                <input pInputText #memberSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="membersTable.filterGlobal($any($event.target).value, 'contains')" class="w-full" />
+                            </span>
+                        </div>
+                        <div class="hk-crud-table-wrap">
+                            <p-table #membersTable [value]="members()" [loading]="isLoading()" [globalFilterFields]="['email', 'role', 'added_at']" [sortField]="'added_at'" [sortOrder]="-1" styleClass="hk-crud-table p-datatable-sm">
+                                <ng-template pTemplate="header">
+                                    <tr>
+                                        <th pSortableColumn="email">
+                                            {{ "common.columns.email" | transloco }}
+                                            <p-sortIcon field="email" />
+                                        </th>
+                                        <th pSortableColumn="role">
+                                            {{ "common.columns.role" | transloco }}
+                                            <p-sortIcon field="role" />
+                                        </th>
+                                        <th pSortableColumn="added_at">
+                                            {{ "common.columns.added" | transloco }}
+                                            <p-sortIcon field="added_at" />
+                                        </th>
+                                        <th>{{ "common.columns.actions" | transloco }}</th>
+                                    </tr>
+                                </ng-template>
+
+                                <ng-template pTemplate="body" let-member>
+                                    <tr>
+                                        <td>{{ member.email }}</td>
+                                        <td>
+                                            <span [class]="getRoleBadgeClass(member.role)">
+                                                {{ getRoleLabel(member.role) }}
+                                            </span>
+                                        </td>
+                                        <td><app-relative-date-time [value]="member.added_at" /></td>
+                                        <td>
+                                            <p-button icon="pi pi-trash" severity="danger" [text]="true" [type]="'button'" (onClick)="confirmRemoveMember($event, member)" />
+                                        </td>
+                                    </tr>
+                                </ng-template>
+                            </p-table>
+                        </div>
+                    </div>
                 </div>
-
-                <p-button [label]="'sites.team.addMemberAction' | transloco" icon="pi pi-plus" (onClick)="addMember()" [loading]="isAdding()" [disabled]="isAdding() || memberForm().invalid()" />
-            </div>
-
-            <div class="flex justify-end">
-                <span class="p-input-icon-left hk-crud-search">
-                    <i class="pi pi-search"></i>
-                    <input pInputText #memberSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="membersTable.filterGlobal($any($event.target).value, 'contains')" class="w-full" />
-                </span>
-            </div>
-
-            <div class="hk-crud-table-wrap">
-                <p-table #membersTable [value]="members()" [loading]="isLoading()" [globalFilterFields]="['email', 'role', 'added_at']" [sortField]="'added_at'" [sortOrder]="-1" styleClass="hk-crud-table p-datatable-sm">
-                    <ng-template pTemplate="header">
-                        <tr>
-                            <th pSortableColumn="email">
-                                {{ "common.columns.email" | transloco }}
-                                <p-sortIcon field="email" />
-                            </th>
-                            <th pSortableColumn="role">
-                                {{ "common.columns.role" | transloco }}
-                                <p-sortIcon field="role" />
-                            </th>
-                            <th pSortableColumn="added_at">
-                                {{ "common.columns.added" | transloco }}
-                                <p-sortIcon field="added_at" />
-                            </th>
-                            <th>{{ "common.columns.actions" | transloco }}</th>
-                        </tr>
-                    </ng-template>
-
-                    <ng-template pTemplate="body" let-member>
-                        <tr>
-                            <td>{{ member.email }}</td>
-                            <td>
-                                <span class="px-2 py-1 rounded text-xs font-medium" [class]="getRoleBadgeClass(member.role)">
-                                    {{ getRoleLabel(member.role) }}
-                                </span>
-                            </td>
-                            <td><app-relative-date-time [value]="member.added_at" /></td>
-                            <td>
-                                <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="confirmRemoveMember($event, member)" />
-                            </td>
-                        </tr>
-                    </ng-template>
-                </p-table>
-            </div>
+            </section>
         </div>
     `
 })
@@ -294,15 +328,15 @@ export class SiteTeamSettings {
     getRoleBadgeClass(role: string): string {
         switch (role) {
             case 'owner':
-                return 'bg-red-100 text-red-700';
+                return 'site-settings-role-chip site-settings-role-chip--owner';
             case 'admin':
-                return 'bg-purple-100 text-purple-700';
+                return 'site-settings-role-chip site-settings-role-chip--admin';
             case 'editor':
-                return 'bg-blue-100 text-blue-700';
+                return 'site-settings-role-chip site-settings-role-chip--editor';
             case 'viewer':
-                return 'bg-gray-100 text-gray-700';
+                return 'site-settings-role-chip site-settings-role-chip--viewer';
             default:
-                return 'bg-gray-100 text-gray-700';
+                return 'site-settings-role-chip site-settings-role-chip--viewer';
         }
     }
 }

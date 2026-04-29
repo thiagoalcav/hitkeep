@@ -1,4 +1,4 @@
-import { Component, input, model, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, input, model, inject } from '@angular/core';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
 import { Site } from '@models/analytics.types';
@@ -6,7 +6,6 @@ import { Site } from '@models/analytics.types';
 // PrimeNG
 import { DrawerModule } from 'primeng/drawer';
 import { TabsModule } from 'primeng/tabs';
-import { ButtonModule } from 'primeng/button';
 
 // Components
 import { SiteGeneralSettings } from '@features/sites/components/site-general-settings';
@@ -19,12 +18,14 @@ import { SiteExclusionSettings } from '@features/sites/components/site-exclusion
 @Component({
     selector: 'app-site-settings-drawer',
     standalone: true,
-    imports: [DrawerModule, TabsModule, ButtonModule, SiteGeneralSettings, SiteTrackingSettings, SiteExclusionSettings, SiteDangerZone, SiteRetentionSettings, SiteTeamSettings, TranslocoPipe],
+    imports: [DrawerModule, TabsModule, SiteGeneralSettings, SiteTrackingSettings, SiteExclusionSettings, SiteDangerZone, SiteRetentionSettings, SiteTeamSettings, TranslocoPipe],
     templateUrl: './site-settings-drawer.html',
-    styleUrl: './site-settings-drawer.css'
+    styleUrl: './site-settings-drawer.css',
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SiteSettingsDrawer {
     private transloco = inject(TranslocoService);
+    private elementRef = inject(ElementRef<HTMLElement>);
 
     visible = model<boolean>(false);
     site = input.required<Site | null>();
@@ -32,6 +33,18 @@ export class SiteSettingsDrawer {
 
     onActiveTabChange(value: string | number | undefined) {
         this.activeTab.set(value == null ? '0' : String(value));
+        this.schedulePanelScrollReset();
+    }
+
+    private schedulePanelScrollReset(): void {
+        [0, 50, 150].forEach((delay) => setTimeout(() => this.resetPanelScroll(), delay));
+    }
+
+    private resetPanelScroll(): void {
+        const host = this.elementRef.nativeElement as HTMLElement;
+        host.querySelectorAll('.p-drawer-content, .p-tabpanels, .p-tabpanel').forEach((panel) => {
+            (panel as HTMLElement).scrollTo({ top: 0 });
+        });
     }
 
     onVisibleChange(isVisible: boolean) {
@@ -42,6 +55,7 @@ export class SiteSettingsDrawer {
             }
         } else {
             this.visible.set(true);
+            this.schedulePanelScrollReset();
         }
     }
 

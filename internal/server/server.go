@@ -171,6 +171,14 @@ func (s *Server) ListenAndServe() error {
 	return s.httpServer.ListenAndServe()
 }
 
+// BackupStatus returns the runtime backup tracker shared with background workers.
+func (s *Server) BackupStatus() *database.BackupStatusTracker {
+	if s == nil || s.ctx == nil {
+		return nil
+	}
+	return s.ctx.BackupStatus
+}
+
 func (s *Server) Shutdown(ctx context.Context) error {
 	slog.Info("HTTP server shutting down.")
 

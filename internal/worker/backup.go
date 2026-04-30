@@ -22,6 +22,7 @@ type BackupWorker struct {
 	intervalMin    int
 	retentionCount int
 	s3Config       *S3Config
+	status         *database.BackupStatusTracker
 }
 
 // NewBackupWorker creates a BackupWorker. If backupPath is empty, Start is a no-op.
@@ -32,6 +33,7 @@ func NewBackupWorker(
 	intervalMin int,
 	retentionCount int,
 	s3Config *S3Config,
+	status *database.BackupStatusTracker,
 ) *BackupWorker {
 	return &BackupWorker{
 		tenantMgr:      tenantMgr,
@@ -40,6 +42,7 @@ func NewBackupWorker(
 		intervalMin:    intervalMin,
 		retentionCount: retentionCount,
 		s3Config:       s3Config,
+		status:         status,
 	}
 }
 
@@ -55,6 +58,7 @@ func (w *BackupWorker) Start(ctx context.Context) {
 	} else {
 		slog.Info("Local backup enabled", "path", w.backupPath, "interval_min", w.intervalMin, "retention", w.retentionCount)
 	}
+	w.setNextBackup(time.Now().UTC().Add(30 * time.Second))
 
 	// Initial run after a short delay to let DB settle.
 	go func() {
@@ -82,7 +86,16 @@ func (w *BackupWorker) Start(ctx context.Context) {
 
 // Run executes a single backup cycle: export shared DB + all tenant DBs,
 // then prune old snapshots beyond the retention count.
-func (w *BackupWorker) Run(ctx context.Context) error {
+func (w *BackupWorker) Run(ctx context.Context) (err error) {
+	defer func() {
+		finishedAt := time.Now().UTC()
+		if err != nil {
+			w.recordFailure(finishedAt, err)
+			return
+		}
+		w.recordSuccess(finishedAt)
+	}()
+
 	timestamp := time.Now().UTC().Format("2006-01-02T150405Z")
 	slog.Info("Starting database backup", "timestamp", timestamp)
 
@@ -136,6 +149,40 @@ func (w *BackupWorker) Run(ctx context.Context) error {
 
 	slog.Info("Database backup completed", "timestamp", timestamp)
 	return nil
+}
+
+func (w *BackupWorker) recordSuccess(at time.Time) {
+	if w.status == nil {
+		return
+	}
+	w.status.SetLastBackup(at)
+	if next, ok := w.nextBackupTime(at); ok {
+		w.status.SetNextBackup(next)
+	}
+}
+
+func (w *BackupWorker) recordFailure(at time.Time, err error) {
+	if w.status == nil {
+		return
+	}
+	w.status.SetFailed(at, err.Error())
+	if next, ok := w.nextBackupTime(at); ok {
+		w.status.SetNextBackup(next)
+	}
+}
+
+func (w *BackupWorker) setNextBackup(at time.Time) {
+	if w.status == nil {
+		return
+	}
+	w.status.SetNextBackup(at)
+}
+
+func (w *BackupWorker) nextBackupTime(after time.Time) (time.Time, bool) {
+	if w.intervalMin <= 0 {
+		return time.Time{}, false
+	}
+	return after.Add(time.Duration(w.intervalMin) * time.Minute), true
 }
 
 // exportDatabase checkpoints and exports a DuckDB database to the given destination.

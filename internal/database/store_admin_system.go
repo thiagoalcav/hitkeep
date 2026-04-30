@@ -43,6 +43,7 @@ func (b *BackupStatusTracker) SetLastBackup(t time.Time) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.LastBackup = &t
+	b.LastError = ""
 }
 
 func (b *BackupStatusTracker) SetFailed(at time.Time, errStr string) {
@@ -51,6 +52,12 @@ func (b *BackupStatusTracker) SetFailed(at time.Time, errStr string) {
 	b.LastFailedAt = &at
 	b.LastError = errStr
 	b.RecentFailures++
+}
+
+func (b *BackupStatusTracker) SetNextBackup(t time.Time) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.NextBackup = &t
 }
 
 func (b *BackupStatusTracker) SetConfig(enabled bool, path string, interval, retention int) {

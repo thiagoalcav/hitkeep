@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,7 +23,7 @@ func TestBackupExportsSharedDatabase(t *testing.T) {
 	seedSite(t, ctx, store, 365)
 
 	mgr := newTestTenantMgr(t, store)
-	w := NewBackupWorker(mgr, t.TempDir(), backupDir, 60, 24, nil)
+	w := NewBackupWorker(mgr, t.TempDir(), backupDir, 60, 24, nil, nil)
 	if err := w.Run(ctx); err != nil {
 		t.Fatalf("backup run: %v", err)
 	}
@@ -48,11 +49,75 @@ func TestBackupExportsSharedDatabase(t *testing.T) {
 	}
 }
 
+func TestBackupUpdatesStatusTracker(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	backupDir := filepath.Join(t.TempDir(), "backups")
+	status := &database.BackupStatusTracker{}
+	status.SetConfig(true, backupDir, 15, 24)
+
+	seedSite(t, ctx, store, 365)
+
+	mgr := newTestTenantMgr(t, store)
+	w := NewBackupWorker(mgr, t.TempDir(), backupDir, 15, 24, nil, status)
+	if err := w.Run(ctx); err != nil {
+		t.Fatalf("backup run: %v", err)
+	}
+
+	got := status.Status()
+	if got.LastBackup == nil {
+		t.Fatal("expected last backup to be recorded")
+	}
+	if got.NextBackup == nil {
+		t.Fatal("expected next backup to be recorded")
+	}
+	if got.LastError != "" {
+		t.Fatalf("expected last error to be cleared on success, got %q", got.LastError)
+	}
+	if got.RecentFailures != 0 {
+		t.Fatalf("expected no recent failures, got %d", got.RecentFailures)
+	}
+}
+
+func TestBackupRecordsFailureInStatusTracker(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	blockedBackupPath := filepath.Join(t.TempDir(), "backups")
+	if err := os.WriteFile(blockedBackupPath, []byte("not a directory"), 0600); err != nil {
+		t.Fatalf("create blocking backup path: %v", err)
+	}
+	status := &database.BackupStatusTracker{}
+	status.SetConfig(true, blockedBackupPath, 15, 24)
+
+	mgr := newTestTenantMgr(t, store)
+	w := NewBackupWorker(mgr, t.TempDir(), blockedBackupPath, 15, 24, nil, status)
+	if err := w.Run(ctx); err == nil {
+		t.Fatal("expected backup run to fail")
+	}
+
+	got := status.Status()
+	if got.LastBackup != nil {
+		t.Fatalf("expected no last backup after failure, got %v", got.LastBackup)
+	}
+	if got.LastFailedAt == nil {
+		t.Fatal("expected last failure time to be recorded")
+	}
+	if !strings.Contains(got.LastError, "backup shared database") {
+		t.Fatalf("expected backup error to be recorded, got %q", got.LastError)
+	}
+	if got.RecentFailures != 1 {
+		t.Fatalf("expected one recent failure, got %d", got.RecentFailures)
+	}
+	if got.NextBackup == nil {
+		t.Fatal("expected next backup to be recorded after failure")
+	}
+}
+
 func TestBackupDisabledWhenPathEmpty(t *testing.T) {
 	store := newTestStore(t)
 	mgr := newTestTenantMgr(t, store)
 
-	w := NewBackupWorker(mgr, t.TempDir(), "", 60, 24, nil)
+	w := NewBackupWorker(mgr, t.TempDir(), "", 60, 24, nil, nil)
 
 	// Start should return immediately (no-op).
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
@@ -83,7 +148,7 @@ func TestBackupPrunesOldLocalSnapshots(t *testing.T) {
 	seedSite(t, ctx, store, 365)
 
 	retentionCount := 2
-	w := NewBackupWorker(mgr, t.TempDir(), backupDir, 60, retentionCount, nil)
+	w := NewBackupWorker(mgr, t.TempDir(), backupDir, 60, retentionCount, nil, nil)
 
 	// Run 4 backups.
 	for i := range 4 {
@@ -133,7 +198,7 @@ func TestBackupAndRestoreRoundTrip(t *testing.T) {
 
 	// Backup.
 	mgr := newTestTenantMgr(t, store)
-	w := NewBackupWorker(mgr, t.TempDir(), backupDir, 60, 24, nil)
+	w := NewBackupWorker(mgr, t.TempDir(), backupDir, 60, 24, nil, nil)
 	if err := w.Run(ctx); err != nil {
 		t.Fatalf("backup run: %v", err)
 	}
@@ -220,7 +285,7 @@ func TestBackupHandlesMultipleTenants(t *testing.T) {
 		t.Fatalf("seed tenant hit: %v", err)
 	}
 
-	w := NewBackupWorker(mgr, dataPath, backupDir, 60, 24, nil)
+	w := NewBackupWorker(mgr, dataPath, backupDir, 60, 24, nil, nil)
 	if err := w.Run(ctx); err != nil {
 		t.Fatalf("backup run: %v", err)
 	}

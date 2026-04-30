@@ -129,25 +129,6 @@ func Run() {
 		reportWorker := worker.NewReportWorker(tenantMgr, mailSvc, conf.PublicURL)
 		go reportWorker.Start(gCtx)
 
-		// Start Backup Worker
-		if conf.BackupPath != "" {
-			var backupS3 *worker.S3Config
-			if worker.IsS3ArchivePath(conf.BackupPath) {
-				backupS3 = &worker.S3Config{
-					AccessKeyID:     conf.S3AccessKeyID,
-					SecretAccessKey: conf.S3SecretAccessKey,
-					SessionToken:    conf.S3SessionToken,
-					Region:          conf.S3Region,
-					Endpoint:        conf.S3Endpoint,
-					URLStyle:        conf.S3URLStyle,
-					UseSSL:          conf.S3UseSSL,
-				}
-			}
-			backupWorker := worker.NewBackupWorker(tenantMgr, conf.DataPath, conf.BackupPath,
-				conf.BackupIntervalMinutes, conf.BackupRetentionCount, backupS3)
-			go backupWorker.Start(gCtx)
-		}
-
 		g.Go(func() error {
 			<-gCtx.Done()
 			tenantMgr.Close()
@@ -162,6 +143,23 @@ func Run() {
 	}
 
 	httpServer := server.New(conf, publicFS, store, tenantMgr, ent, clusterManager, producer, mailSvc)
+	if tenantMgr != nil && conf.BackupPath != "" {
+		var backupS3 *worker.S3Config
+		if worker.IsS3ArchivePath(conf.BackupPath) {
+			backupS3 = &worker.S3Config{
+				AccessKeyID:     conf.S3AccessKeyID,
+				SecretAccessKey: conf.S3SecretAccessKey,
+				SessionToken:    conf.S3SessionToken,
+				Region:          conf.S3Region,
+				Endpoint:        conf.S3Endpoint,
+				URLStyle:        conf.S3URLStyle,
+				UseSSL:          conf.S3UseSSL,
+			}
+		}
+		backupWorker := worker.NewBackupWorker(tenantMgr, conf.DataPath, conf.BackupPath,
+			conf.BackupIntervalMinutes, conf.BackupRetentionCount, backupS3, httpServer.BackupStatus())
+		go backupWorker.Start(gCtx)
+	}
 
 	g.Go(func() error {
 		slog.Info("HTTP server starting", "addr", conf.HTTPAddr)

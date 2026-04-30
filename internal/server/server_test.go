@@ -84,6 +84,38 @@ func TestServerDoesNotMountMCPRouteWhenDisabled(t *testing.T) {
 	}
 }
 
+func TestServerBackupStatusReflectsConfig(t *testing.T) {
+	conf := testServerConfig(t)
+	conf.BackupPath = "s3://hitkeep-backups/backup"
+	conf.BackupIntervalMinutes = 60
+	conf.BackupRetentionCount = 24
+	store := testServerStore(t)
+	defer store.Close()
+
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	defer func() {
+		_ = srv.Shutdown(context.Background())
+	}()
+
+	tracker := srv.BackupStatus()
+	if tracker == nil {
+		t.Fatal("expected backup status tracker")
+	}
+	status := tracker.Status()
+	if !status.Enabled {
+		t.Fatal("expected backup status to be enabled")
+	}
+	if status.ConfigPath != conf.BackupPath {
+		t.Fatalf("expected backup path %q, got %q", conf.BackupPath, status.ConfigPath)
+	}
+	if status.IntervalMin != 60 {
+		t.Fatalf("expected interval 60, got %d", status.IntervalMin)
+	}
+	if status.Retention != 24 {
+		t.Fatalf("expected retention 24, got %d", status.Retention)
+	}
+}
+
 func testServerConfig(t *testing.T) *config.Config {
 	t.Helper()
 	return &config.Config{

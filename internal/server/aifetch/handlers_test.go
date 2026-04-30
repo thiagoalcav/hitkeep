@@ -48,8 +48,9 @@ func setupAIFetchTestEnv(t *testing.T) (*database.Store, *shared.Context, uuid.U
 	}
 
 	ctx := &shared.Context{
-		Store:  store,
-		Config: &config.Config{},
+		Store:          store,
+		Config:         &config.Config{},
+		SystemCounters: &database.SystemCounter{},
 	}
 
 	return store, ctx, userID, site.ID, token
@@ -123,6 +124,9 @@ func TestHandleCreateAIFetchRejectsUnknownBot(t *testing.T) {
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("expected %d, got %d", http.StatusBadRequest, rec.Code)
 	}
+	if got := ctx.SystemCounters.Rejections.Load(); got != 1 {
+		t.Fatalf("expected rejection counter 1, got %d", got)
+	}
 }
 
 func TestHandleCreateAIFetchRejectsDeletedSite(t *testing.T) {
@@ -149,6 +153,9 @@ func TestHandleCreateAIFetchRejectsDeletedSite(t *testing.T) {
 
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("expected %d, got %d body=%s", http.StatusNotFound, rec.Code, rec.Body.String())
+	}
+	if got := ctx.SystemCounters.Rejections.Load(); got != 1 {
+		t.Fatalf("expected rejection counter 1, got %d", got)
 	}
 }
 
@@ -238,6 +245,9 @@ func TestHandleCreateAIFetchDropsBlockedSiteExclusion(t *testing.T) {
 	if overview.TotalRequests != 0 {
 		t.Fatalf("expected 0 stored fetches, got %d", overview.TotalRequests)
 	}
+	if got := ctx.SystemCounters.Rejections.Load(); got != 1 {
+		t.Fatalf("expected rejection counter 1, got %d", got)
+	}
 }
 
 func TestHandleCreateAIFetchDropsSpamNetwork(t *testing.T) {
@@ -278,6 +288,12 @@ func TestHandleCreateAIFetchDropsSpamNetwork(t *testing.T) {
 	}
 	if overview.TotalRequests != 0 {
 		t.Fatalf("expected 0 stored fetches, got %d", overview.TotalRequests)
+	}
+	if got := ctx.SystemCounters.Spam.Load(); got != 1 {
+		t.Fatalf("expected spam counter 1, got %d", got)
+	}
+	if got := ctx.SystemCounters.Rejections.Load(); got != 0 {
+		t.Fatalf("expected rejection counter 0, got %d", got)
 	}
 }
 

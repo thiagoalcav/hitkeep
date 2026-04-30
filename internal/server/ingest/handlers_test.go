@@ -92,6 +92,9 @@ func TestHandleIngestLeaderDropsBlockedReferrerBeforePublish(t *testing.T) {
 	if rec.Code != http.StatusAccepted {
 		t.Fatalf("expected status %d, got %d", http.StatusAccepted, rec.Code)
 	}
+	if got := h.ctx.SystemCounters.Spam.Load(); got != 1 {
+		t.Fatalf("expected spam counter 1, got %d", got)
+	}
 }
 
 func TestHandleIngestLeaderDropsBlockedNetworkBeforePublish(t *testing.T) {
@@ -114,6 +117,50 @@ func TestHandleIngestLeaderDropsBlockedNetworkBeforePublish(t *testing.T) {
 
 	if rec.Code != http.StatusAccepted {
 		t.Fatalf("expected status %d, got %d", http.StatusAccepted, rec.Code)
+	}
+	if got := h.ctx.SystemCounters.Spam.Load(); got != 1 {
+		t.Fatalf("expected spam counter 1, got %d", got)
+	}
+}
+
+func TestHandleIngestLeaderCountsUnknownSiteRejection(t *testing.T) {
+	h, cleanup := setupIngestHandler(t, nil)
+	defer cleanup()
+
+	req := newIngestRequest(t, "https://unknown.example", "198.51.100.22:1234", map[string]any{
+		"path":       "/docs",
+		"session_id": uuid.New(),
+		"page_id":    uuid.New(),
+	})
+
+	rec := httptest.NewRecorder()
+	h.handleIngestLeader(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("expected status %d, got %d", http.StatusAccepted, rec.Code)
+	}
+	if got := h.ctx.SystemCounters.Rejections.Load(); got != 1 {
+		t.Fatalf("expected rejection counter 1, got %d", got)
+	}
+}
+
+func TestHandleIngestLeaderCountsBadBodyRejection(t *testing.T) {
+	h, cleanup := setupIngestHandler(t, nil)
+	defer cleanup()
+
+	req := httptest.NewRequest(http.MethodPost, "/ingest", bytes.NewBufferString("{"))
+	req.Header.Set("Origin", "https://example.com")
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = "198.51.100.22:1234"
+
+	rec := httptest.NewRecorder()
+	h.handleIngestLeader(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rec.Code)
+	}
+	if got := h.ctx.SystemCounters.Rejections.Load(); got != 1 {
+		t.Fatalf("expected rejection counter 1, got %d", got)
 	}
 }
 
@@ -170,6 +217,32 @@ func TestHandleIngestEventLeaderDropsBlockedReferrerBeforePublish(t *testing.T) 
 	if rec.Code != http.StatusAccepted {
 		t.Fatalf("expected status %d, got %d", http.StatusAccepted, rec.Code)
 	}
+	if got := h.ctx.SystemCounters.Spam.Load(); got != 1 {
+		t.Fatalf("expected spam counter 1, got %d", got)
+	}
+	if got := h.ctx.SystemCounters.Rejections.Load(); got != 0 {
+		t.Fatalf("expected rejection counter 0, got %d", got)
+	}
+}
+
+func TestHandleIngestEventLeaderCountsUnknownSiteRejection(t *testing.T) {
+	h, cleanup := setupIngestHandler(t, nil)
+	defer cleanup()
+
+	req := newIngestEventRequest(t, "https://unknown.example", "198.51.100.22:1234", map[string]any{
+		"n":   "signup",
+		"sid": uuid.New(),
+	})
+
+	rec := httptest.NewRecorder()
+	h.handleIngestEventLeader(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("expected status %d, got %d", http.StatusAccepted, rec.Code)
+	}
+	if got := h.ctx.SystemCounters.Rejections.Load(); got != 1 {
+		t.Fatalf("expected rejection counter 1, got %d", got)
+	}
 }
 
 func TestHandleIngestEventLeaderAllowsSameSiteReferrerToContinueToPublish(t *testing.T) {
@@ -223,8 +296,9 @@ func setupIngestHandler(t *testing.T, mutateCtx func(*shared.Context)) (*handler
 	}
 
 	ctx := &shared.Context{
-		Store:  store,
-		Config: &config.Config{},
+		Store:          store,
+		Config:         &config.Config{},
+		SystemCounters: &database.SystemCounter{},
 	}
 	if mutateCtx != nil {
 		mutateCtx(ctx)

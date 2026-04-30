@@ -132,6 +132,7 @@ func (h *handler) handleCreateAIFetch() http.HandlerFunc {
 
 		siteID, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
+			h.recordRejection()
 			http.Error(w, "Invalid site_id", http.StatusBadRequest)
 			return
 		}
@@ -141,12 +142,14 @@ func (h *handler) handleCreateAIFetch() http.HandlerFunc {
 			return
 		}
 		if site == nil {
+			h.recordRejection()
 			http.Error(w, "Site not found", http.StatusNotFound)
 			return
 		}
 
 		userIP := shared.GetRealIP(r, h.ctx.Config.GetTrustedProxyNetworks())
 		if h.ctx.IPFilter != nil && h.ctx.IPFilter.IsBlocked(site.ID, userIP) {
+			h.recordRejection()
 			w.WriteHeader(http.StatusAccepted)
 			return
 		}
@@ -154,6 +157,7 @@ func (h *handler) handleCreateAIFetch() http.HandlerFunc {
 			decision := h.ctx.SpamFilter.Evaluate(site.Domain, userIP, nil)
 			if decision.Blocked {
 				slog.Info("Dropped spam ai fetch", "site_id", site.ID, "reason", decision.Reason)
+				h.recordSpamDrop()
 				w.WriteHeader(http.StatusAccepted)
 				return
 			}
@@ -162,21 +166,25 @@ func (h *handler) handleCreateAIFetch() http.HandlerFunc {
 		r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
 		var payload ingestPayload
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			h.recordRejection()
 			http.Error(w, "Bad request body", http.StatusBadRequest)
 			return
 		}
 		if payload.StatusCode < 100 || payload.StatusCode > 599 {
+			h.recordRejection()
 			http.Error(w, "status_code must be between 100 and 599", http.StatusBadRequest)
 			return
 		}
 		identity := aianalytics.ClassifyBot(payload.UserAgent)
 		if identity == nil {
+			h.recordRejection()
 			http.Error(w, "user_agent must match a known AI bot", http.StatusBadRequest)
 			return
 		}
 
 		path, hostname, ok := normalizeFetchTarget(payload.Path, payload.Hostname)
 		if !ok {
+			h.recordRejection()
 			http.Error(w, "path is required", http.StatusBadRequest)
 			return
 		}
@@ -222,6 +230,18 @@ func (h *handler) handleCreateAIFetch() http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusAccepted)
+	}
+}
+
+func (h *handler) recordSpamDrop() {
+	if h.ctx.SystemCounters != nil {
+		h.ctx.SystemCounters.Spam.Add(1)
+	}
+}
+
+func (h *handler) recordRejection() {
+	if h.ctx.SystemCounters != nil {
+		h.ctx.SystemCounters.Rejections.Add(1)
 	}
 }
 

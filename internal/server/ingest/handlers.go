@@ -69,12 +69,14 @@ func (h *handler) handleIngest() http.HandlerFunc {
 func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 	origin := r.Header.Get("Origin")
 	if origin == "" {
+		h.recordRejection()
 		http.Error(w, "Origin header is required", http.StatusBadRequest)
 		return
 	}
 
 	parsedURL, err := url.Parse(origin)
 	if err != nil {
+		h.recordRejection()
 		http.Error(w, "Invalid Origin header", http.StatusBadRequest)
 		return
 	}
@@ -88,12 +90,14 @@ func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 	}
 	if site == nil {
 		slog.Warn("Dropped hit for unknown site")
+		h.recordRejection()
 		w.WriteHeader(http.StatusAccepted)
 		return
 	}
 
 	userIP := shared.GetRealIP(r, h.ctx.Config.GetTrustedProxyNetworks())
 	if h.ctx.IPFilter != nil && h.ctx.IPFilter.IsBlocked(site.ID, userIP) {
+		h.recordRejection()
 		w.WriteHeader(http.StatusAccepted)
 		return
 	}
@@ -121,6 +125,7 @@ func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 
 	var payload ingestPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		h.recordRejection()
 		http.Error(w, "Bad request body", http.StatusBadRequest)
 		return
 	}
@@ -129,6 +134,7 @@ func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 		decision := h.ctx.SpamFilter.Evaluate(site.Domain, userIP, payload.Referrer)
 		if decision.Blocked {
 			slog.Info("Dropped spam hit", "site_id", site.ID, "reason", decision.Reason)
+			h.recordSpamDrop()
 			w.WriteHeader(http.StatusAccepted)
 			return
 		}
@@ -225,12 +231,14 @@ func (h *handler) handleIngestEvent() http.HandlerFunc {
 func (h *handler) handleIngestEventLeader(w http.ResponseWriter, r *http.Request) {
 	origin := r.Header.Get("Origin")
 	if origin == "" {
+		h.recordRejection()
 		http.Error(w, "Origin header is required", http.StatusBadRequest)
 		return
 	}
 
 	parsedURL, err := url.Parse(origin)
 	if err != nil {
+		h.recordRejection()
 		http.Error(w, "Invalid Origin header", http.StatusBadRequest)
 		return
 	}
@@ -244,12 +252,14 @@ func (h *handler) handleIngestEventLeader(w http.ResponseWriter, r *http.Request
 	}
 	if site == nil {
 		slog.Warn("Dropped event for unknown site")
+		h.recordRejection()
 		w.WriteHeader(http.StatusAccepted)
 		return
 	}
 
 	userIP := shared.GetRealIP(r, h.ctx.Config.GetTrustedProxyNetworks())
 	if h.ctx.IPFilter != nil && h.ctx.IPFilter.IsBlocked(site.ID, userIP) {
+		h.recordRejection()
 		w.WriteHeader(http.StatusAccepted)
 		return
 	}
@@ -265,6 +275,7 @@ func (h *handler) handleIngestEventLeader(w http.ResponseWriter, r *http.Request
 
 	var payload eventPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		h.recordRejection()
 		http.Error(w, "Bad request body", http.StatusBadRequest)
 		return
 	}
@@ -273,6 +284,7 @@ func (h *handler) handleIngestEventLeader(w http.ResponseWriter, r *http.Request
 		decision := h.ctx.SpamFilter.Evaluate(site.Domain, userIP, payload.Referrer)
 		if decision.Blocked {
 			slog.Info("Dropped spam event", "site_id", site.ID, "reason", decision.Reason)
+			h.recordSpamDrop()
 			w.WriteHeader(http.StatusAccepted)
 			return
 		}
@@ -318,6 +330,18 @@ func normalizeLeaderHost(addr string) string {
 	}
 
 	return addr
+}
+
+func (h *handler) recordSpamDrop() {
+	if h.ctx.SystemCounters != nil {
+		h.ctx.SystemCounters.Spam.Add(1)
+	}
+}
+
+func (h *handler) recordRejection() {
+	if h.ctx.SystemCounters != nil {
+		h.ctx.SystemCounters.Rejections.Add(1)
+	}
 }
 
 func buildForwardURL(leaderAddr, httpAddr, targetPath string) (*url.URL, error) {

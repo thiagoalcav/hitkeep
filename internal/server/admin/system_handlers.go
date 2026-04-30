@@ -1,14 +1,17 @@
 package admin
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -20,6 +23,10 @@ import (
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
 )
+
+type nsqPinger interface {
+	Ping() error
+}
 
 func (h *handler) handleGetSystem() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -127,6 +134,12 @@ func (h *handler) handleGetHealth() http.HandlerFunc {
 		if h.ctx.Cluster != nil {
 			health.IsLeader = h.ctx.Cluster.IsLeader()
 		}
+		if workers, ok := workerHealthStatus(health.IsLeader, h.ctx.Producer); ok {
+			health.Workers = workers
+		} else {
+			health.Workers = workers
+			health.Status = "degraded"
+		}
 
 		if h.ctx.Store != nil {
 			if err := h.ctx.Store.DB().Ping(); err != nil {
@@ -137,6 +150,22 @@ func (h *handler) handleGetHealth() http.HandlerFunc {
 
 		writeJSON(w, http.StatusOK, health)
 	}
+}
+
+func workerHealthStatus(isLeader bool, producer nsqPinger) (string, bool) {
+	if !isLeader {
+		return "standby", true
+	}
+	if producer == nil || (reflect.ValueOf(producer).Kind() == reflect.Ptr && reflect.ValueOf(producer).IsNil()) {
+		return "unavailable", false
+	}
+	if err := producer.Ping(); err != nil {
+		if errors.Is(err, context.Canceled) {
+			return "stopping", false
+		}
+		return fmt.Sprintf("error: %v", err), false
+	}
+	return "ok", true
 }
 
 func (h *handler) handleGetStorage() http.HandlerFunc {

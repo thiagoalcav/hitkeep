@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -179,6 +180,38 @@ func TestHandleGetHealth(t *testing.T) {
 	}
 	if health.Database != "ok" {
 		t.Fatalf("expected database 'ok', got %q", health.Database)
+	}
+}
+
+type testPinger struct {
+	err error
+}
+
+func (p testPinger) Ping() error {
+	return p.err
+}
+
+func TestWorkerHealthStatus(t *testing.T) {
+	tests := []struct {
+		name     string
+		leader   bool
+		producer nsqPinger
+		want     string
+		wantOK   bool
+	}{
+		{name: "follower is standby", leader: false, want: "standby", wantOK: true},
+		{name: "leader missing producer", leader: true, want: "unavailable", wantOK: false},
+		{name: "leader ping ok", leader: true, producer: testPinger{}, want: "ok", wantOK: true},
+		{name: "leader ping error", leader: true, producer: testPinger{err: fmt.Errorf("nsq down")}, want: "error: nsq down", wantOK: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := workerHealthStatus(tt.leader, tt.producer)
+			if got != tt.want || ok != tt.wantOK {
+				t.Fatalf("workerHealthStatus() = (%q, %v), want (%q, %v)", got, ok, tt.want, tt.wantOK)
+			}
+		})
 	}
 }
 

@@ -1367,6 +1367,7 @@
                 "autoUpdated": "Auto-updated",
                 "manualOnly": "Manual refresh",
                 "refreshCard": "Refresh status",
+                "cloudStatus": "Cloud status",
                 "leader": "Leader",
                 "follower": "Follower",
                 "loadFailed": "System status could not be loaded.",

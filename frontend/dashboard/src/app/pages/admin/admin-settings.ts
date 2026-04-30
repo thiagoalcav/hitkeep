@@ -228,6 +228,10 @@ export class AdminSettings implements OnInit {
             enabled: feature.enabled
         }));
     });
+    protected readonly isManagedCloud = computed(() => {
+        const features = this.systemInfo()?.enabled_features ?? [];
+        return features.some((feature) => feature.key === 'managed_cloud' && feature.enabled);
+    });
     protected readonly instanceOwners = computed(() => this.users().filter((user) => user.instance_role === 'owner').length);
     protected readonly instanceAdmins = computed(() => this.users().filter((user) => user.instance_role === 'admin').length);
     protected readonly activeTeams = computed(() => this.teams().filter((team) => !team.is_archived).length);

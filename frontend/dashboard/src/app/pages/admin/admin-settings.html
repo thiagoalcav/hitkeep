@@ -323,7 +323,13 @@
                             [refreshLabel]="'admin.system.console.refreshCard' | transloco"
                             (refreshClicked)="loadSystemHealth()"
                         >
-                            @if (systemHealth(); as health) {
+                            @if (isManagedCloud()) {
+                            <a system-status-card-header class="admin-link" href="https://status.hitkeep.com" target="_blank" rel="noopener">
+                                <i class="pi pi-circle-fill text-xs" aria-hidden="true"></i>
+                                <span>{{ "admin.system.console.cloudStatus" | transloco }}</span>
+                                <i class="pi pi-external-link" aria-hidden="true"></i>
+                            </a>
+                            } @if (systemHealth(); as health) {
                             <div class="admin-health-grid">
                                 <div class="admin-health-tile">
                                     <span>{{ "admin.system.health.status" | transloco }}</span>

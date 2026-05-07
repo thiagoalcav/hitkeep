@@ -1,15 +1,6 @@
 ---
 name: Bug report
 about: Report a reproducible HitKeep issue
-title: "[BUG]"
-labels: bug
-assignees: ''
-
----
-
----
-name: Bug report
-about: Report a reproducible HitKeep issue
 title: "[Bug]: "
 labels: bug
 assignees: ""
@@ -44,6 +35,12 @@ assignees: ""
 
 ## Impact
 <!-- Severity: Critical/High/Medium/Low + brief explanation. -->
+
+## Release Notes
+<!-- User-visible fix wording if this should appear in release notes. Leave blank if not applicable. -->
+
+## Docs Impact
+<!-- Choose one: Not needed, Needed, Drafted, Published. Note any guide, OpenAPI, screenshot, llms.txt, or release blog impact. -->
 
 ## Additional Context
 <!-- Any other relevant details. -->

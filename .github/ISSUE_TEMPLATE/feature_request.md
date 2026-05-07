@@ -37,5 +37,8 @@ assignees: ''
 ## Release Notes
 <!-- User-facing wording if this ships. Leave blank if not applicable. -->
 
+## Docs Impact
+<!-- Choose one: Not needed, Needed, Drafted, Published. Note any roadmap, guide, OpenAPI, screenshot, llms.txt, or release blog impact. -->
+
 ## Additional Context
 <!-- Screenshots, examples, customer requests, links, or related issues. -->

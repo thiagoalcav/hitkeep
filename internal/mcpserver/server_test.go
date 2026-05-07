@@ -3,8 +3,10 @@ package mcpserver
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -32,11 +34,267 @@ func TestMCPServerRequiresBearerToken(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, ts.URL+conf.MCPPath, strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`))
 	req.Header.Set("Accept", "application/json, text/event-stream")
 	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = "127.0.0.1:12345"
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", rec.Code)
+	}
+}
+
+func TestMCPServerInitializesWithConfiguredPublicHostBehindLoopback(t *testing.T) {
+	store, _, token := setupMCPStore(t)
+	conf := testMCPConfig(t, "")
+	conf.PublicURL = "https://analytics.example.com"
+	handler := NewHandler(conf, store, nil, nil, nil)
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	req := newMCPInitializeHTTPRequest(t, ts.URL+conf.MCPPath, token)
+	req.Host = "analytics.example.com"
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("initialize request: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected public host initialize to succeed, got %d %q", resp.StatusCode, string(body))
+	}
+}
+
+func TestMCPServerReturnsUnauthorizedForValidPublicHostWithoutBearer(t *testing.T) {
+	store, _, _ := setupMCPStore(t)
+	conf := testMCPConfig(t, "")
+	conf.PublicURL = "https://analytics.example.com"
+	handler := NewHandler(conf, store, nil, nil, nil)
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	req := newMCPInitializeHTTPRequest(t, ts.URL+conf.MCPPath, "")
+	req.Host = "analytics.example.com:443"
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("initialize request: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("expected valid public host without bearer to get 401, got %d %q", resp.StatusCode, string(body))
+	}
+}
+
+func TestMCPServerRejectsUnexpectedHostBeforeAuth(t *testing.T) {
+	store, _, token := setupMCPStore(t)
+	conf := testMCPConfig(t, "")
+	conf.PublicURL = "https://analytics.example.com"
+	handler := NewHandler(conf, store, nil, nil, nil)
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	req := newMCPInitializeHTTPRequest(t, ts.URL+conf.MCPPath, token)
+	req.Host = "unexpected.example.com"
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("initialize request: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("expected unexpected host to get 403, got %d %q", resp.StatusCode, string(body))
+	}
+}
+
+func TestMCPRequestHostUsesForwardedHostFromTrustedProxy(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "http://127.0.0.1:8080/mcp", nil)
+	req.Host = "127.0.0.1:8080"
+	req.RemoteAddr = "10.0.0.5:44321"
+	req.Header.Set("X-Forwarded-Host", "analytics.example.com")
+
+	host, allowLoopbackHost := mcpRequestHost(req, []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")})
+	if host != "analytics.example.com" {
+		t.Fatalf("expected trusted forwarded host, got %q", host)
+	}
+	if allowLoopbackHost {
+		t.Fatal("expected trusted proxy forwarded host to disable loopback host allowance")
+	}
+}
+
+func TestMCPRequestHostIgnoresForwardedHostFromUntrustedProxy(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "http://127.0.0.1:8080/mcp", nil)
+	req.Host = "127.0.0.1:8080"
+	req.RemoteAddr = "198.51.100.10:44321"
+	req.Header.Set("X-Forwarded-Host", "analytics.example.com")
+
+	host, allowLoopbackHost := mcpRequestHost(req, []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")})
+	if host != "127.0.0.1:8080" {
+		t.Fatalf("expected direct request host, got %q", host)
+	}
+	if allowLoopbackHost {
+		t.Fatal("expected untrusted external remote to disable loopback host allowance")
+	}
+}
+
+func TestMCPRequestHostParsesStandardForwardedHost(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "http://127.0.0.1:8080/mcp", nil)
+	req.Host = "127.0.0.1:8080"
+	req.RemoteAddr = "10.0.0.5:44321"
+	req.Header.Set("Forwarded", `for=203.0.113.10;proto=https;host="analytics.example.com:443"`)
+
+	host, allowLoopbackHost := mcpRequestHost(req, []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")})
+	if host != "analytics.example.com:443" {
+		t.Fatalf("expected standard Forwarded host, got %q", host)
+	}
+	if allowLoopbackHost {
+		t.Fatal("expected trusted proxy forwarded host to disable loopback host allowance")
+	}
+}
+
+func TestMCPRequestHostIgnoresForwardedHostWhenTrustedProxiesTrustAll(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "http://unexpected.example.com/mcp", nil)
+	req.Host = "unexpected.example.com"
+	req.RemoteAddr = "198.51.100.10:44321"
+	req.Header.Set("X-Forwarded-Host", "analytics.example.com")
+
+	host, allowLoopbackHost := mcpRequestHost(req, []netip.Prefix{
+		netip.MustParsePrefix("0.0.0.0/0"),
+		netip.MustParsePrefix("::/0"),
+	})
+	if host != "unexpected.example.com" {
+		t.Fatalf("expected direct request host for trust-all proxies, got %q", host)
+	}
+	if allowLoopbackHost {
+		t.Fatal("expected external trust-all remote to disable loopback host allowance")
+	}
+}
+
+func TestMCPRequestHostDisablesLoopbackAllowanceForProxyWithoutForwardedHost(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "http://127.0.0.1:8080/mcp", nil)
+	req.Host = "127.0.0.1:8080"
+	req.RemoteAddr = "10.0.0.5:44321"
+
+	host, allowLoopbackHost := mcpRequestHost(req, []netip.Prefix{netip.MustParsePrefix("10.0.0.0/8")})
+	if host != "127.0.0.1:8080" {
+		t.Fatalf("expected backend request host, got %q", host)
+	}
+	if allowLoopbackHost {
+		t.Fatal("expected proxy request without forwarded host to disable loopback host allowance")
+	}
+}
+
+func TestMCPHostValidationNormalizesPublicURLAndLoopbackHosts(t *testing.T) {
+	tests := []struct {
+		name              string
+		publicURL         string
+		requestHost       string
+		allowLoopbackHost bool
+		want              bool
+	}{
+		{
+			name:        "https public URL accepts omitted default port",
+			publicURL:   "https://analytics.example.com",
+			requestHost: "analytics.example.com",
+			want:        true,
+		},
+		{
+			name:        "https public URL accepts explicit default port",
+			publicURL:   "https://analytics.example.com",
+			requestHost: "analytics.example.com:443",
+			want:        true,
+		},
+		{
+			name:        "public host comparison ignores case and trailing dot",
+			publicURL:   "https://analytics.example.com",
+			requestHost: "ANALYTICS.EXAMPLE.COM.",
+			want:        true,
+		},
+		{
+			name:        "https public URL rejects wrong default port",
+			publicURL:   "https://analytics.example.com",
+			requestHost: "analytics.example.com:80",
+			want:        false,
+		},
+		{
+			name:        "http public URL accepts explicit default port",
+			publicURL:   "http://analytics.example.com",
+			requestHost: "analytics.example.com:80",
+			want:        true,
+		},
+		{
+			name:        "non-default public URL port requires request port",
+			publicURL:   "http://analytics.example.com:8080",
+			requestHost: "analytics.example.com",
+			want:        false,
+		},
+		{
+			name:        "non-default public URL port accepts matching request port",
+			publicURL:   "http://analytics.example.com:8080",
+			requestHost: "analytics.example.com:8080",
+			want:        true,
+		},
+		{
+			name:              "localhost stays accepted for development",
+			publicURL:         "https://analytics.example.com",
+			requestHost:       "localhost:8080",
+			allowLoopbackHost: true,
+			want:              true,
+		},
+		{
+			name:              "ipv4 loopback stays accepted for development",
+			publicURL:         "https://analytics.example.com",
+			requestHost:       "127.0.0.1:8080",
+			allowLoopbackHost: true,
+			want:              true,
+		},
+		{
+			name:              "ipv6 loopback stays accepted for development",
+			publicURL:         "https://analytics.example.com",
+			requestHost:       "[::1]:8080",
+			allowLoopbackHost: true,
+			want:              true,
+		},
+		{
+			name:        "loopback host is rejected without local request allowance",
+			publicURL:   "https://analytics.example.com",
+			requestHost: "127.0.0.1:8080",
+			want:        false,
+		},
+		{
+			name:        "localhost suffix is not loopback",
+			publicURL:   "https://analytics.example.com",
+			requestHost: "localhost.evil.example",
+			want:        false,
+		},
+		{
+			name:        "unexpected public host is rejected",
+			publicURL:   "https://analytics.example.com",
+			requestHost: "other.example.com",
+			want:        false,
+		},
+		{
+			name:        "malformed trailing bracket is rejected",
+			publicURL:   "https://analytics.example.com",
+			requestHost: "analytics.example.com]",
+			want:        false,
+		},
+		{
+			name:        "malformed leading bracket is rejected",
+			publicURL:   "https://analytics.example.com",
+			requestHost: "[analytics.example.com",
+			want:        false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isAllowedMCPHost(tt.requestHost, tt.publicURL, tt.allowLoopbackHost); got != tt.want {
+				t.Fatalf("isAllowedMCPHost(%q, %q) = %v, want %v", tt.requestHost, tt.publicURL, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -51,6 +309,7 @@ func TestMCPServerRejectsMalformedAndRevokedBearerToken(t *testing.T) {
 	req.Header.Set("Accept", "application/json, text/event-stream")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Token "+token)
+	req.RemoteAddr = "127.0.0.1:12345"
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {
@@ -72,6 +331,7 @@ func TestMCPServerRejectsMalformedAndRevokedBearerToken(t *testing.T) {
 	req.Header.Set("Accept", "application/json, text/event-stream")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+token)
+	req.RemoteAddr = "127.0.0.1:12345"
 	rec = httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {
@@ -1065,6 +1325,21 @@ func connectMCPClient(t *testing.T, endpoint, token string) *mcp.ClientSession {
 		t.Fatalf("connect MCP client: %v", err)
 	}
 	return session
+}
+
+func newMCPInitializeHTTPRequest(t *testing.T, endpoint, token string) *http.Request {
+	t.Helper()
+	body := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test-client","version":"test"}}}`)
+	req, err := http.NewRequest(http.MethodPost, endpoint, body)
+	if err != nil {
+		t.Fatalf("new initialize request: %v", err)
+	}
+	req.Header.Set("Accept", "application/json, text/event-stream")
+	req.Header.Set("Content-Type", "application/json")
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	return req
 }
 
 type authRoundTripper struct {

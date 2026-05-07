@@ -6,6 +6,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/netip"
+	"net/url"
 	"strings"
 	"time"
 
@@ -57,11 +59,12 @@ func NewHandler(conf *config.Config, store *database.Store, tenantStores *databa
 	handler := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
 		return svc.mcp
 	}, &mcp.StreamableHTTPOptions{
-		Stateless:    true,
-		JSONResponse: true,
-		Logger:       logger,
+		Stateless:                  true,
+		JSONResponse:               true,
+		Logger:                     logger,
+		DisableLocalhostProtection: true,
 	})
-	return svc.authMiddleware(handler)
+	return svc.hostValidationMiddleware(svc.authMiddleware(handler))
 }
 
 func (s *service) newMCPServer() *mcp.Server {
@@ -73,6 +76,17 @@ func (s *service) newMCPServer() *mcp.Server {
 	s.registerTools(server)
 	s.registerResources(server)
 	return server
+}
+
+func (s *service) hostValidationMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestHost, allowLoopbackHost := mcpRequestHost(r, s.conf.GetTrustedProxyNetworks())
+		if !isAllowedMCPHost(requestHost, s.conf.PublicURL, allowLoopbackHost) {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *service) authMiddleware(next http.Handler) http.Handler {
@@ -109,6 +123,157 @@ func (s *service) authMiddleware(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), authContextKey{}, authz)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func mcpRequestHost(r *http.Request, trustedProxies []netip.Prefix) (string, bool) {
+	if isTrustedMCPProxyRequest(r, trustedProxies) && !trustsAllMCPProxies(trustedProxies) {
+		if host := forwardedMCPHost(r.Header); host != "" {
+			return host, false
+		}
+		return r.Host, false
+	}
+	return r.Host, isLoopbackMCPRemote(r.RemoteAddr)
+}
+
+func isTrustedMCPProxyRequest(r *http.Request, trustedProxies []netip.Prefix) bool {
+	directIP := shared.RemoteIPFromAddr(r.RemoteAddr)
+	parsedDirectIP, ok := shared.ParseAddr(directIP)
+	return ok && shared.IsTrustedProxy(parsedDirectIP, trustedProxies)
+}
+
+func trustsAllMCPProxies(trustedProxies []netip.Prefix) bool {
+	for _, prefix := range trustedProxies {
+		if prefix.Bits() == 0 {
+			return true
+		}
+	}
+	return false
+}
+
+func isLoopbackMCPRemote(remoteAddr string) bool {
+	directIP := shared.RemoteIPFromAddr(remoteAddr)
+	parsedDirectIP, ok := shared.ParseAddr(directIP)
+	return ok && parsedDirectIP.IsLoopback()
+}
+
+func forwardedMCPHost(header http.Header) string {
+	if host := firstMCPHeaderToken(header.Values("X-Forwarded-Host")); host != "" {
+		return host
+	}
+
+	for _, entry := range mcpHeaderTokens(header.Values("Forwarded")) {
+		for _, part := range strings.Split(entry, ";") {
+			key, value, ok := strings.Cut(part, "=")
+			if !ok || !strings.EqualFold(strings.TrimSpace(key), "host") {
+				continue
+			}
+			return strings.Trim(strings.TrimSpace(value), `"`)
+		}
+	}
+	return ""
+}
+
+func firstMCPHeaderToken(values []string) string {
+	tokens := mcpHeaderTokens(values)
+	if len(tokens) == 0 {
+		return ""
+	}
+	return tokens[0]
+}
+
+func mcpHeaderTokens(values []string) []string {
+	var tokens []string
+	for _, value := range values {
+		for _, part := range strings.Split(value, ",") {
+			token := strings.TrimSpace(part)
+			if token != "" {
+				tokens = append(tokens, token)
+			}
+		}
+	}
+	return tokens
+}
+
+type mcpHost struct {
+	name string
+	port string
+}
+
+func isAllowedMCPHost(requestHost, publicURL string, allowLoopbackHost bool) bool {
+	requested, ok := parseMCPHost(requestHost)
+	if !ok {
+		return false
+	}
+	if allowLoopbackHost && isLoopbackMCPHost(requested.name) {
+		return true
+	}
+
+	public, defaultPort, ok := publicMCPHost(publicURL)
+	if !ok || requested.name != public.name {
+		return false
+	}
+	if requested.port == "" {
+		return public.port == defaultPort
+	}
+	return requested.port == public.port
+}
+
+func parseMCPHost(raw string) (mcpHost, bool) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return mcpHost{}, false
+	}
+	parsed, err := url.Parse("//" + trimmed)
+	if err != nil || parsed.Host == "" || parsed.User != nil {
+		return mcpHost{}, false
+	}
+	host := normalizeMCPHost(parsed.Hostname())
+	if host == "" {
+		return mcpHost{}, false
+	}
+	return mcpHost{name: host, port: parsed.Port()}, true
+}
+
+func publicMCPHost(publicURL string) (mcpHost, string, bool) {
+	parsed, err := url.Parse(strings.TrimSpace(publicURL))
+	if err != nil || parsed.Hostname() == "" {
+		return mcpHost{}, "", false
+	}
+	defaultPort := defaultMCPPort(parsed.Scheme)
+	if defaultPort == "" {
+		return mcpHost{}, "", false
+	}
+	port := parsed.Port()
+	if port == "" {
+		port = defaultPort
+	}
+	host := normalizeMCPHost(parsed.Hostname())
+	return mcpHost{name: host, port: port}, defaultPort, host != ""
+}
+
+func normalizeMCPHost(host string) string {
+	host = strings.TrimSpace(strings.ToLower(host))
+	return strings.TrimSuffix(host, ".")
+}
+
+func defaultMCPPort(scheme string) string {
+	switch strings.ToLower(strings.TrimSpace(scheme)) {
+	case "http":
+		return "80"
+	case "https":
+		return "443"
+	default:
+		return ""
+	}
+}
+
+func isLoopbackMCPHost(host string) bool {
+	host = normalizeMCPHost(host)
+	if host == "localhost" {
+		return true
+	}
+	addr, err := netip.ParseAddr(host)
+	return err == nil && addr.IsLoopback()
 }
 
 func extractBearerToken(r *http.Request) string {

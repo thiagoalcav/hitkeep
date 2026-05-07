@@ -26,6 +26,8 @@ func TestServerMountsMCPRouteWhenEnabled(t *testing.T) {
 	}()
 
 	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`))
+	req.Host = "localhost:8080"
+	req.RemoteAddr = "127.0.0.1:12345"
 	req.Header.Set("Accept", "application/json, text/event-stream")
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -50,6 +52,8 @@ func TestServerNormalizesRootMCPPath(t *testing.T) {
 	}()
 
 	req := httptest.NewRequest(http.MethodPost, "/mcp", strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}`))
+	req.Host = "localhost:8080"
+	req.RemoteAddr = "127.0.0.1:12345"
 	req.Header.Set("Accept", "application/json, text/event-stream")
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()

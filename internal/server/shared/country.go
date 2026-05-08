@@ -66,10 +66,10 @@ func countryCodeFromCDNHeaders(r *http.Request) string {
 		return code
 	}
 	if code := r.Header.Get("X-Akamai-Edgescape"); code != "" {
-		for _, part := range strings.Split(code, ",") {
+		for part := range strings.SplitSeq(code, ",") {
 			part = strings.TrimSpace(part)
-			if strings.HasPrefix(part, "country_code=") {
-				return strings.TrimPrefix(part, "country_code=")
+			if after, ok := strings.CutPrefix(part, "country_code="); ok {
+				return after
 			}
 		}
 	}

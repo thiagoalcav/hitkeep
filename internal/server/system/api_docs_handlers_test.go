@@ -2,6 +2,7 @@ package system
 
 import (
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -565,12 +566,7 @@ func hasNamedParam(params []any, name string) bool {
 }
 
 func containsString(values []string, want string) bool {
-	for _, value := range values {
-		if value == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(values, want)
 }
 
 func operationHasAPIClientOnlySecurity(op map[string]any) bool {

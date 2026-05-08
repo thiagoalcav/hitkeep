@@ -235,7 +235,7 @@ func auditSeededGoogleSearchConsoleFacts(ctx context.Context, store *database.St
 func buildGoogleSearchConsoleFactInputs(siteID uuid.UUID, propertyURI string, days int, now time.Time) []database.SearchConsoleFactInput {
 	seedDays := googleSearchConsoleSeedDays(days)
 	rows := make([]database.SearchConsoleFactInput, 0, seedDays*len(googleSearchConsoleSeedQueries()))
-	for day := 0; day < seedDays; day++ {
+	for day := range seedDays {
 		date := searchConsoleSeedDate(now.AddDate(0, 0, -(day + 2)))
 		for index, query := range googleSearchConsoleSeedQueries() {
 			rows = append(rows, googleSearchConsoleSeedFact(siteID, propertyURI, date, day, index, seedDays, query, now))

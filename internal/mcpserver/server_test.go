@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"net/netip"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -553,7 +554,7 @@ func TestMCPSearchConsoleReturnsExplicitSectionsWithFiltersAndCappedLimit(t *tes
 	if err != nil {
 		t.Fatalf("ResolveSiteStore: %v", err)
 	}
-	for i := 0; i < 60; i++ {
+	for i := range 60 {
 		fact := searchConsoleFact(site, i+1, (i+1)*10)
 		fact.Query = "filtered query " + strconv.Itoa(i)
 		fact.Page = "https://" + site.Domain + "/landing?utm=test"
@@ -1372,12 +1373,7 @@ func hasResource(resources []*mcp.Resource, uri string) bool {
 }
 
 func hasWarning(warnings []string, want string) bool {
-	for _, warning := range warnings {
-		if warning == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(warnings, want)
 }
 
 func mcpToolErrorText(res *mcp.CallToolResult) string {

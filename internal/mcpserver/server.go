@@ -162,7 +162,7 @@ func forwardedMCPHost(header http.Header) string {
 	}
 
 	for _, entry := range mcpHeaderTokens(header.Values("Forwarded")) {
-		for _, part := range strings.Split(entry, ";") {
+		for part := range strings.SplitSeq(entry, ";") {
 			key, value, ok := strings.Cut(part, "=")
 			if !ok || !strings.EqualFold(strings.TrimSpace(key), "host") {
 				continue
@@ -184,7 +184,7 @@ func firstMCPHeaderToken(values []string) string {
 func mcpHeaderTokens(values []string) []string {
 	var tokens []string
 	for _, value := range values {
-		for _, part := range strings.Split(value, ",") {
+		for part := range strings.SplitSeq(value, ",") {
 			token := strings.TrimSpace(part)
 			if token != "" {
 				tokens = append(tokens, token)

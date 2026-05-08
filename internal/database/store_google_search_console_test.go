@@ -191,7 +191,7 @@ func TestListGoogleSearchConsoleSyncCandidatesSelectsDueConnectedMappings(t *tes
 		SiteID:        pendingSite,
 		TeamID:        connectedTeamID,
 		State:         "pending",
-		LastAttemptAt: ptrTime(now.Add(-time.Hour)),
+		LastAttemptAt: new(now.Add(-time.Hour)),
 		Manual:        true,
 	}); err != nil {
 		t.Fatalf("seed pending sync state: %v", err)
@@ -209,7 +209,7 @@ func TestListGoogleSearchConsoleSyncCandidatesSelectsDueConnectedMappings(t *tes
 		TeamID:            connectedTeamID,
 		State:             "failed",
 		LastErrorCategory: "quota_limited",
-		NextRetryAt:       ptrTime(now.Add(time.Hour)),
+		NextRetryAt:       new(now.Add(time.Hour)),
 	}); err != nil {
 		t.Fatalf("seed future retry sync state: %v", err)
 	}
@@ -299,8 +299,9 @@ func seedGoogleSearchConsoleCandidateSite(t *testing.T, store *Store, userID, te
 	return site.ID
 }
 
+//go:fix inline
 func ptrTime(value time.Time) *time.Time {
-	return &value
+	return new(value)
 }
 
 func requireDatabaseGoogleSearchConsoleConnection(t *testing.T, store *Store, teamID uuid.UUID) *GoogleSearchConsoleConnection {

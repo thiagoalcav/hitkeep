@@ -1,6 +1,6 @@
 module hitkeep
 
-go 1.26.2
+go 1.26.3
 
 exclude (
 	github.com/armon/go-metrics v0.4.2

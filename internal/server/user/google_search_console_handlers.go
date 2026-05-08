@@ -840,8 +840,8 @@ func googleSearchConsolePropertyMatchesSite(siteDomain, propertyURI string) bool
 		return false
 	}
 	property := strings.ToLower(strings.TrimSpace(propertyURI))
-	if strings.HasPrefix(property, "sc-domain:") {
-		propertyDomain := googleSearchConsoleNormalizeHost(strings.TrimPrefix(property, "sc-domain:"))
+	if after, ok := strings.CutPrefix(property, "sc-domain:"); ok {
+		propertyDomain := googleSearchConsoleNormalizeHost(after)
 		return propertyDomain != "" && (siteHost == propertyDomain || strings.HasSuffix(siteHost, "."+propertyDomain))
 	}
 	parsed, err := url.Parse(property)

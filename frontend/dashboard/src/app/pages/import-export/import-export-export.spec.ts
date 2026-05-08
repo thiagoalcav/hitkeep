@@ -213,6 +213,30 @@ describe('ImportExportExportPage', () => {
         expect(siteExportRow('site-1').textContent).not.toContain('Site export downloaded.');
     });
 
+    it('keeps repeated alternate-format menu reads bound to the intended site row', () => {
+        setSites([site('site-1', 'alpha.example.com'), site('site-2', 'beta.example.com')]);
+
+        const component = fixture.componentInstance as unknown as ExportPageTestAccess;
+        const firstMenu = component.siteExportMenuItems('site-1');
+        const secondMenu = component.siteExportMenuItems('site-1');
+
+        expect(secondMenu.map((item) => item.label)).toEqual(firstMenu.map((item) => item.label));
+
+        const item = secondMenu.find((entry) => entry.label === 'JSON');
+        expect(item).toBeTruthy();
+        (item!.command as (() => void) | undefined)?.();
+        fixture.detectChanges();
+
+        const req = httpMock.expectOne('/api/sites/site-1/takeout?format=json');
+        expect(req.request.method).toBe('GET');
+        httpMock.expectNone('/api/sites/site-2/takeout?format=json');
+        req.flush(new Blob(['json'], { type: 'application/json' }), {
+            headers: new HttpHeaders({
+                'content-disposition': 'attachment; filename="alpha.json"'
+            })
+        });
+    });
+
     it('keeps per-site error state isolated to the selected row', () => {
         setSites([site('site-1', 'alpha.example.com'), site('site-2', 'beta.example.com')]);
 

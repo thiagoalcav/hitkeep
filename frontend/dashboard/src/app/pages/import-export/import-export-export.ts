@@ -32,6 +32,7 @@ export class ImportExportExportPage {
     private readonly siteService = inject(SiteService);
     private readonly transloco = inject(TranslocoService);
     private readonly activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+    private readonly siteExportMenuItemsCache = new Map<string, { language: string; items: MenuItem[] }>();
     protected readonly sites = this.siteService.sites;
     protected readonly isSitesLoading = this.siteService.isLoading;
     protected readonly allSitesExportMenuItems = computed<MenuItem[]>(() => {
@@ -60,13 +61,20 @@ export class ImportExportExportPage {
     }
 
     protected siteExportMenuItems(siteID: string): MenuItem[] {
-        this.activeLanguage();
-        return buildTakeoutExportMenuItems(this.transloco, (format) => {
+        const language = this.activeLanguage();
+        const cached = this.siteExportMenuItemsCache.get(siteID);
+        if (cached?.language === language) {
+            return cached.items;
+        }
+
+        const items = buildTakeoutExportMenuItems(this.transloco, (format) => {
             const site = this.sites().find((entry) => entry.id === siteID);
             if (site) {
                 this.downloadSite(site, format);
             }
         });
+        this.siteExportMenuItemsCache.set(siteID, { language, items });
+        return items;
     }
 
     protected isSiteExporting(siteID: string): boolean {

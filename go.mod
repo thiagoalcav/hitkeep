@@ -26,7 +26,7 @@ require (
 	github.com/pquerna/otp v1.5.0
 	github.com/rs/cors v1.11.1
 	github.com/stripe/stripe-go/v84 v84.4.1
-	github.com/wneessen/go-mail v0.7.2
+	github.com/wneessen/go-mail v0.7.3
 	github.com/zendev-sh/goai v0.7.6
 	golang.org/x/crypto v0.51.0
 	golang.org/x/oauth2 v0.36.0
@@ -34,7 +34,7 @@ require (
 	golang.org/x/sys v0.44.0
 	golang.org/x/text v0.37.0
 	golang.org/x/time v0.15.0
-	google.golang.org/api v0.278.0
+	google.golang.org/api v0.279.0
 )
 
 require (

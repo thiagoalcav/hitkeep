@@ -434,6 +434,299 @@ func TestMCPToolDeniesUnscopedSite(t *testing.T) {
 	}
 }
 
+func TestMCPOpportunitiesReturnsSafeFinalData(t *testing.T) {
+	store, site, token := setupMCPStore(t)
+	ctx := context.Background()
+	seedMCPOpportunity(t, ctx, store, site)
+
+	conf := testMCPConfig(t, "")
+	handler := NewHandler(conf, store, nil, nil, nil)
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	session := connectMCPClient(t, ts.URL+conf.MCPPath, token)
+	defer session.Close()
+
+	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "hitkeep_get_opportunities",
+		Arguments: map[string]any{
+			"site_id": site.ID.String(),
+			"status":  "new",
+			"limit":   10,
+		},
+	})
+	requireSuccessfulMCPTool(t, res, err)
+	raw := marshalMCPStructuredContent(t, res)
+	requireNoMCPOpportunitySecrets(t, raw)
+	requireMCPOpportunityOutput(t, raw, site.ID)
+}
+
+func TestMCPOpportunitiesReturnsEmptyArrayWhenNoRowsExist(t *testing.T) {
+	store, site, token := setupMCPStore(t)
+	conf := testMCPConfig(t, "")
+	handler := NewHandler(conf, store, nil, nil, nil)
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	session := connectMCPClient(t, ts.URL+conf.MCPPath, token)
+	defer session.Close()
+
+	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "hitkeep_get_opportunities",
+		Arguments: map[string]any{
+			"site_id": site.ID.String(),
+			"status":  "all",
+			"limit":   10,
+		},
+	})
+	requireSuccessfulMCPTool(t, res, err)
+	raw := marshalMCPStructuredContent(t, res)
+	var output map[string]any
+	if err := json.Unmarshal([]byte(raw), &output); err != nil {
+		t.Fatalf("unmarshal opportunities output: %v", err)
+	}
+	opportunities, ok := output["opportunities"].([]any)
+	if !ok {
+		t.Fatalf("expected opportunities to be an array, got %#v in %s", output["opportunities"], raw)
+	}
+	if len(opportunities) != 0 {
+		t.Fatalf("expected no opportunities, got %#v", opportunities)
+	}
+}
+
+func TestMCPOpportunitiesExposeOnlyCitedEvidence(t *testing.T) {
+	store, site, token := setupMCPStore(t)
+	ctx := context.Background()
+	teamID, err := store.GetSiteTenantID(ctx, site.ID)
+	if err != nil {
+		t.Fatalf("GetSiteTenantID: %v", err)
+	}
+	input := mcpOpportunityInput(teamID, site.ID, uuid.New())
+	input.Evidence = append(input.Evidence, api.OpportunityEvidence{
+		ID:       "uncited_internal_signal",
+		LabelKey: "opportunities.evidence.fixture",
+		Value:    "do-not-show-in-mcp",
+	})
+	input.CitedEvidenceIDs = []string{"checkout_starts"}
+	if _, err := store.UpsertOpportunities(ctx, []database.OpportunityInput{input}); err != nil {
+		t.Fatalf("UpsertOpportunities: %v", err)
+	}
+
+	conf := testMCPConfig(t, "")
+	handler := NewHandler(conf, store, nil, nil, nil)
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	session := connectMCPClient(t, ts.URL+conf.MCPPath, token)
+	defer session.Close()
+
+	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "hitkeep_get_opportunities",
+		Arguments: map[string]any{
+			"site_id": site.ID.String(),
+		},
+	})
+	requireSuccessfulMCPTool(t, res, err)
+	raw := marshalMCPStructuredContent(t, res)
+	if strings.Contains(raw, "uncited_internal_signal") || strings.Contains(raw, "do-not-show-in-mcp") {
+		t.Fatalf("MCP Opportunities leaked uncited evidence: %s", raw)
+	}
+
+	var output opportunitiesOutput
+	if err := json.Unmarshal([]byte(raw), &output); err != nil {
+		t.Fatalf("unmarshal opportunities output: %v", err)
+	}
+	if len(output.Opportunities) != 1 {
+		t.Fatalf("expected one opportunity, got %+v", output.Opportunities)
+	}
+	if len(output.Opportunities[0].Evidence) != 1 || output.Opportunities[0].Evidence[0].ID != "checkout_starts" {
+		t.Fatalf("expected only cited evidence in MCP output, got %+v", output.Opportunities[0].Evidence)
+	}
+}
+
+func TestMCPOpportunitiesReturnsRankedFinalData(t *testing.T) {
+	store, site, token := setupMCPStore(t)
+	ctx := context.Background()
+	teamID, err := store.GetSiteTenantID(ctx, site.ID)
+	if err != nil {
+		t.Fatalf("GetSiteTenantID: %v", err)
+	}
+	runID := uuid.New()
+	lowActive := mcpOpportunityInput(teamID, site.ID, runID)
+	lowActive.ID = uuid.New()
+	lowActive.Status = "new"
+	lowActive.Score = 60
+	lowActive.ScoreBreakdown = api.OpportunityScoreBreakdown{Impact: 55, Actionability: 70, EvidenceFit: 70, Total: 60}
+	highActive := mcpOpportunityInput(teamID, site.ID, runID)
+	highActive.ID = uuid.New()
+	highActive.Status = "saved"
+	highActive.Score = 88
+	highActive.ScoreBreakdown = api.OpportunityScoreBreakdown{Impact: 85, Actionability: 90, EvidenceFit: 90, Total: 88}
+	done := mcpOpportunityInput(teamID, site.ID, runID)
+	done.ID = uuid.New()
+	done.Status = "done"
+	done.Score = 99
+	done.ScoreBreakdown = api.OpportunityScoreBreakdown{Impact: 99, Actionability: 99, EvidenceFit: 99, Total: 99}
+	if _, err := store.UpsertOpportunities(ctx, []database.OpportunityInput{lowActive, done, highActive}); err != nil {
+		t.Fatalf("UpsertOpportunities: %v", err)
+	}
+
+	conf := testMCPConfig(t, "")
+	handler := NewHandler(conf, store, nil, nil, nil)
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	session := connectMCPClient(t, ts.URL+conf.MCPPath, token)
+	defer session.Close()
+
+	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "hitkeep_get_opportunities",
+		Arguments: map[string]any{
+			"site_id": site.ID.String(),
+			"status":  "all",
+			"limit":   10,
+		},
+	})
+	requireSuccessfulMCPTool(t, res, err)
+	raw := marshalMCPStructuredContent(t, res)
+	var output opportunitiesOutput
+	if err := json.Unmarshal([]byte(raw), &output); err != nil {
+		t.Fatalf("unmarshal opportunities output: %v", err)
+	}
+	got := mcpOpportunityIDs(output.Opportunities)
+	want := []string{highActive.ID.String(), lowActive.ID.String(), done.ID.String()}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("expected ranked opportunities %v, got %v", want, got)
+	}
+}
+
+func seedMCPOpportunity(t *testing.T, ctx context.Context, store *database.Store, site *api.Site) {
+	t.Helper()
+	teamID, err := store.GetSiteTenantID(ctx, site.ID)
+	if err != nil {
+		t.Fatalf("GetSiteTenantID: %v", err)
+	}
+	requireMCPAIRunRejectsRawPayload(t, ctx, store, teamID, site.ID)
+
+	runID, err := store.AppendAIRun(ctx, database.AIRunParams{
+		TeamID:          teamID,
+		SiteID:          site.ID,
+		Feature:         "opportunities",
+		Provider:        "openai",
+		Model:           "gpt-test",
+		TemplateVersion: "opportunities.v1",
+		EvidenceIDs:     []string{"checkout_starts"},
+		InputHash:       "input-hash",
+		OutputHash:      "output-hash",
+		OutputJSON:      `{"title_key":"opportunities.catalog.checkout_conversion.title"}`,
+		Status:          "success",
+		CreatedAt:       time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatalf("AppendAIRun: %v", err)
+	}
+	_, err = store.UpsertOpportunities(ctx, []database.OpportunityInput{mcpOpportunityInput(teamID, site.ID, runID)})
+	if err != nil {
+		t.Fatalf("UpsertOpportunities: %v", err)
+	}
+}
+
+func requireMCPAIRunRejectsRawPayload(t *testing.T, ctx context.Context, store *database.Store, teamID, siteID uuid.UUID) {
+	t.Helper()
+	_, err := store.AppendAIRun(ctx, database.AIRunParams{
+		TeamID:          teamID,
+		SiteID:          siteID,
+		Feature:         "opportunities",
+		Provider:        "openai",
+		Model:           "gpt-test",
+		TemplateVersion: "opportunities.v1",
+		OutputJSON:      `{"raw_provider_response":"do not persist","raw_prompt":"do not persist"}`,
+		Status:          "success",
+		CreatedAt:       time.Now().UTC(),
+	})
+	if err == nil || !strings.Contains(err.Error(), "raw") {
+		t.Fatalf("expected raw AI payload to be rejected before MCP exposure, got %v", err)
+	}
+}
+
+func mcpOpportunityInput(teamID, siteID, runID uuid.UUID) database.OpportunityInput {
+	return database.OpportunityInput{
+		TeamID:          teamID,
+		SiteID:          siteID,
+		Kind:            "conversion",
+		TypeKey:         "opportunities.catalog.checkout_conversion.type",
+		TitleKey:        "opportunities.catalog.checkout_conversion.title",
+		SummaryKey:      "opportunities.catalog.checkout_conversion.summary",
+		ActionKey:       "opportunities.catalog.checkout_conversion.action",
+		DigestKey:       "opportunities.catalog.checkout_conversion.digest",
+		CopyParams:      map[string]any{"conversion_rate": 1.8, "checkout_starts": 80},
+		ImpactValue:     "+12%",
+		ImpactLabelKey:  "opportunities.impact.traffic",
+		Confidence:      "high",
+		Score:           92,
+		ScoreBreakdown:  api.OpportunityScoreBreakdown{Sample: 90, Impact: 88, Urgency: 70, EvidenceFit: 99, Total: 92},
+		Status:          "new",
+		RouteLabelKey:   "opportunities.routes.ecommerce",
+		RouteParams:     map[string]any{"tab": "checkout"},
+		RouteIcon:       "pi pi-shopping-cart",
+		DetectorVersion: "checkout-conversion@v1",
+		Evidence: []api.OpportunityEvidence{{
+			ID:           "checkout_starts",
+			LabelKey:     "opportunities.evidence.checkout_starts",
+			Value:        "80",
+			DetailKey:    "opportunities.evidence.checkout_starts.detail",
+			DetailParams: map[string]any{"completed": 20},
+		}},
+		CitedEvidenceIDs: []string{"checkout_starts"},
+		AIRunID:          runID,
+		GeneratedAt:      time.Now().UTC(),
+	}
+}
+
+func requireNoMCPOpportunitySecrets(t *testing.T, raw string) {
+	t.Helper()
+	for _, forbidden := range []string{"do not expose", "raw_provider_response", "output_json", "raw_prompt", "provider_error_body", "team_id", "ai_run_id"} {
+		if strings.Contains(raw, forbidden) {
+			t.Fatalf("MCP Opportunities leaked forbidden field %q in %s", forbidden, raw)
+		}
+	}
+}
+
+func requireMCPOpportunityOutput(t *testing.T, raw string, siteID uuid.UUID) {
+	t.Helper()
+	var output opportunitiesOutput
+	if err := json.Unmarshal([]byte(raw), &output); err != nil {
+		t.Fatalf("unmarshal opportunities output: %v", err)
+	}
+	if output.SiteID != siteID.String() {
+		t.Fatalf("unexpected site id: %+v", output)
+	}
+	if len(output.Opportunities) != 1 {
+		t.Fatalf("expected one opportunity, got %+v", output.Opportunities)
+	}
+	opp := output.Opportunities[0]
+	if opp.TitleKey != "opportunities.catalog.checkout_conversion.title" {
+		t.Fatalf("expected localized title key, got %+v", opp)
+	}
+	if len(opp.CitedEvidenceIDs) != 1 || opp.CitedEvidenceIDs[0] != "checkout_starts" {
+		t.Fatalf("expected cited evidence ids, got %+v", opp.CitedEvidenceIDs)
+	}
+	if opp.CopyParams["conversion_rate"] == nil {
+		t.Fatalf("expected copy params for translation interpolation, got %+v", opp.CopyParams)
+	}
+	if opp.ScoreBreakdown.Total != opp.Score || opp.ScoreBreakdown.EvidenceFit == 0 {
+		t.Fatalf("expected safe score breakdown, got %+v", opp.ScoreBreakdown)
+	}
+}
+
+func mcpOpportunityIDs(opportunities []mcpOpportunity) []string {
+	out := make([]string, 0, len(opportunities))
+	for _, opportunity := range opportunities {
+		out = append(out, opportunity.ID)
+	}
+	return out
+}
+
 func TestMCPToolRejectsRangeBeyondConfiguredLimit(t *testing.T) {
 	store, site, token := setupMCPStore(t)
 	conf := testMCPConfig(t, "")
@@ -843,6 +1136,9 @@ func TestMCPResourcesListAndReadHelp(t *testing.T) {
 	}
 	if !strings.Contains(help.Contents[0].Text, "Search Console") || !strings.Contains(help.Contents[0].Text, "imported") {
 		t.Fatalf("expected Search Console imported-data guidance, got %q", help.Contents[0].Text)
+	}
+	if !strings.Contains(help.Contents[0].Text, "Opportunities") || !strings.Contains(help.Contents[0].Text, "localization keys") {
+		t.Fatalf("expected Opportunities safe-data guidance, got %q", help.Contents[0].Text)
 	}
 }
 

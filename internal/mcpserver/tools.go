@@ -11,6 +11,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"hitkeep/internal/api"
+	opportunitysvc "hitkeep/internal/opportunities"
 )
 
 func (s *service) registerTools(server *mcp.Server) {
@@ -52,6 +53,12 @@ func (s *service) registerTools(server *mcp.Server) {
 		Description: "Read AI crawler fetch overview, timeseries, and optional fetch-to-visit correlation for one site.",
 		Annotations: readOnly,
 	}, s.getAIVisibility)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "hitkeep_get_opportunities",
+		Title:       "Get HitKeep Opportunities",
+		Description: "Read saved localized Opportunities recommendations for one site without raw prompts or provider payloads.",
+		Annotations: readOnly,
+	}, s.getOpportunities)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "hitkeep_get_search_console_status",
 		Title:       "Get HitKeep Search Console Status",
@@ -291,6 +298,115 @@ func (s *service) getAIVisibility(ctx context.Context, _ *mcp.CallToolRequest, i
 		output.Correlation = correlation
 	}
 	return nil, output, nil
+}
+
+func (s *service) getOpportunities(ctx context.Context, _ *mcp.CallToolRequest, input opportunitiesInput) (*mcp.CallToolResult, opportunitiesOutput, error) {
+	siteID, status, limit, err := s.parseOpportunitiesRequest(ctx, input)
+	if err != nil {
+		return nil, opportunitiesOutput{}, err
+	}
+	opportunities, err := s.store.ListOpportunities(ctx, siteID)
+	if err != nil {
+		return nil, opportunitiesOutput{}, err
+	}
+	opportunities = opportunitysvc.RankOpportunities(opportunities)
+	return nil, opportunitiesOutput{SiteID: siteID.String(), Opportunities: toMCPOpportunities(opportunities, status, limit)}, nil
+}
+
+func (s *service) parseOpportunitiesRequest(ctx context.Context, input opportunitiesInput) (uuid.UUID, string, int, error) {
+	siteID, err := uuid.Parse(strings.TrimSpace(input.SiteID))
+	if err != nil {
+		return uuid.Nil, "", 0, errors.New("invalid site_id")
+	}
+	if _, err := s.requireSiteView(ctx, siteID); err != nil {
+		return uuid.Nil, "", 0, err
+	}
+	status, err := normalizeOpportunityStatus(input.Status)
+	if err != nil {
+		return uuid.Nil, "", 0, err
+	}
+	return siteID, status, normalizeLimit(input.Limit), nil
+}
+
+func toMCPOpportunities(opportunities []api.Opportunity, status string, limit int) []mcpOpportunity {
+	filtered := make([]mcpOpportunity, 0, min(len(opportunities), limit))
+	for _, opportunity := range opportunities {
+		if !opportunityStatusMatches(opportunity, status) {
+			continue
+		}
+		filtered = append(filtered, toMCPOpportunity(opportunity))
+		if len(filtered) == limit {
+			break
+		}
+	}
+	return filtered
+}
+
+func opportunityStatusMatches(opportunity api.Opportunity, status string) bool {
+	return status == "" || opportunity.Status == status
+}
+
+func toMCPOpportunity(opportunity api.Opportunity) mcpOpportunity {
+	return mcpOpportunity{
+		ID:               opportunity.ID.String(),
+		SiteID:           opportunity.SiteID.String(),
+		Kind:             opportunity.Kind,
+		TypeKey:          opportunity.TypeKey,
+		TitleKey:         opportunity.TitleKey,
+		SummaryKey:       opportunity.SummaryKey,
+		ActionKey:        opportunity.ActionKey,
+		DigestKey:        opportunity.DigestKey,
+		CopyParams:       opportunity.CopyParams,
+		ImpactValue:      opportunity.ImpactValue,
+		ImpactLabelKey:   opportunity.ImpactLabelKey,
+		Confidence:       opportunity.Confidence,
+		Score:            opportunity.Score,
+		ScoreBreakdown:   opportunity.ScoreBreakdown,
+		Status:           opportunity.Status,
+		RouteLabelKey:    opportunity.RouteLabelKey,
+		RouteParams:      opportunity.RouteParams,
+		RouteIcon:        opportunity.RouteIcon,
+		DetectorVersion:  opportunity.DetectorVersion,
+		Evidence:         citedMCPOpportunityEvidence(opportunity.Evidence, opportunity.CitedEvidenceIDs),
+		CitedEvidenceIDs: opportunity.CitedEvidenceIDs,
+		GeneratedAt:      formatMCPTime(opportunity.GeneratedAt),
+		CreatedAt:        formatMCPTime(opportunity.CreatedAt),
+		UpdatedAt:        formatMCPTime(opportunity.UpdatedAt),
+	}
+}
+
+func citedMCPOpportunityEvidence(evidence []api.OpportunityEvidence, citedEvidenceIDs []string) []api.OpportunityEvidence {
+	cited := make(map[string]bool, len(citedEvidenceIDs))
+	for _, id := range citedEvidenceIDs {
+		if strings.TrimSpace(id) != "" {
+			cited[id] = true
+		}
+	}
+	out := make([]api.OpportunityEvidence, 0, len(evidence))
+	for _, item := range evidence {
+		if cited[item.ID] {
+			out = append(out, item)
+		}
+	}
+	return out
+}
+
+var opportunityStatusFilters = map[string]string{
+	"":          "",
+	"all":       "",
+	"new":       "new",
+	"saved":     "saved",
+	"done":      "done",
+	"dismissed": "dismissed",
+}
+
+func normalizeOpportunityStatus(raw string) (string, error) {
+	status := strings.ToLower(strings.TrimSpace(raw))
+	normalized, ok := opportunityStatusFilters[status]
+	if !ok {
+		return "", fmt.Errorf("invalid opportunity status %q", raw)
+	}
+	return normalized, nil
 }
 
 func (s *service) getSearchConsoleStatus(ctx context.Context, _ *mcp.CallToolRequest, input searchConsoleStatusInput) (*mcp.CallToolResult, searchConsoleStatusOutput, error) {

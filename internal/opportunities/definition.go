@@ -53,6 +53,7 @@ func DefaultOpportunityDefinitions() []OpportunityDefinition {
 		checkoutOpportunityDefinition,
 		aiVisibilityOpportunityDefinition,
 		trafficQualityOpportunityDefinition,
+		webVitalsOpportunityDefinition,
 		searchVisibilityOpportunityDefinition,
 		setupGoalSuggestionOpportunityDefinition,
 		setupFunnelSuggestionOpportunityDefinition,
@@ -139,6 +140,37 @@ var trafficQualityOpportunityDefinition = OpportunityDefinition{
 	RequiredSignals:     []OpportunitySignal{OpportunitySignalSiteStats},
 	RouteIcon:           "pi pi-chart-line",
 	Detect:              detectTrafficQualityOpportunity,
+}
+
+var webVitalsOpportunityDefinition = OpportunityDefinition{
+	Key:      "web-vitals-performance",
+	Kind:     "performance",
+	Category: DetectorCategoryPerformance,
+	TypeKey:  "opportunities.types.web_vitals_performance",
+	MessageKeys: DetectorMessageKeys{
+		Title:       "opportunities.catalog.web_vitals_performance.title",
+		Summary:     "opportunities.catalog.web_vitals_performance.summary",
+		Action:      "opportunities.catalog.web_vitals_performance.action",
+		Digest:      "opportunities.catalog.web_vitals_performance.digest",
+		ImpactLabel: "opportunities.impact.web_vitals_samples",
+		RouteLabel:  "opportunities.routes.web_vitals",
+	},
+	AllowedParams: []string{
+		"metric",
+		"p75",
+		"rating",
+		"samples",
+		"poor_samples",
+		"needs_improvement_samples",
+		"path",
+		"page_p75",
+		"page_samples",
+	},
+	ActionTypes:         []string{"improve_performance"},
+	IdentityEvidenceIDs: []string{"web_vital_metric", "web_vital_top_page"},
+	RequiredSignals:     []OpportunitySignal{OpportunitySignalWebVitals},
+	RouteIcon:           "pi pi-gauge",
+	Detect:              detectWebVitalsOpportunity,
 }
 
 var searchVisibilityOpportunityDefinition = OpportunityDefinition{

@@ -43,20 +43,6 @@ describe('OpportunitiesPage', () => {
                                 }
                             },
                             opportunities: {
-                                header: {
-                                    eyebrow: 'Traffic guidance',
-                                    title: 'Evidence-backed recommendations for this site',
-                                    subtitle: 'Ranked suggestions built from goals, funnels, ecommerce, search, and AI visibility.',
-                                    scoreLabel: 'Score',
-                                    scoreAria: 'Opportunity score',
-                                    scoreHint: 'Strong'
-                                },
-                                kpis: {
-                                    open: 'Open',
-                                    score: 'Average score',
-                                    highConfidence: 'High confidence',
-                                    aiSearchWins: 'AI/Search wins'
-                                },
                                 filters: {
                                     ariaLabel: 'Opportunity filters',
                                     typeTitle: 'Type',
@@ -65,6 +51,7 @@ describe('OpportunitiesPage', () => {
                                         all: 'All',
                                         conversion: 'Conversion',
                                         traffic: 'Traffic',
+                                        performance: 'Performance',
                                         ai: 'AI visibility',
                                         search: 'Search',
                                         setup: 'Setup'
@@ -97,11 +84,6 @@ describe('OpportunitiesPage', () => {
                                     subtitle: '{{count}} ranked suggestions',
                                     cloudBadge: 'Cloud-ready AI copy'
                                 },
-                                topActions: {
-                                    ariaLabel: 'Top recommended actions',
-                                    title: 'Top 3 actions',
-                                    subtitle: 'Start with these ranked opportunities first.'
-                                },
                                 impact: {
                                     qualifiedVisits: 'qualified visits',
                                     conversionLift: 'conversion lift',
@@ -111,12 +93,14 @@ describe('OpportunitiesPage', () => {
                                     pageviews_to_route: 'pageviews to route',
                                     tracked_conversion_events: 'tracked conversion events',
                                     conversion_events_to_measure: 'conversion events to measure',
-                                    funnel_steps_to_measure: 'funnel steps to measure'
+                                    funnel_steps_to_measure: 'funnel steps to measure',
+                                    web_vitals_samples: 'Web Vitals samples'
                                 },
                                 routes: {
                                     checkout: 'Checkout: {{path}}',
                                     path: '{{path}}',
                                     source: '{{source}}',
+                                    web_vitals: 'Web Vitals: {{metric}} on {{path}}',
                                     event: 'Event: {{event_name}}',
                                     funnel: 'Funnel: {{start_path}}',
                                     tracker: '{{asset}}'
@@ -142,7 +126,14 @@ describe('OpportunitiesPage', () => {
                                     suggested_funnel_start: 'Suggested funnel start',
                                     suggested_funnel_start_pageviews: 'Start pageviews',
                                     suggested_funnel_conversion_event: 'Suggested conversion step',
-                                    suggested_funnel_event_count: 'Observed conversion events'
+                                    suggested_funnel_event_count: 'Observed conversion events',
+                                    web_vital_metric: 'Web Vital metric',
+                                    web_vital_p75: 'p75 value',
+                                    web_vital_rating: 'Rating',
+                                    web_vital_samples: 'Samples',
+                                    web_vital_poor_samples: 'Poor samples',
+                                    web_vital_top_page: 'Slowest page',
+                                    web_vital_top_page_p75: 'Slowest page p75'
                                 },
                                 catalog: {
                                     checkout_conversion: {
@@ -162,6 +153,12 @@ describe('OpportunitiesPage', () => {
                                         summary: '{{source}} produced {{source_hits}} visits out of {{total_pageviews}} pageviews in this window.',
                                         action: 'Review the landing paths and conversion setup for this source.',
                                         digest: 'Review traffic signals from {{source}}.'
+                                    },
+                                    web_vitals_performance: {
+                                        title: 'Review {{metric}} performance on {{path}}',
+                                        summary: '{{metric}} p75 is {{p75}} with a {{rating}} rating across {{samples}} samples.',
+                                        action: 'Prioritize the slowest page before it drags more visitor sessions into poor Web Vitals.',
+                                        digest: '{{metric}} p75 is {{p75}} on {{path}}.'
                                     },
                                     setup_goal_suggestion: {
                                         title: 'Create a goal for {{event_name}}',
@@ -264,20 +261,6 @@ describe('OpportunitiesPage', () => {
                                 }
                             },
                             opportunities: {
-                                header: {
-                                    eyebrow: 'Traffichinweise',
-                                    title: 'Evidenzbasierte Empfehlungen für diese Website',
-                                    subtitle: 'Priorisierte Hinweise aus Zielen, Funnels, E-Commerce, Suche und KI-Sichtbarkeit.',
-                                    scoreLabel: 'Score',
-                                    scoreAria: 'Opportunity-Score',
-                                    scoreHint: 'Stark'
-                                },
-                                kpis: {
-                                    open: 'Offen',
-                                    score: 'Durchschnittsscore',
-                                    highConfidence: 'Hohe Sicherheit',
-                                    aiSearchWins: 'KI-/Suchchancen'
-                                },
                                 filters: {
                                     ariaLabel: 'Opportunity-Filter',
                                     typeTitle: 'Typ',
@@ -286,6 +269,7 @@ describe('OpportunitiesPage', () => {
                                         all: 'Alle',
                                         conversion: 'Conversion',
                                         traffic: 'Traffic',
+                                        performance: 'Performance',
                                         ai: 'KI-Sichtbarkeit',
                                         search: 'Suche',
                                         setup: 'Setup'
@@ -317,20 +301,17 @@ describe('OpportunitiesPage', () => {
                                     title: 'Chancen-Posteingang',
                                     subtitle: '{{count}} priorisierte Hinweise'
                                 },
-                                topActions: {
-                                    ariaLabel: 'Wichtigste empfohlene Aktionen',
-                                    title: 'Top 3 Aktionen',
-                                    subtitle: 'Beginne mit diesen priorisierten Chancen.'
-                                },
                                 impact: {
                                     ai_touched_pages: 'KI-berührte Seiten',
                                     pageviews_to_route: 'Seitenaufrufe zum Routen',
-                                    tracked_conversion_events: 'erfasste Conversion-Ereignisse'
+                                    tracked_conversion_events: 'erfasste Conversion-Ereignisse',
+                                    web_vitals_samples: 'Web-Vitals-Samples'
                                 },
                                 routes: {
                                     checkout: 'Checkout: {{path}}',
                                     path: '{{path}}',
                                     source: '{{source}}',
+                                    web_vitals: 'Web Vitals: {{metric}} auf {{path}}',
                                     tracker: '{{asset}}'
                                 },
                                 evidence: {
@@ -348,7 +329,14 @@ describe('OpportunitiesPage', () => {
                                     top_source: 'Wichtigste Quelle',
                                     source_hits: 'Quellenbesuche',
                                     total_pageviews: 'Gesamte Seitenaufrufe',
-                                    tracked_events: 'Erfasste Ereignisse'
+                                    tracked_events: 'Erfasste Ereignisse',
+                                    web_vital_metric: 'Web-Vital-Metrik',
+                                    web_vital_p75: 'p75-Wert',
+                                    web_vital_rating: 'Bewertung',
+                                    web_vital_samples: 'Samples',
+                                    web_vital_poor_samples: 'Schlechte Samples',
+                                    web_vital_top_page: 'Langsamste Seite',
+                                    web_vital_top_page_p75: 'p75 der langsamsten Seite'
                                 },
                                 catalog: {
                                     checkout_conversion: {
@@ -368,6 +356,12 @@ describe('OpportunitiesPage', () => {
                                         summary: '{{source}} erzeugte {{source_hits}} Besuche bei {{total_pageviews}} Seitenaufrufen in diesem Zeitraum.',
                                         action: 'Prüfe Landingpages und Conversion-Setup für diese Quelle.',
                                         digest: 'Prüfe Traffic-Signale von {{source}}.'
+                                    },
+                                    web_vitals_performance: {
+                                        title: '{{metric}}-Performance auf {{path}} prüfen',
+                                        summary: '{{metric}} p75 liegt bei {{p75}} mit Bewertung {{rating}} über {{samples}} Samples.',
+                                        action: 'Priorisiere die langsamste Seite, bevor mehr Sitzungen in schlechte Web Vitals laufen.',
+                                        digest: '{{metric}} p75 liegt bei {{p75}} auf {{path}}.'
                                     },
                                     tracking_setup: {
                                         title: 'Genug Signal für Empfehlungen sammeln',
@@ -442,10 +436,13 @@ describe('OpportunitiesPage', () => {
         httpMock.verify();
     });
 
-    it('renders the evidence-backed opportunity inbox without money positioning', () => {
+    it('renders the opportunity inbox without promotional or money positioning', () => {
         renderDashboard();
 
-        expect(fixture.nativeElement.textContent).toContain('Evidence-backed recommendations for this site');
+        expect(fixture.nativeElement.querySelector('.opportunities-brief')).toBeNull();
+        expect(fixture.nativeElement.querySelector('.opportunities-kpis')).toBeNull();
+        expect(fixture.nativeElement.textContent).not.toContain('Evidence-backed recommendations');
+        expect(fixture.nativeElement.textContent).not.toContain('Prioritized recommendations');
         expect(fixture.nativeElement.textContent).toContain('Review checkout drop-off');
         expect(fixture.nativeElement.textContent).toContain('Checkout starts are converting at 42%');
         expect(fixture.nativeElement.textContent).not.toContain('API should not render me');
@@ -453,7 +450,7 @@ describe('OpportunitiesPage', () => {
         expect(fixture.nativeElement.textContent).not.toContain('Upside');
     });
 
-    it('renders the top three actionable opportunities before the full inbox', () => {
+    it('keeps opportunities in the inbox without a separate top actions section', () => {
         renderDashboard({
             opportunities: [
                 buildOpportunity({
@@ -512,12 +509,16 @@ describe('OpportunitiesPage', () => {
         });
 
         const topActions = fixture.nativeElement.querySelector('.opportunities-top-actions') as HTMLElement | null;
-        expect(topActions?.textContent).toContain('Top 3 actions');
-        expect(topActions?.querySelectorAll('app-opportunity-card').length).toBe(3);
-        expect(topActions?.textContent).toContain('Review AI crawler attention');
-        expect(topActions?.textContent).toContain('Review checkout drop-off');
-        expect(topActions?.textContent).toContain('Review traffic from Open Alternative');
-        expect(topActions?.textContent).not.toContain('Collect enough signal for recommendations');
+        const inbox = fixture.nativeElement.querySelector('.opportunities-inbox') as HTMLElement | null;
+
+        expect(topActions).toBeNull();
+        expect(inbox?.querySelectorAll('app-opportunity-card').length).toBe(4);
+        expect(inbox?.textContent).toContain('Review AI crawler attention');
+        expect(inbox?.textContent).toContain('Review checkout drop-off');
+        expect(inbox?.textContent).toContain('Review traffic from Open Alternative');
+        expect(inbox?.textContent).toContain('Collect enough signal for recommendations');
+        expect(inbox?.textContent).not.toContain('Top 3 actions');
+        expect(inbox?.textContent).not.toContain('dismissed-setup');
     });
 
     it('does not render the email digest preview on the decision page', () => {
@@ -542,7 +543,7 @@ describe('OpportunitiesPage', () => {
         expect(fixture.nativeElement.textContent).toContain('Review checkout drop-off');
     });
 
-    it('renders average score instead of aggregate currency value', () => {
+    it('does not render aggregate KPI cards above the inbox', () => {
         renderDashboard({
             opportunities: [
                 buildOpportunity({
@@ -560,8 +561,8 @@ describe('OpportunitiesPage', () => {
             ]
         });
 
-        expect(fixture.nativeElement.textContent).toContain('Average score');
-        expect(fixture.nativeElement.textContent).toContain('80');
+        expect(fixture.nativeElement.querySelector('.opportunities-kpis')).toBeNull();
+        expect(fixture.nativeElement.textContent).not.toContain('Average score');
         expect(fixture.nativeElement.textContent).not.toContain('Estimated monthly');
     });
 

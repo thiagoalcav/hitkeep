@@ -1,6 +1,10 @@
 package opportunities
 
-import "testing"
+import (
+	"testing"
+
+	"hitkeep/internal/api"
+)
 
 func TestScoreCheckoutOpportunitySuppressesTinySamples(t *testing.T) {
 	score, ok := scoreCheckoutOpportunity(checkoutScoringInput{
@@ -77,6 +81,40 @@ func TestScoreSearchVisibilityOpportunityProducesDeterministicBreakdown(t *testi
 		t.Fatalf("expected 156 estimated clicks, got %d", estimatedClicks)
 	}
 	if score.Sample != 84 || score.Impact != 78 || score.Urgency != 74 || score.Confidence != "high" || score.EvidenceFit != 96 || score.Total != 78 {
+		t.Fatalf("unexpected score breakdown: %+v", score)
+	}
+}
+
+func TestScoreWebVitalsOpportunitySuppressesHealthyAndTinySamples(t *testing.T) {
+	score, ok := scoreWebVitalsOpportunity(webVitalsScoringInput{
+		Samples: 12,
+		Rating:  api.WebVitalRatingPoor,
+	})
+	if ok {
+		t.Fatalf("expected tiny web vitals sample to be suppressed, got %+v", score)
+	}
+
+	score, ok = scoreWebVitalsOpportunity(webVitalsScoringInput{
+		Samples: 100,
+		Rating:  api.WebVitalRatingGood,
+	})
+	if ok {
+		t.Fatalf("expected healthy web vitals to be suppressed, got %+v", score)
+	}
+}
+
+func TestScoreWebVitalsOpportunityProducesEvidenceBackedBreakdown(t *testing.T) {
+	score, ok := scoreWebVitalsOpportunity(webVitalsScoringInput{
+		Samples:                 92,
+		PoorSamples:             37,
+		NeedsImprovementSamples: 35,
+		Rating:                  api.WebVitalRatingPoor,
+		HasPageEvidence:         true,
+	})
+	if !ok {
+		t.Fatal("expected poor web vitals opportunity to be scored")
+	}
+	if score.Sample != 92 || score.Urgency != 99 || score.Actionability != 86 || score.EvidenceFit != 97 || score.Total != 92 || score.Confidence != "high" {
 		t.Fatalf("unexpected score breakdown: %+v", score)
 	}
 }

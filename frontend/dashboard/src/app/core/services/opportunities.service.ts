@@ -3,7 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { ShareService } from './share.service';
 
-export type OpportunityType = 'conversion' | 'traffic' | 'ai' | 'search' | 'setup';
+export type OpportunityType = 'conversion' | 'traffic' | 'performance' | 'ai' | 'search' | 'setup';
 export type OpportunityStatus = 'new' | 'saved' | 'done' | 'dismissed';
 export type OpportunityConfidence = 'high' | 'medium';
 export type OpportunityDigestFrequency = 'daily' | 'weekly';

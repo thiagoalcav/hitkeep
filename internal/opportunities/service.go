@@ -86,6 +86,7 @@ type opportunitySignals struct {
 	SearchConsole *api.SearchConsoleOverview
 	EventNames    []string
 	SetupEvidence *SetupEvidenceSnapshot
+	WebVitals     *WebVitalsEvidenceSnapshot
 }
 
 func normalizeGenerateWindow(input GenerateInput) GenerateInput {
@@ -162,6 +163,15 @@ func loadOpportunitySignals(ctx context.Context, shared *database.Store, input G
 				return opportunitySignals{}, fmt.Errorf("load setup evidence: %w", err)
 			}
 			signals.SetupEvidence = snapshot
+		case OpportunitySignalWebVitals:
+			if signals.WebVitals != nil {
+				continue
+			}
+			snapshot, err := buildWebVitalsEvidenceSnapshot(ctx, input.Store, input.Site.ID, input.From, input.To)
+			if err != nil {
+				return opportunitySignals{}, fmt.Errorf("load web vitals evidence: %w", err)
+			}
+			signals.WebVitals = snapshot
 		default:
 			return opportunitySignals{}, fmt.Errorf("unknown opportunity signal %q", signal)
 		}
@@ -199,6 +209,7 @@ func detectOpportunityCandidates(catalog DetectorCatalog, input GenerateInput, s
 		SearchConsole: signals.SearchConsole,
 		EventNames:    append([]string(nil), signals.EventNames...),
 		SetupEvidence: signals.SetupEvidence,
+		WebVitals:     signals.WebVitals,
 		GeneratedAt:   time.Now().UTC(),
 	})
 }

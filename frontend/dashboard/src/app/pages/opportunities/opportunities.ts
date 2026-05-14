@@ -10,7 +10,6 @@ import { PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb'
 import { EmptyState } from '@components/molecules/empty-state';
 import { PageFrame } from '@components/page-frame/page-frame';
 import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from '@components/range-toolbar/range-toolbar';
-import { KpiCard } from '@features/analytics/components/kpi-card';
 import { injectActiveLang } from '@core/i18n/active-lang';
 import { AdminSystemService, SystemAIStatus } from '@services/admin-system.service';
 import { Opportunity, OpportunityStatus, OpportunitiesService } from '@services/opportunities.service';
@@ -22,7 +21,7 @@ import { OpportunityEvidenceView, OpportunityFilter, OpportunityFilterItem, Oppo
 
 @Component({
     selector: 'app-opportunities',
-    imports: [TranslocoPipe, ButtonModule, MessageModule, TagModule, PageFrame, EmptyState, RangeToolbar, KpiCard, OpportunityFilterRail, OpportunityCard, OpportunityDetailDrawer],
+    imports: [TranslocoPipe, ButtonModule, MessageModule, TagModule, PageFrame, EmptyState, RangeToolbar, OpportunityFilterRail, OpportunityCard, OpportunityDetailDrawer],
     templateUrl: './opportunities.html',
     styleUrl: './opportunities.css',
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -55,7 +54,7 @@ export class OpportunitiesPage {
     protected readonly aiStatus = signal<SystemAIStatus | null>(null);
     protected readonly pendingStatusId = signal<string | null>(null);
 
-    protected readonly typeFilters = ['all', 'conversion', 'traffic', 'ai', 'search', 'setup'] as const;
+    protected readonly typeFilters = ['all', 'conversion', 'traffic', 'performance', 'ai', 'search', 'setup'] as const;
     protected readonly statusFilters = ['all', 'new', 'saved', 'done'] as const;
     protected readonly opportunities = signal<Opportunity[]>([]);
 
@@ -140,54 +139,11 @@ export class OpportunitiesPage {
         return this.visibleOpportunities().map((opportunity) => this.toOpportunityView(opportunity));
     });
 
-    protected readonly topActionOpportunityViews = computed(() => {
-        this.activeLanguage();
-        return this.visibleOpportunities()
-            .filter((opportunity) => this.isActionableStatus(opportunity.status))
-            .slice(0, 3)
-            .map((opportunity) => this.toOpportunityView(opportunity));
-    });
-
     protected readonly selectedOpportunityView = computed(() => {
         this.activeLanguage();
         const id = this.selectedOpportunityId();
         const opportunity = this.opportunities().find((item) => item.id === id) ?? this.visibleOpportunities()[0] ?? null;
         return opportunity ? this.toOpportunityView(opportunity) : null;
-    });
-
-    protected readonly kpiCards = computed(() => {
-        this.activeLanguage();
-        const open = this.opportunities().filter((opportunity) => opportunity.status !== 'dismissed' && opportunity.status !== 'done');
-        const highConfidence = open.filter((opportunity) => opportunity.confidence === 'high').length;
-        const aiWins = open.filter((opportunity) => opportunity.kind === 'ai' || opportunity.kind === 'search').length;
-        const averageScore = open.length ? Math.round(open.reduce((sum, opportunity) => sum + opportunity.score, 0) / open.length) : 0;
-
-        return [
-            {
-                label: this.transloco.translate('opportunities.kpis.open'),
-                value: open.length,
-                loading: this.isLoading(),
-                valueClass: 'text-2xl xl:text-3xl font-bold'
-            },
-            {
-                label: this.transloco.translate('opportunities.kpis.score'),
-                value: averageScore,
-                loading: this.isLoading(),
-                valueClass: 'text-2xl xl:text-3xl font-bold'
-            },
-            {
-                label: this.transloco.translate('opportunities.kpis.highConfidence'),
-                value: highConfidence,
-                loading: this.isLoading(),
-                valueClass: 'text-2xl xl:text-3xl font-bold'
-            },
-            {
-                label: this.transloco.translate('opportunities.kpis.aiSearchWins'),
-                value: aiWins,
-                loading: this.isLoading(),
-                valueClass: 'text-2xl xl:text-3xl font-bold'
-            }
-        ];
     });
 
     protected readonly typeCounts = computed(() => {
@@ -237,12 +193,6 @@ export class OpportunitiesPage {
             count: counts.get(filter) ?? 0,
             active: active === filter
         }));
-    });
-
-    protected readonly score = computed(() => {
-        const visible = this.visibleOpportunities();
-        if (!visible.length) return 0;
-        return Math.round(visible.reduce((sum, opportunity) => sum + opportunity.score, 0) / visible.length);
     });
 
     constructor() {
@@ -328,12 +278,9 @@ export class OpportunitiesPage {
         return opportunity.status;
     }
 
-    private isActionableStatus(status: OpportunityStatus): boolean {
-        return status === 'new' || status === 'saved';
-    }
-
     private severityFor(opportunity: Opportunity): TagSeverity {
         if (opportunity.score >= 88) return 'danger';
+        if (opportunity.kind === 'performance') return 'warn';
         if (opportunity.kind === 'ai') return 'success';
         if (opportunity.kind === 'search') return 'warn';
         if (opportunity.kind === 'setup') return 'secondary';
@@ -346,6 +293,8 @@ export class OpportunitiesPage {
                 return 'pi pi-filter';
             case 'traffic':
                 return 'pi pi-chart-line';
+            case 'performance':
+                return 'pi pi-gauge';
             case 'ai':
                 return 'pi pi-sparkles';
             case 'search':

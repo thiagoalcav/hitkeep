@@ -48,6 +48,25 @@ func detectTrafficQualityOpportunity(input DetectorInput, definition Opportunity
 	return &opportunity, true
 }
 
+func detectWebVitalsOpportunity(input DetectorInput, definition OpportunityDefinition) (*database.OpportunityInput, bool) {
+	candidate, ok := webVitalsOpportunityCandidate(input.WebVitals)
+	if !ok {
+		return nil, false
+	}
+	score, ok := scoreWebVitalsOpportunity(webVitalsScoringInput{
+		Samples:                 candidate.Samples,
+		PoorSamples:             candidate.PoorSamples,
+		NeedsImprovementSamples: candidate.NeedsImprovementSamples,
+		Rating:                  candidate.Rating,
+		HasPageEvidence:         candidate.Path != "",
+	})
+	if !ok {
+		return nil, false
+	}
+	opportunity := webVitalsOpportunity(definition, input, candidate, score, input.GeneratedAt)
+	return &opportunity, true
+}
+
 func detectSearchVisibilityOpportunity(input DetectorInput, definition OpportunityDefinition) (*database.OpportunityInput, bool) {
 	if input.SearchConsole == nil || input.SearchConsole.Impressions <= 0 {
 		return nil, false
@@ -207,6 +226,171 @@ type trafficSourceEvidence struct {
 	Hits           int
 	TotalPageviews int
 	Sessions       int
+}
+
+type webVitalsOpportunityEvidence struct {
+	Metric                  api.WebVitalMetric
+	P75                     float64
+	Rating                  api.WebVitalRating
+	Samples                 int64
+	PoorSamples             int64
+	NeedsImprovementSamples int64
+	Path                    string
+	PageP75                 float64
+	PageRating              api.WebVitalRating
+	PageSamples             int64
+}
+
+func webVitalsOpportunityCandidate(snapshot *WebVitalsEvidenceSnapshot) (webVitalsOpportunityEvidence, bool) {
+	if !webVitalsSnapshotHasSummary(snapshot) {
+		return webVitalsOpportunityEvidence{}, false
+	}
+	best, ok := topWebVitalsOpportunityCandidate(snapshot)
+	if !webVitalsCandidateActionable(best, ok) {
+		return webVitalsOpportunityEvidence{}, false
+	}
+	return withDefaultWebVitalsPath(best), true
+}
+
+func webVitalsSnapshotHasSummary(snapshot *WebVitalsEvidenceSnapshot) bool {
+	return snapshot != nil && len(snapshot.Summary) > 0
+}
+
+func webVitalsCandidateActionable(candidate webVitalsOpportunityEvidence, ok bool) bool {
+	return ok && candidate.Rating != api.WebVitalRatingGood
+}
+
+func withDefaultWebVitalsPath(candidate webVitalsOpportunityEvidence) webVitalsOpportunityEvidence {
+	if candidate.Path == "" {
+		candidate.Path = "/"
+	}
+	return candidate
+}
+
+func topWebVitalsOpportunityCandidate(snapshot *WebVitalsEvidenceSnapshot) (webVitalsOpportunityEvidence, bool) {
+	best := webVitalsOpportunityEvidence{}
+	bestScore := -1
+	for _, metric := range snapshot.Summary {
+		candidate, ok := webVitalsMetricOpportunityCandidate(metric, snapshot.Pages[metric.Metric])
+		if !ok {
+			continue
+		}
+		score := webVitalsMetricOpportunityScore(candidate)
+		if score <= bestScore {
+			continue
+		}
+		bestScore = score
+		best = candidate
+	}
+	if bestScore < 0 {
+		return webVitalsOpportunityEvidence{}, false
+	}
+	return best, true
+}
+
+func webVitalsMetricOpportunityCandidate(metric api.WebVitalSummaryMetric, pages []api.WebVitalPageRow) (webVitalsOpportunityEvidence, bool) {
+	if metric.Samples < minWebVitalsSamples {
+		return webVitalsOpportunityEvidence{}, false
+	}
+	candidate := webVitalsOpportunityEvidence{
+		Metric:                  metric.Metric,
+		P75:                     metric.P75,
+		Rating:                  metric.Rating,
+		Samples:                 metric.Samples,
+		PoorSamples:             metric.Poor,
+		NeedsImprovementSamples: metric.NeedsImprove,
+	}
+	return withWebVitalsPageEvidence(candidate, pages), true
+}
+
+func withWebVitalsPageEvidence(candidate webVitalsOpportunityEvidence, pages []api.WebVitalPageRow) webVitalsOpportunityEvidence {
+	for _, page := range pages {
+		if page.Samples <= 0 {
+			continue
+		}
+		candidate.Path = strings.TrimSpace(page.Path)
+		candidate.PageP75 = page.P75
+		candidate.PageRating = page.Rating
+		candidate.PageSamples = page.Samples
+		return candidate
+	}
+	return candidate
+}
+
+func webVitalsMetricOpportunityScore(candidate webVitalsOpportunityEvidence) int {
+	return webVitalRatingPriority(candidate.Rating)*1000 +
+		int(minInt64(candidate.Samples, 100)) +
+		int(candidate.PoorSamples*3) +
+		int(candidate.NeedsImprovementSamples)
+}
+
+func webVitalRatingPriority(rating api.WebVitalRating) int {
+	switch rating {
+	case api.WebVitalRatingPoor:
+		return 2
+	case api.WebVitalRatingNeedsImprovement:
+		return 1
+	case api.WebVitalRatingGood:
+		return 0
+	default:
+		return 0
+	}
+}
+
+func webVitalsOpportunity(definition OpportunityDefinition, input DetectorInput, candidate webVitalsOpportunityEvidence, score opportunityScoreBreakdown, generatedAt time.Time) database.OpportunityInput {
+	p75 := formatWebVitalValue(candidate.Metric, candidate.P75)
+	pageP75 := formatWebVitalValue(candidate.Metric, candidate.PageP75)
+	rating := formatWebVitalRating(candidate.Rating)
+	opportunity := definition.BuildOpportunity(withGeneratedAt(input, generatedAt), OpportunityRecipe{
+		CopyParams: map[string]any{
+			"metric":                    string(candidate.Metric),
+			"p75":                       p75,
+			"rating":                    rating,
+			"samples":                   candidate.Samples,
+			"poor_samples":              candidate.PoorSamples,
+			"needs_improvement_samples": candidate.NeedsImprovementSamples,
+			"path":                      candidate.Path,
+			"page_p75":                  pageP75,
+			"page_samples":              candidate.PageSamples,
+		},
+		ImpactValue:    fmt.Sprintf("%d", candidate.Samples),
+		Confidence:     score.Confidence,
+		Score:          score.Total,
+		ScoreBreakdown: opportunityScoreAPI(score),
+		RouteParams:    map[string]any{"metric": string(candidate.Metric), "path": candidate.Path},
+		Evidence: []api.OpportunityEvidence{
+			{ID: "web_vital_metric", LabelKey: "opportunities.evidence.web_vital_metric", Value: string(candidate.Metric)},
+			{ID: "web_vital_p75", LabelKey: "opportunities.evidence.web_vital_p75", Value: p75},
+			{ID: "web_vital_rating", LabelKey: "opportunities.evidence.web_vital_rating", Value: rating},
+			{ID: "web_vital_samples", LabelKey: "opportunities.evidence.web_vital_samples", Value: fmt.Sprintf("%d", candidate.Samples)},
+			{ID: "web_vital_poor_samples", LabelKey: "opportunities.evidence.web_vital_poor_samples", Value: fmt.Sprintf("%d", candidate.PoorSamples)},
+			{ID: "web_vital_top_page", LabelKey: "opportunities.evidence.web_vital_top_page", Value: candidate.Path},
+			{ID: "web_vital_top_page_p75", LabelKey: "opportunities.evidence.web_vital_top_page_p75", Value: pageP75},
+		},
+		CitedEvidenceIDs: []string{"web_vital_metric", "web_vital_p75", "web_vital_rating", "web_vital_samples", "web_vital_top_page", "web_vital_top_page_p75"},
+	})
+	opportunity.ID = stableOpportunityID(input.SiteID, definition.Key+":"+strings.ToLower(string(candidate.Metric)))
+	return opportunity
+}
+
+func formatWebVitalValue(metric api.WebVitalMetric, value float64) string {
+	if metric == api.WebVitalCLS {
+		return fmt.Sprintf("%.2f", value)
+	}
+	return fmt.Sprintf("%.0f ms", value)
+}
+
+func formatWebVitalRating(rating api.WebVitalRating) string {
+	switch rating {
+	case api.WebVitalRatingPoor:
+		return "poor"
+	case api.WebVitalRatingNeedsImprovement:
+		return "needs improvement"
+	case api.WebVitalRatingGood:
+		return "good"
+	default:
+		return string(rating)
+	}
 }
 
 func trafficQualityOpportunity(definition OpportunityDefinition, input DetectorInput, source trafficSourceEvidence, generatedAt time.Time) database.OpportunityInput {

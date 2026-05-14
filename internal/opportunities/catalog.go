@@ -17,6 +17,7 @@ const (
 	DetectorCategoryConversion       DetectorCategory = "conversion"
 	DetectorCategoryTraffic          DetectorCategory = "traffic"
 	DetectorCategoryTrafficQuality   DetectorCategory = "traffic_quality"
+	DetectorCategoryPerformance      DetectorCategory = "performance"
 	DetectorCategoryAIVisibility     DetectorCategory = "ai_visibility"
 	DetectorCategorySearchVisibility DetectorCategory = "search_visibility"
 	DetectorCategorySetupQuality     DetectorCategory = "setup_quality"
@@ -31,6 +32,7 @@ const (
 	OpportunitySignalSearchConsole OpportunitySignal = "search_console"
 	OpportunitySignalEvents        OpportunitySignal = "events"
 	OpportunitySignalSetupEvidence OpportunitySignal = "setup_evidence"
+	OpportunitySignalWebVitals     OpportunitySignal = "web_vitals"
 )
 
 type DetectorInput struct {
@@ -42,6 +44,7 @@ type DetectorInput struct {
 	SearchConsole *api.SearchConsoleOverview
 	EventNames    []string
 	SetupEvidence *SetupEvidenceSnapshot
+	WebVitals     *WebVitalsEvidenceSnapshot
 	GeneratedAt   time.Time
 }
 
@@ -101,6 +104,7 @@ func SupportedDetectorCategories() []DetectorCategory {
 		DetectorCategoryConversion,
 		DetectorCategoryTraffic,
 		DetectorCategoryTrafficQuality,
+		DetectorCategoryPerformance,
 		DetectorCategoryAIVisibility,
 		DetectorCategorySearchVisibility,
 		DetectorCategorySetupQuality,

@@ -1,12 +1,17 @@
 package opportunities
 
-import "math"
+import (
+	"math"
+
+	"hitkeep/internal/api"
+)
 
 const minCheckoutScoringSample = 30
 const minSearchVisibilityImpressions = 1000
 const searchVisibilityTargetCTR = 0.05
 const minTrafficSourceHits = 50
 const minTrafficSourceShare = 0.10
+const minWebVitalsSamples = 30
 const minSetupGoalEventCount = 3
 const minSetupFunnelStartPageviews = 30
 
@@ -41,6 +46,64 @@ type aiVisibilityScoringInput struct {
 	UniquePaths      int64
 	AIReferrals      int
 	TopPathPageviews int
+}
+
+type webVitalsScoringInput struct {
+	Samples                 int64
+	PoorSamples             int64
+	NeedsImprovementSamples int64
+	Rating                  api.WebVitalRating
+	HasPageEvidence         bool
+}
+
+func scoreWebVitalsOpportunity(input webVitalsScoringInput) (opportunityScoreBreakdown, bool) {
+	if !webVitalsScoringEligible(input) {
+		return opportunityScoreBreakdown{}, false
+	}
+
+	sample := clampScore(int(minInt64(input.Samples, 100)))
+	poorShare := webVitalSampleShare(input.PoorSamples, input.Samples)
+	needsShare := webVitalSampleShare(input.NeedsImprovementSamples, input.Samples)
+	urgency := webVitalsUrgency(input.Rating, poorShare, needsShare)
+	actionability, evidenceFit := webVitalsActionabilityEvidenceFit(input.HasPageEvidence)
+	total := clampScore((sample * 25 / 100) + (urgency * 30 / 100) + (actionability * 25 / 100) + (evidenceFit * 20 / 100))
+	return opportunityScoreBreakdown{
+		Sample:        sample,
+		Impact:        clampScore(poorShare + needsShare/2 + 35),
+		Confidence:    confidence(input.Samples >= 75 && input.HasPageEvidence),
+		Urgency:       urgency,
+		Effort:        62,
+		Actionability: actionability,
+		EvidenceFit:   evidenceFit,
+		Freshness:     72,
+		Total:         total,
+	}, true
+}
+
+func webVitalsScoringEligible(input webVitalsScoringInput) bool {
+	return input.Samples >= minWebVitalsSamples && input.Rating != "" && input.Rating != api.WebVitalRatingGood
+}
+
+func webVitalSampleShare(part, total int64) int {
+	if total <= 0 {
+		return 0
+	}
+	return int((part * 100) / total)
+}
+
+func webVitalsUrgency(rating api.WebVitalRating, poorShare, needsShare int) int {
+	bonus := 0
+	if rating == api.WebVitalRatingPoor {
+		bonus = 20
+	}
+	return clampScore(55 + poorShare + needsShare/2 + bonus)
+}
+
+func webVitalsActionabilityEvidenceFit(hasPageEvidence bool) (int, int) {
+	if hasPageEvidence {
+		return 86, 97
+	}
+	return 78, 92
 }
 
 func scoreAIVisibilityOpportunity(input aiVisibilityScoringInput) opportunityScoreBreakdown {

@@ -535,6 +535,129 @@ func TestGenerateLoadsEventNamesSignalForActiveCatalog(t *testing.T) {
 	}
 }
 
+func TestGenerateLoadsWebVitalsSignalForActiveCatalog(t *testing.T) {
+	shared, site, teamID, actorID := setupOpportunityServiceTestStore(t)
+	from := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 5, 31, 0, 0, 0, 0, time.UTC)
+	seedOpportunityWebVitals(t, context.Background(), shared, site.ID, from, minWebVitalsSamples)
+	contract := fixtureDetectorContract("one")
+	contract.Category = DetectorCategoryPerformance
+	contract.RequiredSignals = []OpportunitySignal{OpportunitySignalWebVitals}
+	detector := signalInspectingDetector{
+		contract: contract,
+		output:   fixtureOpportunity(teamID, site.ID, "one"),
+	}
+	service := Service{
+		Shared:  shared,
+		AI:      nil,
+		Catalog: NewDetectorCatalog(&detector),
+	}
+
+	_, _, _, err := service.Generate(context.Background(), GenerateInput{
+		TeamID:    teamID,
+		Site:      site,
+		Store:     shared,
+		From:      from,
+		To:        to,
+		ActorID:   actorID,
+		ActorType: "user",
+	})
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+	requireWebVitalsSummaryCount(t, detector.seen.WebVitals, 1)
+	assertPoorLCPWebVitalsSignal(t, detector.seen.WebVitals)
+}
+
+func TestGeneratePersistsWebVitalsOpportunityFromStoredSamples(t *testing.T) {
+	shared, site, teamID, actorID := setupOpportunityServiceTestStore(t)
+	ctx := context.Background()
+	from := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, 5, 31, 0, 0, 0, 0, time.UTC)
+	seedOpportunityWebVitals(t, ctx, shared, site.ID, from, minWebVitalsSamples+10)
+
+	opportunities, _, aiStatus, err := (Service{Shared: shared}).Generate(ctx, GenerateInput{
+		Store:           shared,
+		Site:            site,
+		TeamID:          teamID,
+		ActorID:         actorID,
+		EffectiveUserID: actorID,
+		ActorType:       "user",
+		From:            from,
+		To:              to,
+	})
+	if err != nil {
+		t.Fatalf("Generate: %v", err)
+	}
+	if aiStatus != "disabled" {
+		t.Fatalf("expected disabled AI status, got %q", aiStatus)
+	}
+	opportunity := findAPIOpportunityByType(opportunities, "opportunities.types.web_vitals_performance")
+	if opportunity == nil {
+		t.Fatalf("expected web vitals opportunity, got %#v", opportunities)
+	}
+	assertPersistedWebVitalsOpportunity(t, *opportunity)
+}
+
+func seedOpportunityWebVitals(t *testing.T, ctx context.Context, store *database.Store, siteID uuid.UUID, from time.Time, samples int) {
+	t.Helper()
+	for i := range samples {
+		requireNoError(t, store.CreateWebVital(ctx, &api.WebVital{
+			SiteID:    siteID,
+			SessionID: uuid.New(),
+			PageID:    uuid.New(),
+			Metric:    api.WebVitalLCP,
+			Value:     4200 + float64(i),
+			Path:      "/pricing",
+			Timestamp: from.Add(time.Duration(i+1) * time.Hour),
+		}), "create web vital")
+	}
+}
+
+func assertPoorLCPWebVitalsSignal(t *testing.T, snapshot *WebVitalsEvidenceSnapshot) {
+	t.Helper()
+	summary := snapshot.Summary[0]
+	if summary.Metric != api.WebVitalLCP {
+		t.Fatalf("expected LCP summary, got %#v", summary)
+	}
+	if summary.Rating != api.WebVitalRatingPoor {
+		t.Fatalf("expected poor LCP summary, got %#v", summary)
+	}
+	pages := snapshot.Pages[api.WebVitalLCP]
+	if len(pages) != 1 {
+		t.Fatalf("expected one LCP page breakdown, got %#v", pages)
+	}
+	if pages[0].Path != "/pricing" {
+		t.Fatalf("expected pricing page breakdown, got %#v", pages[0])
+	}
+}
+
+func requireWebVitalsSummaryCount(t *testing.T, snapshot *WebVitalsEvidenceSnapshot, expected int) {
+	t.Helper()
+	if snapshot == nil {
+		t.Fatal("expected web vitals signal to be loaded")
+	}
+	if len(snapshot.Summary) != expected {
+		t.Fatalf("expected %d web vitals summary rows, got %#v", expected, snapshot.Summary)
+	}
+}
+
+func assertPersistedWebVitalsOpportunity(t *testing.T, opportunity api.Opportunity) {
+	t.Helper()
+	if opportunity.CopyParams["metric"] != "LCP" {
+		t.Fatalf("expected LCP copy param, got %#v", opportunity.CopyParams)
+	}
+	if opportunity.CopyParams["path"] != "/pricing" {
+		t.Fatalf("expected pricing copy param, got %#v", opportunity.CopyParams)
+	}
+	if opportunity.ScoreBreakdown.EvidenceFit < 95 {
+		t.Fatalf("expected strong evidence fit, got %#v", opportunity.ScoreBreakdown)
+	}
+	if opportunity.Confidence != "medium" {
+		t.Fatalf("expected medium confidence, got %q", opportunity.Confidence)
+	}
+}
+
 func TestGenerateRejectsUnknownRequiredSignal(t *testing.T) {
 	shared, site, teamID, actorID := setupOpportunityServiceTestStore(t)
 	contract := fixtureDetectorContract("one")

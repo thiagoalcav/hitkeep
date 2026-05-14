@@ -140,6 +140,60 @@ func TestDefaultDetectorCatalogUsesSourceSpecificTrafficEvidence(t *testing.T) {
 	}
 }
 
+func TestDefaultDetectorCatalogGeneratesWebVitalsOpportunityFromPoorP75(t *testing.T) {
+	siteID := uuid.New()
+	teamID := uuid.New()
+	generatedAt := time.Date(2026, 5, 9, 12, 0, 0, 0, time.UTC)
+
+	input := DetectorInput{
+		TeamID:      teamID,
+		SiteID:      siteID,
+		GeneratedAt: generatedAt,
+		WebVitals: &WebVitalsEvidenceSnapshot{
+			SiteID: siteID,
+			Summary: []api.WebVitalSummaryMetric{
+				{Metric: api.WebVitalLCP, P75: 4200, Samples: 92, Good: 20, NeedsImprove: 35, Poor: 37, Rating: api.WebVitalRatingPoor},
+			},
+			Pages: map[api.WebVitalMetric][]api.WebVitalPageRow{
+				api.WebVitalLCP: {
+					{Path: "/pricing", P75: 4700, Samples: 31, Good: 3, NeedsImprove: 10, Poor: 18, Rating: api.WebVitalRatingPoor},
+				},
+			},
+		},
+	}
+	assertCatalogFixture(t, input, "performance", "opportunities.types.web_vitals_performance", "p75", "web_vital_top_page", DetectorCategoryPerformance)
+
+	opportunities, err := NewDefaultDetectorCatalog().Detect(input)
+	if err != nil {
+		t.Fatalf("detect: %v", err)
+	}
+	opportunity := findOpportunityByType(opportunities, "opportunities.types.web_vitals_performance")
+	if opportunity == nil {
+		t.Fatalf("expected web vitals opportunity, got %#v", opportunities)
+	}
+	assertWebVitalsOpportunityParams(t, *opportunity)
+	assertOpportunityEvidenceCited(t, *opportunity, "web_vital_metric", "web_vital_p75", "web_vital_rating", "web_vital_samples", "web_vital_top_page", "web_vital_top_page_p75")
+}
+
+func TestDefaultDetectorCatalogSuppressesWebVitalsOpportunityForGoodP75(t *testing.T) {
+	opportunities, err := NewDefaultDetectorCatalog().Detect(DetectorInput{
+		TeamID:      uuid.New(),
+		SiteID:      uuid.New(),
+		GeneratedAt: time.Date(2026, 5, 9, 12, 0, 0, 0, time.UTC),
+		WebVitals: &WebVitalsEvidenceSnapshot{
+			Summary: []api.WebVitalSummaryMetric{
+				{Metric: api.WebVitalLCP, P75: 1800, Samples: 120, Good: 118, NeedsImprove: 2, Rating: api.WebVitalRatingGood},
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("detect: %v", err)
+	}
+	if findOpportunityByType(opportunities, "opportunities.types.web_vitals_performance") != nil {
+		t.Fatalf("expected healthy web vitals to suppress performance opportunity, got %#v", opportunities)
+	}
+}
+
 func TestDefaultDetectorCatalogSuppressesTrafficOpportunityForWeakSourceShare(t *testing.T) {
 	opportunities, err := NewDefaultDetectorCatalog().Detect(DetectorInput{
 		TeamID:      uuid.New(),
@@ -616,6 +670,7 @@ func TestSupportedDetectorCategoriesIncludeReusableOpportunityFamilies(t *testin
 		DetectorCategoryConversion,
 		DetectorCategoryTraffic,
 		DetectorCategoryTrafficQuality,
+		DetectorCategoryPerformance,
 		DetectorCategoryAIVisibility,
 		DetectorCategorySearchVisibility,
 		DetectorCategorySetupQuality,
@@ -1144,6 +1199,37 @@ func assertCatalogOpportunity(
 	}
 	if contract.Category != wantCategory {
 		t.Fatalf("expected category %q, got %q", wantCategory, contract.Category)
+	}
+}
+
+func assertOpportunityEvidenceCited(t *testing.T, opportunity database.OpportunityInput, evidenceIDs ...string) {
+	t.Helper()
+	for _, evidenceID := range evidenceIDs {
+		if !hasEvidenceID(opportunity.Evidence, evidenceID) {
+			t.Fatalf("expected evidence %q in %#v", evidenceID, opportunity.Evidence)
+		}
+		if !slices.Contains(opportunity.CitedEvidenceIDs, evidenceID) {
+			t.Fatalf("expected cited evidence %q in %#v", evidenceID, opportunity.CitedEvidenceIDs)
+		}
+	}
+}
+
+func assertWebVitalsOpportunityParams(t *testing.T, opportunity database.OpportunityInput) {
+	t.Helper()
+	if opportunity.CopyParams["metric"] != "LCP" {
+		t.Fatalf("expected LCP copy param, got %#v", opportunity.CopyParams)
+	}
+	if opportunity.CopyParams["p75"] != "4200 ms" {
+		t.Fatalf("expected p75 copy param, got %#v", opportunity.CopyParams)
+	}
+	if opportunity.CopyParams["path"] != "/pricing" {
+		t.Fatalf("expected pricing copy param, got %#v", opportunity.CopyParams)
+	}
+	if opportunity.RouteParams["metric"] != "LCP" {
+		t.Fatalf("expected LCP route param, got %#v", opportunity.RouteParams)
+	}
+	if opportunity.RouteParams["path"] != "/pricing" {
+		t.Fatalf("expected pricing route param, got %#v", opportunity.RouteParams)
 	}
 }
 

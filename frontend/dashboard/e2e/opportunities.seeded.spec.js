@@ -1,6 +1,24 @@
 const { test, expect } = require("playwright/test");
 const { login } = require("./support/auth");
 
+const PRIMARY_SEEDED_SITE_DOMAIN = "acme-analytics.io";
+
+async function selectSeededSite(page, domain = PRIMARY_SEEDED_SITE_DOMAIN) {
+    const combobox = page.locator('[role="combobox"]:visible').first();
+    await expect(combobox).toBeVisible();
+
+    const currentSite = ((await combobox.textContent()) || "").trim();
+    if (currentSite.includes(domain)) {
+        return;
+    }
+
+    await page.locator('[aria-label="Select a site to view stats"]:visible').first().click();
+    const option = page.locator('[role="option"]:visible').filter({ hasText: domain }).first();
+    await expect(option).toBeVisible();
+    await option.click();
+    await expect(combobox).toContainText(domain);
+}
+
 const baseOpportunity = {
     id: "e2e-op-1",
     team_id: "team-1",
@@ -69,6 +87,54 @@ const generatedOpportunity = {
     cited_evidence_ids: ["top_source", "source_hits", "total_pageviews", "sessions"]
 };
 
+const webVitalsOpportunity = {
+    ...baseOpportunity,
+    id: "e2e-op-3",
+    kind: "performance",
+    type_key: "opportunities.types.web_vitals_performance",
+    title_key: "opportunities.catalog.web_vitals_performance.title",
+    summary_key: "opportunities.catalog.web_vitals_performance.summary",
+    action_key: "opportunities.catalog.web_vitals_performance.action",
+    digest_key: "opportunities.catalog.web_vitals_performance.digest",
+    copy_params: {
+        metric: "LCP",
+        p75: "3,840 ms",
+        rating: "needs improvement",
+        samples: 320,
+        path: "/"
+    },
+    impact_value: "320",
+    impact_label_key: "opportunities.impact.web_vitals_samples",
+    score: 86,
+    route_label_key: "opportunities.routes.web_vitals",
+    route_params: {
+        metric: "LCP",
+        path: "/"
+    },
+    route_icon: "pi pi-gauge",
+    evidence: [
+        { id: "web_vital_metric", label_key: "opportunities.evidence.web_vital_metric", value: "LCP" },
+        { id: "web_vital_p75", label_key: "opportunities.evidence.web_vital_p75", value: "3,840 ms" },
+        { id: "web_vital_rating", label_key: "opportunities.evidence.web_vital_rating", value: "needs improvement" },
+        { id: "web_vital_samples", label_key: "opportunities.evidence.web_vital_samples", value: "320" },
+        { id: "web_vital_top_page", label_key: "opportunities.evidence.web_vital_top_page", value: "/" }
+    ],
+    cited_evidence_ids: ["web_vital_metric", "web_vital_p75", "web_vital_rating", "web_vital_samples", "web_vital_top_page"]
+};
+
+test("opportunities inbox renders real seeded recommendations", async ({ page }) => {
+    await login(page, "/opportunities");
+    await selectSeededSite(page);
+
+    const inbox = page.getByLabel("Opportunity inbox");
+    await expect(page.getByRole("heading", { name: "Opportunity inbox" })).toBeVisible();
+    await expect(inbox.locator(".opportunity-card").first()).toBeVisible();
+    await expect(page.getByText("Web Vitals samples").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /Review .* performance on \// }).first()).toBeVisible();
+    await expect(page.getByText("Evidence-backed recommendations")).toHaveCount(0);
+    await expect(page.getByText("Prioritized recommendations")).toHaveCount(0);
+});
+
 test("opportunities inbox supports localized read and manage workflow", async ({ page }) => {
     await stubOpportunitiesApis(page);
     await login(page, "/opportunities");
@@ -114,8 +180,19 @@ test("opportunities inbox renders the same keyed recommendation in German", asyn
     }
 });
 
-async function stubOpportunitiesApis(page) {
-    let currentOpportunity = { ...baseOpportunity };
+test("opportunities inbox renders Web Vitals performance evidence", async ({ page }) => {
+    await stubOpportunitiesApis(page, { initial: webVitalsOpportunity });
+    await login(page, "/opportunities");
+
+    const inbox = page.getByLabel("Opportunity inbox");
+    await expect(inbox.getByRole("button", { name: "Review LCP performance on /" })).toBeVisible();
+    await expect(inbox.getByText("LCP p75 is 3,840 ms with a needs improvement rating across 320 samples.")).toBeVisible();
+    await expect(inbox.getByText("Web Vitals samples")).toBeVisible();
+    await expect(inbox.getByText("Slowest page")).toBeVisible();
+});
+
+async function stubOpportunitiesApis(page, { initial = baseOpportunity, generated = generatedOpportunity } = {}) {
+    let currentOpportunity = { ...initial };
 
     await page.route("**/api/admin/system/ai", async (route) => {
         await route.fulfill({
@@ -146,7 +223,7 @@ async function stubOpportunitiesApis(page) {
             return;
         }
         if (request.method() === "POST" && url.pathname.endsWith("/opportunities/generate")) {
-            currentOpportunity = { ...generatedOpportunity, status: "new" };
+            currentOpportunity = { ...generated, status: "new" };
             await route.fulfill({ contentType: "application/json", body: JSON.stringify({ opportunities: [currentOpportunity], ai_status: "success" }) });
             return;
         }

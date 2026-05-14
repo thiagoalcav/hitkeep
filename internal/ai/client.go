@@ -233,9 +233,6 @@ func ValidateConfig(conf Config) error {
 	if providerRequiresBaseURL[providerKey] && strings.TrimSpace(conf.BaseURL) == "" {
 		return fmt.Errorf("%w: base url is required for provider %q", ErrNotConfigured, conf.Provider)
 	}
-	if providerRequiresAPIKey[providerKey] && strings.TrimSpace(conf.APIKey) == "" {
-		return fmt.Errorf("%w: api key is required for provider %q", ErrNotConfigured, conf.Provider)
-	}
 	return nil
 }
 

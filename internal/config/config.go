@@ -89,9 +89,9 @@ type Config struct {
 	AIEnabled             bool   `env:"HITKEEP_AI_ENABLED"             default:"false" desc:"Enable optional AI-powered product features"`
 	AIProvider            string `env:"HITKEEP_AI_PROVIDER"            default:""      desc:"AI provider key supported by GoAI (openai, openai-compatible, bedrock, anthropic, google, mistral, ollama, openrouter)"`
 	AIModel               string `env:"HITKEEP_AI_MODEL"               default:""      desc:"AI model identifier for the configured provider"`
-	AIBaseURL             string `env:"HITKEEP_AI_BASE_URL"            default:""      desc:"Optional AI provider or gateway base URL"`
-	AIRegion              string `env:"HITKEEP_AI_REGION"              default:""      desc:"Optional AI provider region"`
-	AIAPIKey              string `env:"HITKEEP_AI_API_KEY"             default:""      desc:"AI provider API key, bearer token, or gateway key" sensitive:"redact"`
+	AIBaseURL             string `env:"HITKEEP_AI_BASE_URL"            default:""      desc:"Optional explicit AI provider or gateway base URL"`
+	AIRegion              string `env:"HITKEEP_AI_REGION"              default:""      desc:"Optional explicit AI provider region override"`
+	AIAPIKey              string `env:"HITKEEP_AI_API_KEY"             default:""      desc:"Optional explicit AI provider API key, bearer token, or gateway key; provider-native goAI env vars are preferred" sensitive:"redact"`
 	AITimeoutSeconds      int    `env:"HITKEEP_AI_TIMEOUT_SECONDS"     default:"30"    desc:"AI provider request timeout in seconds"`
 	AIRequestLimit        int    `env:"HITKEEP_AI_REQUEST_LIMIT"       default:"100"   desc:"Maximum AI requests per budget window; 0 disables local request cap"`
 	AITokenLimit          int    `env:"HITKEEP_AI_TOKEN_LIMIT"         default:"100000" desc:"Maximum AI tokens per budget window; 0 disables local token cap"`

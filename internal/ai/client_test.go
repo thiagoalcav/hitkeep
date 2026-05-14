@@ -756,17 +756,19 @@ func TestNewServiceKeepsEnabledUnconfiguredState(t *testing.T) {
 	}
 }
 
-func TestValidateConfigRequiresAPIKeyForHostedKeyProviders(t *testing.T) {
-	err := ValidateConfig(Config{Provider: "openai", Model: "gpt-test"})
-	if !errors.Is(err, ErrNotConfigured) {
-		t.Fatalf("expected ErrNotConfigured for missing OpenAI API key, got %v", err)
+func TestValidateConfigAllowsGoAIProviderCredentialEnvironment(t *testing.T) {
+	for _, provider := range []string{"openai", "anthropic", "google", "openrouter", "ollama"} {
+		t.Run(provider, func(t *testing.T) {
+			err := ValidateConfig(Config{Provider: provider, Model: "gpt-test"})
+			if err != nil {
+				t.Fatalf("expected provider %q to rely on goAI credential env, got %v", provider, err)
+			}
+		})
 	}
-	err = ValidateConfig(Config{Provider: "openai-compatible", Model: "gpt-test", BaseURL: "https://gateway.example/v1"})
-	if !errors.Is(err, ErrNotConfigured) {
-		t.Fatalf("expected ErrNotConfigured for missing gateway API key, got %v", err)
-	}
-	if err := ValidateConfig(Config{Provider: "ollama", Model: "llama3"}); err != nil {
-		t.Fatalf("expected local keyless provider config to be valid, got %v", err)
+
+	err := ValidateConfig(Config{Provider: "openai-compatible", Model: "gpt-test", BaseURL: "https://gateway.example/v1"})
+	if err != nil {
+		t.Fatalf("expected keyless gateway config to be valid when base URL is set, got %v", err)
 	}
 }
 

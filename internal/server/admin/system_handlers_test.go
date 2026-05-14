@@ -276,7 +276,7 @@ func TestAIStatusRejectsUnsupportedProviderConfig(t *testing.T) {
 	}
 }
 
-func TestAIStatusReportsMissingRequiredProviderKeyAsNotConfigured(t *testing.T) {
+func TestAIStatusAllowsGoAIProviderCredentialEnvironment(t *testing.T) {
 	h, _, _, ownerID, _, _ := setupSystemTestEnv(t)
 	h.ctx.Config.AIEnabled = true
 	h.ctx.Config.AIProvider = "openai"
@@ -293,8 +293,8 @@ func TestAIStatusReportsMissingRequiredProviderKeyAsNotConfigured(t *testing.T) 
 	if err := json.NewDecoder(w.Body).Decode(&status); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
-	if status.Configured || status.Status != "not_configured" {
-		t.Fatalf("expected missing provider key to be not configured, got %#v", status)
+	if !status.Configured || status.Status != "configured" {
+		t.Fatalf("expected native goAI provider credential env to be accepted, got %#v", status)
 	}
 }
 

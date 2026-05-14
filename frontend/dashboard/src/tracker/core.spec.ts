@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 
-import { bootstrapTracker, classifyFormSubmit, classifyLinkEvent, hasExplicitTrackingTag, readTrackerOptions, sanitizeTrackedUrl } from './core';
+import { bootstrapTracker, classifyFormSubmit, classifyLinkEvent, hasExplicitTrackingTag, readTrackerOptions, resolveWebVitalsBundleUrl, sanitizeTrackedUrl } from './core';
 
 type ListenerMap = Record<string, EventListener[]>;
 
@@ -23,6 +23,7 @@ function fetchMockOk() {
 function trackerHarness(path = '/signup?utm_source=launch&utm_medium=email') {
     const script = document.createElement('script');
     script.src = 'https://analytics.example.com/hk.js';
+    const appendedScripts: HTMLScriptElement[] = [];
 
     let currentUrl = new URL(path, 'https://app.example.com');
     const location = {
@@ -76,6 +77,13 @@ function trackerHarness(path = '/signup?utm_source=launch&utm_medium=email') {
         get visibilityState() {
             return visibilityState;
         },
+        createElement: vi.fn((tagName: string) => document.createElement(tagName)),
+        head: {
+            appendChild: vi.fn((element: HTMLScriptElement) => {
+                appendedScripts.push(element);
+                return element;
+            })
+        },
         querySelector: vi.fn(() => script),
         addEventListener: vi.fn((name: string, listener: EventListener) => {
             documentListeners[name] = [...(documentListeners[name] ?? []), listener];
@@ -107,6 +115,8 @@ function trackerHarness(path = '/signup?utm_source=launch&utm_medium=email') {
 
     return {
         documentListeners,
+        appendedScripts,
+        fakeDocument,
         history,
         script,
         sendBeacon,
@@ -235,6 +245,7 @@ describe('tracker core', () => {
         script.setAttribute('data-disable-outbound-tracking', 'true');
         script.setAttribute('data-disable-download-tracking', 'true');
         script.setAttribute('data-disable-form-tracking', 'true');
+        script.setAttribute('data-enable-web-vitals', 'true');
 
         expect(readTrackerOptions(script)).toEqual({
             collectDnt: true,
@@ -243,9 +254,14 @@ describe('tracker core', () => {
             disableOutboundTracking: true,
             disableDownloadTracking: true,
             disableFormTracking: true,
+            enableWebVitals: true,
             trackerSource: 'hk.js',
             trackerVersion: ''
         });
+    });
+
+    it('resolves the Web Vitals bundle from the tracker script origin', () => {
+        expect(resolveWebVitalsBundleUrl(new URL('https://analytics.example.com/assets/hk.js'), 'hk-vitals.js')).toBe('https://analytics.example.com/hk-vitals.js');
     });
 
     it('reads tracker source and version metadata from the snippet element', () => {
@@ -279,6 +295,26 @@ describe('tracker core', () => {
         const fetchInit = fetchMock.mock.calls[0]?.[1];
         expect(fetchInit?.keepalive).toBe(true);
         expect(fetchInit?.credentials).toBe('omit');
+    });
+
+    it('does not load the Web Vitals bundle unless the snippet opts in', () => {
+        const harness = trackerHarness('/signup');
+
+        bootstrapTracker(harness.win);
+
+        expect(harness.fakeDocument.head.appendChild).not.toHaveBeenCalled();
+        expect(harness.appendedScripts.length).toBe(0);
+    });
+
+    it('loads the same-origin Web Vitals bundle when the snippet opts in', () => {
+        const harness = trackerHarness('/signup');
+        harness.script.setAttribute('data-enable-web-vitals', 'true');
+
+        bootstrapTracker(harness.win);
+
+        expect(harness.appendedScripts.length).toBe(1);
+        expect(harness.appendedScripts[0]?.src).toBe('https://analytics.example.com/hk-vitals.js');
+        expect(harness.appendedScripts[0]?.async).toBe(true);
     });
 
     it('queues failed requests in memory and flushes them on pagehide', async () => {

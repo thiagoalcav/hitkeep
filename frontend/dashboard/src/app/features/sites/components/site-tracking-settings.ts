@@ -119,6 +119,14 @@ import { finalize } from 'rxjs';
                             <p-toggleswitch inputId="disable-beacon-switch" ariaLabelledBy="disable-beacon-label" styleClass="shrink-0" [formControl]="trackingForm.disableBeacon().control()"></p-toggleswitch>
                         </div>
 
+                        <div class="site-settings-toggle-row">
+                            <div class="site-settings-toggle-row__text">
+                                <label id="web-vitals-label" for="web-vitals-switch" class="site-settings-toggle-row__title">{{ "sites.tracking.webVitalsLabel" | transloco }}</label>
+                                <span class="site-settings-field-hint">{{ "sites.tracking.webVitalsDescription" | transloco }}</span>
+                            </div>
+                            <p-toggleswitch inputId="web-vitals-switch" ariaLabelledBy="web-vitals-label" styleClass="shrink-0" [formControl]="trackingForm.enableWebVitals().control()"></p-toggleswitch>
+                        </div>
+
                         <div class="site-settings-subsection">
                             <h4>{{ "sites.tracking.autoTrackingTitle" | transloco }}</h4>
                             <p>{{ "sites.tracking.autoTrackingDescription" | transloco }}</p>
@@ -182,6 +190,7 @@ export class SiteTrackingSettings {
     private readonly trackingFormModel = signal({
         collectDnt: new FormControl(false, { nonNullable: true }),
         disableBeacon: new FormControl(false, { nonNullable: true }),
+        enableWebVitals: new FormControl(false, { nonNullable: true }),
         trackOutbound: new FormControl(true, { nonNullable: true }),
         trackDownloads: new FormControl(true, { nonNullable: true }),
         trackForms: new FormControl(true, { nonNullable: true })
@@ -209,6 +218,7 @@ export class SiteTrackingSettings {
         let attrs = '';
         if (this.trackingForm.collectDnt().value()) attrs += ' data-collect-dnt="true"';
         if (this.trackingForm.disableBeacon().value()) attrs += ' data-disable-beacon="true"';
+        if (this.trackingForm.enableWebVitals().value()) attrs += ' data-enable-web-vitals="true"';
         if (!this.trackingForm.trackOutbound().value()) attrs += ' data-disable-outbound-tracking="true"';
         if (!this.trackingForm.trackDownloads().value()) attrs += ' data-disable-download-tracking="true"';
         if (!this.trackingForm.trackForms().value()) attrs += ' data-disable-form-tracking="true"';

@@ -34,6 +34,7 @@ describe('SiteTrackingSettings', () => {
             trackingForm: {
                 collectDnt: () => { control: () => { setValue: (value: boolean) => void } };
                 disableBeacon: () => { control: () => { setValue: (value: boolean) => void } };
+                enableWebVitals: () => { control: () => { setValue: (value: boolean) => void } };
                 trackOutbound: () => { control: () => { setValue: (value: boolean) => void } };
                 trackDownloads: () => { control: () => { setValue: (value: boolean) => void } };
                 trackForms: () => { control: () => { setValue: (value: boolean) => void } };
@@ -44,13 +45,16 @@ describe('SiteTrackingSettings', () => {
         expect(getSnippet()).toContain('hk.js');
         expect(getSnippet()).not.toContain('data-collect-dnt');
         expect(getSnippet()).not.toContain('data-disable-beacon');
+        expect(getSnippet()).not.toContain('data-enable-web-vitals');
         expect(getSnippet()).not.toContain('data-disable-outbound-tracking');
         expect(getSnippet()).not.toContain('data-disable-download-tracking');
         expect(getSnippet()).not.toContain('data-disable-form-tracking');
 
         internals.trackingForm.collectDnt().control().setValue(true);
+        internals.trackingForm.enableWebVitals().control().setValue(true);
         fixture.detectChanges();
         expect(getSnippet()).toContain('data-collect-dnt="true"');
+        expect(getSnippet()).toContain('data-enable-web-vitals="true"');
 
         internals.trackingForm.disableBeacon().control().setValue(true);
         internals.trackingForm.trackOutbound().control().setValue(false);

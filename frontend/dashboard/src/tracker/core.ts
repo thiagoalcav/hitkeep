@@ -16,6 +16,7 @@ export interface TrackerOptions {
     disableOutboundTracking: boolean;
     disableDownloadTracking: boolean;
     disableFormTracking: boolean;
+    enableWebVitals: boolean;
     trackerSource: string;
     trackerVersion: string;
 }
@@ -30,8 +31,30 @@ type HitKeepWindow = Window &
         hk?: {
             event?: EventSender;
             _bootstrapped?: boolean;
+            _webVitals?: WebVitalsTrackerContext;
+            _webVitalsLoaded?: boolean;
         };
     };
+
+export interface WebVitalsPayload {
+    n: string;
+    v: number;
+    p: string;
+    nt?: string;
+    sid: string;
+    pid: string;
+    tsrc: string;
+    tv: string;
+}
+
+export interface WebVitalsTrackerContext {
+    emit: (payload: WebVitalsPayload) => void;
+    getPath: () => string;
+    sessionId: string;
+    pageId: () => string;
+    trackerSource: string;
+    trackerVersion: string;
+}
 
 const SESSION_KEY = 'hk_session';
 const SESSION_EXPIRY = 30 * 60 * 1000;
@@ -89,6 +112,7 @@ export function readTrackerOptions(scriptEl: Element): TrackerOptions {
         disableOutboundTracking: scriptEl.getAttribute('data-disable-outbound-tracking') === 'true',
         disableDownloadTracking: scriptEl.getAttribute('data-disable-download-tracking') === 'true',
         disableFormTracking: scriptEl.getAttribute('data-disable-form-tracking') === 'true',
+        enableWebVitals: scriptEl.getAttribute('data-enable-web-vitals') === 'true',
         trackerSource: source,
         trackerVersion: version
     };
@@ -117,6 +141,22 @@ export function sanitizeTrackedUrl(rawUrl: string, baseUrl: string | URL): URL |
 
 export function sanitizeTrackedPath(url: URL): string {
     return url.pathname || '/';
+}
+
+export function resolveWebVitalsBundleUrl(scriptUrl: URL, bundleName = 'hk-vitals.js'): string {
+    return `${scriptUrl.origin}/${bundleName}`;
+}
+
+function loadWebVitalsBundle(win: HitKeepWindow, scriptUrl: URL): void {
+    if (win.hk?._webVitalsLoaded) {
+        return;
+    }
+    const script = win.document.createElement('script');
+    script.async = true;
+    script.src = resolveWebVitalsBundleUrl(scriptUrl);
+    win.hk = win.hk || {};
+    win.hk._webVitalsLoaded = true;
+    win.document.head.appendChild(script);
 }
 
 export function extractDownloadExtension(url: URL): string | null {
@@ -233,6 +273,7 @@ export function bootstrapTracker(win: HitKeepWindow = window): void {
     const scriptUrl = new URL(scriptEl.src, location.href);
     const pageEndpoint = `${scriptUrl.origin}/ingest`;
     const eventEndpoint = `${scriptUrl.origin}/ingest/event`;
+    const webVitalsEndpoint = `${scriptUrl.origin}/ingest/web-vitals`;
     const generateUUID = () => {
         if (crypto?.randomUUID) {
             return crypto.randomUUID();
@@ -293,6 +334,7 @@ export function bootstrapTracker(win: HitKeepWindow = window): void {
     let lastPath = location.pathname;
     let lastPageviewPath = '';
     let lastPageviewAt = 0;
+    let currentPageId = generateUUID();
 
     const queueRequest = (request: PendingRequest) => {
         pendingRequests.push(request);
@@ -389,9 +431,22 @@ export function bootstrapTracker(win: HitKeepWindow = window): void {
         });
     };
 
+    if (options.enableWebVitals) {
+        win.hk._webVitals = {
+            emit: (payload) => sendJson(webVitalsEndpoint, payload),
+            getPath: () => sanitizeTrackedPath(new URL(location.href)),
+            sessionId,
+            pageId: () => currentPageId,
+            trackerSource: options.trackerSource,
+            trackerVersion: options.trackerVersion
+        };
+        loadWebVitalsBundle(win, scriptUrl);
+    }
+
     const sendPageView = () => {
         const currentPath = location.pathname;
         const now = Date.now();
+        currentPageId = generateUUID();
 
         try {
             sessionStorage.setItem(SESSION_KEY, `${sessionId}|${now}`);
@@ -419,7 +474,7 @@ export function bootstrapTracker(win: HitKeepWindow = window): void {
             ...initialAttribution,
             unique: Boolean(isUnique),
             session_id: sessionId,
-            page_id: generateUUID(),
+            page_id: currentPageId,
             tsrc: options.trackerSource,
             tv: options.trackerVersion
         });

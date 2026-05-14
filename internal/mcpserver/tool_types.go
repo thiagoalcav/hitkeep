@@ -49,6 +49,16 @@ type ecommerceInput struct {
 	rangeInput
 }
 
+type webVitalsInput struct {
+	SiteID       string `json:"site_id" jsonschema:"HitKeep site UUID."`
+	Metric       string `json:"metric,omitempty" jsonschema:"Optional Web Vital metric filter: LCP, INP, CLS, FCP, or TTFB. Defaults to all metrics for summary and LCP for page breakdowns."`
+	Path         string `json:"path,omitempty" jsonschema:"Optional normalized page path filter."`
+	Rating       string `json:"rating,omitempty" jsonschema:"Optional rating filter: good, needs_improvement, or poor."`
+	IncludePages bool   `json:"include_pages,omitempty" jsonschema:"Whether to include aggregate page breakdown rows."`
+	Limit        int    `json:"limit,omitempty" jsonschema:"Maximum page rows to return. Defaults to 10 and is capped at 50."`
+	rangeInput
+}
+
 type aiVisibilityInput struct {
 	SiteID             string `json:"site_id" jsonschema:"HitKeep site UUID."`
 	AssistantName      string `json:"assistant_name,omitempty" jsonschema:"Optional AI assistant name filter."`
@@ -125,6 +135,15 @@ type ecommerceOutput struct {
 	Summary  *api.EcommerceSummary      `json:"summary"`
 	Products []api.EcommerceProductStat `json:"products"`
 	Sources  []api.EcommerceSourceStat  `json:"sources"`
+}
+
+type webVitalsOutput struct {
+	SiteID  string                      `json:"site_id"`
+	From    string                      `json:"from"`
+	To      string                      `json:"to"`
+	Metric  api.WebVitalMetric          `json:"metric,omitempty"`
+	Summary []api.WebVitalSummaryMetric `json:"summary"`
+	Pages   []api.WebVitalPageRow       `json:"pages,omitempty"`
 }
 
 type aiVisibilityOutput struct {

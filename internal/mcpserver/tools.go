@@ -11,6 +11,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/database"
 	opportunitysvc "hitkeep/internal/opportunities"
 )
 
@@ -47,6 +48,12 @@ func (s *service) registerTools(server *mcp.Server) {
 		Description: "Read ecommerce summary, top products, and source stats for one site.",
 		Annotations: readOnly,
 	}, s.getEcommerce)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "hitkeep_get_web_vitals",
+		Title:       "Get HitKeep Web Vitals",
+		Description: "Read aggregate Web Vitals p75, sample counts, rating counts, and optional page breakdowns for one site.",
+		Annotations: readOnly,
+	}, s.getWebVitals)
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "hitkeep_get_ai_visibility",
 		Title:       "Get HitKeep AI Visibility",
@@ -250,6 +257,66 @@ func (s *service) getEcommerce(ctx context.Context, _ *mcp.CallToolRequest, inpu
 		return nil, ecommerceOutput{}, err
 	}
 	return nil, ecommerceOutput{SiteID: siteID.String(), From: formatMCPTime(start), To: formatMCPTime(end), Summary: summary, Products: products, Sources: sources}, nil
+}
+
+func (s *service) getWebVitals(ctx context.Context, _ *mcp.CallToolRequest, input webVitalsInput) (*mcp.CallToolResult, webVitalsOutput, error) {
+	siteID, start, end, err := s.parseSiteRange(input.SiteID, input.rangeInput)
+	if err != nil {
+		return nil, webVitalsOutput{}, err
+	}
+	if _, err := s.requireSiteView(ctx, siteID); err != nil {
+		return nil, webVitalsOutput{}, err
+	}
+
+	metric := api.WebVitalMetric(strings.TrimSpace(input.Metric))
+	if metric != "" {
+		if _, err := database.WebVitalRatingForValue(metric, 0); err != nil {
+			return nil, webVitalsOutput{}, err
+		}
+	} else if input.IncludePages {
+		metric = api.WebVitalLCP
+	}
+	rating := api.WebVitalRating(strings.TrimSpace(input.Rating))
+	if rating != "" {
+		switch rating {
+		case api.WebVitalRatingGood, api.WebVitalRatingNeedsImprovement, api.WebVitalRatingPoor:
+		default:
+			return nil, webVitalsOutput{}, fmt.Errorf("invalid web vital rating %q", input.Rating)
+		}
+	}
+
+	params := api.WebVitalsParams{
+		SiteID: siteID,
+		Start:  start,
+		End:    end,
+		Metric: metric,
+		Path:   strings.TrimSpace(input.Path),
+		Rating: rating,
+		Limit:  normalizeLimit(input.Limit),
+	}
+	analyticsStore, err := s.analyticsStore(ctx, siteID)
+	if err != nil {
+		return nil, webVitalsOutput{}, err
+	}
+	summary, err := analyticsStore.GetWebVitalsSummary(ctx, params)
+	if err != nil {
+		return nil, webVitalsOutput{}, err
+	}
+	output := webVitalsOutput{
+		SiteID:  siteID.String(),
+		From:    formatMCPTime(start),
+		To:      formatMCPTime(end),
+		Summary: summary,
+	}
+	if input.IncludePages {
+		pages, err := analyticsStore.GetWebVitalsPages(ctx, params)
+		if err != nil {
+			return nil, webVitalsOutput{}, err
+		}
+		output.Metric = metric
+		output.Pages = pages
+	}
+	return nil, output, nil
 }
 
 func (s *service) getAIVisibility(ctx context.Context, _ *mcp.CallToolRequest, input aiVisibilityInput) (*mcp.CallToolResult, aiVisibilityOutput, error) {

@@ -185,7 +185,7 @@ Team API clients are recommended for shared assistants and automations.
 
 ## Analytics Scope
 
-Analytics tools require a ` + "`site_id`" + ` that the API client can view. The server returns aggregate KPIs, event summaries, ecommerce summaries, AI visibility reports, and saved Opportunities recommendations. It does not expose raw hit exports or write/admin actions.
+Analytics tools require a ` + "`site_id`" + ` that the API client can view. The server returns aggregate KPIs, event summaries, ecommerce summaries, Web Vitals summaries, AI visibility reports, and saved Opportunities recommendations. It does not expose raw hit exports, raw Web Vitals samples, or write/admin actions.
 
 Date inputs use RFC3339 timestamps. If omitted, tools default to the last 30 days. Filters support path, hostname, referrer, referrer_host, device, country, browser, language, and UTM fields.
 

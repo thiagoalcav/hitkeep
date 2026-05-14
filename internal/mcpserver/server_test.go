@@ -357,6 +357,9 @@ func TestMCPToolsListAndSiteOverview(t *testing.T) {
 	if !hasTool(tools.Tools, "hitkeep_get_site_overview") {
 		t.Fatalf("expected hitkeep_get_site_overview in tool list")
 	}
+	if !hasTool(tools.Tools, "hitkeep_get_web_vitals") {
+		t.Fatalf("expected hitkeep_get_web_vitals in tool list")
+	}
 
 	sites, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "hitkeep_list_sites"})
 	if err != nil {
@@ -397,6 +400,47 @@ func TestMCPToolsListAndSiteOverview(t *testing.T) {
 	}
 	if len(output.Stats.Goals) != 1 || output.Stats.Goals[0].GoalID == "" {
 		t.Fatalf("expected string goal id in overview output, got %+v", output.Stats.Goals)
+	}
+}
+
+func TestMCPWebVitalsReturnsAggregateOnly(t *testing.T) {
+	store, site, token := setupMCPStore(t)
+	conf := testMCPConfig(t, "")
+	handler := NewHandler(conf, store, nil, nil, nil)
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	session := connectMCPClient(t, ts.URL+conf.MCPPath, token)
+	defer session.Close()
+
+	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "hitkeep_get_web_vitals",
+		Arguments: map[string]any{
+			"site_id":       site.ID.String(),
+			"from":          time.Now().UTC().Add(-2 * time.Hour).Format(time.RFC3339),
+			"to":            time.Now().UTC().Add(2 * time.Hour).Format(time.RFC3339),
+			"metric":        "LCP",
+			"include_pages": true,
+		},
+	})
+	if err != nil {
+		t.Fatalf("CallTool: %v", err)
+	}
+	requireSuccessfulMCPTool(t, res, err)
+
+	raw := marshalMCPStructuredContent(t, res)
+	var output webVitalsOutput
+	if err := json.Unmarshal([]byte(raw), &output); err != nil {
+		t.Fatalf("unmarshal output: %v", err)
+	}
+	if len(output.Summary) == 0 || output.Summary[0].Samples == 0 {
+		t.Fatalf("expected aggregate Web Vitals summary, got %+v", output.Summary)
+	}
+	if len(output.Pages) != 1 || output.Pages[0].Path != "/pricing" {
+		t.Fatalf("expected aggregate page breakdown only, got %+v", output.Pages)
+	}
+	if strings.Contains(raw, "session_id") || strings.Contains(raw, "page_id") || strings.Contains(raw, "tracker_version") {
+		t.Fatalf("expected MCP output to omit raw Web Vitals sample fields, got %s", raw)
 	}
 }
 
@@ -1321,6 +1365,28 @@ func setupMCPStore(t *testing.T) (*database.Store, *api.Site, string) {
 		Path:      "/",
 	}); err != nil {
 		t.Fatalf("CreateHit: %v", err)
+	}
+	if err := store.CreateWebVitalsBulk(ctx, []*api.WebVital{
+		{
+			SiteID:    site.ID,
+			SessionID: uuid.New(),
+			PageID:    uuid.New(),
+			Metric:    api.WebVitalLCP,
+			Value:     1800,
+			Path:      "/pricing",
+			Timestamp: time.Now().UTC(),
+		},
+		{
+			SiteID:    site.ID,
+			SessionID: uuid.New(),
+			PageID:    uuid.New(),
+			Metric:    api.WebVitalLCP,
+			Value:     3200,
+			Path:      "/pricing",
+			Timestamp: time.Now().UTC(),
+		},
+	}); err != nil {
+		t.Fatalf("CreateWebVitalsBulk: %v", err)
 	}
 	if err := store.CreateGoal(ctx, &api.Goal{
 		SiteID: site.ID,

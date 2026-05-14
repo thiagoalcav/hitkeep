@@ -29,6 +29,7 @@ func TestMCPPublishedSurfaceAudit(t *testing.T) {
 		"hitkeep_get_event_names":           true,
 		"hitkeep_get_event_breakdown":       true,
 		"hitkeep_get_ecommerce":             true,
+		"hitkeep_get_web_vitals":            true,
 		"hitkeep_get_ai_visibility":         true,
 		"hitkeep_get_opportunities":         true,
 		"hitkeep_get_search_console_status": true,

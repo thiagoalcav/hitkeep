@@ -643,7 +643,20 @@
             "urlPathHelp": "Déclenche quand un utilisateur visite une URL spécifique.",
             "eventNameHelpPrefix": "Déclenche quand vous appelez",
             "eventNameHelpSuffix": ".",
-            "createAction": "Créer un objectif"
+            "createAction": "Créer un objectif",
+            "newAction": "Nouvel objectif",
+            "editTitle": "Modifier l’objectif",
+            "editTooltip": "Modifier l’objectif",
+            "deleteTooltip": "Supprimer l’objectif",
+            "saveAction": "Enregistrer les modifications",
+            "messages": {
+                "createSuccess": "Objectif créé.",
+                "createError": "Impossible de créer l’objectif.",
+                "updateSuccess": "Objectif mis à jour.",
+                "updateError": "Impossible de mettre à jour l’objectif.",
+                "deleteSuccess": "Objectif supprimé.",
+                "deleteError": "Impossible de supprimer l’objectif."
+            }
         }
     },
     "funnels": {
@@ -684,13 +697,27 @@
             "addStep": "Ajouter une étape",
             "createAction": "Créer un entonnoir",
             "typePagePath": "Chemin",
-            "typeCustomEvent": "Événement"
+            "typeCustomEvent": "Événement",
+            "newAction": "Nouvel entonnoir",
+            "editTitle": "Modifier l’entonnoir",
+            "editTooltip": "Modifier l’entonnoir",
+            "deleteTooltip": "Supprimer l’entonnoir",
+            "saveAction": "Enregistrer les modifications",
+            "messages": {
+                "createSuccess": "Entonnoir créé.",
+                "createError": "Impossible de créer l’entonnoir.",
+                "updateSuccess": "Entonnoir mis à jour.",
+                "updateError": "Impossible de mettre à jour l’entonnoir.",
+                "deleteSuccess": "Entonnoir supprimé.",
+                "deleteError": "Impossible de supprimer l’entonnoir."
+            }
         },
         "viewer": {
             "dialogTitle": "Analyse d'entonnoir",
             "droppedSuffix": "abandons",
             "retention": "rétention",
-            "entry": "Entrée"
+            "entry": "Entrée",
+            "editAction": "Modifier l’entonnoir"
         }
     },
     "utm": {

@@ -643,7 +643,20 @@
             "urlPathHelp": "Wird ausgelöst, wenn ein Nutzer eine bestimmte URL besucht.",
             "eventNameHelpPrefix": "Wird ausgelöst, wenn du",
             "eventNameHelpSuffix": "aufrufen.",
-            "createAction": "Ziel erstellen"
+            "createAction": "Ziel erstellen",
+            "newAction": "Neues Ziel",
+            "editTitle": "Ziel bearbeiten",
+            "editTooltip": "Ziel bearbeiten",
+            "deleteTooltip": "Ziel löschen",
+            "saveAction": "Änderungen speichern",
+            "messages": {
+                "createSuccess": "Ziel erstellt.",
+                "createError": "Ziel konnte nicht erstellt werden.",
+                "updateSuccess": "Ziel aktualisiert.",
+                "updateError": "Ziel konnte nicht aktualisiert werden.",
+                "deleteSuccess": "Ziel gelöscht.",
+                "deleteError": "Ziel konnte nicht gelöscht werden."
+            }
         }
     },
     "funnels": {
@@ -684,13 +697,27 @@
             "addStep": "Schritt hinzufügen",
             "createAction": "Funnel erstellen",
             "typePagePath": "Pfad",
-            "typeCustomEvent": "Event"
+            "typeCustomEvent": "Event",
+            "newAction": "Neuer Funnel",
+            "editTitle": "Funnel bearbeiten",
+            "editTooltip": "Funnel bearbeiten",
+            "deleteTooltip": "Funnel löschen",
+            "saveAction": "Änderungen speichern",
+            "messages": {
+                "createSuccess": "Funnel erstellt.",
+                "createError": "Funnel konnte nicht erstellt werden.",
+                "updateSuccess": "Funnel aktualisiert.",
+                "updateError": "Funnel konnte nicht aktualisiert werden.",
+                "deleteSuccess": "Funnel gelöscht.",
+                "deleteError": "Funnel konnte nicht gelöscht werden."
+            }
         },
         "viewer": {
             "dialogTitle": "Funnel-Analyse",
             "droppedSuffix": "abgesprungen",
             "retention": "Bindung",
-            "entry": "Einstieg"
+            "entry": "Einstieg",
+            "editAction": "Funnel bearbeiten"
         }
     },
     "utm": {

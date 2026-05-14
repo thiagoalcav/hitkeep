@@ -152,8 +152,15 @@
     </div>
     }
 
-    <app-funnel-manager [(visible)]="isFunnelManagerVisible" [siteId]="siteService.activeSite()?.id || null" (funnelsChanged)="loadFunnels()" (viewFunnel)="viewFunnel($event)" />
-    <app-funnel-viewer [(visible)]="isFunnelViewerVisible" [siteId]="siteService.activeSite()?.id || null" [funnelId]="selectedFunnel()?.id || null" [dateRange]="getDateRange()" />
+    <app-funnel-manager
+        [visible]="isFunnelManagerVisible()"
+        (visibleChange)="setFunnelManagerVisible($event)"
+        [siteId]="siteService.activeSite()?.id || null"
+        [editFunnelId]="funnelEditRequestId()"
+        (funnelsChanged)="loadFunnels()"
+        (viewFunnel)="viewFunnel($event)"
+    />
+    <app-funnel-viewer [(visible)]="isFunnelViewerVisible" [siteId]="siteService.activeSite()?.id || null" [funnelId]="selectedFunnel()?.id || null" [dateRange]="viewerDateRange()" (editClicked)="editSelectedFunnel()" />
 </div>
 
 <!-- Date Range Dialog -->

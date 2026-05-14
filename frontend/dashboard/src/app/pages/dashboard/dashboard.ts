@@ -126,6 +126,7 @@ export class Dashboard {
     protected showFunnelManager = signal(false);
     protected showFunnelViewer = signal(false);
     protected selectedFunnelId = signal<string | null>(null);
+    protected funnelEditRequestId = signal<string | null>(null);
     protected searchConsoleRefreshKey = signal(0);
     protected isAddSiteVisible = signal(false);
     protected funnelDateRange = computed(() => this.getCurrentDateRange());
@@ -520,6 +521,26 @@ export class Dashboard {
     protected openFunnelViewer(funnel: Funnel) {
         this.selectedFunnelId.set(funnel.id);
         this.showFunnelViewer.set(true);
+    }
+
+    protected openFunnelManager() {
+        this.funnelEditRequestId.set(null);
+        this.showFunnelManager.set(true);
+    }
+
+    protected setFunnelManagerVisible(visible: boolean) {
+        this.showFunnelManager.set(visible);
+        if (!visible) {
+            this.funnelEditRequestId.set(null);
+        }
+    }
+
+    protected editSelectedFunnel() {
+        const funnelId = this.selectedFunnelId();
+        if (!funnelId) return;
+        this.funnelEditRequestId.set(funnelId);
+        this.showFunnelViewer.set(false);
+        this.showFunnelManager.set(true);
     }
 
     protected applyMetricFilter(type: MetricFilterType, metric: MetricStat) {

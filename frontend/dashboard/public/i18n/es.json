@@ -643,7 +643,20 @@
             "urlPathHelp": "Se activa cuando un usuario visita una URL especifica.",
             "eventNameHelpPrefix": "Se activa cuando llamas",
             "eventNameHelpSuffix": ".",
-            "createAction": "Crear objetivo"
+            "createAction": "Crear objetivo",
+            "newAction": "Nuevo objetivo",
+            "editTitle": "Editar objetivo",
+            "editTooltip": "Editar objetivo",
+            "deleteTooltip": "Eliminar objetivo",
+            "saveAction": "Guardar cambios",
+            "messages": {
+                "createSuccess": "Objetivo creado.",
+                "createError": "No se pudo crear el objetivo.",
+                "updateSuccess": "Objetivo actualizado.",
+                "updateError": "No se pudo actualizar el objetivo.",
+                "deleteSuccess": "Objetivo eliminado.",
+                "deleteError": "No se pudo eliminar el objetivo."
+            }
         }
     },
     "funnels": {
@@ -684,13 +697,27 @@
             "addStep": "Agregar paso",
             "createAction": "Crear embudo",
             "typePagePath": "Ruta",
-            "typeCustomEvent": "Evento"
+            "typeCustomEvent": "Evento",
+            "newAction": "Nuevo embudo",
+            "editTitle": "Editar embudo",
+            "editTooltip": "Editar embudo",
+            "deleteTooltip": "Eliminar embudo",
+            "saveAction": "Guardar cambios",
+            "messages": {
+                "createSuccess": "Embudo creado.",
+                "createError": "No se pudo crear el embudo.",
+                "updateSuccess": "Embudo actualizado.",
+                "updateError": "No se pudo actualizar el embudo.",
+                "deleteSuccess": "Embudo eliminado.",
+                "deleteError": "No se pudo eliminar el embudo."
+            }
         },
         "viewer": {
             "dialogTitle": "Análisis de embudo",
             "droppedSuffix": "abandono",
             "retention": "retención",
-            "entry": "Entrada"
+            "entry": "Entrada",
+            "editAction": "Editar embudo"
         }
     },
     "utm": {

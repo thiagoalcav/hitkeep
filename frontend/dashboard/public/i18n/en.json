@@ -643,7 +643,20 @@
             "urlPathHelp": "Triggers when a user visits a specific URL.",
             "eventNameHelpPrefix": "Triggers when you call",
             "eventNameHelpSuffix": ".",
-            "createAction": "Create goal"
+            "createAction": "Create goal",
+            "newAction": "New goal",
+            "editTitle": "Edit goal",
+            "editTooltip": "Edit goal",
+            "deleteTooltip": "Delete goal",
+            "saveAction": "Save changes",
+            "messages": {
+                "createSuccess": "Goal created.",
+                "createError": "Goal could not be created.",
+                "updateSuccess": "Goal updated.",
+                "updateError": "Goal could not be updated.",
+                "deleteSuccess": "Goal deleted.",
+                "deleteError": "Goal could not be deleted."
+            }
         }
     },
     "funnels": {
@@ -684,13 +697,27 @@
             "addStep": "Add step",
             "createAction": "Create funnel",
             "typePagePath": "Path",
-            "typeCustomEvent": "Event"
+            "typeCustomEvent": "Event",
+            "newAction": "New funnel",
+            "editTitle": "Edit funnel",
+            "editTooltip": "Edit funnel",
+            "deleteTooltip": "Delete funnel",
+            "saveAction": "Save changes",
+            "messages": {
+                "createSuccess": "Funnel created.",
+                "createError": "Funnel could not be created.",
+                "updateSuccess": "Funnel updated.",
+                "updateError": "Funnel could not be updated.",
+                "deleteSuccess": "Funnel deleted.",
+                "deleteError": "Funnel could not be deleted."
+            }
         },
         "viewer": {
             "dialogTitle": "Funnel analysis",
             "droppedSuffix": "dropped",
             "retention": "retention",
-            "entry": "Entry"
+            "entry": "Entry",
+            "editAction": "Edit funnel"
         }
     },
     "utm": {

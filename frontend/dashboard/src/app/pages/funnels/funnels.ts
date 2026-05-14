@@ -73,6 +73,7 @@ export class Funnels {
     protected isFunnelManagerVisible = signal(false);
     protected isFunnelViewerVisible = signal(false);
     protected selectedFunnel = signal<Funnel | null>(null);
+    protected funnelEditRequestId = signal<string | null>(null);
 
     protected funnels = signal<Funnel[]>([]);
     protected loading = signal(false);
@@ -188,6 +189,7 @@ export class Funnels {
             { label: this.transloco.translate('nav.funnels'), isCurrent: true }
         ];
     });
+    protected readonly viewerDateRange = computed(() => this.getDateRange());
 
     constructor() {
         effect(() => {
@@ -398,12 +400,28 @@ export class Funnels {
     }
 
     openFunnelManager() {
+        this.funnelEditRequestId.set(null);
         this.isFunnelManagerVisible.set(true);
+    }
+
+    setFunnelManagerVisible(visible: boolean) {
+        this.isFunnelManagerVisible.set(visible);
+        if (!visible) {
+            this.funnelEditRequestId.set(null);
+        }
     }
 
     viewFunnel(funnel: Funnel) {
         this.selectedFunnel.set(funnel);
         this.isFunnelViewerVisible.set(true);
+    }
+
+    editSelectedFunnel() {
+        const funnel = this.selectedFunnel();
+        if (!funnel) return;
+        this.funnelEditRequestId.set(funnel.id);
+        this.isFunnelViewerVisible.set(false);
+        this.isFunnelManagerVisible.set(true);
     }
 
     getDateRange() {

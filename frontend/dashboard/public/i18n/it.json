@@ -643,7 +643,20 @@
             "urlPathHelp": "Si attiva quando un utente visita un URL specifico.",
             "eventNameHelpPrefix": "Si attiva quando chiami",
             "eventNameHelpSuffix": ".",
-            "createAction": "Crea obiettivo"
+            "createAction": "Crea obiettivo",
+            "newAction": "Nuovo obiettivo",
+            "editTitle": "Modifica obiettivo",
+            "editTooltip": "Modifica obiettivo",
+            "deleteTooltip": "Elimina obiettivo",
+            "saveAction": "Salva modifiche",
+            "messages": {
+                "createSuccess": "Obiettivo creato.",
+                "createError": "Impossibile creare l’obiettivo.",
+                "updateSuccess": "Obiettivo aggiornato.",
+                "updateError": "Impossibile aggiornare l’obiettivo.",
+                "deleteSuccess": "Obiettivo eliminato.",
+                "deleteError": "Impossibile eliminare l’obiettivo."
+            }
         }
     },
     "funnels": {
@@ -684,13 +697,27 @@
             "addStep": "Aggiungi passaggio",
             "createAction": "Crea funnel",
             "typePagePath": "Percorso",
-            "typeCustomEvent": "Evento"
+            "typeCustomEvent": "Evento",
+            "newAction": "Nuovo funnel",
+            "editTitle": "Modifica funnel",
+            "editTooltip": "Modifica funnel",
+            "deleteTooltip": "Elimina funnel",
+            "saveAction": "Salva modifiche",
+            "messages": {
+                "createSuccess": "Funnel creato.",
+                "createError": "Impossibile creare il funnel.",
+                "updateSuccess": "Funnel aggiornato.",
+                "updateError": "Impossibile aggiornare il funnel.",
+                "deleteSuccess": "Funnel eliminato.",
+                "deleteError": "Impossibile eliminare il funnel."
+            }
         },
         "viewer": {
             "dialogTitle": "Analisi funnel",
             "droppedSuffix": "abbandonati",
             "retention": "retention",
-            "entry": "Ingresso"
+            "entry": "Ingresso",
+            "editAction": "Modifica funnel"
         }
     },
     "utm": {

@@ -4,6 +4,7 @@ import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { compatForm } from '@angular/forms/signals/compat';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { switchMap, finalize } from 'rxjs';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { DividerModule } from 'primeng/divider';
@@ -15,19 +16,45 @@ import { InputTextModule } from 'primeng/inputtext';
 import { SelectButtonModule } from 'primeng/selectbutton';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
+import { TooltipModule } from 'primeng/tooltip';
+import { MessageModule } from 'primeng/message';
 import { AnalyticsService } from '@services/analytics.service';
 import { Goal } from '@models/analytics.types';
 
+type GoalManagerAction = 'create' | 'update' | 'delete';
+
 @Component({
     selector: 'app-goal-manager',
-    imports: [ReactiveFormsModule, DialogModule, ButtonModule, DividerModule, IconFieldModule, InputIconModule, InputGroupModule, InputGroupAddonModule, InputTextModule, SelectButtonModule, TableModule, TagModule, TranslocoPipe],
+    imports: [
+        ReactiveFormsModule,
+        DialogModule,
+        ButtonModule,
+        DividerModule,
+        IconFieldModule,
+        InputIconModule,
+        InputGroupModule,
+        InputGroupAddonModule,
+        InputTextModule,
+        SelectButtonModule,
+        TableModule,
+        TagModule,
+        TooltipModule,
+        MessageModule,
+        TranslocoPipe
+    ],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
-        <p-dialog [header]="'goals.manager.dialogTitle' | transloco" [(visible)]="visible" [modal]="true" [style]="{ width: '640px', maxWidth: '90vw' }" [draggable]="false" [resizable]="false">
+        <p-dialog [header]="'goals.manager.dialogTitle' | transloco" [(visible)]="visible" [modal]="true" [style]="dialogStyle" [draggable]="false" [resizable]="false" (onHide)="resetEditor()">
             <p class="text-sm text-muted-color mb-4">{{ "goals.manager.dialogDescription" | transloco }}</p>
 
-            <!-- Existing goals list -->
-            <div class="flex justify-end mb-3">
+            @if (successKey(); as key) {
+                <p-message severity="success" styleClass="w-full mb-4" [text]="key | transloco" />
+            } @else if (errorKey(); as key) {
+                <p-message severity="error" styleClass="w-full mb-4" [text]="key | transloco" />
+            }
+
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
+                <p-button [label]="'goals.manager.newAction' | transloco" icon="pi pi-plus" (onClick)="resetEditor()" [outlined]="true" size="small" />
                 <p-iconfield>
                     <p-inputicon class="pi pi-search" />
                     <input pInputText #goalSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="goalsTable.filterGlobal($any($event.target).value, 'contains')" class="w-full" />
@@ -50,18 +77,38 @@ import { Goal } from '@models/analytics.types';
                                 {{ "common.columns.value" | transloco }}
                                 <p-sortIcon field="value" />
                             </th>
-                            <th style="width: 4rem"></th>
+                            <th style="width: 7rem"></th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-goal>
-                        <tr>
+                        <tr [class]="editingGoal()?.id === goal.id ? 'bg-surface-50 dark:bg-surface-800' : ''">
                             <td class="font-medium">{{ goal.name }}</td>
                             <td>
                                 <p-tag [value]="goalTypeLabel(goal.type)" [severity]="goal.type === 'event' ? 'info' : 'warn'" [rounded]="true" />
                             </td>
                             <td class="font-mono text-sm text-muted-color truncate max-w-[150px]" [title]="goal.value">{{ goal.value }}</td>
                             <td>
-                                <p-button icon="pi pi-trash" (onClick)="deleteGoal(goal.id)" styleClass="p-button-text p-button-danger p-button-sm" [rounded]="true"></p-button>
+                                <div class="flex justify-end gap-1">
+                                    <p-button
+                                        icon="pi pi-pencil"
+                                        (onClick)="editGoal(goal)"
+                                        styleClass="p-button-text p-button-sm"
+                                        [rounded]="true"
+                                        [pTooltip]="'goals.manager.editTooltip' | transloco"
+                                        [ariaLabel]="'goals.manager.editTooltip' | transloco"
+                                        [disabled]="isBusy()"
+                                    />
+                                    <p-button
+                                        icon="pi pi-trash"
+                                        (onClick)="deleteGoal(goal.id)"
+                                        styleClass="p-button-text p-button-danger p-button-sm"
+                                        [rounded]="true"
+                                        [pTooltip]="'goals.manager.deleteTooltip' | transloco"
+                                        [ariaLabel]="'goals.manager.deleteTooltip' | transloco"
+                                        [loading]="deletingGoalId() === goal.id"
+                                        [disabled]="isBusy()"
+                                    />
+                                </div>
                             </td>
                         </tr>
                     </ng-template>
@@ -75,8 +122,12 @@ import { Goal } from '@models/analytics.types';
 
             <p-divider />
 
-            <!-- Add goal form -->
-            <h4 class="font-semibold text-sm mt-0 mb-4">{{ "goals.manager.addTitle" | transloco }}</h4>
+            <div class="flex items-center justify-between gap-3 mb-4">
+                <h4 class="font-semibold text-sm mt-0 mb-0">{{ editorTitle() }}</h4>
+                @if (editingGoal()) {
+                    <p-button [label]="'common.actions.cancel' | transloco" (onClick)="resetEditor()" [text]="true" size="small" />
+                }
+            </div>
 
             <div class="flex flex-col gap-4">
                 <div class="flex flex-col gap-1">
@@ -110,7 +161,7 @@ import { Goal } from '@models/analytics.types';
             </div>
 
             <ng-template pTemplate="footer">
-                <p-button [label]="'goals.manager.createAction' | transloco" icon="pi pi-plus" (onClick)="createGoal()" [loading]="creating()" [disabled]="!canCreate()" size="small" />
+                <p-button [label]="primaryActionLabel()" [icon]="editingGoal() ? 'pi pi-save' : 'pi pi-plus'" (onClick)="saveGoal()" [loading]="saving()" [disabled]="!canSave()" size="small" />
             </ng-template>
         </p-dialog>
     `
@@ -124,7 +175,13 @@ export class GoalManager {
     private transloco = inject(TranslocoService);
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
-    creating = signal(false);
+    protected readonly dialogStyle = { width: '760px', maxWidth: '94vw' };
+    protected readonly saving = signal(false);
+    protected readonly deletingGoalId = signal<string | null>(null);
+    protected readonly editingGoal = signal<Goal | null>(null);
+    protected readonly isBusy = computed(() => this.saving() || this.deletingGoalId() !== null);
+    protected readonly successKey = signal<string | null>(null);
+    protected readonly errorKey = signal<string | null>(null);
 
     protected readonly goalsResource = rxResource({
         params: () => {
@@ -144,6 +201,16 @@ export class GoalManager {
         ];
     });
 
+    protected readonly editorTitle = computed(() => {
+        this.activeLanguage();
+        return this.editingGoal() ? this.transloco.translate('goals.manager.editTitle') : this.transloco.translate('goals.manager.addTitle');
+    });
+
+    protected readonly primaryActionLabel = computed(() => {
+        this.activeLanguage();
+        return this.editingGoal() ? this.transloco.translate('goals.manager.saveAction') : this.transloco.translate('goals.manager.createAction');
+    });
+
     private readonly newGoalModel = signal({
         name: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
         type: new FormControl<'path' | 'event'>('path', { nonNullable: true, validators: [Validators.required] }),
@@ -151,10 +218,10 @@ export class GoalManager {
     });
     protected readonly newGoalForm = compatForm(this.newGoalModel);
 
-    protected readonly canCreate = computed(() => {
+    protected readonly canSave = computed(() => {
         const name = this.newGoalForm.name().value().trim();
         const value = this.newGoalForm.value().value().trim();
-        return !this.newGoalForm().invalid() && name.length > 0 && value.length > 0;
+        return !this.isBusy() && !this.newGoalForm().invalid() && name.length > 0 && value.length > 0;
     });
 
     protected goalTypeLabel(type: Goal['type']): string {
@@ -164,37 +231,82 @@ export class GoalManager {
         return this.transloco.translate('goals.manager.typePagePath');
     }
 
-    createGoal() {
+    editGoal(goal: Goal) {
+        if (this.isBusy()) return;
+        this.clearFeedback();
+        this.editingGoal.set(goal);
+        this.newGoalForm.name().control().setValue(goal.name);
+        this.newGoalForm.type().control().setValue(goal.type);
+        this.newGoalForm.value().control().setValue(goal.value);
+    }
+
+    resetEditor() {
+        this.clearFeedback();
+        this.editingGoal.set(null);
+        this.newGoalForm.name().control().reset('');
+        this.newGoalForm.type().control().reset('path');
+        this.newGoalForm.value().control().reset('');
+    }
+
+    saveGoal() {
         const siteId = this.siteId();
-        if (!siteId || !this.canCreate()) return;
+        if (!siteId || !this.canSave()) return;
         const payload = {
             name: this.newGoalForm.name().value().trim(),
             type: this.newGoalForm.type().value(),
             value: this.newGoalForm.value().value().trim()
         };
+        const editingGoal = this.editingGoal();
+        const action: GoalManagerAction = editingGoal ? 'update' : 'create';
 
-        this.creating.set(true);
-        this.analyticsService.createGoal(siteId, payload).subscribe({
+        this.clearFeedback();
+        this.saving.set(true);
+        const request = editingGoal ? this.analyticsService.createGoal(siteId, payload).pipe(switchMap(() => this.analyticsService.deleteGoal(siteId, editingGoal.id))) : this.analyticsService.createGoal(siteId, payload);
+
+        request.pipe(finalize(() => this.saving.set(false))).subscribe({
             next: () => {
-                this.creating.set(false);
-                this.newGoalForm.name().control().reset('');
-                this.newGoalForm.type().control().reset('path');
-                this.newGoalForm.value().control().reset('');
+                this.resetEditor();
                 this.goalsResource.reload();
                 this.goalsChanged.emit();
+                this.setSuccess(action);
             },
-            error: () => this.creating.set(false)
+            error: () => this.setError(action)
         });
     }
 
     deleteGoal(id: string) {
         const siteId = this.siteId();
-        if (!siteId) return;
-        this.analyticsService.deleteGoal(siteId, id).subscribe({
-            next: () => {
-                this.goalsResource.reload();
-                this.goalsChanged.emit();
-            }
-        });
+        if (!siteId || this.isBusy()) return;
+        this.clearFeedback();
+        this.deletingGoalId.set(id);
+        this.analyticsService
+            .deleteGoal(siteId, id)
+            .pipe(finalize(() => this.deletingGoalId.set(null)))
+            .subscribe({
+                next: () => {
+                    if (this.editingGoal()?.id === id) {
+                        this.resetEditor();
+                    }
+                    this.goalsResource.reload();
+                    this.goalsChanged.emit();
+                    this.setSuccess('delete');
+                },
+                error: () => this.setError('delete')
+            });
+    }
+
+    private clearFeedback() {
+        this.successKey.set(null);
+        this.errorKey.set(null);
+    }
+
+    private setSuccess(action: GoalManagerAction) {
+        this.successKey.set(`goals.manager.messages.${action}Success`);
+        this.errorKey.set(null);
+    }
+
+    private setError(action: GoalManagerAction) {
+        this.errorKey.set(`goals.manager.messages.${action}Error`);
+        this.successKey.set(null);
     }
 }

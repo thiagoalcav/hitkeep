@@ -1,18 +1,19 @@
-import { Component, inject, signal, OnChanges, input, model } from '@angular/core';
+import { Component, inject, signal, OnChanges, input, model, output } from '@angular/core';
 
 import { TranslocoPipe } from '@jsverse/transloco';
 import { TranslocoDecimalPipe } from '@jsverse/transloco-locale';
 import { DialogModule } from 'primeng/dialog';
 import { SkeletonModule } from 'primeng/skeleton';
+import { ButtonModule } from 'primeng/button';
 import { AnalyticsService } from '@services/analytics.service';
 import { FunnelStats } from '@models/analytics.types';
 
 @Component({
     selector: 'app-funnel-viewer',
     standalone: true,
-    imports: [DialogModule, SkeletonModule, TranslocoPipe, TranslocoDecimalPipe],
+    imports: [DialogModule, SkeletonModule, ButtonModule, TranslocoPipe, TranslocoDecimalPipe],
     template: `
-        <p-dialog [header]="stats()?.name || ('funnels.viewer.dialogTitle' | transloco)" [(visible)]="visible" [modal]="true" [style]="{ width: '900px', maxWidth: '95vw' }" [draggable]="false" [resizable]="false" (onHide)="onHide()">
+        <p-dialog [header]="stats()?.name || ('funnels.viewer.dialogTitle' | transloco)" [(visible)]="visible" [modal]="true" [style]="dialogStyle" [draggable]="false" [resizable]="false" (onHide)="onHide()">
             @if (loading()) {
                 <div class="flex flex-col gap-4 p-4">
                     <p-skeleton height="200px" styleClass="w-full" />
@@ -78,6 +79,12 @@ import { FunnelStats } from '@models/analytics.types';
                     </div>
                 </div>
             }
+            <ng-template pTemplate="footer">
+                <p-button [label]="'common.actions.close' | transloco" (onClick)="onHide()" [text]="true" size="small" />
+                @if (canEdit()) {
+                    <p-button [label]="'funnels.viewer.editAction' | transloco" icon="pi pi-pencil" (onClick)="editClicked.emit()" size="small" />
+                }
+            </ng-template>
         </p-dialog>
     `
 })
@@ -89,11 +96,15 @@ export class FunnelViewer implements OnChanges {
         from: string;
         to: string;
     } | null>(null);
+    readonly canEdit = input(true);
+    readonly editClicked = output<void>();
 
     private analyticsService = inject(AnalyticsService);
 
+    protected readonly dialogStyle = { width: '900px', maxWidth: '95vw' };
     stats = signal<FunnelStats | null>(null);
     loading = signal(false);
+    private lastLoadKey: string | null = null;
 
     ngOnChanges() {
         if (this.visible() && this.siteId() && this.funnelId() && this.dateRange()) {
@@ -106,6 +117,9 @@ export class FunnelViewer implements OnChanges {
         const funnelId = this.funnelId();
         const dateRange = this.dateRange();
         if (!siteId || !funnelId || !dateRange) return;
+        const loadKey = `${siteId}:${funnelId}:${dateRange.from}:${dateRange.to}`;
+        if (this.lastLoadKey === loadKey) return;
+        this.lastLoadKey = loadKey;
 
         this.loading.set(true);
         this.analyticsService.getFunnelStats(siteId, funnelId, dateRange.from, dateRange.to).subscribe({
@@ -127,5 +141,6 @@ export class FunnelViewer implements OnChanges {
     onHide() {
         this.visible.set(false);
         this.stats.set(null);
+        this.lastLoadKey = null;
     }
 }

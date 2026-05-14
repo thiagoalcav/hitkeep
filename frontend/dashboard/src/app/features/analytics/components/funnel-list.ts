@@ -45,7 +45,7 @@ import { EmptyState } from '@components/molecules/empty-state';
                         <li>
                             <button
                                 type="button"
-                                class="w-full flex items-center justify-between text-sm p-3 border border-surface-100 dark:border-surface-800 rounded hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors text-left"
+                                class="w-full cursor-pointer flex items-center justify-between text-sm p-3 border border-surface-100 dark:border-surface-800 rounded hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                                 (click)="funnelClicked.emit(funnel)"
                             >
                                 <div class="flex flex-col gap-1 min-w-0">

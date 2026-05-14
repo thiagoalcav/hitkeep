@@ -643,7 +643,20 @@
             "urlPathHelp": "Wordt geactiveerd wanneer een gebruiker een specifiekeURLbezoekt.",
             "eventNameHelpPrefix": "Wordt geactiveerd wanneer je belt",
             "eventNameHelpSuffix": ".",
-            "createAction": "Doel creëren"
+            "createAction": "Doel creëren",
+            "newAction": "Nieuw doel",
+            "editTitle": "Doel bewerken",
+            "editTooltip": "Doel bewerken",
+            "deleteTooltip": "Doel verwijderen",
+            "saveAction": "Wijzigingen opslaan",
+            "messages": {
+                "createSuccess": "Doel gemaakt.",
+                "createError": "Doel kon niet worden gemaakt.",
+                "updateSuccess": "Doel bijgewerkt.",
+                "updateError": "Doel kon niet worden bijgewerkt.",
+                "deleteSuccess": "Doel verwijderd.",
+                "deleteError": "Doel kon niet worden verwijderd."
+            }
         }
     },
     "funnels": {
@@ -684,13 +697,27 @@
             "addStep": "Stap toevoegen",
             "createAction": "Funnel maken",
             "typePagePath": "Pad",
-            "typeCustomEvent": "Event"
+            "typeCustomEvent": "Event",
+            "newAction": "Nieuwe funnel",
+            "editTitle": "Funnel bewerken",
+            "editTooltip": "Funnel bewerken",
+            "deleteTooltip": "Funnel verwijderen",
+            "saveAction": "Wijzigingen opslaan",
+            "messages": {
+                "createSuccess": "Funnel gemaakt.",
+                "createError": "Funnel kon niet worden gemaakt.",
+                "updateSuccess": "Funnel bijgewerkt.",
+                "updateError": "Funnel kon niet worden bijgewerkt.",
+                "deleteSuccess": "Funnel verwijderd.",
+                "deleteError": "Funnel kon niet worden verwijderd."
+            }
         },
         "viewer": {
             "dialogTitle": "Trechteranalyse",
             "droppedSuffix": "gedaald",
             "retention": "behoud",
-            "entry": "Binnenkomst"
+            "entry": "Binnenkomst",
+            "editAction": "Funnel bewerken"
         }
     },
     "utm": {

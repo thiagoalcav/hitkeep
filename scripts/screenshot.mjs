@@ -366,14 +366,32 @@ async function captureSearchConsoleDrilldown(page, record, slug) {
 
 async function captureOpportunities(page, record, slug) {
   await nav(page, "/opportunities", TABLE_SETTLE);
-  const refreshButton = page.getByRole("button", { name: /refresh opportunities/i }).first();
-  if (await refreshButton.count()) {
-    await refreshButton.click();
-    await page.waitForTimeout(TABLE_SETTLE);
-  }
   await page.getByRole("heading", { name: /opportunity inbox/i }).waitFor({ state: "visible", timeout: 8_000 });
-  await page.locator("app-opportunity-card").first().waitFor({ state: "visible", timeout: 12_000 });
+  const firstCard = page.locator("app-opportunity-card").first();
+  await firstCard.waitFor({ state: "visible", timeout: 12_000 }).catch(() => {
+    console.warn("    ! Opportunity cards were not visible before capture");
+  });
   record(slug, await shoot(page, slug));
+}
+
+async function captureWebVitals(page, record) {
+  await nav(page, "/web-vitals", CHART_SETTLE);
+  record("analytics-web-vitals", await shoot(page, "analytics-web-vitals"));
+
+  const poorButton = page.getByRole("button", { name: /poor/i }).first();
+  if (!(await poorButton.count())) {
+    console.warn("    ! Web Vitals poor rating control not found, skipping drilldown screenshot");
+    return;
+  }
+
+  await poorButton.click();
+  await page.getByRole("heading", { name: /poor .* pages/i }).waitFor({ state: "visible", timeout: 8_000 });
+  await page.evaluate(() => {
+    const heading = Array.from(document.querySelectorAll("h3")).find((el) => /poor .* pages/i.test(el.textContent || ""));
+    heading?.scrollIntoView({ behavior: "instant", block: "start" });
+  });
+  await page.waitForTimeout(TABLE_SETTLE);
+  record("analytics-web-vitals-rating-pages", await shoot(page, "analytics-web-vitals-rating-pages"));
 }
 
 async function captureGoogleSearchConsoleIntegration(page, record, slug) {
@@ -530,6 +548,7 @@ async function run() {
     const aiVisibilityClip = await prepareAIVisibilityShot(page);
     record("analytics-ai-visibility-correlation", await shoot(page, "analytics-ai-visibility-correlation", { clip: aiVisibilityClip ?? undefined }));
     await captureRoute(page, record, "analytics-ai-chatbots", "/ai-chatbots", CHART_SETTLE);
+    await captureWebVitals(page, record);
     await captureOpportunities(page, record, "analytics-opportunities");
     await captureRoute(page, record, "analytics-utm", "/utm", CHART_SETTLE);
     await captureRoute(page, record, "dashboard-comparison", "/dashboard", CHART_SETTLE);

@@ -53,7 +53,9 @@ jobs:
       artifact-metadata: write
     with:
       version: snapshot-pr-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
-      checkout_ref: ${{ github.event.pull_request.head.sha }}
+      # Build the PR merge commit so base-branch workflow files and checked-out
+      # source stay in sync for branches created before CI config changes.
+      checkout_ref: ${{ github.sha }}
       meta_config: |
         type=raw,value=pr-${{ github.event.pull_request.number }}
         type=sha,prefix=pr-${{ github.event.pull_request.number }}-sha-,format=short

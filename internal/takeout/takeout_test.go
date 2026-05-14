@@ -847,6 +847,74 @@ func TestExportUserDataJSONIncludesAIFetchesAndAIChatbotEvents(t *testing.T) {
 	}
 }
 
+func TestExportSiteDataJSONIncludesWebVitals(t *testing.T) {
+	ctx, store, service, _, siteID := setupTakeoutFixture(t)
+	t.Cleanup(func() { _ = store.Close() })
+
+	filename, err := service.ExportSiteData(ctx, siteID, "json")
+	if err != nil {
+		t.Fatalf("export site data json: %v", err)
+	}
+
+	f, err := os.Open(filename)
+	if err != nil {
+		t.Fatalf("open export file: %v", err)
+	}
+	defer f.Close()
+
+	var rows []map[string]any
+	if err := json.NewDecoder(f).Decode(&rows); err != nil {
+		t.Fatalf("decode json export: %v", err)
+	}
+
+	for _, row := range rows {
+		if recordType, _ := row["record_type"].(string); recordType == "web_vital" {
+			if metric, _ := row["metric"].(string); metric != "LCP" {
+				t.Fatalf("expected LCP web_vital metric, got %q", metric)
+			}
+			if path, _ := row["path"].(string); path != "/pricing" {
+				t.Fatalf("expected /pricing web_vital path, got %q", path)
+			}
+			return
+		}
+	}
+	t.Fatalf("expected web_vital row in site takeout")
+}
+
+func TestExportUserDataJSONIncludesWebVitals(t *testing.T) {
+	ctx, store, service, userID, _ := setupTakeoutFixture(t)
+	t.Cleanup(func() { _ = store.Close() })
+
+	filename, err := service.ExportUserData(ctx, userID, "json")
+	if err != nil {
+		t.Fatalf("export user data json: %v", err)
+	}
+
+	f, err := os.Open(filename)
+	if err != nil {
+		t.Fatalf("open export file: %v", err)
+	}
+	defer f.Close()
+
+	var rows []map[string]any
+	if err := json.NewDecoder(f).Decode(&rows); err != nil {
+		t.Fatalf("decode json export: %v", err)
+	}
+
+	for _, row := range rows {
+		if recordType, _ := row["record_type"].(string); recordType == "web_vital" {
+			if metric, _ := row["metric"].(string); metric != "LCP" {
+				t.Fatalf("expected LCP web_vital metric, got %q", metric)
+			}
+			if path, _ := row["path"].(string); path != "/pricing" {
+				t.Fatalf("expected /pricing web_vital path, got %q", path)
+			}
+			return
+		}
+	}
+	t.Fatalf("expected web_vital row in user takeout")
+}
+
 func TestExportSiteDataJSONIncludesSafeOpportunitiesAndAIRunMetadata(t *testing.T) {
 	ctx, store, service, _, siteID := setupTakeoutFixture(t)
 	t.Cleanup(func() { _ = store.Close() })
@@ -1030,6 +1098,20 @@ func setupTakeoutFixture(t *testing.T) (context.Context, *database.Store, *Takeo
 		UserAgent:       &userAgent,
 	}); err != nil {
 		t.Fatalf("create ai fetch: %v", err)
+	}
+
+	if err := store.CreateWebVital(ctx, &api.WebVital{
+		SiteID:         site.ID,
+		SessionID:      sessionID,
+		PageID:         uuid.New(),
+		Metric:         api.WebVitalLCP,
+		Value:          2600,
+		Path:           "/pricing",
+		Timestamp:      now,
+		TrackerSource:  "browser",
+		TrackerVersion: "test",
+	}); err != nil {
+		t.Fatalf("create web vital: %v", err)
 	}
 
 	service := NewTakeoutService(store, exportDir)

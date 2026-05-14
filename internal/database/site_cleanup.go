@@ -51,6 +51,7 @@ var siteDeleteSteps = []siteDeleteStep{
 	{table: "funnels", query: "DELETE FROM funnels WHERE site_id = ?"},
 	{table: "events", query: "DELETE FROM events WHERE site_id = ?"},
 	{table: "hits", query: "DELETE FROM hits WHERE site_id = ?"},
+	{table: "web_vitals", query: "DELETE FROM web_vitals WHERE site_id = ?"},
 	{table: "ai_fetches", query: "DELETE FROM ai_fetches WHERE site_id = ?"},
 	{table: "site_report_subscriptions", query: "DELETE FROM site_report_subscriptions WHERE site_id = ?"},
 }
@@ -87,6 +88,7 @@ var siteAnalyticsDeleteSteps = []siteDeleteStep{
 	{table: "funnels", query: "DELETE FROM funnels WHERE site_id = ?"},
 	{table: "events", query: "DELETE FROM events WHERE site_id = ?"},
 	{table: "hits", query: "DELETE FROM hits WHERE site_id = ?"},
+	{table: "web_vitals", query: "DELETE FROM web_vitals WHERE site_id = ?"},
 	{table: "ai_fetches", query: "DELETE FROM ai_fetches WHERE site_id = ?"},
 }
 

@@ -202,6 +202,69 @@ func TestConsumerPersistsEventCanonicalTimestampFromMessage(t *testing.T) {
 	}
 }
 
+func TestConsumerPersistsWebVitalCanonicalTimestampFromMessage(t *testing.T) {
+	ctx := context.Background()
+	store := setupConsumerStore(t)
+	mgr := database.NewTenantStoreManager(store, t.TempDir())
+	t.Cleanup(func() { _ = mgr.Close() })
+
+	userID, err := store.CreateUser(ctx, "consumer-vital@example.com", "hash")
+	if err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	site, err := store.CreateSite(ctx, userID, "consumer-vital.example.com")
+	if err != nil {
+		t.Fatalf("CreateSite: %v", err)
+	}
+
+	canonical := time.Date(2026, 4, 5, 9, 45, 0, 0, time.UTC)
+	navType := "navigate"
+	vital := api.WebVital{
+		SiteID:         site.ID,
+		SessionID:      uuid.New(),
+		PageID:         uuid.New(),
+		Metric:         api.WebVitalLCP,
+		Value:          4100,
+		Path:           "/pricing",
+		NavigationType: &navType,
+		Timestamp:      canonical,
+		TrackerSource:  "browser",
+		TrackerVersion: "dev",
+	}
+	body, err := json.Marshal(vital)
+	if err != nil {
+		t.Fatalf("marshal web vital: %v", err)
+	}
+
+	consumer := NewConsumer(mgr, testBatchLogger(), slog.LevelWarn)
+	t.Cleanup(consumer.Stop)
+	if err := consumer.handleWebVital(newConsumerTestMessage(body)); err != nil {
+		t.Fatalf("handleWebVital: %v", err)
+	}
+
+	summary, err := store.GetWebVitalsSummary(ctx, api.WebVitalsParams{
+		SiteID: site.ID,
+		Start:  canonical.Add(-time.Minute),
+		End:    canonical.Add(time.Minute),
+	})
+	if err != nil {
+		t.Fatalf("GetWebVitalsSummary: %v", err)
+	}
+	if len(summary) != 1 {
+		t.Fatalf("expected 1 summary metric, got %d: %+v", len(summary), summary)
+	}
+	got := summary[0]
+	if got.Metric != api.WebVitalLCP {
+		t.Fatalf("expected LCP metric, got %q", got.Metric)
+	}
+	if got.Rating != api.WebVitalRatingPoor {
+		t.Fatalf("expected poor rating, got %q", got.Rating)
+	}
+	if got.P75 != 4100 {
+		t.Fatalf("expected p75 4100, got %f", got.P75)
+	}
+}
+
 type noopMessageDelegate struct{}
 
 func (noopMessageDelegate) OnFinish(*nsq.Message) {}

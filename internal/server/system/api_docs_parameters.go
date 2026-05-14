@@ -51,8 +51,21 @@ func openAPIV1Parameters() map[string]any {
 			"description": "Deprecated single event dimension value. Requires dimension_key.",
 			"schema":      map[string]any{"type": "string"},
 		},
-		"itemID":        map[string]any{"name": "item_id", "in": "query", "schema": map[string]any{"type": "string"}},
-		"itemName":      map[string]any{"name": "item_name", "in": "query", "schema": map[string]any{"type": "string"}},
+		"itemID":   map[string]any{"name": "item_id", "in": "query", "schema": map[string]any{"type": "string"}},
+		"itemName": map[string]any{"name": "item_name", "in": "query", "schema": map[string]any{"type": "string"}},
+		"webVitalMetric": map[string]any{
+			"name":        "metric",
+			"in":          "query",
+			"description": "Web Vital metric.",
+			"schema":      map[string]any{"type": "string", "enum": []string{"LCP", "INP", "CLS", "FCP", "TTFB"}},
+		},
+		"webVitalPath": map[string]any{"name": "path", "in": "query", "schema": map[string]any{"type": "string"}, "description": "Exact normalized page path."},
+		"webVitalRating": map[string]any{
+			"name":        "rating",
+			"in":          "query",
+			"description": "Web Vital threshold rating.",
+			"schema":      map[string]any{"type": "string", "enum": []string{"good", "needs_improvement", "poor"}},
+		},
 		"goalIDQuery":   map[string]any{"name": "goal_id", "in": "query", "schema": map[string]any{"type": "string", "format": "uuid"}},
 		"funnelIDQuery": map[string]any{"name": "funnel_id", "in": "query", "schema": map[string]any{"type": "string", "format": "uuid"}},
 		"format": map[string]any{

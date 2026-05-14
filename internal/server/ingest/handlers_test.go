@@ -280,6 +280,179 @@ func TestHandleIngestEventLeaderAllowsSameSiteReferrerToContinueToPublish(t *tes
 	}
 }
 
+func TestHandleIngestWebVitalsLeaderPublishesSanitizedCanonicalPayload(t *testing.T) {
+	producer := &capturingProducer{}
+	h, cleanup := setupIngestHandler(t, func(ctx *shared.Context) {
+		ctx.Producer = producer
+	})
+	defer cleanup()
+
+	sessionID := uuid.New()
+	pageID := uuid.New()
+	req := newIngestWebVitalsRequest(t, "https://www.example.com", "198.51.100.22:1234", map[string]any{
+		"n":    "LCP",
+		"v":    2600,
+		"p":    "/pricing?plan=pro#cta",
+		"nt":   "navigate",
+		"sid":  sessionID,
+		"pid":  pageID,
+		"tsrc": "browser",
+		"tv":   "dev",
+	})
+
+	rec := httptest.NewRecorder()
+	h.handleIngestWebVitalsLeader(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("expected status %d, got %d body=%s", http.StatusAccepted, rec.Code, rec.Body.String())
+	}
+
+	msg := producer.onlyMessage(t, "web_vitals")
+	var got api.WebVital
+	if err := json.Unmarshal(msg, &got); err != nil {
+		t.Fatalf("unmarshal web vital: %v", err)
+	}
+	if got.Metric != api.WebVitalLCP {
+		t.Fatalf("expected metric LCP, got %q", got.Metric)
+	}
+	if got.Value != 2600 {
+		t.Fatalf("expected value 2600, got %f", got.Value)
+	}
+	if got.Rating != "" {
+		t.Fatalf("expected rating to be derived by storage, got %q", got.Rating)
+	}
+	if got.Path != "/pricing" {
+		t.Fatalf("expected sanitized path /pricing, got %q", got.Path)
+	}
+	if got.NavigationType == nil || *got.NavigationType != "navigate" {
+		t.Fatalf("expected navigation type navigate, got %v", got.NavigationType)
+	}
+	if got.SessionID != sessionID || got.PageID != pageID {
+		t.Fatalf("expected forwarded IDs %s/%s, got %s/%s", sessionID, pageID, got.SessionID, got.PageID)
+	}
+}
+
+func TestHandleIngestWebVitalsLeaderCountsUnknownSiteRejection(t *testing.T) {
+	h, cleanup := setupIngestHandler(t, nil)
+	defer cleanup()
+
+	req := newIngestWebVitalsRequest(t, "https://unknown.example", "198.51.100.22:1234", map[string]any{
+		"n":   "CLS",
+		"v":   0.08,
+		"p":   "/docs",
+		"sid": uuid.New(),
+		"pid": uuid.New(),
+	})
+
+	rec := httptest.NewRecorder()
+	h.handleIngestWebVitalsLeader(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("expected status %d, got %d", http.StatusAccepted, rec.Code)
+	}
+	if got := h.ctx.SystemCounters.Rejections.Load(); got != 1 {
+		t.Fatalf("expected rejection counter 1, got %d", got)
+	}
+}
+
+func TestHandleIngestWebVitalsLeaderRejectsInvalidMetricOrValue(t *testing.T) {
+	h, cleanup := setupIngestHandler(t, func(ctx *shared.Context) {
+		ctx.Producer = &capturingProducer{}
+	})
+	defer cleanup()
+
+	req := newIngestWebVitalsRequest(t, "https://example.com", "198.51.100.22:1234", map[string]any{
+		"n":   "FID",
+		"v":   -1,
+		"p":   "/docs",
+		"sid": uuid.New(),
+		"pid": uuid.New(),
+	})
+
+	rec := httptest.NewRecorder()
+	h.handleIngestWebVitalsLeader(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, rec.Code)
+	}
+	if got := h.ctx.SystemCounters.Rejections.Load(); got != 1 {
+		t.Fatalf("expected rejection counter 1, got %d", got)
+	}
+}
+
+func TestHandleIngestWebVitalsLeaderDropsBlockedNetworkBeforePublish(t *testing.T) {
+	producer := &capturingProducer{}
+	h, cleanup := setupIngestHandler(t, func(ctx *shared.Context) {
+		ctx.Producer = producer
+		filter := mustNewTestSpamFilter(t, blocking.SpamFeedData{
+			NetworkDenylist: []string{"203.0.113.0/24"},
+		})
+		ctx.SpamFilter = filter
+	})
+	defer cleanup()
+
+	req := newIngestWebVitalsRequest(t, "https://example.com", "203.0.113.42:1234", map[string]any{
+		"n":   "INP",
+		"v":   220,
+		"p":   "/checkout",
+		"sid": uuid.New(),
+		"pid": uuid.New(),
+	})
+
+	rec := httptest.NewRecorder()
+	h.handleIngestWebVitalsLeader(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("expected status %d, got %d", http.StatusAccepted, rec.Code)
+	}
+	if got := h.ctx.SystemCounters.Spam.Load(); got != 1 {
+		t.Fatalf("expected spam counter 1, got %d", got)
+	}
+	if got := producer.messageCount("web_vitals"); got != 0 {
+		t.Fatalf("expected no web vitals to publish, got %d", got)
+	}
+}
+
+func TestHandleIngestWebVitalsFollowerForwardsToLeader(t *testing.T) {
+	leader := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/ingest/web-vitals" {
+			t.Fatalf("expected forwarded path /ingest/web-vitals, got %q", r.URL.Path)
+		}
+		if got := r.Header.Get("Origin"); got != "https://example.com" {
+			t.Fatalf("expected forwarded origin, got %q", got)
+		}
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	defer leader.Close()
+
+	ctx := &shared.Context{
+		Cluster:        testClusterState{leader: false, leaderAddr: leader.Listener.Addr().String()},
+		Config:         &config.Config{HTTPAddr: leader.Listener.Addr().String()},
+		SystemCounters: &database.SystemCounter{},
+	}
+
+	mux := http.NewServeMux()
+	Register(mux, ctx)
+
+	payload, _ := json.Marshal(map[string]any{
+		"n":   "TTFB",
+		"v":   900,
+		"p":   "/docs",
+		"sid": uuid.New(),
+		"pid": uuid.New(),
+	})
+	req := httptest.NewRequest(http.MethodPost, "/ingest/web-vitals", bytes.NewReader(payload))
+	req.Header.Set("Origin", "https://example.com")
+	req.Header.Set("Content-Type", "application/json")
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("expected follower to forward and return %d, got %d body=%s", http.StatusAccepted, rec.Code, rec.Body.String())
+	}
+}
+
 func TestHandleServerPageviewIngestPublishesCanonicalTimestamp(t *testing.T) {
 	producer := &capturingProducer{}
 	_, ctx, _, siteID, token := setupServerIngestTestEnv(t, auth.SiteOwner, func(ctx *shared.Context) {
@@ -842,6 +1015,21 @@ func newIngestEventRequest(t *testing.T, origin, remoteAddr string, payload map[
 	}
 
 	req := httptest.NewRequest(http.MethodPost, "/ingest/event", bytes.NewReader(body))
+	req.Header.Set("Origin", origin)
+	req.Header.Set("Content-Type", "application/json")
+	req.RemoteAddr = remoteAddr
+	return req
+}
+
+func newIngestWebVitalsRequest(t *testing.T, origin, remoteAddr string, payload map[string]any) *http.Request {
+	t.Helper()
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal payload: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/ingest/web-vitals", bytes.NewReader(body))
 	req.Header.Set("Origin", origin)
 	req.Header.Set("Content-Type", "application/json")
 	req.RemoteAddr = remoteAddr

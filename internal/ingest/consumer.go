@@ -19,8 +19,10 @@ type Consumer struct {
 	tenantMgr     *database.TenantStoreManager
 	hitsConsumer  *nsq.Consumer
 	eventConsumer *nsq.Consumer
+	vitalConsumer *nsq.Consumer
 	hitBatcher    *storeBatcher[*api.Hit]
 	eventBatcher  *storeBatcher[*api.Event]
+	vitalBatcher  *storeBatcher[*api.WebVital]
 	logger        *slog.Logger
 	logLevel      slog.Level
 }
@@ -48,6 +50,9 @@ func NewConsumer(tenantMgr *database.TenantStoreManager, logger *slog.Logger, le
 			logger.Warn("Failed to record event activity summary after tenant persistence", "count", len(events), "error", err)
 		}
 		return nil
+	})
+	consumer.vitalBatcher = newStoreBatcher("web_vital", logger, ingestBatchSize, ingestBatchFlushInterval, ingestPersistTimeout, func(store *database.Store, ctx context.Context, vitals []*api.WebVital) error {
+		return store.CreateWebVitalsBulk(ctx, vitals)
 	})
 	return consumer
 }
@@ -81,6 +86,19 @@ func (c *Consumer) Connect(addr string) error {
 	}
 	c.eventConsumer = eventConsumer
 
+	vitalConfig := nsq.NewConfig()
+	vitalConfig.MaxInFlight = ingestConsumerConcurrency
+	vitalConsumer, err := nsq.NewConsumer("web_vitals", "db-writer", vitalConfig)
+	if err != nil {
+		return err
+	}
+	vitalConsumer.SetLogger(hklog.GoNSQLogger{Logger: c.logger}, hklog.NSQGoLevel(c.logLevel))
+	vitalConsumer.AddConcurrentHandlers(nsq.HandlerFunc(c.handleWebVital), ingestConsumerConcurrency)
+	if err := vitalConsumer.ConnectToNSQD(addr); err != nil {
+		return err
+	}
+	c.vitalConsumer = vitalConsumer
+
 	return nil
 }
 
@@ -93,11 +111,18 @@ func (c *Consumer) Stop() {
 		c.eventConsumer.Stop()
 		<-c.eventConsumer.StopChan
 	}
+	if c.vitalConsumer != nil {
+		c.vitalConsumer.Stop()
+		<-c.vitalConsumer.StopChan
+	}
 	if c.hitBatcher != nil {
 		c.hitBatcher.Stop()
 	}
 	if c.eventBatcher != nil {
 		c.eventBatcher.Stop()
+	}
+	if c.vitalBatcher != nil {
+		c.vitalBatcher.Stop()
 	}
 }
 
@@ -113,8 +138,14 @@ func (c *Consumer) handleEvent(m *nsq.Message) error {
 	}, "event")
 }
 
+func (c *Consumer) handleWebVital(m *nsq.Message) error {
+	return processMessage(m, c, c.vitalBatcher, func(v *api.WebVital) (uuid.UUID, []any) {
+		return v.SiteID, []any{"metric", v.Metric, "path", v.Path}
+	}, "web vital")
+}
+
 type siteIdentifiable interface {
-	api.Hit | api.Event
+	api.Hit | api.Event | api.WebVital
 }
 
 func processMessage[T siteIdentifiable](

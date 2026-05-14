@@ -74,6 +74,7 @@ func seedSiteData(t *testing.T, ctx context.Context, store *Store) (uuid.UUID, u
 	exec("INSERT INTO funnels (id, site_id, name, steps, created_at) VALUES (?, ?, ?, ?, ?)", funnelID, siteID, "Main", "[]", now)
 	exec("INSERT INTO hits (id, site_id, session_id, page_id, timestamp, path) VALUES (?, ?, ?, ?, ?, ?)", uuid.New(), siteID, sessionID, pageID, now, "/")
 	exec("INSERT INTO events (id, site_id, session_id, name, properties, timestamp) VALUES (?, ?, ?, ?, ?, ?)", uuid.New(), siteID, sessionID, "signup", "{}", now)
+	exec("INSERT INTO web_vitals (id, site_id, session_id, page_id, metric, value, rating, path, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", uuid.New(), siteID, sessionID, pageID, "LCP", 2600, "needs_improvement", "/pricing", now)
 
 	exec("INSERT INTO hit_rollups_hourly (site_id, bucket, pageviews, visitors) VALUES (?, ?, ?, ?)", siteID, now, 1, 1)
 	exec("INSERT INTO hit_rollups_daily (site_id, bucket, pageviews, visitors) VALUES (?, ?, ?, ?)", siteID, date, 1, 1)

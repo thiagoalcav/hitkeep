@@ -73,6 +73,22 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		SitePerm:    authcore.PermSiteView,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleGetSiteEcommerceSources()))
+	mux.HandleFunc("GET /api/sites/{id}/web-vitals/summary", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetSiteWebVitalsSummary()))
+	mux.HandleFunc("GET /api/sites/{id}/web-vitals/timeseries", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetSiteWebVitalsTimeseries()))
+	mux.HandleFunc("GET /api/sites/{id}/web-vitals/pages", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetSiteWebVitalsPages()))
+	mux.HandleFunc("GET /api/sites/{id}/web-vitals/breakdown", ctx.Handler(shared.HandlerConfig{
+		SitePerm:    authcore.PermSiteView,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetSiteWebVitalsBreakdown()))
 	mux.HandleFunc("GET /api/favicon/{domain}", ctx.Handler(shared.HandlerConfig{
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleGetFavicon()))

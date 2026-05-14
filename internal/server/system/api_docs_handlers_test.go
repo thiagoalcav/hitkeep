@@ -417,6 +417,31 @@ func TestOpenAPISpecV1IncludesAIFetchEndpointsAndSchemas(t *testing.T) {
 	}
 }
 
+func TestOpenAPISpecV1IncludesWebVitalsEndpointsAndSchemas(t *testing.T) {
+	spec := openAPISpecV1("http://localhost:8080")
+	paths := requireMap(t, spec, "paths")
+	components := requireMap(t, spec, "components")
+	schemas := requireMap(t, components, "schemas")
+
+	for _, schemaName := range []string{"WebVitalIngestPayload", "WebVitalSummaryMetric", "WebVitalSeriesPoint", "WebVitalPageRow", "WebVitalMetricBreakdown", "WebVitalDimensionRow"} {
+		if _, ok := schemas[schemaName]; !ok {
+			t.Fatalf("expected %s schema to exist", schemaName)
+		}
+	}
+	for _, path := range []string{"/ingest/web-vitals", "/api/sites/{id}/web-vitals/summary", "/api/sites/{id}/web-vitals/timeseries", "/api/sites/{id}/web-vitals/pages", "/api/sites/{id}/web-vitals/breakdown"} {
+		if _, ok := paths[path]; !ok {
+			t.Fatalf("expected %s path to exist", path)
+		}
+	}
+
+	timeseriesPath := requireMap(t, paths, "/api/sites/{id}/web-vitals/timeseries")
+	timeseriesOp := requireMap(t, timeseriesPath, "get")
+	params, _ := timeseriesOp["parameters"].([]any)
+	if !hasParamRef(params, "#/components/parameters/webVitalMetric") {
+		t.Fatalf("expected web vital metric parameter on timeseries")
+	}
+}
+
 func TestOpenAPISpecV1IncludesAIChatbotExportPath(t *testing.T) {
 	spec := openAPISpecV1("http://localhost:8080")
 	paths := requireMap(t, spec, "paths")

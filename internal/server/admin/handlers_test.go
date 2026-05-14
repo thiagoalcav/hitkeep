@@ -180,6 +180,12 @@ func TestHandleDeleteUserRemovesTenantLocalOwnedSites(t *testing.T) {
 	); err != nil {
 		t.Fatalf("insert tenant hit: %v", err)
 	}
+	if _, err := tenantStore.DB().ExecContext(ctx,
+		"INSERT INTO web_vitals (id, site_id, session_id, page_id, metric, value, rating, path, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		uuid.New(), site.ID, uuid.New(), uuid.New(), "LCP", 2600, "needs_improvement", "/pricing", now,
+	); err != nil {
+		t.Fatalf("insert tenant web vital: %v", err)
+	}
 
 	req := withAdminTestUser(httptest.NewRequest(http.MethodDelete, "/api/admin/users/"+targetUserID.String(), nil), actorUserID)
 	req.SetPathValue("id", targetUserID.String())
@@ -196,6 +202,14 @@ func TestHandleDeleteUserRemovesTenantLocalOwnedSites(t *testing.T) {
 	}
 	if hitCount != 0 {
 		t.Fatalf("expected tenant hit rows to be deleted, got %d", hitCount)
+	}
+
+	var webVitalsCount int
+	if err := tenantStore.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM web_vitals WHERE site_id = ?", site.ID).Scan(&webVitalsCount); err != nil {
+		t.Fatalf("count tenant web vital rows: %v", err)
+	}
+	if webVitalsCount != 0 {
+		t.Fatalf("expected tenant web vital rows to be deleted, got %d", webVitalsCount)
 	}
 
 	var siteCount int

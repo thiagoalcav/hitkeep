@@ -347,3 +347,113 @@ func TestCreateAIFetchesBulk(t *testing.T) {
 		t.Fatalf("expected stored path /pricing, got %q", storedPath)
 	}
 }
+
+func TestCreateWebVitalsBulkAndAggregates(t *testing.T) {
+	store, _, site := setupAppenderStore(t)
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Second)
+	sessionID := uuid.New()
+	pageID := uuid.New()
+	navigationType := "navigate"
+	userAgent := "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+	language := "de-DE"
+	country := "DE"
+	viewportWidth := 1440
+	if err := store.CreateHit(ctx, &api.Hit{
+		SiteID:        site.ID,
+		SessionID:     sessionID,
+		PageID:        pageID,
+		Timestamp:     now.Add(-3*time.Hour - time.Second),
+		Path:          "/pricing",
+		UserAgent:     &userAgent,
+		Language:      &language,
+		CountryCode:   &country,
+		ViewportWidth: &viewportWidth,
+	}); err != nil {
+		t.Fatalf("CreateHit: %v", err)
+	}
+
+	vitals := []*api.WebVital{
+		{SiteID: site.ID, SessionID: sessionID, PageID: pageID, Metric: api.WebVitalLCP, Value: 1200, Path: "/pricing?plan=pro#cta", NavigationType: &navigationType, Timestamp: now.Add(-3 * time.Hour), TrackerSource: "hk.js"},
+		{SiteID: site.ID, SessionID: uuid.New(), PageID: uuid.New(), Metric: api.WebVitalLCP, Value: 2600, Path: "/pricing", Timestamp: now.Add(-2 * time.Hour)},
+		{SiteID: site.ID, SessionID: uuid.New(), PageID: uuid.New(), Metric: api.WebVitalLCP, Value: 5100, Path: "/checkout", Timestamp: now.Add(-1 * time.Hour)},
+		{SiteID: site.ID, SessionID: uuid.New(), PageID: uuid.New(), Metric: api.WebVitalCLS, Value: 0.31, Path: "/pricing", Timestamp: now.Add(-1 * time.Hour)},
+	}
+
+	if err := store.CreateWebVitalsBulk(ctx, vitals); err != nil {
+		t.Fatalf("CreateWebVitalsBulk: %v", err)
+	}
+	if vitals[0].Rating != api.WebVitalRatingGood || vitals[1].Rating != api.WebVitalRatingNeedsImprovement || vitals[2].Rating != api.WebVitalRatingPoor {
+		t.Fatalf("expected server-derived ratings, got %s/%s/%s", vitals[0].Rating, vitals[1].Rating, vitals[2].Rating)
+	}
+
+	var storedPath string
+	if err := store.DB().QueryRowContext(ctx, "SELECT path FROM web_vitals WHERE id = ?", vitals[0].ID).Scan(&storedPath); err != nil {
+		t.Fatalf("load web vital path: %v", err)
+	}
+	if storedPath != "/pricing?plan=pro#cta" {
+		t.Fatalf("store should persist the caller-provided sanitized path verbatim, got %q", storedPath)
+	}
+
+	summary, err := store.GetWebVitalsSummary(ctx, api.WebVitalsParams{
+		SiteID: site.ID,
+		Start:  now.Add(-24 * time.Hour),
+		End:    now.Add(24 * time.Hour),
+	})
+	if err != nil {
+		t.Fatalf("GetWebVitalsSummary: %v", err)
+	}
+	if len(summary) != 2 {
+		t.Fatalf("expected two metric summaries, got %+v", summary)
+	}
+
+	lcp := summaryMetric(t, summary, api.WebVitalLCP)
+	if lcp.Samples != 3 || lcp.Good != 1 || lcp.NeedsImprove != 1 || lcp.Poor != 1 {
+		t.Fatalf("unexpected LCP rating distribution: %+v", lcp)
+	}
+	if lcp.P75 <= 2600 {
+		t.Fatalf("expected interpolated LCP p75 above the middle sample, got %f", lcp.P75)
+	}
+
+	pages, err := store.GetWebVitalsPages(ctx, api.WebVitalsParams{
+		SiteID: site.ID,
+		Start:  now.Add(-24 * time.Hour),
+		End:    now.Add(24 * time.Hour),
+		Metric: api.WebVitalLCP,
+		Rating: api.WebVitalRatingPoor,
+	})
+	if err != nil {
+		t.Fatalf("GetWebVitalsPages: %v", err)
+	}
+	if len(pages) != 1 || pages[0].Path != "/checkout" || pages[0].Rating != api.WebVitalRatingPoor {
+		t.Fatalf("expected poor checkout page row, got %+v", pages)
+	}
+	if pages[0].Metrics[api.WebVitalLCP].Samples != 1 {
+		t.Fatalf("expected selected page row to include LCP metric cell, got %+v", pages[0].Metrics)
+	}
+
+	breakdown, err := store.GetWebVitalsBreakdown(ctx, api.WebVitalsParams{
+		SiteID: site.ID,
+		Start:  now.Add(-24 * time.Hour),
+		End:    now.Add(24 * time.Hour),
+		Metric: api.WebVitalLCP,
+		Path:   "/pricing?plan=pro#cta",
+	}, api.WebVitalDimensionBrowser)
+	if err != nil {
+		t.Fatalf("GetWebVitalsBreakdown: %v", err)
+	}
+	if len(breakdown) != 1 || breakdown[0].Name != "Chrome" || breakdown[0].Samples != 1 {
+		t.Fatalf("expected Chrome browser breakdown, got %+v", breakdown)
+	}
+}
+
+func summaryMetric(t *testing.T, metrics []api.WebVitalSummaryMetric, metric api.WebVitalMetric) api.WebVitalSummaryMetric {
+	t.Helper()
+	for _, item := range metrics {
+		if item.Metric == metric {
+			return item
+		}
+	}
+	t.Fatalf("missing metric %s in %+v", metric, metrics)
+	return api.WebVitalSummaryMetric{}
+}

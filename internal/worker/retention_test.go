@@ -373,6 +373,79 @@ func TestRetentionMixedWindowArchivesOnlyStale(t *testing.T) {
 	}
 }
 
+func TestRetentionArchivesAndPrunesWebVitals(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	siteID := seedSite(t, ctx, store, 7)
+
+	old := time.Now().UTC().Add(-14 * 24 * time.Hour)
+	recent := time.Now().UTC().Add(-2 * 24 * time.Hour)
+	seedRetentionWebVital(t, ctx, store, siteID, api.WebVitalLCP, 2600, "/stale-vitals", old)
+	seedRetentionWebVital(t, ctx, store, siteID, api.WebVitalINP, 180, "/recent-vitals", recent)
+
+	w := NewRetentionWorker(newTestTenantMgr(t, store), archiveDir, 365, nil)
+	if err := w.Run(ctx); err != nil {
+		t.Fatalf("run retention: %v", err)
+	}
+
+	files, err := findParquetFiles(archiveDir)
+	if err != nil {
+		t.Fatalf("read archive dir: %v", err)
+	}
+	if len(files) == 0 {
+		t.Fatal("expected archive file for stale web vital")
+	}
+
+	assertArchivedWebVital(t, ctx, store, files[0], api.WebVitalLCP, "/stale-vitals", api.WebVitalRatingNeedsImprovement)
+	assertHotWebVitalCount(t, ctx, store, siteID, "/recent-vitals", 1)
+	assertHotWebVitalCount(t, ctx, store, siteID, "/stale-vitals", 0)
+}
+
+func seedRetentionWebVital(t *testing.T, ctx context.Context, store *database.Store, siteID uuid.UUID, metric api.WebVitalMetric, value float64, path string, ts time.Time) {
+	t.Helper()
+	if err := store.CreateWebVital(ctx, &api.WebVital{
+		SiteID:         siteID,
+		SessionID:      uuid.New(),
+		PageID:         uuid.New(),
+		Metric:         metric,
+		Value:          value,
+		Path:           path,
+		Timestamp:      ts,
+		TrackerSource:  "browser",
+		TrackerVersion: "test",
+	}); err != nil {
+		t.Fatalf("create web vital: %v", err)
+	}
+}
+
+func assertArchivedWebVital(t *testing.T, ctx context.Context, store *database.Store, archivePath string, metric api.WebVitalMetric, path string, rating api.WebVitalRating) {
+	t.Helper()
+	safePath := strings.ReplaceAll(archivePath, "'", "''")
+	var archivedMetric, archivedPath, archivedRating string
+	if err := store.DB().QueryRowContext(ctx,
+		fmt.Sprintf("SELECT metric, path, rating FROM read_parquet('%s') WHERE _source = 'web_vitals'", safePath),
+	).Scan(&archivedMetric, &archivedPath, &archivedRating); err != nil {
+		t.Fatalf("query archived web vital: %v", err)
+	}
+	if archivedMetric != string(metric) || archivedPath != path || archivedRating != string(rating) {
+		t.Fatalf("unexpected archived web vital: metric=%q path=%q rating=%q", archivedMetric, archivedPath, archivedRating)
+	}
+}
+
+func assertHotWebVitalCount(t *testing.T, ctx context.Context, store *database.Store, siteID uuid.UUID, path string, expected int) {
+	t.Helper()
+	var count int
+	if err := store.DB().QueryRowContext(ctx,
+		"SELECT COUNT(*) FROM web_vitals WHERE site_id = ? AND path = ?", siteID, path,
+	).Scan(&count); err != nil {
+		t.Fatalf("count hot web vitals: %v", err)
+	}
+	if count != expected {
+		t.Fatalf("expected %d web vitals for %q in hot storage, got %d", expected, path, count)
+	}
+}
+
 func TestRetentionPrunesOldAIFetches(t *testing.T) {
 	ctx := context.Background()
 	store := newTestStore(t)

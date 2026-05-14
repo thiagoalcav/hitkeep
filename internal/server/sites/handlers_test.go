@@ -688,6 +688,165 @@ func TestHandleGetSiteEcommerceSummary(t *testing.T) {
 	}
 }
 
+func TestHandleGetSiteWebVitalsSummary(t *testing.T) {
+	h, store, userID := setupTestEnv(t)
+	defer store.Close()
+
+	site, err := store.CreateSite(context.Background(), userID, "vitals-summary.test")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+	base := time.Date(2026, 5, 6, 12, 0, 0, 0, time.UTC)
+	if err := store.CreateWebVitalsBulk(context.Background(), []*api.WebVital{
+		{SiteID: site.ID, SessionID: uuid.New(), PageID: uuid.New(), Metric: api.WebVitalLCP, Value: 1200, Path: "/"},
+		{SiteID: site.ID, SessionID: uuid.New(), PageID: uuid.New(), Metric: api.WebVitalLCP, Value: 2800, Path: "/pricing"},
+		{SiteID: site.ID, SessionID: uuid.New(), PageID: uuid.New(), Metric: api.WebVitalLCP, Value: 5200, Path: "/checkout"},
+		{SiteID: site.ID, SessionID: uuid.New(), PageID: uuid.New(), Metric: api.WebVitalCLS, Value: 0.08, Path: "/", Timestamp: base},
+	}); err != nil {
+		t.Fatalf("CreateWebVitalsBulk: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/sites/"+site.ID.String()+"/web-vitals/summary", nil)
+	req.SetPathValue("id", site.ID.String())
+	req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, userID))
+
+	w := httptest.NewRecorder()
+	h.handleGetSiteWebVitalsSummary().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var summary []api.WebVitalSummaryMetric
+	if err := json.NewDecoder(w.Body).Decode(&summary); err != nil {
+		t.Fatalf("decode summary: %v", err)
+	}
+	lcp := findWebVitalSummaryMetric(summary, api.WebVitalLCP)
+	if lcp == nil {
+		t.Fatalf("expected LCP summary in %+v", summary)
+	}
+	if lcp.Samples != 3 || lcp.Good != 1 || lcp.NeedsImprove != 1 || lcp.Poor != 1 {
+		t.Fatalf("unexpected LCP distribution: %+v", *lcp)
+	}
+	if lcp.Rating != api.WebVitalRatingNeedsImprovement {
+		t.Fatalf("expected LCP p75 rating needs_improvement, got %q", lcp.Rating)
+	}
+}
+
+func TestHandleGetSiteWebVitalsTimeseriesRequiresMetric(t *testing.T) {
+	h, store, userID := setupTestEnv(t)
+	defer store.Close()
+
+	site, err := store.CreateSite(context.Background(), userID, "vitals-metric.test")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/sites/"+site.ID.String()+"/web-vitals/timeseries", nil)
+	req.SetPathValue("id", site.ID.String())
+	req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, userID))
+
+	w := httptest.NewRecorder()
+	h.handleGetSiteWebVitalsTimeseries().ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected status %d, got %d", http.StatusBadRequest, w.Code)
+	}
+}
+
+func TestHandleGetSiteWebVitalsPagesSupportsFilters(t *testing.T) {
+	h, store, userID := setupTestEnv(t)
+	defer store.Close()
+
+	site, err := store.CreateSite(context.Background(), userID, "vitals-pages.test")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+	base := time.Date(2026, 5, 6, 12, 0, 0, 0, time.UTC)
+	if err := store.CreateWebVitalsBulk(context.Background(), []*api.WebVital{
+		{SiteID: site.ID, SessionID: uuid.New(), PageID: uuid.New(), Metric: api.WebVitalINP, Value: 180, Path: "/pricing", Timestamp: base},
+		{SiteID: site.ID, SessionID: uuid.New(), PageID: uuid.New(), Metric: api.WebVitalINP, Value: 640, Path: "/checkout", Timestamp: base.Add(time.Hour)},
+	}); err != nil {
+		t.Fatalf("CreateWebVitalsBulk: %v", err)
+	}
+
+	from := base.Add(-time.Hour).Format(time.RFC3339)
+	to := base.Add(2 * time.Hour).Format(time.RFC3339)
+	req := httptest.NewRequest(http.MethodGet, "/api/sites/"+site.ID.String()+"/web-vitals/pages?metric=INP&rating=poor&from="+url.QueryEscape(from)+"&to="+url.QueryEscape(to), nil)
+	req.SetPathValue("id", site.ID.String())
+	req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, userID))
+
+	w := httptest.NewRecorder()
+	h.handleGetSiteWebVitalsPages().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var rows []api.WebVitalPageRow
+	if err := json.NewDecoder(w.Body).Decode(&rows); err != nil {
+		t.Fatalf("decode pages: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Path != "/checkout" || rows[0].Rating != api.WebVitalRatingPoor {
+		t.Fatalf("unexpected rows: %+v", rows)
+	}
+	if rows[0].Metrics[api.WebVitalINP].Samples != 1 {
+		t.Fatalf("expected INP metric cell on page row, got %+v", rows[0].Metrics)
+	}
+}
+
+func TestHandleGetSiteWebVitalsBreakdownReturnsVisitorContext(t *testing.T) {
+	h, store, userID := setupTestEnv(t)
+	defer store.Close()
+
+	site, err := store.CreateSite(context.Background(), userID, "vitals-breakdown.test")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+	base := time.Date(2026, 5, 6, 12, 0, 0, 0, time.UTC)
+	sessionID := uuid.New()
+	pageID := uuid.New()
+	ua := "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+	lang := "en-US"
+	country := "US"
+	viewportWidth := 1440
+	if err := store.CreateHit(context.Background(), &api.Hit{
+		SiteID:        site.ID,
+		SessionID:     sessionID,
+		PageID:        pageID,
+		Timestamp:     base.Add(-time.Second),
+		Path:          "/pricing",
+		UserAgent:     &ua,
+		Language:      &lang,
+		CountryCode:   &country,
+		ViewportWidth: &viewportWidth,
+	}); err != nil {
+		t.Fatalf("CreateHit: %v", err)
+	}
+	if err := store.CreateWebVitalsBulk(context.Background(), []*api.WebVital{
+		{SiteID: site.ID, SessionID: sessionID, PageID: pageID, Metric: api.WebVitalLCP, Value: 2800, Path: "/pricing", Timestamp: base},
+	}); err != nil {
+		t.Fatalf("CreateWebVitalsBulk: %v", err)
+	}
+
+	from := base.Add(-time.Hour).Format(time.RFC3339)
+	to := base.Add(time.Hour).Format(time.RFC3339)
+	req := httptest.NewRequest(http.MethodGet, "/api/sites/"+site.ID.String()+"/web-vitals/breakdown?metric=LCP&dimension=browser&from="+url.QueryEscape(from)+"&to="+url.QueryEscape(to), nil)
+	req.SetPathValue("id", site.ID.String())
+	req = req.WithContext(context.WithValue(req.Context(), shared.UserIDKey, userID))
+
+	w := httptest.NewRecorder()
+	h.handleGetSiteWebVitalsBreakdown().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	var rows []api.WebVitalDimensionRow
+	if err := json.NewDecoder(w.Body).Decode(&rows); err != nil {
+		t.Fatalf("decode breakdown: %v", err)
+	}
+	if len(rows) != 1 || rows[0].Name != "Chrome" || rows[0].Samples != 1 {
+		t.Fatalf("unexpected breakdown rows: %+v", rows)
+	}
+}
+
 func TestHandleGetSiteEcommerceProductsSupportsItemFilter(t *testing.T) {
 	h, store, userID := setupTestEnv(t)
 	defer store.Close()
@@ -752,6 +911,15 @@ func TestHandleGetSiteEcommerceProductsSupportsItemFilter(t *testing.T) {
 	if len(products) != 2 {
 		t.Fatalf("expected both products from the filtered purchase, got %+v", products)
 	}
+}
+
+func findWebVitalSummaryMetric(metrics []api.WebVitalSummaryMetric, metric api.WebVitalMetric) *api.WebVitalSummaryMetric {
+	for i := range metrics {
+		if metrics[i].Metric == metric {
+			return &metrics[i]
+		}
+	}
+	return nil
 }
 
 func TestHandleGetSiteHits(t *testing.T) {

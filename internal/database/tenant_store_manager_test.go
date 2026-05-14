@@ -345,6 +345,19 @@ func TestDeleteSiteRemovesTenantAndSharedData(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("create tenant hit: %v", err)
 	}
+	if err := tenantStore.CreateWebVital(ctx, &api.WebVital{
+		SiteID:         site.ID,
+		SessionID:      uuid.New(),
+		PageID:         uuid.New(),
+		Metric:         api.WebVitalLCP,
+		Value:          2600,
+		Path:           "/pricing",
+		Timestamp:      time.Now().UTC(),
+		TrackerSource:  "browser",
+		TrackerVersion: "test",
+	}); err != nil {
+		t.Fatalf("create tenant web vital: %v", err)
+	}
 
 	if err := mgr.DeleteSite(ctx, site.ID); err != nil {
 		t.Fatalf("DeleteSite: %v", err)
@@ -364,6 +377,14 @@ func TestDeleteSiteRemovesTenantAndSharedData(t *testing.T) {
 	}
 	if tenantCount != 0 {
 		t.Fatalf("expected tenant site mirror deleted, got count=%d", tenantCount)
+	}
+
+	var tenantVitals int
+	if err := tenantStore.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM web_vitals WHERE site_id = ?", site.ID).Scan(&tenantVitals); err != nil {
+		t.Fatalf("count tenant web vitals: %v", err)
+	}
+	if tenantVitals != 0 {
+		t.Fatalf("expected tenant web vitals deleted, got count=%d", tenantVitals)
 	}
 }
 

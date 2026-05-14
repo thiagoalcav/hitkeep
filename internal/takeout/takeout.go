@@ -289,6 +289,7 @@ func buildTakeoutQuery(sources []takeoutQuerySource, filename, format string) st
 			selects = append(selects,
 				fmt.Sprintf("SELECT 'hit' as record_type, * FROM hits WHERE %s", whereClause),
 				fmt.Sprintf("SELECT 'event' as record_type, * FROM events WHERE %s", whereClause),
+				fmt.Sprintf("SELECT 'web_vital' as record_type, * FROM web_vitals WHERE %s", whereClause),
 				fmt.Sprintf("SELECT 'ai_fetch' as record_type, * FROM ai_fetches WHERE %s", whereClause),
 				fmt.Sprintf("SELECT 'goal' as record_type, * FROM goals WHERE %s", whereClause),
 				fmt.Sprintf("SELECT 'funnel' as record_type, * FROM funnels WHERE %s", whereClause),

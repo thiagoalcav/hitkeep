@@ -33,6 +33,7 @@ type retentionSitePolicy struct {
 type retentionCounts struct {
 	Hits                    int64
 	Events                  int64
+	WebVitals               int64
 	AIFetches               int64
 	ImportedTraffic         int64
 	ImportedDimensions      int64
@@ -200,6 +201,7 @@ func countRetainedRows(ctx context.Context, db *sql.DB, siteID uuid.UUID, cutoff
 	queries := []retentionCountQuery{
 		{name: "hits", query: "SELECT COUNT(*) FROM hits WHERE site_id = ? AND timestamp < ?", assign: func(v int64) { counts.Hits = v }},
 		{name: "events", query: "SELECT COUNT(*) FROM events WHERE site_id = ? AND timestamp < ?", assign: func(v int64) { counts.Events = v }},
+		{name: "web vitals", query: "SELECT COUNT(*) FROM web_vitals WHERE site_id = ? AND timestamp < ?", assign: func(v int64) { counts.WebVitals = v }},
 		{name: "ai fetches", query: "SELECT COUNT(*) FROM ai_fetches WHERE site_id = ? AND timestamp < ?", assign: func(v int64) { counts.AIFetches = v }},
 		{name: "imported traffic", query: "SELECT COUNT(*) FROM imported_traffic_daily WHERE site_id = ? AND date < ?", assign: func(v int64) { counts.ImportedTraffic = v }},
 		{name: "imported dimensions", query: "SELECT COUNT(*) FROM imported_dimension_daily WHERE site_id = ? AND date < ?", assign: func(v int64) { counts.ImportedDimensions = v }},
@@ -219,6 +221,7 @@ func countRetainedRows(ctx context.Context, db *sql.DB, siteID uuid.UUID, cutoff
 func (c retentionCounts) hasColdData() bool {
 	return c.Hits > 0 ||
 		c.Events > 0 ||
+		c.WebVitals > 0 ||
 		c.AIFetches > 0 ||
 		c.ImportedTraffic > 0 ||
 		c.ImportedDimensions > 0 ||
@@ -231,6 +234,7 @@ func (c retentionCounts) logAttrs(siteID uuid.UUID, cutoff time.Time) []any {
 		"site_id", siteID,
 		"hits", c.Hits,
 		"events", c.Events,
+		"web_vitals", c.WebVitals,
 		"ai_fetches", c.AIFetches,
 		"imported_traffic", c.ImportedTraffic,
 		"imported_dimensions", c.ImportedDimensions,
@@ -269,6 +273,8 @@ func buildRetentionExportQuery(siteID uuid.UUID, cutoff time.Time, filename stri
 					UNION BY NAME
 					SELECT 'events' AS _source, * FROM events WHERE site_id = '%s' AND timestamp < '%s'
 					UNION BY NAME
+					SELECT 'web_vitals' AS _source, * FROM web_vitals WHERE site_id = '%s' AND timestamp < '%s'
+					UNION BY NAME
 					SELECT 'ai_fetches' AS _source, * FROM ai_fetches WHERE site_id = '%s' AND timestamp < '%s'
 					UNION BY NAME
 					SELECT 'imported_traffic_daily' AS _source, * FROM imported_traffic_daily WHERE site_id = '%s' AND date < '%s'
@@ -279,7 +285,7 @@ func buildRetentionExportQuery(siteID uuid.UUID, cutoff time.Time, filename stri
 					UNION BY NAME
 					SELECT 'imported_event_properties_daily' AS _source, * FROM imported_event_properties_daily WHERE site_id = '%s' AND date < '%s'
 				) TO '%s' (FORMAT PARQUET, COMPRESSION 'SNAPPY');
-			`, siteID, timestampCutoff, siteID, timestampCutoff, siteID, timestampCutoff, siteID, dateCutoff, siteID, dateCutoff, siteID, dateCutoff, siteID, dateCutoff, safeFilename)
+			`, siteID, timestampCutoff, siteID, timestampCutoff, siteID, timestampCutoff, siteID, timestampCutoff, siteID, dateCutoff, siteID, dateCutoff, siteID, dateCutoff, siteID, dateCutoff, safeFilename)
 }
 
 func pruneRetainedRows(ctx context.Context, db *sql.DB, siteID uuid.UUID, cutoff time.Time, counts retentionCounts) error {
@@ -313,6 +319,7 @@ func retentionDeleteQueries(counts retentionCounts) []retentionDeleteQuery {
 	return []retentionDeleteQuery{
 		{count: counts.Hits, label: "hits", query: "DELETE FROM hits WHERE site_id = ? AND timestamp < ?"},
 		{count: counts.Events, label: "events", query: "DELETE FROM events WHERE site_id = ? AND timestamp < ?"},
+		{count: counts.WebVitals, label: "web vitals", query: "DELETE FROM web_vitals WHERE site_id = ? AND timestamp < ?"},
 		{count: counts.AIFetches, label: "ai fetches", query: "DELETE FROM ai_fetches WHERE site_id = ? AND timestamp < ?"},
 		{count: counts.ImportedTraffic, label: "imported traffic", query: "DELETE FROM imported_traffic_daily WHERE site_id = ? AND date < ?"},
 		{count: counts.ImportedDimensions, label: "imported dimensions", query: "DELETE FROM imported_dimension_daily WHERE site_id = ? AND date < ?"},

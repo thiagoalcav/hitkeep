@@ -47,10 +47,14 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 	ingestRoutes.HandleFunc("POST /ingest/event", ctx.Handler(shared.HandlerConfig{
 		RateLimiter: ctx.IngestLimiter,
 	}, h.handleIngestEvent()))
+	ingestRoutes.HandleFunc("POST /ingest/web-vitals", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.IngestLimiter,
+	}, h.handleIngestWebVitals()))
 
 	corsHandler := newIngestCORS().Handler(ingestRoutes)
 	mux.Handle("/ingest", corsHandler)
 	mux.Handle("/ingest/event", corsHandler)
+	mux.Handle("/ingest/web-vitals", corsHandler)
 }
 
 func newIngestCORS() *cors.Cors {
@@ -73,6 +77,38 @@ type serverIngestContext struct {
 	visitorIP string
 	userAgent string
 	utm       url.Values
+}
+
+type browserIngestPayload struct {
+	Path           string    `json:"path"`
+	Referrer       *string   `json:"referrer"`
+	UserAgent      *string   `json:"ua"`
+	VPWidth        *int      `json:"vp_w"`
+	VPHeight       *int      `json:"vp_h"`
+	SCWidth        *int      `json:"sc_w"`
+	SCHeight       *int      `json:"sc_h"`
+	Language       *string   `json:"lang"`
+	UTMSource      *string   `json:"u_src"`
+	UTMMedium      *string   `json:"u_med"`
+	UTMCamp        *string   `json:"u_cmp"`
+	UTMTerm        *string   `json:"u_trm"`
+	UTMCont        *string   `json:"u_cnt"`
+	TrackerSource  string    `json:"tsrc"`
+	TrackerVersion string    `json:"tv"`
+	IsUnique       bool      `json:"unique"`
+	SessionID      uuid.UUID `json:"session_id"`
+	PageID         uuid.UUID `json:"page_id"`
+}
+
+type webVitalPayload struct {
+	Name           string    `json:"n"`
+	Value          float64   `json:"v"`
+	Path           string    `json:"p"`
+	NavigationType string    `json:"nt"`
+	SessionID      uuid.UUID `json:"sid"`
+	PageID         uuid.UUID `json:"pid"`
+	TrackerSource  string    `json:"tsrc"`
+	TrackerVersion string    `json:"tv"`
 }
 
 func (h *handler) handleServerPageviewIngest() http.HandlerFunc {
@@ -425,28 +461,7 @@ func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type ingestPayload struct {
-		Path           string    `json:"path"`
-		Referrer       *string   `json:"referrer"`
-		UserAgent      *string   `json:"ua"`
-		VPWidth        *int      `json:"vp_w"`
-		VPHeight       *int      `json:"vp_h"`
-		SCWidth        *int      `json:"sc_w"`
-		SCHeight       *int      `json:"sc_h"`
-		Language       *string   `json:"lang"`
-		UTMSource      *string   `json:"u_src"`
-		UTMMedium      *string   `json:"u_med"`
-		UTMCamp        *string   `json:"u_cmp"`
-		UTMTerm        *string   `json:"u_trm"`
-		UTMCont        *string   `json:"u_cnt"`
-		TrackerSource  string    `json:"tsrc"`
-		TrackerVersion string    `json:"tv"`
-		IsUnique       bool      `json:"unique"`
-		SessionID      uuid.UUID `json:"session_id"`
-		PageID         uuid.UUID `json:"page_id"`
-	}
-
-	var payload ingestPayload
+	var payload browserIngestPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		h.recordRejection()
 		http.Error(w, "Bad request body", http.StatusBadRequest)
@@ -541,6 +556,145 @@ func (h *handler) forwardToLeader(w http.ResponseWriter, r *http.Request, target
 
 func (h *handler) handleIngestFollower(w http.ResponseWriter, r *http.Request) {
 	h.forwardToLeader(w, r, "/ingest")
+}
+
+func (h *handler) handleIngestWebVitals() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if h.isLeader() {
+			h.handleIngestWebVitalsLeader(w, r)
+		} else {
+			h.forwardToLeader(w, r, "/ingest/web-vitals")
+		}
+	}
+}
+
+func (h *handler) handleIngestWebVitalsLeader(w http.ResponseWriter, r *http.Request) {
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		h.recordRejection()
+		http.Error(w, "Origin header is required", http.StatusBadRequest)
+		return
+	}
+
+	parsedURL, err := url.Parse(origin)
+	if err != nil {
+		h.recordRejection()
+		http.Error(w, "Invalid Origin header", http.StatusBadRequest)
+		return
+	}
+	domain := normalizeOriginHostname(parsedURL.Hostname())
+
+	site, err := h.ctx.Store.FindSiteByDomain(r.Context(), domain)
+	if err != nil {
+		slog.Error("Failed to find site", "error", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	if site == nil {
+		slog.Warn("Dropped web vital for unknown site")
+		h.recordRejection()
+		w.WriteHeader(http.StatusAccepted)
+		return
+	}
+
+	userIP := shared.GetRealIP(r, h.ctx.Config.GetTrustedProxyNetworks())
+	if h.ctx.IPFilter != nil && h.ctx.IPFilter.IsBlocked(site.ID, userIP) {
+		h.recordRejection()
+		w.WriteHeader(http.StatusAccepted)
+		return
+	}
+	if h.ctx.SpamFilter != nil {
+		decision := h.ctx.SpamFilter.Evaluate(site.Domain, userIP, nil)
+		if decision.Blocked {
+			slog.Info("Dropped spam web vital", "site_id", site.ID, "reason", decision.Reason)
+			h.recordSpamDrop()
+			w.WriteHeader(http.StatusAccepted)
+			return
+		}
+	}
+
+	var payload webVitalPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		h.recordRejection()
+		http.Error(w, "Bad request body", http.StatusBadRequest)
+		return
+	}
+
+	vital, validationMessage, ok := webVitalFromPayload(site.ID, payload, time.Now().UTC())
+	if !ok {
+		h.recordRejection()
+		http.Error(w, validationMessage, http.StatusBadRequest)
+		return
+	}
+
+	if err := h.publishJSON("web_vitals", vital); err != nil {
+		slog.Error("Failed to publish web vital to NSQ", "error", err, "site_id", site.ID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusAccepted)
+}
+
+func webVitalFromPayload(siteID uuid.UUID, payload webVitalPayload, timestamp time.Time) (api.WebVital, string, bool) {
+	metric := api.WebVitalMetric(strings.TrimSpace(payload.Name))
+	if _, err := database.WebVitalRatingForValue(metric, payload.Value); err != nil {
+		return api.WebVital{}, "Invalid web vital metric or value", false
+	}
+	path := sanitizeBrowserPath(payload.Path)
+	if path == "" {
+		return api.WebVital{}, "path is required", false
+	}
+	if payload.SessionID == uuid.Nil || payload.PageID == uuid.Nil {
+		return api.WebVital{}, "session and page identifiers are required", false
+	}
+
+	return api.WebVital{
+		SiteID:         siteID,
+		SessionID:      payload.SessionID,
+		PageID:         payload.PageID,
+		Metric:         metric,
+		Value:          payload.Value,
+		Path:           path,
+		NavigationType: normalizeWebVitalNavigationType(payload.NavigationType),
+		Timestamp:      timestamp,
+		TrackerSource:  trimTrackerField(payload.TrackerSource),
+		TrackerVersion: trimTrackerField(payload.TrackerVersion),
+	}, "", true
+}
+
+func normalizeWebVitalNavigationType(value string) *string {
+	value = trimTrackerField(value)
+	if value == "" {
+		return nil
+	}
+	return &value
+}
+
+func trimTrackerField(value string) string {
+	value = strings.TrimSpace(value)
+	if len(value) > 64 {
+		return value[:64]
+	}
+	return value
+}
+
+func sanitizeBrowserPath(rawPath string) string {
+	rawPath = strings.TrimSpace(rawPath)
+	if rawPath == "" {
+		return ""
+	}
+	parsed, err := url.Parse(rawPath)
+	if err != nil {
+		return ""
+	}
+	path := parsed.EscapedPath()
+	if path == "" {
+		path = "/"
+	}
+	if !strings.HasPrefix(path, "/") {
+		return ""
+	}
+	return path
 }
 
 func (h *handler) handleIngestEvent() http.HandlerFunc {
@@ -671,7 +825,7 @@ func (h *handler) recordRejection() {
 
 func buildForwardURL(leaderAddr, httpAddr, targetPath string) (*url.URL, error) {
 	switch targetPath {
-	case "/ingest", "/ingest/event", "/api/ingest/server/pageview", "/api/ingest/server/event":
+	case "/ingest", "/ingest/event", "/ingest/web-vitals", "/api/ingest/server/pageview", "/api/ingest/server/event":
 	default:
 		return nil, fmt.Errorf("invalid forward target")
 	}

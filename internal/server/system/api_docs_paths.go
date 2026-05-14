@@ -4,6 +4,7 @@ func openAPIV1Paths() map[string]any {
 	return mergeOpenAPIPathMaps(
 		openAPIV1CorePaths(),
 		openAPIV1AdminSitePaths(),
+		openAPIV1WebVitalPaths(),
 		openAPIV1IntegrationPaths(),
 		openAPIV1SearchConsoleReportPaths(),
 	)
@@ -53,6 +54,12 @@ func openAPIV1CorePaths() map[string]any {
 				map[string]any{"required": true, "content": map[string]any{"application/json": map[string]any{"schema": map[string]any{"type": "object", "properties": map[string]any{
 					"n": map[string]any{"type": "string"}, "p": map[string]any{"type": "object", "additionalProperties": true}, "sid": map[string]any{"type": "string", "format": "uuid"},
 				}, "required": []string{"n", "sid"}}}}},
+				map[string]any{"202": desc("Accepted"), "400": errResp("Invalid request")}),
+		},
+		"/ingest/web-vitals": map[string]any{
+			"options": op([]string{"Ingest"}, "Preflight Web Vitals ingest", "CORS preflight for opt-in Web Vitals ingest.", nil, nil, nil, map[string]any{"200": desc("Preflight response")}),
+			"post": op([]string{"Ingest"}, "Ingest Web Vital", "Ingests one compact opt-in Web Vital sample from hk-vitals.js. The server resolves the site from Origin, derives the rating from standard thresholds, and strips browser-provided query strings or hashes from the path.", nil, nil,
+				jsonBody(map[string]any{"$ref": "#/components/schemas/WebVitalIngestPayload"}),
 				map[string]any{"202": desc("Accepted"), "400": errResp("Invalid request")}),
 		},
 		"/api/ingest/server/pageview": map[string]any{

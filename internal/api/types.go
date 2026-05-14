@@ -219,6 +219,107 @@ type Event struct {
 	TrackerVersion string         `json:"-"`
 }
 
+type WebVitalMetric string
+
+const (
+	WebVitalLCP  WebVitalMetric = "LCP"
+	WebVitalINP  WebVitalMetric = "INP"
+	WebVitalCLS  WebVitalMetric = "CLS"
+	WebVitalFCP  WebVitalMetric = "FCP"
+	WebVitalTTFB WebVitalMetric = "TTFB"
+)
+
+type WebVitalRating string
+
+const (
+	WebVitalRatingGood             WebVitalRating = "good"
+	WebVitalRatingNeedsImprovement WebVitalRating = "needs_improvement"
+	WebVitalRatingPoor             WebVitalRating = "poor"
+)
+
+type WebVital struct {
+	ID             uuid.UUID      `json:"id"`
+	SiteID         uuid.UUID      `json:"site_id"`
+	SessionID      uuid.UUID      `json:"session_id"`
+	PageID         uuid.UUID      `json:"page_id"`
+	Metric         WebVitalMetric `json:"metric"`
+	Value          float64        `json:"value"`
+	Rating         WebVitalRating `json:"rating"`
+	Path           string         `json:"path"`
+	NavigationType *string        `json:"navigation_type,omitempty"`
+	Timestamp      time.Time      `json:"timestamp"`
+	TrackerSource  string         `json:"tracker_source,omitempty"`
+	TrackerVersion string         `json:"tracker_version,omitempty"`
+}
+
+type WebVitalsParams struct {
+	SiteID uuid.UUID
+	Start  time.Time
+	End    time.Time
+	Metric WebVitalMetric
+	Path   string
+	Rating WebVitalRating
+	Limit  int
+}
+
+type WebVitalDimension string
+
+const (
+	WebVitalDimensionCountry  WebVitalDimension = "country"
+	WebVitalDimensionLanguage WebVitalDimension = "language"
+	WebVitalDimensionBrowser  WebVitalDimension = "browser"
+	WebVitalDimensionDevice   WebVitalDimension = "device"
+)
+
+type WebVitalSummaryMetric struct {
+	Metric       WebVitalMetric `json:"metric"`
+	P75          float64        `json:"p75"`
+	Samples      int64          `json:"samples"`
+	Good         int64          `json:"good"`
+	NeedsImprove int64          `json:"needs_improvement"`
+	Poor         int64          `json:"poor"`
+	Rating       WebVitalRating `json:"rating"`
+}
+
+type WebVitalSeriesPoint struct {
+	Time         time.Time `json:"time"`
+	P75          float64   `json:"p75"`
+	Samples      int64     `json:"samples"`
+	Good         int64     `json:"good"`
+	NeedsImprove int64     `json:"needs_improvement"`
+	Poor         int64     `json:"poor"`
+}
+
+type WebVitalPageRow struct {
+	Path         string                                     `json:"path"`
+	P75          float64                                    `json:"p75"`
+	Samples      int64                                      `json:"samples"`
+	Good         int64                                      `json:"good"`
+	NeedsImprove int64                                      `json:"needs_improvement"`
+	Poor         int64                                      `json:"poor"`
+	Rating       WebVitalRating                             `json:"rating"`
+	Metrics      map[WebVitalMetric]WebVitalMetricBreakdown `json:"metrics"`
+}
+
+type WebVitalMetricBreakdown struct {
+	P75          float64        `json:"p75"`
+	Samples      int64          `json:"samples"`
+	Good         int64          `json:"good"`
+	NeedsImprove int64          `json:"needs_improvement"`
+	Poor         int64          `json:"poor"`
+	Rating       WebVitalRating `json:"rating"`
+}
+
+type WebVitalDimensionRow struct {
+	Name         string         `json:"name"`
+	P75          float64        `json:"p75"`
+	Samples      int64          `json:"samples"`
+	Good         int64          `json:"good"`
+	NeedsImprove int64          `json:"needs_improvement"`
+	Poor         int64          `json:"poor"`
+	Rating       WebVitalRating `json:"rating"`
+}
+
 type ServerPageviewIngestRequest struct {
 	URL       string    `json:"url"`
 	Timestamp string    `json:"timestamp"`

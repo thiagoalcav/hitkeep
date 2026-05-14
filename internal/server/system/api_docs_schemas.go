@@ -57,6 +57,7 @@ var opportunityDigestPreviewItemOpenAPISchema = map[string]any{
 func openAPIV1Schemas() map[string]any {
 	return mergeOpenAPIMapGroups(
 		openAPIV1AnalyticsSchemas(),
+		openAPIV1WebVitalSchemas(),
 		openAPIV1AccountSchemas(),
 	)
 }

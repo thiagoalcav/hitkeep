@@ -58,7 +58,9 @@
         "systemStatus": "System status",
         "systemStatusAria": "Go to system status",
         "googleSearchConsole": "Search Console",
-        "googleSearchConsoleAria": "Go to Google Search Console integration"
+        "googleSearchConsoleAria": "Go to Google Search Console integration",
+        "webVitals": "Web Vitals",
+        "webVitalsAria": "Open Web Vitals analytics"
     },
     "auditTable": {
         "empty": "No audit entries found",
@@ -632,7 +634,11 @@
             "dialogTitle": "Manage goals",
             "dialogDescription": "Define conversion goals to track specific user actions or page visits.",
             "empty": "No goals defined yet.",
+            "newAction": "New goal",
             "addTitle": "Add new goal",
+            "editTitle": "Edit goal",
+            "editTooltip": "Edit goal",
+            "deleteTooltip": "Delete goal",
             "namePlaceholder": "e.g. Signup Success",
             "typePagePath": "Path",
             "typeCustomEvent": "Event",
@@ -644,10 +650,6 @@
             "eventNameHelpPrefix": "Triggers when you call",
             "eventNameHelpSuffix": ".",
             "createAction": "Create goal",
-            "newAction": "New goal",
-            "editTitle": "Edit goal",
-            "editTooltip": "Edit goal",
-            "deleteTooltip": "Delete goal",
             "saveAction": "Save changes",
             "messages": {
                 "createSuccess": "Goal created.",
@@ -690,19 +692,19 @@
             "stepsLabel": "Steps",
             "viewStats": "View stats",
             "empty": "No funnels defined yet.",
+            "newAction": "New funnel",
             "createTitle": "Create new funnel",
+            "editTitle": "Edit funnel",
+            "editTooltip": "Edit funnel",
+            "deleteTooltip": "Delete funnel",
             "namePlaceholder": "e.g. Checkout Flow",
             "stepPathPlaceholder": "/path",
             "stepEventPlaceholder": "event_name",
             "addStep": "Add step",
             "createAction": "Create funnel",
+            "saveAction": "Save changes",
             "typePagePath": "Path",
             "typeCustomEvent": "Event",
-            "newAction": "New funnel",
-            "editTitle": "Edit funnel",
-            "editTooltip": "Edit funnel",
-            "deleteTooltip": "Delete funnel",
-            "saveAction": "Save changes",
             "messages": {
                 "createSuccess": "Funnel created.",
                 "createError": "Funnel could not be created.",
@@ -714,10 +716,10 @@
         },
         "viewer": {
             "dialogTitle": "Funnel analysis",
+            "editAction": "Edit funnel",
             "droppedSuffix": "dropped",
             "retention": "retention",
-            "entry": "Entry",
-            "editAction": "Edit funnel"
+            "entry": "Entry"
         }
     },
     "utm": {
@@ -1233,7 +1235,9 @@
                     "updated": "Updated"
                 },
                 "empty": "Not seen yet"
-            }
+            },
+            "webVitalsLabel": "Web Vitals",
+            "webVitalsDescription": "Load the separate Web Vitals bundle and send LCP, INP, CLS, FCP, and TTFB samples. Off by default."
         }
     },
     "admin": {
@@ -2452,20 +2456,6 @@
         "noSiteDescription": "Select a site to view ecommerce analytics."
     },
     "opportunities": {
-        "header": {
-            "eyebrow": "Evidence-backed recommendations",
-            "title": "Prioritized recommendations for the traffic you already have",
-            "subtitle": "HitKeep ranks conversion signals, traffic patterns, AI visibility gaps, search opportunities, and setup blind spots by evidence strength.",
-            "scoreLabel": "Score",
-            "scoreAria": "Opportunity score",
-            "scoreHint": "Strong signal"
-        },
-        "kpis": {
-            "open": "Open opportunities",
-            "highConfidence": "High confidence",
-            "aiSearchWins": "AI/Search wins",
-            "score": "Average score"
-        },
         "filters": {
             "ariaLabel": "Opportunity filters",
             "typeTitle": "Opportunity type",
@@ -2476,6 +2466,7 @@
                 "ai": "AI visibility",
                 "search": "Search",
                 "setup": "Setup",
+                "performance": "Performance",
                 "traffic": "Traffic signals"
             },
             "statuses": {
@@ -2525,11 +2516,6 @@
             "subtitle": "{{count}} ranked suggestions for this range",
             "cloudBadge": "Cloud-ready AI copy"
         },
-        "topActions": {
-            "ariaLabel": "Top recommended actions",
-            "title": "Top 3 actions",
-            "subtitle": "Start with these ranked opportunities first."
-        },
         "impact": {
             "monthlyRevenue": "activity",
             "qualifiedVisits": "qualified visits",
@@ -2543,6 +2529,7 @@
             "tracked_conversion_events": "tracked conversion events",
             "conversion_events_to_measure": "conversion events to measure",
             "funnel_steps_to_measure": "funnel steps to measure",
+            "web_vitals_samples": "Web Vitals samples",
             "checkout_starts": "Checkout starts"
         },
         "routes": {
@@ -2553,6 +2540,7 @@
             "events": "Events",
             "event": "Event: {{event_name}}",
             "funnel": "Funnel: {{start_path}}",
+            "web_vitals": "Web Vitals: {{metric}} on {{path}}",
             "tracker": "{{asset}}"
         },
         "evidence": {
@@ -2579,6 +2567,13 @@
             "suggested_funnel_conversion_event": "Suggested conversion step",
             "suggested_funnel_event_count": "Observed conversion events",
             "source_hits": "Source visits",
+            "web_vital_metric": "Web Vital metric",
+            "web_vital_p75": "p75 value",
+            "web_vital_rating": "Rating",
+            "web_vital_samples": "Samples",
+            "web_vital_poor_samples": "Poor samples",
+            "web_vital_top_page": "Slowest page",
+            "web_vital_top_page_p75": "Slowest page p75",
             "total_pageviews": "Total pageviews"
         },
         "catalog": {
@@ -2599,6 +2594,12 @@
                 "summary": "{{source}} produced {{source_hits}} visits out of {{total_pageviews}} pageviews in this window.",
                 "action": "Inspect the landing pages and intent for visitors from {{source}}.",
                 "digest": "Review traffic from {{source}}."
+            },
+            "web_vitals_performance": {
+                "title": "Review {{metric}} performance on {{path}}",
+                "summary": "{{metric}} p75 is {{p75}} with a {{rating}} rating across {{samples}} samples.",
+                "action": "Prioritize the slowest page before it drags more visitor sessions into poor Web Vitals.",
+                "digest": "{{metric}} p75 is {{p75}} on {{path}}."
             },
             "search_visibility": {
                 "title": "Review pages already visible in search",
@@ -2658,5 +2659,76 @@
             "body": "Try a different type or status filter."
         },
         "noSiteDescription": "Select a site to view opportunity recommendations."
+    },
+    "webVitals": {
+        "docsAction": "Setup guide",
+        "error": "Web Vitals data could not be loaded.",
+        "noSiteDescription": "Select or create a site to inspect Web Vitals over time.",
+        "metrics": {
+            "LCP": "LCP",
+            "INP": "INP",
+            "CLS": "CLS",
+            "FCP": "FCP",
+            "TTFB": "TTFB"
+        },
+        "ratings": {
+            "good": "Good",
+            "needs_improvement": "Needs work",
+            "poor": "Poor",
+            "none": "No samples"
+        },
+        "cards": {
+            "samples": "{{count}} samples",
+            "selectMetricAria": "Inspect {{metric}} over time",
+            "goodUntil": "Good to {{value}}"
+        },
+        "filters": {
+            "metric": "Metric",
+            "rating": "Rating",
+            "path": "Page path",
+            "allRatings": "All ratings",
+            "ratingChip": "Rating: {{rating}}",
+            "pathChip": "Path: {{path}}"
+        },
+        "chart": {
+            "title": "{{metric}} p75 trend",
+            "description": "The 75th percentile over the selected range, bucketed for fast incident review.",
+            "p75": "{{metric}} p75"
+        },
+        "distribution": {
+            "title": "Rating mix",
+            "description": "Site-wide {{metric}} samples. Click a rating to find pages in that quality band."
+        },
+        "pages": {
+            "title": "Page breakdown",
+            "description": "All paths with {{metric}} samples in the selected range. Click a rating in the mix above to rank the pages that need attention.",
+            "filteredTitle": "{{rating}} {{metric}} pages",
+            "filteredDescription": "Showing paths that produced {{rating}} {{metric}} samples in the selected range. Narrow the time range above to inspect a specific incident window.",
+            "empty": "No Web Vitals samples match the current filters."
+        },
+        "breakdown": {
+            "title": "{{dimension}} breakdown",
+            "description": "{{metric}} p75 by visitor context for the selected path and rating scope.",
+            "empty": "No breakdown rows match the current filters.",
+            "unknown": "Unknown",
+            "tabs": {
+                "pages": "Pages",
+                "countries": "Countries",
+                "languages": "Languages",
+                "browsers": "Browsers",
+                "devices": "Devices"
+            }
+        },
+        "columns": {
+            "path": "Path",
+            "p75": "p75",
+            "samples": "Samples",
+            "ratingSamples": "{{rating}} samples",
+            "rating": "Rating"
+        },
+        "empty": {
+            "title": "No Web Vitals yet",
+            "description": "Enable Web Vitals in the tracking snippet to start collecting opt-in performance samples."
+        }
     }
 }

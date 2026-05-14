@@ -58,7 +58,9 @@
         "systemStatus": "Systemstatus",
         "systemStatusAria": "Zum Systemstatus",
         "googleSearchConsole": "Search Console",
-        "googleSearchConsoleAria": "Zur Google-Search-Console-Integration"
+        "googleSearchConsoleAria": "Zur Google-Search-Console-Integration",
+        "webVitals": "Web Vitals",
+        "webVitalsAria": "Web-Vitals-Analyse öffnen"
     },
     "auditTable": {
         "empty": "Keine Audit-Einträge gefunden",
@@ -632,7 +634,11 @@
             "dialogTitle": "Ziele verwalten",
             "dialogDescription": "Definiere Conversion-Ziele, um bestimmte Nutzeraktionen oder Seitenaufrufe zu verfolgen.",
             "empty": "Noch keine Ziele definiert.",
+            "newAction": "Neues Ziel",
             "addTitle": "Neues Ziel hinzufügen",
+            "editTitle": "Ziel bearbeiten",
+            "editTooltip": "Ziel bearbeiten",
+            "deleteTooltip": "Ziel löschen",
             "namePlaceholder": "z. B. Erfolgreiche Registrierung",
             "typePagePath": "Pfad",
             "typeCustomEvent": "Event",
@@ -644,10 +650,6 @@
             "eventNameHelpPrefix": "Wird ausgelöst, wenn du",
             "eventNameHelpSuffix": "aufrufen.",
             "createAction": "Ziel erstellen",
-            "newAction": "Neues Ziel",
-            "editTitle": "Ziel bearbeiten",
-            "editTooltip": "Ziel bearbeiten",
-            "deleteTooltip": "Ziel löschen",
             "saveAction": "Änderungen speichern",
             "messages": {
                 "createSuccess": "Ziel erstellt.",
@@ -690,19 +692,19 @@
             "stepsLabel": "Schritte",
             "viewStats": "Statistik anzeigen",
             "empty": "Noch keine Funnels definiert.",
+            "newAction": "Neuer Funnel",
             "createTitle": "Neuen Funnel erstellen",
+            "editTitle": "Funnel bearbeiten",
+            "editTooltip": "Funnel bearbeiten",
+            "deleteTooltip": "Funnel löschen",
             "namePlaceholder": "z. B. Checkout-Ablauf",
             "stepPathPlaceholder": "/pfad",
             "stepEventPlaceholder": "event_name",
             "addStep": "Schritt hinzufügen",
             "createAction": "Funnel erstellen",
+            "saveAction": "Änderungen speichern",
             "typePagePath": "Pfad",
             "typeCustomEvent": "Event",
-            "newAction": "Neuer Funnel",
-            "editTitle": "Funnel bearbeiten",
-            "editTooltip": "Funnel bearbeiten",
-            "deleteTooltip": "Funnel löschen",
-            "saveAction": "Änderungen speichern",
             "messages": {
                 "createSuccess": "Funnel erstellt.",
                 "createError": "Funnel konnte nicht erstellt werden.",
@@ -714,10 +716,10 @@
         },
         "viewer": {
             "dialogTitle": "Funnel-Analyse",
+            "editAction": "Funnel bearbeiten",
             "droppedSuffix": "abgesprungen",
             "retention": "Bindung",
-            "entry": "Einstieg",
-            "editAction": "Funnel bearbeiten"
+            "entry": "Einstieg"
         }
     },
     "utm": {
@@ -1233,7 +1235,9 @@
                     "updated": "Aktualisiert"
                 },
                 "empty": "Noch nicht gesehen"
-            }
+            },
+            "webVitalsLabel": "Web Vitals",
+            "webVitalsDescription": "Lädt das separate Web-Vitals-Bundle und sendet LCP-, INP-, CLS-, FCP- und TTFB-Samples. Standardmäßig deaktiviert."
         }
     },
     "admin": {
@@ -2452,20 +2456,6 @@
         "noSiteDescription": "Wähle eine Website aus, um die E-Commerce-Analyse anzuzeigen."
     },
     "opportunities": {
-        "header": {
-            "eyebrow": "Evidenzbasierte Empfehlungen",
-            "title": "Priorisierte Empfehlungen für deinen vorhandenen Traffic",
-            "subtitle": "HitKeep priorisiert Conversion-Signale, Traffic-Muster, AI-Visibility-Lücken, Suchchancen und Setup-Blindspots nach Evidenzstärke.",
-            "scoreLabel": "Score",
-            "scoreAria": "Opportunity-Score",
-            "scoreHint": "Starkes Signal"
-        },
-        "kpis": {
-            "open": "Offene Chancen",
-            "highConfidence": "Hohe Sicherheit",
-            "aiSearchWins": "AI-/Search-Gewinne",
-            "score": "Durchschnittsscore"
-        },
         "filters": {
             "ariaLabel": "Opportunity-Filter",
             "typeTitle": "Opportunity-Typ",
@@ -2476,6 +2466,7 @@
                 "ai": "AI Visibility",
                 "search": "Suche",
                 "setup": "Setup",
+                "performance": "Performance",
                 "traffic": "Traffic-Signale"
             },
             "statuses": {
@@ -2525,11 +2516,6 @@
             "subtitle": "{{count}} priorisierte Vorschläge für diesen Zeitraum",
             "cloudBadge": "AI-Copy für Cloud bereit"
         },
-        "topActions": {
-            "ariaLabel": "Wichtigste empfohlene Aktionen",
-            "title": "Top 3 Aktionen",
-            "subtitle": "Beginne mit diesen priorisierten Chancen."
-        },
         "impact": {
             "monthlyRevenue": "Aktivität",
             "qualifiedVisits": "qualifizierte Besuche",
@@ -2543,6 +2529,7 @@
             "tracked_conversion_events": "erfasste Conversion-Ereignisse",
             "conversion_events_to_measure": "Conversion-Ereignisse zum Messen",
             "funnel_steps_to_measure": "Funnel-Schritte zum Messen",
+            "web_vitals_samples": "Web-Vitals-Samples",
             "checkout_starts": "Checkout-Starts"
         },
         "routes": {
@@ -2553,6 +2540,7 @@
             "events": "Events",
             "event": "Event: {{event_name}}",
             "funnel": "Funnel: {{start_path}}",
+            "web_vitals": "Web Vitals: {{metric}} auf {{path}}",
             "tracker": "{{asset}}"
         },
         "evidence": {
@@ -2579,6 +2567,13 @@
             "suggested_funnel_conversion_event": "Vorgeschlagener Conversion-Schritt",
             "suggested_funnel_event_count": "Beobachtete Conversion-Events",
             "source_hits": "Quellenbesuche",
+            "web_vital_metric": "Web-Vital-Metrik",
+            "web_vital_p75": "p75-Wert",
+            "web_vital_rating": "Bewertung",
+            "web_vital_samples": "Samples",
+            "web_vital_poor_samples": "Schlechte Samples",
+            "web_vital_top_page": "Langsamste Seite",
+            "web_vital_top_page_p75": "p75 der langsamsten Seite",
             "total_pageviews": "Gesamte Seitenaufrufe"
         },
         "catalog": {
@@ -2599,6 +2594,12 @@
                 "summary": "{{source}} erzeugte {{source_hits}} Besuche bei {{total_pageviews}} Seitenaufrufen in diesem Zeitraum.",
                 "action": "Prüfe Landingpages und Besucherintention für Traffic von {{source}}.",
                 "digest": "Traffic von {{source}} prüfen."
+            },
+            "web_vitals_performance": {
+                "title": "{{metric}}-Performance auf {{path}} prüfen",
+                "summary": "{{metric}} p75 liegt bei {{p75}} mit Bewertung {{rating}} über {{samples}} Samples.",
+                "action": "Priorisiere die langsamste Seite, bevor mehr Sitzungen in schlechte Web Vitals laufen.",
+                "digest": "{{metric}} p75 liegt bei {{p75}} auf {{path}}."
             },
             "search_visibility": {
                 "title": "Bereits sichtbare Suchseiten prüfen",
@@ -2658,5 +2659,76 @@
             "body": "Versuche einen anderen Typ- oder Statusfilter."
         },
         "noSiteDescription": "Wähle eine Website aus, um Opportunity-Empfehlungen anzuzeigen."
+    },
+    "webVitals": {
+        "docsAction": "Einrichtungsleitfaden",
+        "error": "Web-Vitals-Daten konnten nicht geladen werden.",
+        "noSiteDescription": "Wähle oder erstelle eine Website, um Web Vitals im Zeitverlauf zu prüfen.",
+        "metrics": {
+            "LCP": "LCP",
+            "INP": "INP",
+            "CLS": "CLS",
+            "FCP": "FCP",
+            "TTFB": "TTFB"
+        },
+        "ratings": {
+            "good": "Gut",
+            "needs_improvement": "Verbessern",
+            "poor": "Schlecht",
+            "none": "Keine Samples"
+        },
+        "cards": {
+            "samples": "{{count}} Samples",
+            "selectMetricAria": "{{metric}} im Zeitverlauf prüfen",
+            "goodUntil": "Gut bis {{value}}"
+        },
+        "filters": {
+            "metric": "Metrik",
+            "rating": "Bewertung",
+            "path": "Seitenpfad",
+            "allRatings": "Alle Bewertungen",
+            "ratingChip": "Bewertung: {{rating}}",
+            "pathChip": "Pfad: {{path}}"
+        },
+        "chart": {
+            "title": "{{metric}} p75-Trend",
+            "description": "Das 75. Perzentil im ausgewählten Zeitraum, gruppiert für schnelle Incident-Analyse.",
+            "p75": "{{metric}} p75"
+        },
+        "distribution": {
+            "title": "Bewertungsmix",
+            "description": "Websiteweite {{metric}}-Samples. Klicke eine Bewertung, um Seiten in diesem Qualitätsband zu finden."
+        },
+        "pages": {
+            "title": "Seitenaufschlüsselung",
+            "description": "Alle Pfade mit {{metric}}-Samples im ausgewählten Zeitraum. Klicke oben im Mix eine Bewertung, um Seiten mit Handlungsbedarf zu priorisieren.",
+            "filteredTitle": "{{rating}}: {{metric}}-Seiten",
+            "filteredDescription": "Zeigt Pfade, die im ausgewählten Zeitraum {{rating}}-Samples für {{metric}} erzeugt haben. Grenze den Zeitraum oben ein, um ein konkretes Incident-Fenster zu prüfen.",
+            "empty": "Keine Web-Vitals-Samples entsprechen den aktuellen Filtern."
+        },
+        "breakdown": {
+            "title": "{{dimension}}-Aufschlüsselung",
+            "description": "{{metric}} p75 nach Besucherkontext für den ausgewählten Pfad und Bewertungsbereich.",
+            "empty": "Keine Aufschlüsselungszeilen entsprechen den aktuellen Filtern.",
+            "unknown": "Unbekannt",
+            "tabs": {
+                "pages": "Seiten",
+                "countries": "Länder",
+                "languages": "Sprachen",
+                "browsers": "Browser",
+                "devices": "Geräte"
+            }
+        },
+        "columns": {
+            "path": "Pfad",
+            "p75": "p75",
+            "samples": "Samples",
+            "ratingSamples": "{{rating}}-Samples",
+            "rating": "Bewertung"
+        },
+        "empty": {
+            "title": "Noch keine Web Vitals",
+            "description": "Aktiviere Web Vitals im Tracking-Snippet, um opt-in Performance-Samples zu erfassen."
+        }
     }
 }

@@ -14,7 +14,14 @@ import {
     FunnelSeriesPoint,
     GoalSeriesPoint,
     SiteStats as SiteStatsModel,
-    SystemStatus
+    SystemStatus,
+    WebVitalDimension,
+    WebVitalDimensionRow,
+    WebVitalMetric,
+    WebVitalPageRow,
+    WebVitalRating,
+    WebVitalSeriesPoint,
+    WebVitalSummaryMetric
 } from '@models/analytics.types';
 
 export interface Site {
@@ -246,6 +253,26 @@ export class AnalyticsService {
         return this.http.get<EcommerceSourceStat[]>(`/api/sites/${siteId}/ecommerce/sources`, { params });
     }
 
+    getWebVitalsSummary(siteId: string, from: string, to: string, metric?: WebVitalMetric | null, path?: string | null, rating?: WebVitalRating | null): Observable<WebVitalSummaryMetric[]> {
+        const params = this.buildWebVitalsParams(from, to, metric, path, rating);
+        return this.http.get<WebVitalSummaryMetric[]>(`/api/sites/${siteId}/web-vitals/summary`, { params });
+    }
+
+    getWebVitalsTimeseries(siteId: string, from: string, to: string, metric: WebVitalMetric, path?: string | null, rating?: WebVitalRating | null): Observable<WebVitalSeriesPoint[]> {
+        const params = this.buildWebVitalsParams(from, to, metric, path, rating);
+        return this.http.get<WebVitalSeriesPoint[]>(`/api/sites/${siteId}/web-vitals/timeseries`, { params });
+    }
+
+    getWebVitalsPages(siteId: string, from: string, to: string, metric: WebVitalMetric, path?: string | null, rating?: WebVitalRating | null, limit = 25): Observable<WebVitalPageRow[]> {
+        const params = this.buildWebVitalsParams(from, to, metric, path, rating).set('limit', limit);
+        return this.http.get<WebVitalPageRow[]>(`/api/sites/${siteId}/web-vitals/pages`, { params });
+    }
+
+    getWebVitalsBreakdown(siteId: string, from: string, to: string, metric: WebVitalMetric, dimension: WebVitalDimension, path?: string | null, rating?: WebVitalRating | null, limit = 25): Observable<WebVitalDimensionRow[]> {
+        const params = this.buildWebVitalsParams(from, to, metric, path, rating).set('dimension', dimension).set('limit', limit);
+        return this.http.get<WebVitalDimensionRow[]>(`/api/sites/${siteId}/web-vitals/breakdown`, { params });
+    }
+
     getAIFetchOverview(siteId: string, from: string, to: string, filters: AIFetchFilters = {}): Observable<AIFetchOverview> {
         return this.http.get<AIFetchOverview>(`/api/sites/${siteId}/ai-fetch/overview`, {
             params: this.buildAIFetchParams(from, to, filters)
@@ -337,6 +364,14 @@ export class AnalyticsService {
         if (itemName) {
             params = params.set('item_name', itemName);
         }
+        return params;
+    }
+
+    private buildWebVitalsParams(from: string, to: string, metric?: WebVitalMetric | null, path?: string | null, rating?: WebVitalRating | null): HttpParams {
+        let params = new HttpParams().set('from', from).set('to', to);
+        if (metric) params = params.set('metric', metric);
+        if (path) params = params.set('path', path);
+        if (rating) params = params.set('rating', rating);
         return params;
     }
 

@@ -166,6 +166,60 @@ export interface EventSeriesPoint {
     count: number;
 }
 
+export type WebVitalMetric = 'LCP' | 'INP' | 'CLS' | 'FCP' | 'TTFB';
+export type WebVitalRating = 'good' | 'needs_improvement' | 'poor';
+
+export interface WebVitalSummaryMetric {
+    metric: WebVitalMetric;
+    p75: number;
+    samples: number;
+    good: number;
+    needs_improvement: number;
+    poor: number;
+    rating: WebVitalRating;
+}
+
+export interface WebVitalSeriesPoint {
+    time: string;
+    p75: number;
+    samples: number;
+    good: number;
+    needs_improvement: number;
+    poor: number;
+}
+
+export interface WebVitalPageRow {
+    path: string;
+    p75: number;
+    samples: number;
+    good: number;
+    needs_improvement: number;
+    poor: number;
+    rating: WebVitalRating;
+    metrics: Partial<Record<WebVitalMetric, WebVitalMetricBreakdown>>;
+}
+
+export interface WebVitalMetricBreakdown {
+    p75: number;
+    samples: number;
+    good: number;
+    needs_improvement: number;
+    poor: number;
+    rating: WebVitalRating;
+}
+
+export type WebVitalDimension = 'browser' | 'country' | 'language' | 'device';
+
+export interface WebVitalDimensionRow {
+    name: string;
+    p75: number;
+    samples: number;
+    good: number;
+    needs_improvement: number;
+    poor: number;
+    rating: WebVitalRating;
+}
+
 export interface AIFetch {
     id: string;
     site_id: string;

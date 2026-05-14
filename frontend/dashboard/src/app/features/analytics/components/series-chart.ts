@@ -153,7 +153,7 @@ export class SeriesChart {
                     border: { display: false }
                 },
                 y: {
-                    ticks: { color: textColor, stepSize: 1 },
+                    ticks: { color: textColor },
                     grid: { color: gridColor, drawBorder: false, tickLength: 0 },
                     border: { display: false },
                     beginAtZero: true

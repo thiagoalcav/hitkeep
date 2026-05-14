@@ -60,6 +60,16 @@
             >
                 <i class="pi pi-bolt" aria-hidden="true"></i> <span>{{ "nav.events" | transloco }}</span>
             </a>
+            @if (!shareService.isShareMode()) {
+            <a
+                routerLink="/web-vitals"
+                routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
+                class="flex items-center gap-3 px-3 py-2 rounded-md font-medium transition-colors hover:bg-surface-100 dark:hover:bg-surface-800 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500"
+                [attr.aria-label]="'nav.webVitalsAria' | transloco"
+            >
+                <i class="pi pi-gauge" aria-hidden="true"></i> <span>{{ "nav.webVitals" | transloco }}</span>
+            </a>
+            }
             <a
                 [routerLink]="navBase() + '/ai-visibility'"
                 routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
@@ -343,6 +353,17 @@
                 >
                     <i class="pi pi-bolt" aria-hidden="true"></i> <span>{{ "nav.events" | transloco }}</span>
                 </a>
+                @if (!shareService.isShareMode()) {
+                <a
+                    routerLink="/web-vitals"
+                    (click)="isMobileDrawerOpen.set(false)"
+                    routerLinkActive="bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400"
+                    class="flex items-center gap-3 px-3 py-2 rounded-md font-medium"
+                    [attr.aria-label]="'nav.webVitalsAria' | transloco"
+                >
+                    <i class="pi pi-gauge" aria-hidden="true"></i> <span>{{ "nav.webVitals" | transloco }}</span>
+                </a>
+                }
                 <a
                     [routerLink]="navBase() + '/ai-visibility'"
                     (click)="isMobileDrawerOpen.set(false)"

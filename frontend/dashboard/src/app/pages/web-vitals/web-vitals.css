@@ -1,0 +1,227 @@
+.web-vitals-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+    gap: 1rem;
+}
+
+.web-vitals-card {
+    display: flex;
+    min-height: 190px;
+    flex-direction: column;
+    border: 1px solid var(--p-content-border-color);
+    border-radius: 8px;
+    background: var(--p-content-background);
+    cursor: pointer;
+    padding: 1rem;
+    text-align: left;
+}
+
+.web-vitals-card:hover,
+.web-vitals-card:focus-visible {
+    border-color: var(--p-primary-color);
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    outline: none;
+    transform: translateY(-1px);
+}
+
+.web-vitals-card--selected {
+    border-color: var(--p-primary-color);
+    background: color-mix(in srgb, var(--p-primary-color) 5%, var(--p-content-background));
+    box-shadow: inset 0 0 0 1px var(--p-primary-color);
+}
+
+.web-vitals-card__top {
+    display: flex;
+    min-height: 1.75rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.web-vitals-card__rating {
+    max-width: 8.25rem;
+}
+
+.web-vitals-card__value {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 1rem 0 0.75rem;
+}
+
+.web-vitals-card__value strong {
+    color: var(--p-text-color);
+    font-size: clamp(1.75rem, 3vw, 2.4rem);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+}
+
+.web-vitals-card__value span,
+.web-vitals-card__samples {
+    color: var(--p-text-muted-color);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.web-vitals-card__samples {
+    display: block;
+    margin-bottom: 0.65rem;
+}
+
+.web-vitals-card__strip,
+.web-vitals-distribution {
+    display: flex;
+    height: 8px;
+    width: 100%;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--p-content-border-color);
+}
+
+.web-vitals-card__strip {
+    margin-top: auto;
+}
+
+.web-vitals-card__strip-good {
+    background: #16a34a;
+}
+
+.web-vitals-card__strip-mid {
+    background: #f59e0b;
+}
+
+.web-vitals-card__strip-poor {
+    background: #dc2626;
+}
+
+.web-vitals-filtered-badge {
+    flex: 0 0 auto;
+    border: 1px solid var(--p-primary-color);
+    border-radius: 999px;
+    color: var(--p-text-color);
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    padding: 0.35rem 0.55rem;
+}
+
+.web-vitals-dist-cell {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.25rem;
+    border: 1px solid var(--p-content-border-color);
+    border-radius: 8px;
+    background: var(--p-content-background);
+    padding: 0.75rem;
+    text-align: left;
+}
+
+.web-vitals-dist-cell:hover,
+.web-vitals-dist-cell:focus-visible,
+.web-vitals-dist-cell--active {
+    border-color: var(--p-primary-color);
+    background: color-mix(in srgb, var(--p-primary-color) 5%, var(--p-content-background));
+    outline: none;
+}
+
+.web-vitals-dist-cell span {
+    color: var(--p-text-muted-color);
+    font-size: 0.75rem;
+}
+
+.web-vitals-dist-cell strong {
+    color: var(--p-text-color);
+    font-size: 1.125rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.web-vitals-threshold {
+    position: relative;
+    display: grid;
+    gap: 0.4rem;
+    margin-bottom: 0.8rem;
+}
+
+.web-vitals-threshold__bands {
+    display: grid;
+    grid-template-columns: 60% 32% 8%;
+    height: 0.6rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--p-content-border-color);
+}
+
+.web-vitals-threshold__good {
+    background: #16a34a;
+}
+
+.web-vitals-threshold__mid {
+    background: #f59e0b;
+}
+
+.web-vitals-threshold__poor {
+    background: #dc2626;
+}
+
+.web-vitals-threshold__marker {
+    position: absolute;
+    top: -0.2rem;
+    width: 0.45rem;
+    height: 1rem;
+    border: 2px solid var(--p-content-background);
+    border-radius: 999px;
+    background: var(--p-text-color);
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.2);
+    transform: translateX(-50%);
+}
+
+.web-vitals-threshold__labels {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    color: var(--p-text-muted-color);
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.web-vitals-metric-cell {
+    color: var(--p-text-color);
+    font-weight: 650;
+}
+
+.web-vitals-metric-cell--selected {
+    color: var(--p-primary-color);
+    font-weight: 800;
+}
+
+.web-vitals-path-button {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    border: 0;
+    background: transparent;
+    color: var(--p-text-color);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 600;
+    padding: 0;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.web-vitals-path-button:hover,
+.web-vitals-path-button:focus-visible,
+.web-vitals-path-button--active {
+    color: var(--p-primary-color);
+    outline: none;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+:host ::ng-deep .web-vitals-breakdown-tabs .p-tabpanels {
+    padding: 1rem 0 0;
+}

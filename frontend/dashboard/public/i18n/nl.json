@@ -58,7 +58,9 @@
         "systemStatus": "Systeemstatus",
         "systemStatusAria": "Ga naar systeemstatus",
         "googleSearchConsole": "Search Console",
-        "googleSearchConsoleAria": "Ga naar Google Search Console-integratie"
+        "googleSearchConsoleAria": "Ga naar Google Search Console-integratie",
+        "webVitals": "Web Vitals",
+        "webVitalsAria": "Web Vitals-analyse openen"
     },
     "auditTable": {
         "empty": "Geen auditgegevens gevonden",
@@ -632,7 +634,11 @@
             "dialogTitle": "Beheer doelen",
             "dialogDescription": "Definieer conversiedoelen om specifieke gebruikersacties of paginabezoeken bij te houden.",
             "empty": "Er zijn nog geen doelen gedefinieerd.",
+            "newAction": "Nieuw doel",
             "addTitle": "Nieuw doel toevoegen",
+            "editTitle": "Doel bewerken",
+            "editTooltip": "Doel bewerken",
+            "deleteTooltip": "Doel verwijderen",
             "namePlaceholder": "bijv. Succes met aanmelden",
             "typePagePath": "Pad",
             "typeCustomEvent": "Event",
@@ -644,10 +650,6 @@
             "eventNameHelpPrefix": "Wordt geactiveerd wanneer je belt",
             "eventNameHelpSuffix": ".",
             "createAction": "Doel creëren",
-            "newAction": "Nieuw doel",
-            "editTitle": "Doel bewerken",
-            "editTooltip": "Doel bewerken",
-            "deleteTooltip": "Doel verwijderen",
             "saveAction": "Wijzigingen opslaan",
             "messages": {
                 "createSuccess": "Doel gemaakt.",
@@ -690,19 +692,19 @@
             "stepsLabel": "Stappen",
             "viewStats": "Bekijk statistieken",
             "empty": "Er zijn nog geen funnels gedefinieerd.",
+            "newAction": "Nieuwe funnel",
             "createTitle": "Maak een nieuwe funnel",
+            "editTitle": "Funnel bewerken",
+            "editTooltip": "Funnel bewerken",
+            "deleteTooltip": "Funnel verwijderen",
             "namePlaceholder": "bijv. Afrekenstroom",
             "stepPathPlaceholder": "/pad",
             "stepEventPlaceholder": "gebeurtenisnaam",
             "addStep": "Stap toevoegen",
             "createAction": "Funnel maken",
+            "saveAction": "Wijzigingen opslaan",
             "typePagePath": "Pad",
             "typeCustomEvent": "Event",
-            "newAction": "Nieuwe funnel",
-            "editTitle": "Funnel bewerken",
-            "editTooltip": "Funnel bewerken",
-            "deleteTooltip": "Funnel verwijderen",
-            "saveAction": "Wijzigingen opslaan",
             "messages": {
                 "createSuccess": "Funnel gemaakt.",
                 "createError": "Funnel kon niet worden gemaakt.",
@@ -714,10 +716,10 @@
         },
         "viewer": {
             "dialogTitle": "Trechteranalyse",
+            "editAction": "Funnel bewerken",
             "droppedSuffix": "gedaald",
             "retention": "behoud",
-            "entry": "Binnenkomst",
-            "editAction": "Funnel bewerken"
+            "entry": "Binnenkomst"
         }
     },
     "utm": {
@@ -1233,7 +1235,9 @@
                     "updated": "Bijgewerkt"
                 },
                 "empty": "Nog niet gezien"
-            }
+            },
+            "webVitalsLabel": "Web Vitals",
+            "webVitalsDescription": "Laad de aparte Web Vitals-bundel en stuur LCP-, INP-, CLS-, FCP- en TTFB-samples. Standaard uitgeschakeld."
         }
     },
     "admin": {
@@ -2452,20 +2456,6 @@
         "noSiteDescription": "Selecteer een site om e-commerceanalyses te bekijken."
     },
     "opportunities": {
-        "header": {
-            "eyebrow": "Aanbevelingen met bewijs",
-            "title": "Geprioriteerde aanbevelingen voor je bestaande verkeer",
-            "subtitle": "HitKeep rangschikt conversiesignalen, verkeerspatronen, AI-zichtbaarheidsgaten, zoekkansen en ontbrekende setup-signalen op bewijskracht.",
-            "scoreLabel": "Score",
-            "scoreAria": "Kansenscore",
-            "scoreHint": "Sterk signaal"
-        },
-        "kpis": {
-            "open": "Open kansen",
-            "highConfidence": "Hoge zekerheid",
-            "aiSearchWins": "AI/zoekkansen",
-            "score": "Gemiddelde score"
-        },
         "filters": {
             "ariaLabel": "Kansenfilters",
             "typeTitle": "Type kans",
@@ -2476,6 +2466,7 @@
                 "ai": "AI-zichtbaarheid",
                 "search": "Zoeken",
                 "setup": "Setup",
+                "performance": "Prestaties",
                 "traffic": "Verkeerssignalen"
             },
             "statuses": {
@@ -2525,11 +2516,6 @@
             "subtitle": "{{count}} geprioriteerde suggesties voor deze periode",
             "cloudBadge": "Cloudklare AI-copy"
         },
-        "topActions": {
-            "ariaLabel": "Belangrijkste aanbevolen acties",
-            "title": "Top 3 acties",
-            "subtitle": "Begin met deze geprioriteerde kansen."
-        },
         "impact": {
             "monthlyRevenue": "activiteit",
             "qualifiedVisits": "gekwalificeerde bezoeken",
@@ -2543,6 +2529,7 @@
             "tracked_conversion_events": "gemeten conversie-events",
             "conversion_events_to_measure": "conversie-events om te meten",
             "funnel_steps_to_measure": "funnelstappen om te meten",
+            "web_vitals_samples": "Web Vitals-samples",
             "checkout_starts": "Checkout-starts"
         },
         "routes": {
@@ -2553,6 +2540,7 @@
             "events": "Events",
             "event": "Event: {{event_name}}",
             "funnel": "Funnel: {{start_path}}",
+            "web_vitals": "Web Vitals: {{metric}} op {{path}}",
             "tracker": "{{asset}}"
         },
         "evidence": {
@@ -2579,6 +2567,13 @@
             "suggested_funnel_conversion_event": "Voorgestelde conversiestap",
             "suggested_funnel_event_count": "Waargenomen conversie-events",
             "source_hits": "Bronbezoeken",
+            "web_vital_metric": "Web Vital-metriek",
+            "web_vital_p75": "p75-waarde",
+            "web_vital_rating": "Beoordeling",
+            "web_vital_samples": "Samples",
+            "web_vital_poor_samples": "Slechte samples",
+            "web_vital_top_page": "Langzaamste pagina",
+            "web_vital_top_page_p75": "p75 van langzaamste pagina",
             "total_pageviews": "Totale paginaweergaven"
         },
         "catalog": {
@@ -2599,6 +2594,12 @@
                 "summary": "{{source}} leverde {{source_hits}} bezoeken op van {{total_pageviews}} paginaweergaven in deze periode.",
                 "action": "Controleer landingspagina’s en intentie voor bezoekers vanuit {{source}}.",
                 "digest": "Bekijk verkeer van {{source}}."
+            },
+            "web_vitals_performance": {
+                "title": "Bekijk {{metric}}-prestaties op {{path}}",
+                "summary": "{{metric}} p75 is {{p75}} met beoordeling {{rating}} over {{samples}} samples.",
+                "action": "Geef prioriteit aan de langzaamste pagina voordat meer sessies slechte Web Vitals krijgen.",
+                "digest": "{{metric}} p75 is {{p75}} op {{path}}."
             },
             "search_visibility": {
                 "title": "Bekijk pagina’s die al zichtbaar zijn in zoekresultaten",
@@ -2658,5 +2659,76 @@
             "body": "Probeer een andere type- of statusfilter."
         },
         "noSiteDescription": "Selecteer een site om kansaanbevelingen te bekijken."
+    },
+    "webVitals": {
+        "docsAction": "Installatiegids",
+        "error": "Web Vitals-gegevens konden niet worden geladen.",
+        "noSiteDescription": "Selecteer of maak een site om Web Vitals door de tijd te inspecteren.",
+        "metrics": {
+            "LCP": "LCP",
+            "INP": "INP",
+            "CLS": "CLS",
+            "FCP": "FCP",
+            "TTFB": "TTFB"
+        },
+        "ratings": {
+            "good": "Goed",
+            "needs_improvement": "Kan beter",
+            "poor": "Slecht",
+            "none": "Geen samples"
+        },
+        "cards": {
+            "samples": "{{count}} samples",
+            "selectMetricAria": "{{metric}} door de tijd inspecteren",
+            "goodUntil": "Goed tot {{value}}"
+        },
+        "filters": {
+            "metric": "Metriek",
+            "rating": "Beoordeling",
+            "path": "Paginapad",
+            "allRatings": "Alle beoordelingen",
+            "ratingChip": "Beoordeling: {{rating}}",
+            "pathChip": "Pad: {{path}}"
+        },
+        "chart": {
+            "title": "{{metric}} p75-trend",
+            "description": "Het 75e percentiel in de geselecteerde periode, gegroepeerd voor snelle incidentanalyse.",
+            "p75": "{{metric}} p75"
+        },
+        "distribution": {
+            "title": "Beoordelingsmix",
+            "description": "Sitebrede {{metric}}-samples. Klik op een beoordeling om pagina's in die kwaliteitsband te vinden."
+        },
+        "pages": {
+            "title": "Paginaoverzicht",
+            "description": "Alle paden met {{metric}}-samples in de geselecteerde periode. Klik hierboven op een beoordeling om pagina's met aandachtspunten bovenaan te zetten.",
+            "filteredTitle": "{{rating}} {{metric}}-pagina's",
+            "filteredDescription": "Toont paden die in de geselecteerde periode {{rating}} {{metric}}-samples opleverden. Verklein de periode hierboven om een specifiek incidentvenster te bekijken.",
+            "empty": "Geen Web Vitals-samples passen bij de huidige filters."
+        },
+        "breakdown": {
+            "title": "{{dimension}}-overzicht",
+            "description": "{{metric}} p75 per bezoekerscontext voor het geselecteerde pad en beoordelingsbereik.",
+            "empty": "Geen overzichtsrijen passen bij de huidige filters.",
+            "unknown": "Onbekend",
+            "tabs": {
+                "pages": "Pagina's",
+                "countries": "Landen",
+                "languages": "Talen",
+                "browsers": "Browsers",
+                "devices": "Apparaten"
+            }
+        },
+        "columns": {
+            "path": "Pad",
+            "p75": "p75",
+            "samples": "Samples",
+            "ratingSamples": "{{rating}} samples",
+            "rating": "Beoordeling"
+        },
+        "empty": {
+            "title": "Nog geen Web Vitals",
+            "description": "Schakel Web Vitals in de tracking-snippet in om opt-in prestatiesamples te verzamelen."
+        }
     }
 }

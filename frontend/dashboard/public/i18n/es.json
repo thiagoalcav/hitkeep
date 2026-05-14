@@ -58,7 +58,9 @@
         "systemStatus": "Estado del sistema",
         "systemStatusAria": "Ir al estado del sistema",
         "googleSearchConsole": "Search Console",
-        "googleSearchConsoleAria": "Ir a la integración de Google Search Console"
+        "googleSearchConsoleAria": "Ir a la integración de Google Search Console",
+        "webVitals": "Web Vitals",
+        "webVitalsAria": "Abrir analítica de Web Vitals"
     },
     "auditTable": {
         "empty": "No se encontraron entradas de auditoría",
@@ -632,7 +634,11 @@
             "dialogTitle": "Administrar objetivos",
             "dialogDescription": "Define objetivos de conversión para seguir acciones de usuario o visitas de página específicas.",
             "empty": "Aún no hay objetivos definidos.",
+            "newAction": "Nuevo objetivo",
             "addTitle": "Agregar nuevo objetivo",
+            "editTitle": "Editar objetivo",
+            "editTooltip": "Editar objetivo",
+            "deleteTooltip": "Eliminar objetivo",
             "namePlaceholder": "p. ej. Registro exitoso",
             "typePagePath": "Ruta",
             "typeCustomEvent": "Evento",
@@ -644,10 +650,6 @@
             "eventNameHelpPrefix": "Se activa cuando llamas",
             "eventNameHelpSuffix": ".",
             "createAction": "Crear objetivo",
-            "newAction": "Nuevo objetivo",
-            "editTitle": "Editar objetivo",
-            "editTooltip": "Editar objetivo",
-            "deleteTooltip": "Eliminar objetivo",
             "saveAction": "Guardar cambios",
             "messages": {
                 "createSuccess": "Objetivo creado.",
@@ -690,19 +692,19 @@
             "stepsLabel": "Pasos",
             "viewStats": "Ver estadisticas",
             "empty": "Aún no hay embudos definidos.",
+            "newAction": "Nuevo embudo",
             "createTitle": "Crear nuevo embudo",
+            "editTitle": "Editar embudo",
+            "editTooltip": "Editar embudo",
+            "deleteTooltip": "Eliminar embudo",
             "namePlaceholder": "p. ej. Flujo de checkout",
             "stepPathPlaceholder": "/ruta",
             "stepEventPlaceholder": "event_name",
             "addStep": "Agregar paso",
             "createAction": "Crear embudo",
+            "saveAction": "Guardar cambios",
             "typePagePath": "Ruta",
             "typeCustomEvent": "Evento",
-            "newAction": "Nuevo embudo",
-            "editTitle": "Editar embudo",
-            "editTooltip": "Editar embudo",
-            "deleteTooltip": "Eliminar embudo",
-            "saveAction": "Guardar cambios",
             "messages": {
                 "createSuccess": "Embudo creado.",
                 "createError": "No se pudo crear el embudo.",
@@ -714,10 +716,10 @@
         },
         "viewer": {
             "dialogTitle": "Análisis de embudo",
+            "editAction": "Editar embudo",
             "droppedSuffix": "abandono",
             "retention": "retención",
-            "entry": "Entrada",
-            "editAction": "Editar embudo"
+            "entry": "Entrada"
         }
     },
     "utm": {
@@ -1233,7 +1235,9 @@
                     "updated": "Actualizado"
                 },
                 "empty": "Aún no visto"
-            }
+            },
+            "webVitalsLabel": "Web Vitals",
+            "webVitalsDescription": "Carga el bundle separado de Web Vitals y envía muestras de LCP, INP, CLS, FCP y TTFB. Desactivado de forma predeterminada."
         }
     },
     "admin": {
@@ -2452,20 +2456,6 @@
         "noSiteDescription": "Selecciona un sitio para ver la analítica de comercio electrónico."
     },
     "opportunities": {
-        "header": {
-            "eyebrow": "Recomendaciones con evidencia",
-            "title": "Recomendaciones priorizadas para el tráfico que ya tienes",
-            "subtitle": "HitKeep prioriza señales de conversión, patrones de tráfico, brechas de visibilidad en IA, oportunidades de búsqueda y puntos ciegos de configuración según la fuerza de la evidencia.",
-            "scoreLabel": "Puntuación",
-            "scoreAria": "Puntuación de oportunidades",
-            "scoreHint": "Señal fuerte"
-        },
-        "kpis": {
-            "open": "Oportunidades abiertas",
-            "highConfidence": "Alta confianza",
-            "aiSearchWins": "Victorias IA/búsqueda",
-            "score": "Puntuación media"
-        },
         "filters": {
             "ariaLabel": "Filtros de oportunidades",
             "typeTitle": "Tipo de oportunidad",
@@ -2476,6 +2466,7 @@
                 "ai": "Visibilidad IA",
                 "search": "Búsqueda",
                 "setup": "Configuración",
+                "performance": "Rendimiento",
                 "traffic": "Señales de tráfico"
             },
             "statuses": {
@@ -2525,11 +2516,6 @@
             "subtitle": "{{count}} sugerencias priorizadas para este periodo",
             "cloudBadge": "Copy IA listo para Cloud"
         },
-        "topActions": {
-            "ariaLabel": "Acciones recomendadas principales",
-            "title": "Top 3 acciones",
-            "subtitle": "Empieza por estas oportunidades priorizadas."
-        },
         "impact": {
             "monthlyRevenue": "actividad",
             "qualifiedVisits": "visitas cualificadas",
@@ -2543,6 +2529,7 @@
             "tracked_conversion_events": "eventos de conversión medidos",
             "conversion_events_to_measure": "eventos de conversión para medir",
             "funnel_steps_to_measure": "pasos de embudo para medir",
+            "web_vitals_samples": "muestras de Web Vitals",
             "checkout_starts": "Inicios de checkout"
         },
         "routes": {
@@ -2553,6 +2540,7 @@
             "events": "Eventos",
             "event": "Evento: {{event_name}}",
             "funnel": "Embudo: {{start_path}}",
+            "web_vitals": "Web Vitals: {{metric}} en {{path}}",
             "tracker": "{{asset}}"
         },
         "evidence": {
@@ -2579,6 +2567,13 @@
             "suggested_funnel_conversion_event": "Paso de conversión sugerido",
             "suggested_funnel_event_count": "Eventos de conversión observados",
             "source_hits": "Visitas de la fuente",
+            "web_vital_metric": "Métrica Web Vital",
+            "web_vital_p75": "Valor p75",
+            "web_vital_rating": "Evaluación",
+            "web_vital_samples": "Muestras",
+            "web_vital_poor_samples": "Muestras malas",
+            "web_vital_top_page": "Página más lenta",
+            "web_vital_top_page_p75": "p75 de la página más lenta",
             "total_pageviews": "Páginas vistas totales"
         },
         "catalog": {
@@ -2599,6 +2594,12 @@
                 "summary": "{{source}} generó {{source_hits}} visitas de {{total_pageviews}} páginas vistas en este periodo.",
                 "action": "Revisa las landing pages y la intención de las visitas desde {{source}}.",
                 "digest": "Revisa el tráfico de {{source}}."
+            },
+            "web_vitals_performance": {
+                "title": "Revisa el rendimiento {{metric}} en {{path}}",
+                "summary": "El p75 de {{metric}} es {{p75}} con evaluación {{rating}} en {{samples}} muestras.",
+                "action": "Prioriza la página más lenta antes de que arrastre más sesiones a Web Vitals malos.",
+                "digest": "El p75 de {{metric}} es {{p75}} en {{path}}."
             },
             "search_visibility": {
                 "title": "Revisa páginas ya visibles en búsqueda",
@@ -2658,5 +2659,76 @@
             "body": "Prueba otro filtro de tipo o estado."
         },
         "noSiteDescription": "Selecciona un sitio para ver recomendaciones de oportunidades."
+    },
+    "webVitals": {
+        "docsAction": "Guía de configuración",
+        "error": "No se pudieron cargar los datos de Web Vitals.",
+        "noSiteDescription": "Selecciona o crea un sitio para inspeccionar Web Vitals en el tiempo.",
+        "metrics": {
+            "LCP": "LCP",
+            "INP": "INP",
+            "CLS": "CLS",
+            "FCP": "FCP",
+            "TTFB": "TTFB"
+        },
+        "ratings": {
+            "good": "Bueno",
+            "needs_improvement": "Mejorable",
+            "poor": "Deficiente",
+            "none": "Sin muestras"
+        },
+        "cards": {
+            "samples": "{{count}} muestras",
+            "selectMetricAria": "Inspeccionar {{metric}} en el tiempo",
+            "goodUntil": "Bueno hasta {{value}}"
+        },
+        "filters": {
+            "metric": "Métrica",
+            "rating": "Valoración",
+            "path": "Ruta de página",
+            "allRatings": "Todas las valoraciones",
+            "ratingChip": "Valoración: {{rating}}",
+            "pathChip": "Ruta: {{path}}"
+        },
+        "chart": {
+            "title": "Tendencia p75 de {{metric}}",
+            "description": "El percentil 75 del rango seleccionado, agrupado para revisar incidencias rápido.",
+            "p75": "{{metric}} p75"
+        },
+        "distribution": {
+            "title": "Mezcla de valoraciones",
+            "description": "Muestras de {{metric}} de todo el sitio. Haz clic en una valoración para encontrar páginas en esa banda de calidad."
+        },
+        "pages": {
+            "title": "Desglose por página",
+            "description": "Todas las rutas con muestras de {{metric}} en el rango seleccionado. Haz clic en una valoración del mix superior para ordenar las páginas que requieren atención.",
+            "filteredTitle": "Páginas {{metric}} {{rating}}",
+            "filteredDescription": "Se muestran las rutas que produjeron muestras {{rating}} de {{metric}} en el rango seleccionado. Acota el rango temporal superior para inspeccionar una ventana de incidencia concreta.",
+            "empty": "Ninguna muestra de Web Vitals coincide con los filtros actuales."
+        },
+        "breakdown": {
+            "title": "Desglose de {{dimension}}",
+            "description": "p75 de {{metric}} por contexto de visitante para la ruta y valoración seleccionadas.",
+            "empty": "Ninguna fila coincide con los filtros actuales.",
+            "unknown": "Desconocido",
+            "tabs": {
+                "pages": "Páginas",
+                "countries": "Países",
+                "languages": "Idiomas",
+                "browsers": "Navegadores",
+                "devices": "Dispositivos"
+            }
+        },
+        "columns": {
+            "path": "Ruta",
+            "p75": "p75",
+            "samples": "Muestras",
+            "ratingSamples": "Muestras {{rating}}",
+            "rating": "Valoración"
+        },
+        "empty": {
+            "title": "Aún no hay Web Vitals",
+            "description": "Activa Web Vitals en el snippet de seguimiento para recopilar muestras de rendimiento opt-in."
+        }
     }
 }

@@ -18,7 +18,7 @@ import (
 
 func deleteSiteAnalyticsData(ctx context.Context, store *database.Store, siteID uuid.UUID) {
 	tables := []string{
-		"hits", "events", "ai_fetches", "rollup_dirty_buckets",
+		"hits", "events", "web_vitals", "ai_fetches", "rollup_dirty_buckets",
 		"hit_rollups_hourly", "hit_rollups_daily", "hit_rollups_monthly",
 		"session_rollups_hourly", "session_rollups_daily", "session_rollups_monthly",
 		"goal_rollups_hourly", "goal_rollups_daily", "goal_rollups_monthly",
@@ -214,10 +214,12 @@ func createFunnels(ctx context.Context, store *database.Store, siteID uuid.UUID)
 }
 
 type seedStats struct {
-	hits      int
-	sessions  int
-	events    int
-	aiFetches int
+	hits          int
+	sessions      int
+	events        int
+	webVitals     int
+	opportunities int
+	aiFetches     int
 }
 
 type aiFetchSeedStats struct {

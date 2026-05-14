@@ -15,10 +15,12 @@ import (
 	mrand "math/rand"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/argon2"
 
+	"hitkeep/internal/api"
 	"hitkeep/internal/auth"
 	"hitkeep/internal/database"
 	"hitkeep/internal/worker"
@@ -110,14 +112,7 @@ func main() {
 	}
 	slog.Info("Demo user promoted to instance owner", "user_id", userID)
 
-	adminEmail := "admin@example.com"
-	adminPassword := "admin1234"
-	adminID := ensureUser(ctx, store, adminEmail, adminPassword)
-	if err := store.UpdateInstanceRole(ctx, adminID, auth.InstanceAdmin, userID); err != nil {
-		slog.Error("Failed to set admin user role", "error", err)
-		os.Exit(1)
-	}
-	slog.Info("Admin user created with instance admin role", "email", adminEmail, "user_id", adminID)
+	adminID := ensureAdminUser(ctx, store, userID)
 
 	seedTeam(ctx, store, userID)
 
@@ -130,34 +125,9 @@ func main() {
 		}
 	}
 
-	slog.Info("Creating demo site", "domain", *domain)
-	site, err := ensureSiteInActiveTeam(ctx, store, userID, *domain)
-	if err != nil {
-		slog.Error("Failed to ensure demo site", "error", err)
-		os.Exit(1)
-	}
-	siteID := site.ID
-	slog.Info("Site created", "site_id", siteID)
-
-	siteTenantID, err := store.GetSiteTenantID(ctx, siteID)
-	if err != nil {
-		slog.Error("Failed to resolve site tenant", "site_id", siteID, "error", err)
-		os.Exit(1)
-	}
-	seedAPIClients(ctx, store, userID, siteTenantID, siteID)
-	if *shareToken != "" {
-		seedShareLink(ctx, store, siteID, userID, *shareToken)
-	}
-	if err := tenantMgr.SyncSite(ctx, siteID); err != nil {
-		slog.Error("Failed to sync tenant site metadata", "site_id", siteID, "tenant_id", siteTenantID, "error", err)
-		os.Exit(1)
-	}
-	analyticsStore, err := tenantMgr.ForTenant(ctx, siteTenantID)
-	if err != nil {
-		slog.Error("Failed to resolve tenant analytics store", "tenant_id", siteTenantID, "error", err)
-		os.Exit(1)
-	}
-	slog.Info("Resolved tenant analytics store", "tenant_id", siteTenantID)
+	siteContext := ensureSeedSiteContext(ctx, store, tenantMgr, userID, *domain, *shareToken)
+	siteID := siteContext.siteID
+	analyticsStore := siteContext.analyticsStore
 
 	deleteSiteAnalyticsData(ctx, analyticsStore, siteID)
 	deleteSiteGoalsAndFunnels(ctx, analyticsStore, siteID)
@@ -171,6 +141,12 @@ func main() {
 		slog.Error("Failed to seed traffic", "error", err)
 		os.Exit(1)
 	}
+	webVitals, err := seedWebVitals(ctx, analyticsStore, siteID, *days, rng)
+	if err != nil {
+		slog.Error("Failed to seed Web Vitals", "error", err)
+		os.Exit(1)
+	}
+	stats.webVitals = webVitals
 	aiSeedStats, err := seedAIFetches(ctx, analyticsStore, siteID, *days, rng)
 	if err != nil {
 		slog.Error("Failed to seed AI visibility", "error", err)
@@ -188,20 +164,81 @@ func main() {
 	if err := rollupWorker.Run(ctx); err != nil {
 		slog.Error("Rollup backfill failed — charts may be incomplete", "error", err)
 	}
+	opportunityCount, err := seedOpportunities(ctx, store, analyticsStore, siteContext.site, userID, time.Now().UTC().AddDate(0, 0, -(*days)), time.Now().UTC())
+	if err != nil {
+		slog.Error("Failed to seed Opportunities", "error", err)
+		os.Exit(1)
+	}
+	stats.opportunities = opportunityCount
 
+	printSeedSummary(*email, *password, *domain, siteID, tenantBasePath, stats, searchConsoleStats, *days)
+}
+
+func ensureAdminUser(ctx context.Context, store *database.Store, actorID uuid.UUID) uuid.UUID {
+	adminEmail := "admin@example.com"
+	adminID := ensureUser(ctx, store, adminEmail, "admin1234")
+	if err := store.UpdateInstanceRole(ctx, adminID, auth.InstanceAdmin, actorID); err != nil {
+		slog.Error("Failed to set admin user role", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("Admin user created with instance admin role", "email", adminEmail, "user_id", adminID)
+	return adminID
+}
+
+type seedSiteContext struct {
+	site           api.Site
+	siteID         uuid.UUID
+	analyticsStore *database.Store
+}
+
+func ensureSeedSiteContext(ctx context.Context, store *database.Store, tenantMgr *database.TenantStoreManager, userID uuid.UUID, domain, shareToken string) seedSiteContext {
+	slog.Info("Creating demo site", "domain", domain)
+	site, err := ensureSiteInActiveTeam(ctx, store, userID, domain)
+	if err != nil {
+		slog.Error("Failed to ensure demo site", "error", err)
+		os.Exit(1)
+	}
+	siteID := site.ID
+	slog.Info("Site created", "site_id", siteID)
+
+	siteTenantID, err := store.GetSiteTenantID(ctx, siteID)
+	if err != nil {
+		slog.Error("Failed to resolve site tenant", "site_id", siteID, "error", err)
+		os.Exit(1)
+	}
+	seedAPIClients(ctx, store, userID, siteTenantID, siteID)
+	if shareToken != "" {
+		seedShareLink(ctx, store, siteID, userID, shareToken)
+	}
+	if err := tenantMgr.SyncSite(ctx, siteID); err != nil {
+		slog.Error("Failed to sync tenant site metadata", "site_id", siteID, "tenant_id", siteTenantID, "error", err)
+		os.Exit(1)
+	}
+	analyticsStore, err := tenantMgr.ForTenant(ctx, siteTenantID)
+	if err != nil {
+		slog.Error("Failed to resolve tenant analytics store", "tenant_id", siteTenantID, "error", err)
+		os.Exit(1)
+	}
+	slog.Info("Resolved tenant analytics store", "tenant_id", siteTenantID)
+	return seedSiteContext{site: *site, siteID: siteID, analyticsStore: analyticsStore}
+}
+
+func printSeedSummary(email, password, domain string, siteID uuid.UUID, tenantBasePath string, stats seedStats, searchConsoleStats searchConsoleSeedStats, days int) {
 	fmt.Println()
 	fmt.Println("╔══════════════════════════════════════════════╗")
 	fmt.Println("║       Demo data seeded successfully!         ║")
 	fmt.Println("╚══════════════════════════════════════════════╝")
-	fmt.Printf("  Email:         %s\n", *email)
-	fmt.Printf("  Password:      %s\n", *password)
-	fmt.Printf("  Site:          %s (%s)\n", *domain, siteID)
+	fmt.Printf("  Email:         %s\n", email)
+	fmt.Printf("  Password:      %s\n", password)
+	fmt.Printf("  Site:          %s (%s)\n", domain, siteID)
 	fmt.Printf("  Tenant Data:   %s\n", tenantBasePath)
 	fmt.Printf("  Pageviews:     %d\n", stats.hits)
 	fmt.Printf("  Sessions:      %d\n", stats.sessions)
 	fmt.Printf("  Events:        %d\n", stats.events)
+	fmt.Printf("  Web Vitals:    %d\n", stats.webVitals)
+	fmt.Printf("  Opportunities: %d\n", stats.opportunities)
 	fmt.Printf("  AI Fetches:    %d\n", stats.aiFetches)
 	fmt.Printf("  Search Console Rows: %d\n", searchConsoleStats.facts)
-	fmt.Printf("  Period:        last %d days\n", *days)
+	fmt.Printf("  Period:        last %d days\n", days)
 	fmt.Println()
 }

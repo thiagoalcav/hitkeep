@@ -5,6 +5,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
+	mrand "math/rand"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -200,6 +201,106 @@ func TestSeedGoogleSearchConsoleFixturesCreatesMappedReportRows(t *testing.T) {
 	if overview.Clicks == 0 || overview.Impressions == 0 || overview.DataSource != "google_search_console" {
 		t.Fatalf("expected useful Search Console overview, got %+v", overview)
 	}
+}
+
+func TestSeedWebVitalsCreatesReportableSamples(t *testing.T) {
+	ctx := context.Background()
+	store := database.NewStore(filepath.Join(t.TempDir(), "seed.db"))
+	if err := store.Connect(); err != nil {
+		t.Fatalf("connect store: %v", err)
+	}
+	defer store.Close()
+	if err := store.Migrate(ctx); err != nil {
+		t.Fatalf("migrate store: %v", err)
+	}
+
+	userID := ensureUser(ctx, store, "demo@example.com", "demo1234")
+	site, err := store.CreateSite(ctx, userID, "web-vitals-seed.test")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	count, err := seedWebVitals(ctx, store, site.ID, 7, mrand.New(mrand.NewSource(147))) // #nosec G404 -- deterministic demo fixture test.
+	if err != nil {
+		t.Fatalf("seedWebVitals: %v", err)
+	}
+	if count == 0 {
+		t.Fatal("expected seeded Web Vitals samples")
+	}
+
+	summary, err := store.GetWebVitalsSummary(ctx, api.WebVitalsParams{
+		SiteID: site.ID,
+		Start:  time.Now().UTC().AddDate(0, 0, -8),
+		End:    time.Now().UTC().AddDate(0, 0, 1),
+	})
+	if err != nil {
+		t.Fatalf("GetWebVitalsSummary: %v", err)
+	}
+	if len(summary) != 5 {
+		t.Fatalf("expected all five Web Vitals metrics, got %+v", summary)
+	}
+}
+
+func TestSeedOpportunitiesCreatesWebVitalsPerformanceOpportunity(t *testing.T) {
+	ctx := context.Background()
+	store := database.NewStore(filepath.Join(t.TempDir(), "seed.db"))
+	if err := store.Connect(); err != nil {
+		t.Fatalf("connect store: %v", err)
+	}
+	defer store.Close()
+	if err := store.Migrate(ctx); err != nil {
+		t.Fatalf("migrate store: %v", err)
+	}
+
+	userID := ensureUser(ctx, store, "demo@example.com", "demo1234")
+	site, err := store.CreateSite(ctx, userID, "web-vitals-opportunity.test")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+	if _, err := seedWebVitals(ctx, store, site.ID, 30, mrand.New(mrand.NewSource(147))); err != nil { // #nosec G404 -- deterministic demo fixture test.
+		t.Fatalf("seedWebVitals: %v", err)
+	}
+
+	count, err := seedOpportunities(ctx, store, store, *site, userID, time.Now().UTC().AddDate(0, 0, -31), time.Now().UTC())
+	if err != nil {
+		t.Fatalf("seedOpportunities: %v", err)
+	}
+	if count == 0 {
+		t.Fatal("expected generated opportunities")
+	}
+
+	items, err := store.ListOpportunities(ctx, site.ID)
+	if err != nil {
+		t.Fatalf("ListOpportunities: %v", err)
+	}
+	webVitals := findSeedOpportunity(items, "opportunities.types.web_vitals_performance")
+	if webVitals == nil {
+		t.Fatalf("expected Web Vitals performance opportunity, got %+v", items)
+	}
+	if webVitals.Kind != "performance" || webVitals.RouteLabelKey != "opportunities.routes.web_vitals" {
+		t.Fatalf("expected Web Vitals opportunity routing, got kind=%q route=%q", webVitals.Kind, webVitals.RouteLabelKey)
+	}
+	if !seedOpportunityHasEvidence(*webVitals, "web_vital_metric") || !seedOpportunityHasEvidence(*webVitals, "web_vital_top_page") {
+		t.Fatalf("expected metric and top-page evidence, got %+v", webVitals.Evidence)
+	}
+}
+
+func findSeedOpportunity(items []api.Opportunity, typeKey string) *api.Opportunity {
+	for i := range items {
+		if items[i].TypeKey == typeKey {
+			return &items[i]
+		}
+	}
+	return nil
+}
+
+func seedOpportunityHasEvidence(item api.Opportunity, evidenceID string) bool {
+	for _, evidence := range item.Evidence {
+		if evidence.ID == evidenceID {
+			return true
+		}
+	}
+	return false
 }
 
 func TestSeedGoogleSearchConsoleFixturesCreatesStatusExamples(t *testing.T) {

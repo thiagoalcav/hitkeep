@@ -206,6 +206,49 @@ func TestHandleGetAIStatusIsNonSecret(t *testing.T) {
 	}
 }
 
+func TestHandleGetAIStatusIgnoresStaleProviderErrorsOutsideBudgetWindow(t *testing.T) {
+	h, store, _, ownerID, _, _ := setupSystemTestEnv(t)
+	h.ctx.Config.AIEnabled = true
+	h.ctx.Config.AIProvider = "bedrock"
+	h.ctx.Config.AIModel = "eu.amazon.nova-2-lite-v1:0"
+	h.ctx.Config.AIRegion = "eu-central-1"
+	h.ctx.Config.AIBudgetWindowMinutes = 60
+
+	_, err := store.AppendAIRun(context.Background(), database.AIRunParams{
+		Feature:       "opportunities",
+		Provider:      "bedrock",
+		Model:         "eu.amazon.nova-2-lite-v1:0",
+		OutputJSON:    `{}`,
+		Status:        "failure",
+		ErrorCategory: "provider_error",
+		CreatedAt:     time.Now().UTC().Add(-2 * time.Hour),
+	})
+	if err != nil {
+		t.Fatalf("append stale ai run: %v", err)
+	}
+
+	req := withAdminTestUser(httptest.NewRequest(http.MethodGet, "/api/admin/system/ai", nil), ownerID)
+	w := httptest.NewRecorder()
+	h.handleGetAI().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var status api.SystemAIStatus
+	if err := json.NewDecoder(w.Body).Decode(&status); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if status.Status != "configured" {
+		t.Fatalf("expected configured status after stale provider error aged out, got %#v", status)
+	}
+	if status.LastAttemptAt != nil || status.LastSuccessAt != nil || status.LastErrorCategory != "" {
+		t.Fatalf("expected stale AI run details to be outside status window, got %#v", status)
+	}
+	if status.RequestsUsed != 0 || status.TokensUsed != 0 {
+		t.Fatalf("expected stale AI run not to consume current usage, got requests=%d tokens=%d", status.RequestsUsed, status.TokensUsed)
+	}
+}
+
 func TestHandleGetAIStatusReportsCloudManagedMode(t *testing.T) {
 	h, _, _, ownerID, _, _ := setupSystemTestEnv(t)
 	h.ctx.Config.CloudHosted = true

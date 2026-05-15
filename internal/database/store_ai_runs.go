@@ -267,9 +267,23 @@ func appendAIReservedRun(ctx context.Context, exec sqlExecContext, params AIRunP
 }
 
 func (s *Store) GetAIRunSummary(ctx context.Context) (AIRunSummary, error) {
+	return s.getAIRunSummary(ctx, time.Time{})
+}
+
+func (s *Store) GetAIRunSummarySince(ctx context.Context, since time.Time) (AIRunSummary, error) {
+	return s.getAIRunSummary(ctx, since)
+}
+
+func (s *Store) getAIRunSummary(ctx context.Context, since time.Time) (AIRunSummary, error) {
 	var summary AIRunSummary
 	var lastSuccessRaw, lastAttemptRaw sql.NullTime
-	err := s.db.QueryRowContext(ctx, `
+	args := []any{}
+	where := ""
+	if !since.IsZero() {
+		where = "WHERE created_at >= ?"
+		args = append(args, since, since)
+	}
+	err := s.db.QueryRowContext(ctx, fmt.Sprintf(`
 		SELECT
 			MAX(created_at) FILTER (WHERE status = 'success'),
 			MAX(created_at),
@@ -277,11 +291,13 @@ func (s *Store) GetAIRunSummary(ctx context.Context) (AIRunSummary, error) {
 				SELECT error_category
 				FROM ai_runs
 				WHERE status <> 'success' AND error_category <> ''
+					%s
 				ORDER BY created_at DESC
 				LIMIT 1
 			), '')
 		FROM ai_runs
-	`).Scan(&lastSuccessRaw, &lastAttemptRaw, &summary.LastErrorCategory)
+		%s
+	`, aiRunCreatedAtFilter("AND", since), where), args...).Scan(&lastSuccessRaw, &lastAttemptRaw, &summary.LastErrorCategory)
 	if err != nil {
 		return AIRunSummary{}, fmt.Errorf("query ai run summary: %w", err)
 	}
@@ -292,4 +308,11 @@ func (s *Store) GetAIRunSummary(ctx context.Context) (AIRunSummary, error) {
 		summary.LastAttemptAt = &lastAttemptRaw.Time
 	}
 	return summary, nil
+}
+
+func aiRunCreatedAtFilter(prefix string, since time.Time) string {
+	if since.IsZero() {
+		return ""
+	}
+	return prefix + " created_at >= ?"
 }

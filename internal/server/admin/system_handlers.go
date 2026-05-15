@@ -252,7 +252,8 @@ func aiSystemStatus(cfg *config.Config, store *database.Store) api.SystemAIStatu
 	if window <= 0 {
 		window = 24 * time.Hour
 	}
-	if usage, err := store.GetAIUsageSince(context.Background(), time.Now().UTC().Add(-window)); err == nil {
+	since := time.Now().UTC().Add(-window)
+	if usage, err := store.GetAIUsageSince(context.Background(), since); err == nil {
 		status.RequestsUsed = usage.Requests
 		status.TokensUsed = usage.Tokens
 		status.BudgetExhausted = (status.RequestLimit > 0 && status.RequestsUsed >= status.RequestLimit) || (status.TokenLimit > 0 && status.TokensUsed >= status.TokenLimit)
@@ -260,7 +261,7 @@ func aiSystemStatus(cfg *config.Config, store *database.Store) api.SystemAIStatu
 			status.Status = "budget_exhausted"
 		}
 	}
-	if summary, err := store.GetAIRunSummary(context.Background()); err == nil {
+	if summary, err := store.GetAIRunSummarySince(context.Background(), since); err == nil {
 		status.LastSuccessAt = summary.LastSuccessAt
 		status.LastAttemptAt = summary.LastAttemptAt
 		status.LastErrorCategory = summary.LastErrorCategory

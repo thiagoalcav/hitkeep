@@ -212,6 +212,65 @@ func TestAIRunSummaryAndUsage(t *testing.T) {
 	}
 }
 
+func TestAIRunSummarySinceFiltersWindow(t *testing.T) {
+	store, userID, siteID, teamID := setupAIStore(t)
+	ctx := context.Background()
+	now := time.Now().UTC()
+
+	if _, err := store.AppendAIRun(ctx, AIRunParams{
+		TeamID:      teamID,
+		SiteID:      siteID,
+		ActorID:     userID,
+		ActorType:   "user",
+		Feature:     "opportunities",
+		Provider:    "openai",
+		Model:       "gpt-test",
+		OutputJSON:  `{}`,
+		TotalTokens: 25,
+		Status:      "success",
+		CreatedAt:   now.Add(-time.Minute),
+	}); err != nil {
+		t.Fatalf("append success run: %v", err)
+	}
+	if _, err := store.AppendAIRun(ctx, AIRunParams{
+		TeamID:        teamID,
+		SiteID:        siteID,
+		ActorID:       userID,
+		ActorType:     "user",
+		Feature:       "opportunities",
+		Provider:      "openai",
+		Model:         "gpt-test",
+		OutputJSON:    `{}`,
+		Status:        "failure",
+		ErrorCategory: "budget_exhausted",
+		CreatedAt:     now,
+	}); err != nil {
+		t.Fatalf("append failure run: %v", err)
+	}
+
+	recentSummary, err := store.GetAIRunSummarySince(ctx, now.Add(-30*time.Second))
+	if err != nil {
+		t.Fatalf("recent summary: %v", err)
+	}
+	if recentSummary.LastSuccessAt != nil {
+		t.Fatalf("did not expect last success inside recent window")
+	}
+	if recentSummary.LastAttemptAt == nil {
+		t.Fatalf("expected last attempt inside recent window")
+	}
+	if recentSummary.LastErrorCategory != "budget_exhausted" {
+		t.Fatalf("expected recent last error budget_exhausted, got %q", recentSummary.LastErrorCategory)
+	}
+
+	emptySummary, err := store.GetAIRunSummarySince(ctx, now.Add(time.Second))
+	if err != nil {
+		t.Fatalf("empty summary: %v", err)
+	}
+	if emptySummary.LastSuccessAt != nil || emptySummary.LastAttemptAt != nil || emptySummary.LastErrorCategory != "" {
+		t.Fatalf("expected empty summary outside run window, got %#v", emptySummary)
+	}
+}
+
 func TestAppendAIRunRejectsRawPromptAndProviderPayloadFields(t *testing.T) {
 	store, userID, siteID, teamID := setupAIStore(t)
 	ctx := context.Background()

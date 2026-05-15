@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/appurl"
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/exportfmt"
 	opportunitysvc "hitkeep/internal/opportunities"
@@ -180,10 +181,9 @@ func (h *handler) handleCreateShareLink() http.HandlerFunc {
 			return
 		}
 
-		publicURL := strings.TrimRight(h.ctx.Config.PublicURL, "/")
 		resp := response{
 			ID:        link.ID,
-			URL:       publicURL + "/share/" + token,
+			URL:       appurl.Path(h.ctx.Config.PublicURL, "/share/"+token),
 			Token:     token,
 			TokenHint: link.TokenHint,
 			CreatedAt: link.CreatedAt,

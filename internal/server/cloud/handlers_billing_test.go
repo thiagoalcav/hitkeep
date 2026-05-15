@@ -990,6 +990,7 @@ func TestSetStripeIdempotencyKey(t *testing.T) {
 func TestHandleCreateBillingPortalSession(t *testing.T) {
 	h, store := setupCloudTestHandler(t)
 	defer store.Close()
+	h.ctx.Config.PublicURL = "https://cloud.hitkeep.eu/hitkeep/"
 
 	account, err := store.CreateManagedCloudAccount(context.Background(), database.CreateManagedCloudAccountInput{
 		Email:          "portal@example.com",
@@ -1040,11 +1041,15 @@ func TestHandleCreateBillingPortalSession(t *testing.T) {
 	if stripeClient.lastPortalInput.Locale != "fr" {
 		t.Fatalf("expected billing portal locale fr, got %q", stripeClient.lastPortalInput.Locale)
 	}
+	if stripeClient.lastPortalInput.ReturnURL != "https://cloud.hitkeep.eu/hitkeep/admin/team" {
+		t.Fatalf("expected prefixed billing portal return URL, got %q", stripeClient.lastPortalInput.ReturnURL)
+	}
 }
 
 func TestHandleCreateBillingCheckoutSession(t *testing.T) {
 	h, store := setupCloudTestHandler(t)
 	defer store.Close()
+	h.ctx.Config.PublicURL = "https://cloud.hitkeep.eu/hitkeep/"
 
 	account, err := store.CreateManagedCloudAccount(context.Background(), database.CreateManagedCloudAccountInput{
 		Email:          "upgrade@example.com",
@@ -1107,6 +1112,12 @@ func TestHandleCreateBillingCheckoutSession(t *testing.T) {
 	}
 	if stripeClient.lastCheckoutInput.PlanCode != database.CloudPlanPro {
 		t.Fatalf("expected checkout plan %q, got %q", database.CloudPlanPro, stripeClient.lastCheckoutInput.PlanCode)
+	}
+	if stripeClient.lastCheckoutInput.SuccessURL != "https://cloud.hitkeep.eu/hitkeep/admin/team?checkout=success" {
+		t.Fatalf("expected prefixed checkout success URL, got %q", stripeClient.lastCheckoutInput.SuccessURL)
+	}
+	if stripeClient.lastCheckoutInput.CancelURL != "https://cloud.hitkeep.eu/hitkeep/admin/team?checkout=canceled" {
+		t.Fatalf("expected prefixed checkout cancel URL, got %q", stripeClient.lastCheckoutInput.CancelURL)
 	}
 
 	storedAccount, err := store.GetCloudBillingAccount(context.Background(), account.TenantID)

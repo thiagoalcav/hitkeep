@@ -37,11 +37,11 @@
         <div id="status">Loading API reference...</div>
         <div id="app" hidden></div>
 
-        <script src="/vendor/scalar/standalone.js"></script>
+        <script src="../vendor/scalar/standalone.js"></script>
         <script>
             (async function () {
                 const EVENT_SOURCE = 'hitkeep-scalar-frame';
-                const DEFAULT_SPEC_URL = '/api/docs/v1/openapi.json';
+                const DEFAULT_SPEC_URL = '../api/docs/v1/openapi.json';
                 const SPEC_TIMEOUT_MS = 15000;
                 const params = new URLSearchParams(window.location.search);
                 const specUrl = params.get('spec') || DEFAULT_SPEC_URL;

@@ -15,6 +15,7 @@ import (
 	stripe "github.com/stripe/stripe-go/v84"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/appurl"
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
@@ -217,14 +218,14 @@ func checkoutSuccessURL(conf *config.Config) string {
 	if override := strings.TrimSpace(conf.CloudCheckoutSuccessURL); override != "" {
 		return override
 	}
-	return strings.TrimRight(conf.PublicURL, "/") + "/admin/team?checkout=success"
+	return appurl.Path(conf.PublicURL, "/admin/team?checkout=success")
 }
 
 func checkoutCancelURL(conf *config.Config) string {
 	if override := strings.TrimSpace(conf.CloudCheckoutCancelURL); override != "" {
 		return override
 	}
-	return strings.TrimRight(conf.PublicURL, "/") + "/admin/team?checkout=canceled"
+	return appurl.Path(conf.PublicURL, "/admin/team?checkout=canceled")
 }
 
 func issueLoginSession(w http.ResponseWriter, conf *config.Config, userID uuid.UUID) error {

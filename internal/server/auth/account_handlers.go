@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"hitkeep/internal/appurl"
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/database"
 	"hitkeep/internal/mailables"
@@ -50,7 +51,7 @@ func (h *handler) handleForgotPassword() http.HandlerFunc {
 			return
 		}
 
-		resetLink := fmt.Sprintf("%s/reset-password?token=%s", h.ctx.Config.PublicURL, token)
+		resetLink := appurl.Path(h.ctx.Config.PublicURL, "/reset-password?token="+token)
 		locale := h.preferredMailLocale(r, user.ID)
 
 		err = h.ctx.Mailer.Send(user.Email, mailables.NewPasswordReset(resetLink, locale))

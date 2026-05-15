@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/appurl"
 	"hitkeep/internal/server/shared"
 	"hitkeep/internal/worker"
 )
@@ -153,7 +154,7 @@ func (h *handler) handleTestMail() http.HandlerFunc {
 
 		mailable := &testMailable{
 			subject: "HitKeep System Test Email — " + time.Now().UTC().Format(time.RFC3339),
-			link:    h.ctx.Config.PublicURL + "/admin/system",
+			link:    appurl.Path(h.ctx.Config.PublicURL, "/admin/system"),
 		}
 		err = h.ctx.Mailer.Send(recipient, mailable)
 

@@ -21,6 +21,7 @@ import (
 	"golang.org/x/text/language"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/appurl"
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/database"
 	"hitkeep/internal/mailer"
@@ -77,11 +78,11 @@ func sanitizeAuthReturnPath(raw string) string {
 }
 
 func (h *handler) publicRedirectURL(relativePath string) string {
-	return strings.TrimRight(h.ctx.Config.PublicURL, "/") + sanitizeAuthReturnPath(relativePath)
+	return appurl.Path(h.ctx.Config.PublicURL, sanitizeAuthReturnPath(relativePath))
 }
 
 func (h *handler) loginErrorRedirectURL(code string) string {
-	return strings.TrimRight(h.ctx.Config.PublicURL, "/") + "/login?error=" + code
+	return appurl.Path(h.ctx.Config.PublicURL, "/login?error="+code)
 }
 
 func (h *handler) appendAuthAuditForUserTeams(r *http.Request, userID uuid.UUID, action, outcome, details string, actorVerified bool) {

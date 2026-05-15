@@ -2,7 +2,9 @@ const path = require("node:path");
 const { defineConfig } = require("playwright/test");
 
 const port = Number(process.env.HITKEEP_E2E_PORT || 8098);
-const baseURL = process.env.HITKEEP_BASE_URL || `http://127.0.0.1:${port}`;
+const publicPath = normalizePublicPath(process.env.HITKEEP_E2E_PUBLIC_PATH || "/");
+const rootBaseURL = process.env.HITKEEP_BASE_URL || `http://127.0.0.1:${port}`;
+const baseURL = trimTrailingSlash(joinPublicURL(rootBaseURL, publicPath));
 const repoRoot = path.resolve(__dirname, "../..");
 
 module.exports = defineConfig({
@@ -33,3 +35,33 @@ module.exports = defineConfig({
               stderr: "pipe"
           }
 });
+
+function normalizePublicPath(value) {
+    const trimmed = (value || "/").trim();
+    if (!trimmed || trimmed === "/") {
+        return "/";
+    }
+    const withLeadingSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+    return withLeadingSlash.endsWith("/") ? withLeadingSlash : `${withLeadingSlash}/`;
+}
+
+function joinPublicURL(base, pathPrefix) {
+    if (pathPrefix === "/") {
+        return base;
+    }
+
+    const url = new URL(base);
+    const basePath = normalizePublicPath(url.pathname);
+    const nextPath = pathPrefix.replace(/\/$/, "");
+
+    if (basePath !== "/" && nextPath === basePath.replace(/\/$/, "")) {
+        return url.toString();
+    }
+
+    url.pathname = `${basePath === "/" ? "" : basePath.replace(/\/$/, "")}${nextPath}`;
+    return url.toString();
+}
+
+function trimTrailingSlash(url) {
+    return url.endsWith("/") ? url.slice(0, -1) : url;
+}

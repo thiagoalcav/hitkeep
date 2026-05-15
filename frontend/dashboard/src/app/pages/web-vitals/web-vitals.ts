@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal } from '@angular/core';
-import { NgOptimizedImage } from '@angular/common';
+import { DOCUMENT, NgOptimizedImage } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { finalize, forkJoin } from 'rxjs';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
@@ -17,6 +17,7 @@ import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header'
 import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
 import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from '@components/range-toolbar/range-toolbar';
 import { SeriesChart, SeriesChartPoint, SeriesDefinition } from '@features/analytics/components/series-chart';
+import { browserAppUrl } from '@core/interceptors/base-path.interceptor';
 import { WebVitalDimension, WebVitalDimensionRow, WebVitalMetric, WebVitalMetricBreakdown, WebVitalPageRow, WebVitalRating, WebVitalSeriesPoint, WebVitalSummaryMetric } from '@models/analytics.types';
 
 interface SelectOption<T> {
@@ -75,6 +76,7 @@ export class WebVitalsPage {
     private readonly localeService = inject(TranslocoLocaleService);
     private readonly transloco = inject(TranslocoService);
     private readonly activeLanguage = injectActiveLang();
+    private readonly document = inject(DOCUMENT);
 
     protected readonly summary = signal<WebVitalSummaryMetric[]>([]);
     protected readonly series = signal<WebVitalSeriesPoint[]>([]);
@@ -90,7 +92,7 @@ export class WebVitalsPage {
     protected readonly siteDomain = computed(() => this.siteService.activeSite()?.domain ?? null);
     protected readonly siteFaviconUrl = computed(() => {
         const domain = this.siteDomain();
-        return domain ? `/api/favicon/${encodeURIComponent(domain)}` : '';
+        return domain ? browserAppUrl(this.document, `/api/favicon/${encodeURIComponent(domain)}`) : '';
     });
 
     protected readonly timeRanges = signal<RangeOption[]>(DEFAULT_RANGE_OPTIONS);

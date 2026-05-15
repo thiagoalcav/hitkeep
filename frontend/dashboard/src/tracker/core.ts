@@ -143,8 +143,14 @@ export function sanitizeTrackedPath(url: URL): string {
     return url.pathname || '/';
 }
 
+export function resolveTrackerUrl(scriptUrl: URL, relativePath: string): string {
+    const scriptDirectory = new URL('.', scriptUrl);
+    const normalizedPath = relativePath.replace(/^\/+/, '');
+    return new URL(normalizedPath, scriptDirectory).toString();
+}
+
 export function resolveWebVitalsBundleUrl(scriptUrl: URL, bundleName = 'hk-vitals.js'): string {
-    return `${scriptUrl.origin}/${bundleName}`;
+    return resolveTrackerUrl(scriptUrl, bundleName);
 }
 
 function loadWebVitalsBundle(win: HitKeepWindow, scriptUrl: URL): void {
@@ -271,9 +277,9 @@ export function bootstrapTracker(win: HitKeepWindow = window): void {
     }
 
     const scriptUrl = new URL(scriptEl.src, location.href);
-    const pageEndpoint = `${scriptUrl.origin}/ingest`;
-    const eventEndpoint = `${scriptUrl.origin}/ingest/event`;
-    const webVitalsEndpoint = `${scriptUrl.origin}/ingest/web-vitals`;
+    const pageEndpoint = resolveTrackerUrl(scriptUrl, 'ingest');
+    const eventEndpoint = resolveTrackerUrl(scriptUrl, 'ingest/event');
+    const webVitalsEndpoint = resolveTrackerUrl(scriptUrl, 'ingest/web-vitals');
     const generateUUID = () => {
         if (crypto?.randomUUID) {
             return crypto.randomUUID();

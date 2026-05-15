@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { DOCUMENT } from '@angular/common';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { SiteTrackingSettings } from './site-tracking-settings';
 
@@ -6,6 +7,11 @@ describe('SiteTrackingSettings', () => {
     let component: SiteTrackingSettings;
     let fixture: ComponentFixture<SiteTrackingSettings>;
     beforeEach(async () => {
+        const document = window.document.implementation.createHTMLDocument('hitkeep tracking test');
+        const base = document.createElement('base');
+        base.href = '/hitkeep/';
+        document.head.append(base);
+
         await TestBed.configureTestingModule({
             imports: [
                 SiteTrackingSettings,
@@ -17,7 +23,8 @@ describe('SiteTrackingSettings', () => {
                     },
                     preloadLangs: true
                 })
-            ]
+            ],
+            providers: [{ provide: DOCUMENT, useValue: document }]
         }).compileComponents();
 
         fixture = TestBed.createComponent(SiteTrackingSettings);
@@ -42,7 +49,7 @@ describe('SiteTrackingSettings', () => {
         };
         const getSnippet = () => internals.snippetCode();
 
-        expect(getSnippet()).toContain('hk.js');
+        expect(getSnippet()).toContain('/hitkeep/hk.js');
         expect(getSnippet()).not.toContain('data-collect-dnt');
         expect(getSnippet()).not.toContain('data-disable-beacon');
         expect(getSnippet()).not.toContain('data-enable-web-vitals');

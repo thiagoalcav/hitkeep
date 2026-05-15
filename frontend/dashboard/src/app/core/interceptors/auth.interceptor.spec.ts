@@ -21,6 +21,21 @@ describe('resolveCurrentReturnUrl', () => {
         expect(resolveCurrentReturnUrl(router)).toBe('/admin/system?tab=users#top');
     });
 
+    it('strips the browser base path from subdirectory deep links', () => {
+        history.pushState({}, '', '/hitkeep/admin/system?tab=users#top');
+
+        const router = {
+            url: '/',
+            routerState: {
+                snapshot: {
+                    url: '/'
+                }
+            }
+        } as const;
+
+        expect(resolveCurrentReturnUrl(router, '/hitkeep/')).toBe('/admin/system?tab=users#top');
+    });
+
     it('falls back to router url when browser path is root', () => {
         const router = {
             url: '/events',

@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/appurl"
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/database"
 	"hitkeep/internal/mailables"
@@ -329,7 +330,7 @@ func (h *handler) handleAddSiteMember() http.HandlerFunc {
 				}
 			}
 
-			inviteLink := h.ctx.Config.PublicURL + "/accept-invite?token=" + inviteToken
+			inviteLink := appurl.Path(h.ctx.Config.PublicURL, "/accept-invite?token="+inviteToken)
 			err = h.ctx.Mailer.Send(req.Email, mailables.NewUserInvite(inviteLink, siteName, inviterName, locale))
 			if err != nil {
 				slog.Warn("Failed to send invite email", "error", err, "email", req.Email)

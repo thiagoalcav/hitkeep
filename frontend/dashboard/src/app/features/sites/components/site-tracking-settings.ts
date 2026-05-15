@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -10,6 +11,7 @@ import { TagModule } from 'primeng/tag';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { SiteService, SiteTrackingStatus } from '@features/sites/services/site.service';
 import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
+import { browserAbsoluteAppUrl } from '@core/interceptors/base-path.interceptor';
 import { finalize } from 'rxjs';
 
 @Component({
@@ -181,6 +183,7 @@ import { finalize } from 'rxjs';
 export class SiteTrackingSettings {
     private siteService = inject(SiteService);
     private destroyRef = inject(DestroyRef);
+    private document = inject(DOCUMENT);
     site = input.required<Site | null>();
     protected trackingStatus = signal<SiteTrackingStatus | null>(null);
     protected isLoadingStatus = signal(false);
@@ -213,7 +216,7 @@ export class SiteTrackingSettings {
     });
 
     protected snippetCode = computed(() => {
-        const origin = window.location.origin;
+        const scriptURL = browserAbsoluteAppUrl(this.document, '/hk.js');
 
         let attrs = '';
         if (this.trackingForm.collectDnt().value()) attrs += ' data-collect-dnt="true"';
@@ -223,7 +226,7 @@ export class SiteTrackingSettings {
         if (!this.trackingForm.trackDownloads().value()) attrs += ' data-disable-download-tracking="true"';
         if (!this.trackingForm.trackForms().value()) attrs += ' data-disable-form-tracking="true"';
 
-        return `<script async src="${origin}/hk.js"${attrs}></script>`;
+        return `<script async src="${scriptURL}"${attrs}></script>`;
     });
 
     copySnippet() {

@@ -32,7 +32,7 @@ func (h *handler) handleHealthz() http.HandlerFunc {
 
 func (h *handler) handleReadyz() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !h.ctx.Cluster.IsLeader() {
+		if h.ctx.Cluster != nil && !h.ctx.Cluster.IsLeader() {
 			http.Error(w, "Service not ready", http.StatusServiceUnavailable)
 			return
 		}

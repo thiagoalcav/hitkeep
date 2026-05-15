@@ -83,6 +83,7 @@ func TestGoogleSearchConsoleStatusRejectsUsersOutsideTeam(t *testing.T) {
 func TestGoogleSearchConsoleConnectReturnsStateBoundOAuthURL(t *testing.T) {
 	h, store, userID := setupUserSecurityTestEnv(t)
 	defer store.Close()
+	h.ctx.Config.PublicURL = "https://www.example.net/hitkeep/"
 	h.ctx.Config.GoogleSearchConsoleClientID = "client-id"
 	h.ctx.Config.GoogleSearchConsoleClientSecret = "client-secret"
 	h.ctx.SearchConsole = &fakeSearchConsoleClient{}
@@ -113,6 +114,9 @@ func TestGoogleSearchConsoleConnectReturnsStateBoundOAuthURL(t *testing.T) {
 	}
 	if !strings.Contains(resp.AuthURL, "webmasters.readonly") {
 		t.Fatalf("expected OAuth URL to include read-only Search Console scope, got %q", resp.AuthURL)
+	}
+	if !strings.Contains(resp.AuthURL, "redirect_uri=https://www.example.net/hitkeep/api/integrations/google-search-console/oauth/callback") {
+		t.Fatalf("expected OAuth redirect_uri to use prefixed public URL, got %q", resp.AuthURL)
 	}
 }
 

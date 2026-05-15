@@ -287,6 +287,7 @@ func TestHandleUpdateTeamEmptyNameRejected(t *testing.T) {
 func TestSendTeamInviteEmailFallsBackToInviterLocaleForNewRecipient(t *testing.T) {
 	h, store, ownerID := setupUserSecurityTestEnv(t)
 	defer store.Close()
+	h.ctx.Config.PublicURL = "https://www.example.net/hitkeep/"
 
 	ctx := context.Background()
 	if err := store.UpsertUserPreferences(ctx, ownerID, api.UserPreferences{DefaultLocale: "de"}); err != nil {
@@ -317,6 +318,9 @@ func TestSendTeamInviteEmailFallsBackToInviterLocaleForNewRecipient(t *testing.T
 	}
 	if !strings.Contains(drv.textBody, "Passwort festlegen und Team beitreten") {
 		t.Fatalf("expected localized German CTA, got:\n%s", drv.textBody)
+	}
+	if !strings.Contains(drv.textBody, "https://www.example.net/hitkeep/accept-invite?token=") {
+		t.Fatalf("expected invite link to use prefixed public URL, got:\n%s", drv.textBody)
 	}
 }
 

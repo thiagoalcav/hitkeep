@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, output } from '@angular/core';
-import { NgOptimizedImage } from '@angular/common';
+import { DOCUMENT, NgOptimizedImage } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
@@ -9,6 +9,7 @@ import { SkeletonModule } from 'primeng/skeleton';
 import { SelectModule } from 'primeng/select';
 import { browserIconUrl } from '@core/i18n/browser-utils';
 import { countryFlagUrl, languageFlagUrl } from '@core/i18n/flag-utils';
+import { browserAppUrl } from '@core/interceptors/base-path.interceptor';
 import { MetricStat } from '@models/analytics.types';
 
 export interface MetricListViewOption {
@@ -26,6 +27,7 @@ export interface MetricListViewOption {
 export class MetricList {
     private readonly transloco = inject(TranslocoService);
     private readonly destroyRef = inject(DestroyRef);
+    private readonly document = inject(DOCUMENT);
 
     title = input.required<string>();
     icon = input<string>('pi-list');
@@ -164,7 +166,7 @@ export class MetricList {
     }
 
     private buildFaviconUrl(domain: string): string {
-        return `/api/favicon/${encodeURIComponent(domain)}`;
+        return browserAppUrl(this.document, `/api/favicon/${encodeURIComponent(domain)}`);
     }
 
     private normalizeUrl(raw: string): URL | null {

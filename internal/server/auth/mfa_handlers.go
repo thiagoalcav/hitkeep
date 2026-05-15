@@ -2,7 +2,6 @@ package auth
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"hitkeep/internal/appurl"
 	"hitkeep/internal/database"
 	"hitkeep/internal/mailables"
 	"hitkeep/internal/security"
@@ -186,7 +186,7 @@ func (h *handler) handleMFAEmailLinkRequest() http.HandlerFunc {
 
 		tokenID := h.ctx.AuthState.CreateMFAEmailLink(challengeID, sanitizeAuthReturnPath(req.ReturnURL), challenge.ExpiresAt)
 		expiresInMinutes := max(int(time.Until(challenge.ExpiresAt).Minutes()), 1)
-		verifyURL := fmt.Sprintf("%s/api/auth/mfa/email-link/verify?token=%s", strings.TrimRight(h.ctx.Config.PublicURL, "/"), tokenID.String())
+		verifyURL := appurl.Path(h.ctx.Config.PublicURL, "/api/auth/mfa/email-link/verify?token="+tokenID.String())
 		locale := h.preferredMailLocale(r, user.ID)
 
 		if err := h.ctx.Mailer.Send(user.Email, mailables.NewMFAMagicLink(verifyURL, locale, expiresInMinutes)); err != nil {

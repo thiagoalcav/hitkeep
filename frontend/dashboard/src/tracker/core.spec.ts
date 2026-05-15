@@ -1,8 +1,17 @@
 import { vi } from 'vitest';
 
-import { bootstrapTracker, classifyFormSubmit, classifyLinkEvent, hasExplicitTrackingTag, readTrackerOptions, resolveWebVitalsBundleUrl, sanitizeTrackedUrl } from './core';
+import { bootstrapTracker, classifyFormSubmit, classifyLinkEvent, hasExplicitTrackingTag, readTrackerOptions, resolveTrackerUrl, resolveWebVitalsBundleUrl, sanitizeTrackedUrl } from './core';
 
 type ListenerMap = Record<string, EventListener[]>;
+type TrackerTestWindow = Window &
+    typeof globalThis & {
+        hk?: {
+            event?: (name: string) => void;
+            _webVitals?: {
+                emit: (payload: Record<string, unknown>) => void;
+            };
+        };
+    };
 
 function okResponse(): Response {
     return new Response('', { status: 202 });
@@ -20,9 +29,9 @@ function fetchMockOk() {
     });
 }
 
-function trackerHarness(path = '/signup?utm_source=launch&utm_medium=email') {
+function trackerHarness(path = '/signup?utm_source=launch&utm_medium=email', scriptSrc = 'https://analytics.example.com/hk.js') {
     const script = document.createElement('script');
-    script.src = 'https://analytics.example.com/hk.js';
+    script.src = scriptSrc;
     const appendedScripts: HTMLScriptElement[] = [];
 
     let currentUrl = new URL(path, 'https://app.example.com');
@@ -260,8 +269,17 @@ describe('tracker core', () => {
         });
     });
 
-    it('resolves the Web Vitals bundle from the tracker script origin', () => {
-        expect(resolveWebVitalsBundleUrl(new URL('https://analytics.example.com/assets/hk.js'), 'hk-vitals.js')).toBe('https://analytics.example.com/hk-vitals.js');
+    it('resolves tracker-owned URLs from the tracker script directory', () => {
+        expect(resolveTrackerUrl(new URL('https://analytics.example.com/hk.js'), 'ingest')).toBe('https://analytics.example.com/ingest');
+        expect(resolveTrackerUrl(new URL('https://www.example.net/hitkeep/hk.js'), 'ingest/event')).toBe('https://www.example.net/hitkeep/ingest/event');
+        expect(resolveTrackerUrl(new URL('https://www.example.net/tools/hitkeep/hk.js'), 'ingest/event')).toBe('https://www.example.net/tools/hitkeep/ingest/event');
+        expect(resolveTrackerUrl(new URL('https://www.example.net/hitkeep/assets/hk.js'), 'ingest/web-vitals')).toBe('https://www.example.net/hitkeep/assets/ingest/web-vitals');
+    });
+
+    it('resolves the Web Vitals bundle beside the tracker script', () => {
+        expect(resolveWebVitalsBundleUrl(new URL('https://analytics.example.com/hk.js'), 'hk-vitals.js')).toBe('https://analytics.example.com/hk-vitals.js');
+        expect(resolveWebVitalsBundleUrl(new URL('https://analytics.example.com/assets/hk.js'), 'hk-vitals.js')).toBe('https://analytics.example.com/assets/hk-vitals.js');
+        expect(resolveWebVitalsBundleUrl(new URL('https://www.example.net/hitkeep/hk.js'), 'hk-vitals.js')).toBe('https://www.example.net/hitkeep/hk-vitals.js');
     });
 
     it('reads tracker source and version metadata from the snippet element', () => {
@@ -315,6 +333,27 @@ describe('tracker core', () => {
         expect(harness.appendedScripts.length).toBe(1);
         expect(harness.appendedScripts[0]?.src).toBe('https://analytics.example.com/hk-vitals.js');
         expect(harness.appendedScripts[0]?.async).toBe(true);
+    });
+
+    it('posts tracker requests under the script subdirectory', () => {
+        const harness = trackerHarness('/signup', 'https://www.example.net/hitkeep/hk.js');
+        harness.script.setAttribute('data-enable-web-vitals', 'true');
+
+        bootstrapTracker(harness.win);
+        const win = harness.win as TrackerTestWindow;
+        win.hk?.event?.('signup_clicked');
+        win.hk?._webVitals?.emit({
+            n: 'LCP',
+            v: 1200,
+            p: '/signup',
+            sid: 'session-id',
+            pid: 'page-id',
+            tsrc: 'hk.js',
+            tv: ''
+        });
+
+        expect(harness.sendBeacon.mock.calls.map(([url]) => url)).toEqual(['https://www.example.net/hitkeep/ingest', 'https://www.example.net/hitkeep/ingest/event', 'https://www.example.net/hitkeep/ingest/web-vitals']);
+        expect(harness.appendedScripts[0]?.src).toBe('https://www.example.net/hitkeep/hk-vitals.js');
     });
 
     it('queues failed requests in memory and flushes them on pagehide', async () => {

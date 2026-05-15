@@ -1,9 +1,11 @@
+import { DOCUMENT } from '@angular/common';
 import { HttpContextToken, HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { EMPTY, catchError, throwError } from 'rxjs';
 import { AuthService } from '@services/auth.service';
 import { ShareService } from '@services/share.service';
+import { browserBasePath } from './base-path.interceptor';
 
 export const SKIP_AUTH_REDIRECT = new HttpContextToken<boolean>(() => false);
 
@@ -16,10 +18,11 @@ interface ReturnUrlRouterContext {
     };
 }
 
-export function resolveCurrentReturnUrl(router: ReturnUrlRouterContext): string {
+export function resolveCurrentReturnUrl(router: ReturnUrlRouterContext, basePath = '/'): string {
     const browserPath = typeof window !== 'undefined' && typeof window.location !== 'undefined' ? `${window.location.pathname || ''}${window.location.search || ''}${window.location.hash || ''}` : '';
 
-    const candidate = browserPath && browserPath !== '/' ? browserPath : router.url || router.routerState.snapshot.url || '/dashboard';
+    const normalizedBrowserPath = stripBrowserBasePath(browserPath, basePath);
+    const candidate = normalizedBrowserPath && normalizedBrowserPath !== '/' ? normalizedBrowserPath : router.url || router.routerState.snapshot.url || '/dashboard';
     if (!candidate.startsWith('/') || candidate.startsWith('//')) {
         return '/dashboard';
     }
@@ -34,6 +37,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     const router = inject(Router);
     const auth = inject(AuthService);
     const share = inject(ShareService);
+    const document = inject(DOCUMENT);
     const isAuthRequest =
         req.url.startsWith('/api/login') || req.url.startsWith('/api/logout') || req.url.startsWith('/api/initial-user') || req.url.startsWith('/api/auth/') || req.url.startsWith('/api/cloud/') || req.url.startsWith('/api/user/password');
 
@@ -57,7 +61,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
                 // when the local session timer already marked the user unauthenticated;
                 // background dashboard refreshes are often the first server-confirmed
                 // signal that the cookie expired.
-                const currentUrl = resolveCurrentReturnUrl(router);
+                const currentUrl = resolveCurrentReturnUrl(router, browserBasePath(document));
                 if (shouldRedirectAfterUnauthorized(currentUrl)) {
                     void router.navigate(['/login'], {
                         queryParams: { returnUrl: currentUrl }
@@ -72,3 +76,17 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         })
     );
 };
+
+function stripBrowserBasePath(browserPath: string, basePath: string): string {
+    if (!browserPath || basePath === '/') {
+        return browserPath;
+    }
+    const prefix = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+    if (browserPath === prefix) {
+        return '/';
+    }
+    if (browserPath.startsWith(`${prefix}/`)) {
+        return browserPath.slice(prefix.length) || '/';
+    }
+    return browserPath;
+}

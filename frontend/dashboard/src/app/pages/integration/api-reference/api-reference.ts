@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
@@ -6,6 +7,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
 import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
 import { PreferencesService } from '@services/preferences.service';
+import { browserAppUrl } from '@core/interceptors/base-path.interceptor';
 
 interface ScalarFrameEvent {
     source?: string;
@@ -25,6 +27,7 @@ export class APIReferencePage implements OnInit, OnDestroy {
     private transloco = inject(TranslocoService);
     private prefs = inject(PreferencesService);
     private sanitizer = inject(DomSanitizer);
+    private document = inject(DOCUMENT);
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
     private handleFrameMessage = (event: MessageEvent<ScalarFrameEvent>): void => {
         if (typeof window === 'undefined' || event.origin !== window.location.origin) {
@@ -49,11 +52,11 @@ export class APIReferencePage implements OnInit, OnDestroy {
 
     protected readonly viewerReady = signal(false);
     protected readonly error = signal<string | null>(null);
-    protected readonly specUrl = '/api/docs/v1/openapi.json';
+    protected readonly specUrl = computed(() => browserAppUrl(this.document, '/api/docs/v1/openapi.json'));
     protected readonly scalarFrameSrc = computed<SafeResourceUrl>(() => {
         const theme = this.prefs.isDarkMode() ? 'dark' : 'light';
         const query = new URLSearchParams({
-            spec: this.specUrl,
+            spec: this.specUrl(),
             theme,
             hideThemeToggle: '1',
             agent: '0',
@@ -63,7 +66,7 @@ export class APIReferencePage implements OnInit, OnDestroy {
             telemetry: '0'
         });
 
-        const frameUrl = `/scalar/index.html?${query.toString()}`;
+        const frameUrl = browserAppUrl(this.document, `/scalar/index.html?${query.toString()}`);
         return this.sanitizer.bypassSecurityTrustResourceUrl(frameUrl);
     });
 

@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/appurl"
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/database"
 	"hitkeep/internal/searchconsole"
@@ -725,7 +726,7 @@ func (h *handler) googleSearchConsoleRedirectURL() string {
 	if configured := strings.TrimSpace(h.ctx.Config.GoogleSearchConsoleRedirectURL); configured != "" {
 		return configured
 	}
-	return strings.TrimRight(strings.TrimSpace(h.ctx.Config.PublicURL), "/") + "/api/integrations/google-search-console/oauth/callback"
+	return appurl.Path(h.ctx.Config.PublicURL, "/api/integrations/google-search-console/oauth/callback")
 }
 
 func (h *handler) googleSearchConsoleClient() searchconsole.Client {

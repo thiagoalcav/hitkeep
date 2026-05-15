@@ -2,7 +2,7 @@ import { Component, effect, inject, signal, computed, linkedSignal, ChangeDetect
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { injectActiveLang } from '@core/i18n/active-lang';
-import { NgOptimizedImage } from '@angular/common';
+import { DOCUMENT, NgOptimizedImage } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { debounceTime, distinctUntilChanged, finalize, Subject } from 'rxjs';
 import { TranslocoService } from '@jsverse/transloco';
@@ -46,6 +46,7 @@ import { TakeoutDownloadService } from '@services/takeout-download.service';
 import { AddSiteDialog } from '@features/sites/components/add-site-dialog';
 import { TeamService } from '@services/team.service';
 import { OnboardingService, OnboardingStep } from '@services/onboarding.service';
+import { browserAppUrl } from '@core/interceptors/base-path.interceptor';
 
 type MetricFilterType = 'path' | 'referrer' | 'device' | 'country' | 'browser' | 'language';
 type PageMetricMode = 'top_pages' | 'top_landing_pages' | 'top_exit_pages';
@@ -111,6 +112,7 @@ export class Dashboard {
     private destroyRef = inject(DestroyRef);
     private router = inject(Router);
     private onboarding = inject(OnboardingService);
+    private document = inject(DOCUMENT);
     private readonly activeLanguage = injectActiveLang();
     protected timeRanges = signal<RangeOption[]>(DEFAULT_RANGE_OPTIONS);
     protected selectedRange = linkedSignal<RangeOption[], RangeOption>({
@@ -140,7 +142,7 @@ export class Dashboard {
     protected emptyTeamName = computed(() => this.teamService.activeTeam()?.name ?? null);
     protected siteFaviconUrl = computed(() => {
         const domain = this.siteDomain();
-        return domain ? `/api/favicon/${encodeURIComponent(domain)}` : '';
+        return domain ? browserAppUrl(this.document, `/api/favicon/${encodeURIComponent(domain)}`) : '';
     });
     protected readonly pageMetricMode = signal<PageMetricMode>('top_pages');
     protected activeFilters = signal<MetricFilter[]>([]);
@@ -635,7 +637,7 @@ export class Dashboard {
     }
 
     protected faviconUrlForDomain(domain: string | null | undefined): string | null {
-        return domain ? `/api/favicon/${encodeURIComponent(domain)}` : null;
+        return domain ? browserAppUrl(this.document, `/api/favicon/${encodeURIComponent(domain)}`) : null;
     }
 
     private buildExportUrl(format: TakeoutExportFormat): string {

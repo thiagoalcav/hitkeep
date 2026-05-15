@@ -6,6 +6,7 @@ import Aura from '@primeuix/themes/aura';
 import { routes } from './app.routes';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { authInterceptor } from '@core/interceptors/auth.interceptor';
+import { basePathInterceptor } from '@core/interceptors/base-path.interceptor';
 import { shareInterceptor } from '@core/interceptors/share.interceptor';
 import { provideTransloco } from '@jsverse/transloco';
 import { provideTranslocoLocale } from '@jsverse/transloco-locale';
@@ -17,7 +18,7 @@ export const appConfig: ApplicationConfig = {
     providers: [
         provideBrowserGlobalErrorListeners(),
         provideZonelessChangeDetection(),
-        provideHttpClient(withFetch(), withInterceptors([shareInterceptor, authInterceptor])),
+        provideHttpClient(withFetch(), withInterceptors([shareInterceptor, authInterceptor, basePathInterceptor])),
         provideRouter(routes, withViewTransitions()),
         providePrimeNG({
             theme: {

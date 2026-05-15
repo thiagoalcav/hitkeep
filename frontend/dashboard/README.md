@@ -76,6 +76,15 @@ If you want to call Playwright directly while iterating on a focused spec, use:
 npm run test:e2e -- e2e/auth.seeded.spec.js --workers=1
 ```
 
+Deployment smoke tests use the same seeded binary launcher:
+
+```bash
+npm run test:e2e:smoke
+npm run test:e2e:smoke:subdirectory
+```
+
+The subdirectory smoke runs HitKeep with `HITKEEP_E2E_PUBLIC_PATH=/hitkeep` and verifies the dashboard, authenticated route refreshes, app-owned API/resource/static image paths, the API reference iframe, tracker bundles, and ingest preflight under that prefix.
+
 On a fresh machine, install the browser dependency first:
 
 ```bash

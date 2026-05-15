@@ -1,10 +1,13 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"path"
 	"strings"
 	"time"
 
@@ -65,6 +68,8 @@ type Server struct {
 
 	indexHTML   []byte
 	scalarIndex []byte
+
+	publicBasePath string
 }
 
 func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStores *database.TenantStoreManager, ent entitlements.Provider, cluster *cluster.Manager, producer *nsq.Producer, mailService *mailer.Mailer) *Server {
@@ -123,6 +128,7 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStore
 		spamFilter:     spamFilter,
 		spamFilterStop: spamFilterStop,
 		takeout:        takeoutService,
+		publicBasePath: normalizePublicBasePath(conf.PublicURL),
 	}
 
 	systemCounters := &database.SystemCounter{}
@@ -156,10 +162,15 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStore
 		}
 	}
 
+	var clusterState shared.ClusterState
+	if cluster != nil {
+		clusterState = cluster
+	}
+
 	s.ctx = &shared.Context{
 		Store:          store,
 		TenantStores:   tenantStores,
-		Cluster:        cluster,
+		Cluster:        clusterState,
 		Producer:       producer,
 		Mailer:         mailService,
 		Config:         conf,
@@ -189,10 +200,14 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStore
 
 	mux := http.NewServeMux()
 	s.setupRoutes(mux, publicFS)
+	handler := shared.FetchMetadataMiddleware(conf.PublicURL, mux)
+	if s.publicBasePath != "/" {
+		handler = s.stripPublicBasePath(handler)
+	}
 
 	s.httpServer = &http.Server{
 		Addr:              conf.HTTPAddr,
-		Handler:           shared.FetchMetadataMiddleware(conf.PublicURL, mux),
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 	return s
@@ -244,7 +259,7 @@ func (s *Server) loadStaticAssets(publicFS fs.FS) {
 	if err != nil {
 		slog.Warn("Frontend index.html not found. Dashboard will not be available.")
 	} else {
-		s.indexHTML = indexData
+		s.indexHTML = injectDashboardBasePath(indexData, s.publicBasePath)
 	}
 
 	// 2. Load Scalar Index (API Docs)
@@ -254,6 +269,67 @@ func (s *Server) loadStaticAssets(publicFS fs.FS) {
 	} else {
 		s.scalarIndex = scalarData
 	}
+}
+
+func normalizePublicBasePath(publicURL string) string {
+	raw := strings.TrimSpace(publicURL)
+	if raw == "" {
+		return "/"
+	}
+
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return "/"
+	}
+	if !parsed.IsAbs() || parsed.Host == "" {
+		return "/"
+	}
+
+	cleaned := path.Clean("/" + parsed.EscapedPath())
+	if cleaned == "." || cleaned == "/" {
+		return "/"
+	}
+	return cleaned + "/"
+}
+
+func injectDashboardBasePath(indexHTML []byte, basePath string) []byte {
+	baseTag := []byte(`<base href="/" />`)
+	nextTag := []byte(`<base href="` + basePath + `" />`)
+	if bytes.Contains(indexHTML, baseTag) {
+		return bytes.Replace(indexHTML, baseTag, nextTag, 1)
+	}
+
+	compactBaseTag := []byte(`<base href="/">`)
+	compactNextTag := []byte(`<base href="` + basePath + `">`)
+	return bytes.Replace(indexHTML, compactBaseTag, compactNextTag, 1)
+}
+
+func (s *Server) stripPublicBasePath(next http.Handler) http.Handler {
+	basePath := strings.TrimSuffix(s.publicBasePath, "/")
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == basePath {
+			r = cloneRequestWithPath(r, "/")
+		} else if strings.HasPrefix(r.URL.Path, basePath+"/") {
+			strippedPath := strings.TrimPrefix(r.URL.Path, basePath)
+			if strippedPath == "" {
+				strippedPath = "/"
+			}
+			r = cloneRequestWithPath(r, strippedPath)
+		} else if r.URL.Path != "/healthz" && r.URL.Path != "/readyz" {
+			http.NotFound(w, r)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func cloneRequestWithPath(r *http.Request, nextPath string) *http.Request {
+	clone := r.Clone(r.Context())
+	nextURL := *r.URL
+	nextURL.Path = nextPath
+	nextURL.RawPath = ""
+	clone.URL = &nextURL
+	return clone
 }
 
 func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {

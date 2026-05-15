@@ -5,8 +5,35 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
+normalize_public_path() {
+  local value="${1:-/}"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  if [[ -z "${value}" || "${value}" == "/" ]]; then
+    printf '/'
+    return
+  fi
+  value="/${value#/}"
+  value="${value%/}/"
+  printf '%s' "${value}"
+}
+
+join_public_url() {
+  local base="${1%/}"
+  local public_path
+  public_path="$(normalize_public_path "${2}")"
+
+  if [[ "${public_path}" == "/" ]]; then
+    printf '%s' "${base}"
+    return
+  fi
+
+  printf '%s%s' "${base}" "${public_path%/}"
+}
+
 PORT="${HITKEEP_E2E_PORT:-8098}"
-BASE_URL="${HITKEEP_BASE_URL:-http://127.0.0.1:${PORT}}"
+PUBLIC_PATH="${HITKEEP_E2E_PUBLIC_PATH:-/}"
+BASE_URL="$(join_public_url "${HITKEEP_BASE_URL:-http://127.0.0.1:${PORT}}" "${PUBLIC_PATH}")"
 EMAIL="${HITKEEP_E2E_EMAIL:-demo@example.com}"
 PASSWORD="${HITKEEP_E2E_PASSWORD:-demo1234}"
 DAYS="${HITKEEP_E2E_DAYS:-30}"

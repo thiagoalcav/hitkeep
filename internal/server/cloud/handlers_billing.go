@@ -16,6 +16,7 @@ import (
 	stripe "github.com/stripe/stripe-go/v84"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/appurl"
 	"hitkeep/internal/database"
 	"hitkeep/internal/mailables"
 	serverauth "hitkeep/internal/server/auth"
@@ -235,7 +236,7 @@ func (h *handler) handleSignup() http.HandlerFunc {
 			return
 		}
 
-		verifyLink := strings.TrimRight(h.ctx.Config.PublicURL, "/") + "/api/cloud/signup/verify?token=" + token
+		verifyLink := appurl.Path(h.ctx.Config.PublicURL, "/api/cloud/signup/verify?token="+token)
 		if err := h.ctx.Mailer.Send(req.Email, mailables.NewEmailVerification(verifyLink, req.TeamName, req.Locale)); err != nil {
 			slog.Error("Failed to send verification email", "error", err, "email", req.Email)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -257,7 +258,7 @@ func (h *handler) handleSignup() http.HandlerFunc {
 
 func (h *handler) handleVerifySignup() http.HandlerFunc {
 	signupURL := func(errorCode string) string {
-		return strings.TrimRight(h.ctx.Config.PublicURL, "/") + "/signup?error=" + errorCode
+		return appurl.Path(h.ctx.Config.PublicURL, "/signup?error="+errorCode)
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -317,7 +318,7 @@ func (h *handler) handleVerifySignup() http.HandlerFunc {
 			return
 		}
 
-		dashboardURL := strings.TrimRight(h.ctx.Config.PublicURL, "/") + "/dashboard"
+		dashboardURL := appurl.Path(h.ctx.Config.PublicURL, "/dashboard")
 		http.Redirect(w, r, dashboardURL, http.StatusFound)
 	}
 }

@@ -515,6 +515,7 @@ func TestHandleExtendSessionRenewsRememberMeCookie(t *testing.T) {
 func TestHandleForgotPasswordFallsBackToAcceptLanguageLocale(t *testing.T) {
 	h, store := setupAuthTestEnv(t)
 	defer store.Close()
+	h.ctx.Config.PublicURL = "https://www.example.net/hitkeep/"
 
 	hashed, err := HashPassword("password123")
 	if err != nil {
@@ -546,6 +547,9 @@ func TestHandleForgotPasswordFallsBackToAcceptLanguageLocale(t *testing.T) {
 	}
 	if !strings.Contains(drv.textBody, "Passwort zurücksetzen") {
 		t.Fatalf("expected localized German email body, got:\n%s", drv.textBody)
+	}
+	if !strings.Contains(drv.textBody, "https://www.example.net/hitkeep/reset-password?token=") {
+		t.Fatalf("expected reset link to use prefixed public URL, got:\n%s", drv.textBody)
 	}
 }
 

@@ -88,6 +88,233 @@ func TestServerDoesNotMountMCPRouteWhenDisabled(t *testing.T) {
 	}
 }
 
+func TestNormalizePublicBasePath(t *testing.T) {
+	tests := []struct {
+		name      string
+		publicURL string
+		want      string
+	}{
+		{name: "empty", publicURL: "", want: "/"},
+		{name: "root", publicURL: "https://analytics.example.com", want: "/"},
+		{name: "root slash", publicURL: "https://analytics.example.com/", want: "/"},
+		{name: "relative value", publicURL: "hitkeep", want: "/"},
+		{name: "single segment", publicURL: "https://www.example.net/hitkeep", want: "/hitkeep/"},
+		{name: "single segment slash", publicURL: "https://www.example.net/hitkeep/", want: "/hitkeep/"},
+		{name: "cleans repeated slashes and dots", publicURL: "https://www.example.net//tools/./hitkeep//", want: "/tools/hitkeep/"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := normalizePublicBasePath(tt.publicURL); got != tt.want {
+				t.Fatalf("normalizePublicBasePath(%q) = %q, want %q", tt.publicURL, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestServerInjectsPublicBasePathIntoDashboardIndex(t *testing.T) {
+	conf := testServerConfig(t)
+	conf.PublicURL = "https://www.example.net/hitkeep/"
+	store := testServerStore(t)
+	defer store.Close()
+
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	defer func() {
+		_ = srv.Shutdown(context.Background())
+	}()
+
+	req := httptest.NewRequest(http.MethodGet, "/hitkeep/dashboard", nil)
+	req.Host = "www.example.net"
+	rec := httptest.NewRecorder()
+
+	srv.httpServer.Handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected dashboard shell, got status %d", rec.Code)
+	}
+	if body := rec.Body.String(); !strings.Contains(body, `<base href="/hitkeep/" />`) {
+		t.Fatalf("expected injected subdirectory base href, got %q", body)
+	}
+}
+
+func TestServerPreservesRootBasePathInDashboardIndex(t *testing.T) {
+	conf := testServerConfig(t)
+	store := testServerStore(t)
+	defer store.Close()
+
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	defer func() {
+		_ = srv.Shutdown(context.Background())
+	}()
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+
+	srv.httpServer.Handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected dashboard shell, got status %d", rec.Code)
+	}
+	if body := rec.Body.String(); !strings.Contains(body, `<base href="/" />`) {
+		t.Fatalf("expected root base href, got %q", body)
+	}
+}
+
+func TestServerRoutesPrefixedAPIRequests(t *testing.T) {
+	conf := testServerConfig(t)
+	conf.PublicURL = "https://www.example.net/hitkeep/"
+	store := testServerStore(t)
+	defer store.Close()
+
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	defer func() {
+		_ = srv.Shutdown(context.Background())
+	}()
+
+	for _, path := range []string{"/hitkeep/api/status"} {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			req.Host = "www.example.net"
+			rec := httptest.NewRecorder()
+
+			srv.httpServer.Handler.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("expected status endpoint, got status %d body %q", rec.Code, rec.Body.String())
+			}
+			if contentType := rec.Header().Get("Content-Type"); !strings.Contains(contentType, "application/json") {
+				t.Fatalf("expected JSON status response, got content type %q body %q", contentType, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestServerRejectsUnprefixedAPIRequestsWhenPublicURLHasPath(t *testing.T) {
+	conf := testServerConfig(t)
+	conf.PublicURL = "https://www.example.net/hitkeep/"
+	store := testServerStore(t)
+	defer store.Close()
+
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	defer func() {
+		_ = srv.Shutdown(context.Background())
+	}()
+
+	req := httptest.NewRequest(http.MethodGet, "/api/status", nil)
+	req.Host = "www.example.net"
+	rec := httptest.NewRecorder()
+
+	srv.httpServer.Handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected unprefixed API request to be rejected, got status %d body %q", rec.Code, rec.Body.String())
+	}
+}
+
+func TestServerPreservesRootHealthEndpointsForLocalChecksWhenPublicURLHasPath(t *testing.T) {
+	conf := testServerConfig(t)
+	conf.PublicURL = "https://www.example.net/hitkeep/"
+	store := testServerStore(t)
+	defer store.Close()
+
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	defer func() {
+		_ = srv.Shutdown(context.Background())
+	}()
+
+	for _, path := range []string{"/healthz", "/readyz"} {
+		t.Run(path, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			rec := httptest.NewRecorder()
+
+			srv.httpServer.Handler.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusOK {
+				t.Fatalf("expected root health endpoint to remain available, got status %d body %q", rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestServerServesPrefixedStaticAssets(t *testing.T) {
+	conf := testServerConfig(t)
+	conf.PublicURL = "https://www.example.net/hitkeep/"
+	store := testServerStore(t)
+	defer store.Close()
+
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	defer func() {
+		_ = srv.Shutdown(context.Background())
+	}()
+
+	req := httptest.NewRequest(http.MethodGet, "/hitkeep/main.abc123.js", nil)
+	req.Host = "www.example.net"
+	rec := httptest.NewRecorder()
+
+	srv.httpServer.Handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected prefixed asset, got status %d body %q", rec.Code, rec.Body.String())
+	}
+	if body := rec.Body.String(); body != "console.log('hitkeep');" {
+		t.Fatalf("expected static asset body, got %q", body)
+	}
+	if cacheControl := rec.Header().Get("Cache-Control"); cacheControl != cacheControlImmutable {
+		t.Fatalf("expected immutable cache control, got %q", cacheControl)
+	}
+}
+
+func TestServerRoutesPrefixedIngestPreflight(t *testing.T) {
+	conf := testServerConfig(t)
+	conf.PublicURL = "https://www.example.net/hitkeep/"
+	store := testServerStore(t)
+	defer store.Close()
+
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	defer func() {
+		_ = srv.Shutdown(context.Background())
+	}()
+
+	req := httptest.NewRequest(http.MethodOptions, "/hitkeep/ingest", nil)
+	req.Host = "www.example.net"
+	req.Header.Set("Origin", "https://app.example")
+	req.Header.Set("Access-Control-Request-Method", http.MethodPost)
+	req.Header.Set("Access-Control-Request-Headers", "content-type")
+	rec := httptest.NewRecorder()
+
+	srv.httpServer.Handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected prefixed ingest preflight, got status %d body %q", rec.Code, rec.Body.String())
+	}
+	if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "https://app.example" {
+		t.Fatalf("expected echoed origin, got %q", got)
+	}
+}
+
+func TestServerAppliesFetchMetadataAfterPrefixStripping(t *testing.T) {
+	conf := testServerConfig(t)
+	conf.PublicURL = "https://www.example.net/hitkeep/"
+	store := testServerStore(t)
+	defer store.Close()
+
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	defer func() {
+		_ = srv.Shutdown(context.Background())
+	}()
+
+	req := httptest.NewRequest(http.MethodPost, "/hitkeep/api/login", nil)
+	req.Host = "www.example.net"
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
+	rec := httptest.NewRecorder()
+
+	srv.httpServer.Handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected prefixed cross-site API request to be blocked with %d, got %d", http.StatusNotFound, rec.Code)
+	}
+}
+
 func TestServerBackupStatusReflectsConfig(t *testing.T) {
 	conf := testServerConfig(t)
 	conf.BackupPath = "s3://hitkeep-backups/backup"
@@ -156,7 +383,10 @@ func testServerStore(t *testing.T) *database.Store {
 func testPublicFS() fstest.MapFS {
 	return fstest.MapFS{
 		"index.html": {
-			Data: []byte("<html><body>hitkeep test shell</body></html>"),
+			Data: []byte(`<html><head><base href="/" /></head><body>hitkeep test shell</body></html>`),
+		},
+		"main.abc123.js": {
+			Data: []byte("console.log('hitkeep');"),
 		},
 	}
 }

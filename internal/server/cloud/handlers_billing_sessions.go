@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"hitkeep/internal/appurl"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
 	"hitkeep/internal/server/shared"
@@ -277,7 +278,7 @@ func (h *handler) handleCreateBillingCheckoutSession() http.HandlerFunc {
 }
 
 func billingPortalReturnURL(conf *config.Config) string {
-	return strings.TrimRight(conf.PublicURL, "/") + "/admin/team"
+	return appurl.Path(conf.PublicURL, "/admin/team")
 }
 
 func normalizeStripeLocale(raw string) string {

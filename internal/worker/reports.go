@@ -2,13 +2,13 @@ package worker
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/appurl"
 	"hitkeep/internal/database"
 	"hitkeep/internal/mailables"
 	"hitkeep/internal/mailer"
@@ -176,8 +176,8 @@ func (w *ReportWorker) processSiteReports(ctx context.Context, freq api.ReportFr
 			dailyPVs = nil
 		}
 
-		dashURL := fmt.Sprintf("%s/dashboard", w.pubURL)
-		settingsURL := fmt.Sprintf("%s/settings/reports", w.pubURL)
+		dashURL := appurl.Path(w.pubURL, "/dashboard")
+		settingsURL := appurl.Path(w.pubURL, "/settings/reports")
 		report := mailables.NewSiteAnalyticsReport(p.UserLocale, p.Domain, periodLabel, freqLabel, dashURL, settingsURL, cur, prev, dailyPVs)
 
 		if err := w.mailer.Send(p.UserEmail, report); err != nil {
@@ -245,7 +245,7 @@ func (w *ReportWorker) processDigests(ctx context.Context, freq api.ReportFreque
 
 			entries = append(entries, mailables.DigestSiteEntry{
 				Domain:        site.Domain,
-				DashURL:       fmt.Sprintf("%s/dashboard", w.pubURL),
+				DashURL:       appurl.Path(w.pubURL, "/dashboard"),
 				Pageviews:     curStats.TotalPageviews,
 				PrevPageviews: prevStats.TotalPageviews,
 				Visitors:      curStats.UniqueSessions,
@@ -257,8 +257,8 @@ func (w *ReportWorker) processDigests(ctx context.Context, freq api.ReportFreque
 			continue
 		}
 
-		dashURL := fmt.Sprintf("%s/dashboard", w.pubURL)
-		settingsURL := fmt.Sprintf("%s/settings/reports", w.pubURL)
+		dashURL := appurl.Path(w.pubURL, "/dashboard")
+		settingsURL := appurl.Path(w.pubURL, "/settings/reports")
 		digest := mailables.NewAnalyticsDigestWithSubjectLabel(p.UserLocale, periodLabel, freqLabel, subjectFreqLabel, dashURL, settingsURL, entries)
 
 		if err := w.mailer.Send(p.UserEmail, digest); err != nil {

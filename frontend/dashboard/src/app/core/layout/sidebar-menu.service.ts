@@ -140,7 +140,7 @@ export class SidebarMenuService {
                     { labelKey: 'nav.goals', icon: 'pi pi-flag', routerLink: '/goals', shareRouterLink: '/goals' },
                     { labelKey: 'nav.funnels', icon: 'pi pi-filter', routerLink: '/funnels', shareRouterLink: '/funnels' },
                     { labelKey: 'nav.events', icon: 'pi pi-bolt', routerLink: '/events', shareRouterLink: '/events' },
-                    { labelKey: 'nav.webVitals', icon: 'pi pi-gauge', routerLink: '/web-vitals', visible: notShare },
+                    { labelKey: 'nav.webVitals', icon: 'pi pi-gauge', routerLink: '/web-vitals', shareRouterLink: '/web-vitals' },
                     { labelKey: 'nav.aiVisibility', icon: 'pi pi-sparkles', routerLink: '/ai-visibility', shareRouterLink: '/ai-visibility' },
                     { labelKey: 'nav.aiChatbots', icon: 'pi pi-comments', routerLink: '/ai-chatbots', shareRouterLink: '/ai-chatbots' },
                     { labelKey: 'nav.ecommerce', icon: 'pi pi-shopping-bag', routerLink: '/ecommerce', shareRouterLink: '/ecommerce' },

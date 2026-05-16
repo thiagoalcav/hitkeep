@@ -784,6 +784,151 @@ func TestHandleGetShareEcommerceSources(t *testing.T) {
 	}
 }
 
+func setupShareWebVitalsTestEnv(t *testing.T) (*handler, *database.Store, string, uuid.UUID) {
+	t.Helper()
+
+	ctx := context.Background()
+	store := database.NewStore(":memory:")
+	if err := store.Connect(); err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	if err := store.Migrate(ctx); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+
+	userID, err := store.CreateUser(ctx, "share-vitals@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+
+	site, err := store.CreateSite(ctx, userID, "share-vitals.test")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	sessionID := uuid.New()
+	pageID := uuid.New()
+	now := time.Now().UTC()
+	isUnique := true
+	country := "US"
+	language := "en-US"
+	ua := "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+	width := 1440
+
+	if err := store.CreateHit(ctx, &api.Hit{
+		SiteID:        site.ID,
+		SessionID:     sessionID,
+		PageID:        pageID,
+		Timestamp:     now.Add(-2 * time.Minute),
+		Path:          "/pricing",
+		CountryCode:   &country,
+		Language:      &language,
+		UserAgent:     &ua,
+		ViewportWidth: &width,
+		IsUnique:      &isUnique,
+	}); err != nil {
+		t.Fatalf("create hit: %v", err)
+	}
+
+	nav := "navigate"
+	if err := store.CreateWebVitalsBulk(ctx, []*api.WebVital{
+		{SiteID: site.ID, SessionID: sessionID, PageID: pageID, Metric: api.WebVitalLCP, Value: 2800, Path: "/pricing", NavigationType: &nav, Timestamp: now},
+		{SiteID: site.ID, SessionID: sessionID, PageID: pageID, Metric: api.WebVitalLCP, Value: 2100, Path: "/", NavigationType: &nav, Timestamp: now.Add(-time.Hour)},
+		{SiteID: site.ID, SessionID: sessionID, PageID: pageID, Metric: api.WebVitalINP, Value: 260, Path: "/pricing", NavigationType: &nav, Timestamp: now},
+		{SiteID: site.ID, SessionID: sessionID, PageID: pageID, Metric: api.WebVitalCLS, Value: 0.08, Path: "/pricing", NavigationType: &nav, Timestamp: now},
+	}); err != nil {
+		t.Fatalf("create web vitals: %v", err)
+	}
+
+	_, token, err := store.CreateShareLink(ctx, site.ID, userID)
+	if err != nil {
+		t.Fatalf("create share link: %v", err)
+	}
+
+	h := &handler{ctx: &shared.Context{Store: store, Config: &config.Config{}}}
+	return h, store, token, site.ID
+}
+
+func TestHandleGetShareWebVitals(t *testing.T) {
+	h, store, token, siteID := setupShareWebVitalsTestEnv(t)
+	t.Cleanup(func() { _ = store.Close() })
+
+	t.Run("summary", func(t *testing.T) {
+		w := serveShareWebVitals(t, h.handleGetShareWebVitalsSummary(), token, siteID, "/web-vitals/summary")
+		requireShareStatus(t, w, http.StatusOK)
+		var rows []api.WebVitalSummaryMetric
+		decodeShareResponse(t, w, &rows)
+		if len(rows) == 0 {
+			t.Fatal("expected summary rows")
+		}
+	})
+
+	t.Run("timeseries", func(t *testing.T) {
+		w := serveShareWebVitals(t, h.handleGetShareWebVitalsTimeseries(), token, siteID, "/web-vitals/timeseries?metric=LCP&path=/pricing")
+		requireShareStatus(t, w, http.StatusOK)
+		var rows []api.WebVitalSeriesPoint
+		decodeShareResponse(t, w, &rows)
+		if len(rows) != 1 || rows[0].Samples == 0 {
+			t.Fatalf("expected one populated timeseries row, got %+v", rows)
+		}
+	})
+
+	t.Run("pages", func(t *testing.T) {
+		w := serveShareWebVitals(t, h.handleGetShareWebVitalsPages(), token, siteID, "/web-vitals/pages?metric=LCP&rating=needs_improvement")
+		requireShareStatus(t, w, http.StatusOK)
+		var rows []api.WebVitalPageRow
+		decodeShareResponse(t, w, &rows)
+		if len(rows) == 0 || rows[0].Path != "/pricing" {
+			t.Fatalf("expected pricing page row, got %+v", rows)
+		}
+	})
+
+	t.Run("breakdown", func(t *testing.T) {
+		w := serveShareWebVitals(t, h.handleGetShareWebVitalsBreakdown(), token, siteID, "/web-vitals/breakdown?metric=LCP&dimension=browser")
+		requireShareStatus(t, w, http.StatusOK)
+		var rows []api.WebVitalDimensionRow
+		decodeShareResponse(t, w, &rows)
+		if len(rows) == 0 || rows[0].Name == "" {
+			t.Fatalf("expected browser breakdown row, got %+v", rows)
+		}
+	})
+
+	t.Run("invalid metric", func(t *testing.T) {
+		w := serveShareWebVitals(t, h.handleGetShareWebVitalsTimeseries(), token, siteID, "/web-vitals/timeseries?metric=BAD")
+		requireShareStatus(t, w, http.StatusBadRequest)
+	})
+
+	t.Run("site mismatch", func(t *testing.T) {
+		w := serveShareWebVitals(t, h.handleGetShareWebVitalsSummary(), token, uuid.New(), "/web-vitals/summary")
+		requireShareStatus(t, w, http.StatusNotFound)
+	})
+}
+
+func serveShareWebVitals(t *testing.T, handler http.HandlerFunc, token string, siteID uuid.UUID, path string) *httptest.ResponseRecorder {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, "/api/share/"+token+"/sites/"+siteID.String()+path, nil)
+	req.SetPathValue("token", token)
+	req.SetPathValue("id", siteID.String())
+
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	return w
+}
+
+func requireShareStatus(t *testing.T, w *httptest.ResponseRecorder, expected int) {
+	t.Helper()
+	if w.Code != expected {
+		t.Fatalf("expected status %d, got %d: %s", expected, w.Code, w.Body.String())
+	}
+}
+
+func decodeShareResponse(t *testing.T, w *httptest.ResponseRecorder, target any) {
+	t.Helper()
+	if err := json.NewDecoder(w.Body).Decode(target); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+}
+
 func setupShareExportTestEnv(t *testing.T) (*handler, *database.Store, string, uuid.UUID) {
 	t.Helper()
 

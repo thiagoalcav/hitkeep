@@ -118,6 +118,22 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 	mux.HandleFunc("GET /api/share/{token}/sites/{id}/ecommerce/sources", ctx.Handler(shared.HandlerConfig{
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleGetShareEcommerceSources()))
+
+	mux.HandleFunc("GET /api/share/{token}/sites/{id}/web-vitals/summary", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetShareWebVitalsSummary()))
+
+	mux.HandleFunc("GET /api/share/{token}/sites/{id}/web-vitals/timeseries", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetShareWebVitalsTimeseries()))
+
+	mux.HandleFunc("GET /api/share/{token}/sites/{id}/web-vitals/pages", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetShareWebVitalsPages()))
+
+	mux.HandleFunc("GET /api/share/{token}/sites/{id}/web-vitals/breakdown", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetShareWebVitalsBreakdown()))
 }
 
 func (h *handler) handleListShareLinks() http.HandlerFunc {

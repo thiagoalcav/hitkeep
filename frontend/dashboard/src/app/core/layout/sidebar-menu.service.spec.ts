@@ -164,8 +164,8 @@ describe('SidebarMenuService', () => {
         const utmBuilder = findByLabel(items, 'UTM Builder');
 
         expect(dashboard?.routerLink).toBe('/share/share-token/dashboard');
+        expect(webVitals?.routerLink).toBe('/share/share-token/web-vitals');
         expect(utm?.routerLink).toBe('/share/share-token/utm');
-        expect(webVitals).toBeUndefined();
         expect(utmBuilder).toBeUndefined();
 
         dashboard?.command?.({ originalEvent: new Event('click'), item: dashboard });

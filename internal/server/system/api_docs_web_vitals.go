@@ -1,7 +1,7 @@
 package system
 
 func openAPIV1WebVitalPaths() map[string]any {
-	return map[string]any{
+	return mergeOpenAPIPathMaps(map[string]any{
 		"/api/sites/{id}/web-vitals/summary": map[string]any{
 			"get": op([]string{"Sites"}, "Get Web Vitals summary", "Returns p75, sample count, rating counts, and derived p75 rating for each Web Vital metric.", secAnyAuth(), webVitalsParams(false), nil,
 				map[string]any{"200": jsonSchemaResp("Web Vitals summary", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/WebVitalSummaryMetric"}})}),
@@ -16,6 +16,30 @@ func openAPIV1WebVitalPaths() map[string]any {
 		},
 		"/api/sites/{id}/web-vitals/breakdown": map[string]any{
 			"get": op([]string{"Sites"}, "Get Web Vitals visitor context breakdown", "Returns Web Vitals p75 and rating counts for one metric grouped by browser, country, language, or device using the matching pageview context.", secAnyAuth(), append(webVitalsParams(true),
+				map[string]any{"name": "dimension", "in": "query", "required": true, "description": "Visitor context dimension.", "schema": map[string]any{"type": "string", "enum": []string{"browser", "country", "language", "device"}}},
+				paramRef("#/components/parameters/limit"),
+			), nil,
+				map[string]any{"200": jsonSchemaResp("Web Vitals breakdown", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/WebVitalDimensionRow"}})}),
+		},
+	}, openAPIV1SharedWebVitalPaths())
+}
+
+func openAPIV1SharedWebVitalPaths() map[string]any {
+	return map[string]any{
+		"/api/share/{token}/sites/{id}/web-vitals/summary": map[string]any{
+			"get": op([]string{"Share"}, "Shared Web Vitals summary", "Returns Web Vitals summary through a read-only share token.", nil, sharedWebVitalsParams(false), nil,
+				map[string]any{"200": jsonSchemaResp("Web Vitals summary", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/WebVitalSummaryMetric"}})}),
+		},
+		"/api/share/{token}/sites/{id}/web-vitals/timeseries": map[string]any{
+			"get": op([]string{"Share"}, "Shared Web Vitals timeseries", "Returns Web Vitals timeseries through a read-only share token.", nil, sharedWebVitalsParams(true), nil,
+				map[string]any{"200": jsonSchemaResp("Web Vitals timeseries", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/WebVitalSeriesPoint"}})}),
+		},
+		"/api/share/{token}/sites/{id}/web-vitals/pages": map[string]any{
+			"get": op([]string{"Share"}, "Shared Web Vitals page breakdown", "Returns Web Vitals page breakdown through a read-only share token.", nil, append(sharedWebVitalsParams(true), paramRef("#/components/parameters/limit")), nil,
+				map[string]any{"200": jsonSchemaResp("Web Vitals pages", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/WebVitalPageRow"}})}),
+		},
+		"/api/share/{token}/sites/{id}/web-vitals/breakdown": map[string]any{
+			"get": op([]string{"Share"}, "Shared Web Vitals visitor context breakdown", "Returns Web Vitals visitor context breakdown through a read-only share token.", nil, append(sharedWebVitalsParams(true),
 				map[string]any{"name": "dimension", "in": "query", "required": true, "description": "Visitor context dimension.", "schema": map[string]any{"type": "string", "enum": []string{"browser", "country", "language", "device"}}},
 				paramRef("#/components/parameters/limit"),
 			), nil,
@@ -38,6 +62,10 @@ func webVitalsParams(requireMetric bool) []any {
 		metric["required"] = true
 	}
 	return append(params, metric)
+}
+
+func sharedWebVitalsParams(requireMetric bool) []any {
+	return append([]any{paramRef("#/components/parameters/token")}, webVitalsParams(requireMetric)...)
 }
 
 func openAPIV1WebVitalSchemas() map[string]any {

@@ -52,6 +52,10 @@ export const routes: Routes = [
                         loadComponent: () => import('@pages/events/events').then((m) => m.Events)
                     },
                     {
+                        path: 'web-vitals',
+                        loadComponent: () => import('@pages/web-vitals/web-vitals').then((m) => m.WebVitalsPage)
+                    },
+                    {
                         path: 'ai-visibility',
                         loadComponent: () => import('@pages/ai-visibility/ai-visibility').then((m) => m.AIVisibility)
                     },

@@ -1,5 +1,5 @@
 const { test, expect } = require("playwright/test");
-const { login } = require("./support/auth");
+const { E2E_SHARE_TOKEN, login } = require("./support/auth");
 
 const TABLE_SETTLE_MS = 1000;
 const PRIMARY_SEEDED_SITE_DOMAIN = "acme-analytics.io";
@@ -58,4 +58,15 @@ test("web vitals dashboard renders seeded data and filters", async ({ page }) =>
     await page.getByRole("button", { name: "Clear all" }).click();
     await expect(page.getByText("Path: /")).toBeVisible();
     await expect(page.getByText("Rating: Good")).toHaveCount(0);
+});
+
+test("shared dashboard exposes seeded Web Vitals", async ({ page }) => {
+    await page.goto(`/share/${E2E_SHARE_TOKEN}/web-vitals`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(TABLE_SETTLE_MS);
+
+    await expect(page).toHaveURL(new RegExp(`/share/${E2E_SHARE_TOKEN}/web-vitals`));
+    await expect(page.getByRole("button", { name: "Inspect LCP over time" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "LCP p75 trend" })).toBeVisible();
+    await expect(page.locator(".web-vitals-table tbody tr").filter({ hasText: "/" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /share dashboard/i })).toHaveCount(0);
 });

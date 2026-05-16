@@ -428,7 +428,17 @@ func TestOpenAPISpecV1IncludesWebVitalsEndpointsAndSchemas(t *testing.T) {
 			t.Fatalf("expected %s schema to exist", schemaName)
 		}
 	}
-	for _, path := range []string{"/ingest/web-vitals", "/api/sites/{id}/web-vitals/summary", "/api/sites/{id}/web-vitals/timeseries", "/api/sites/{id}/web-vitals/pages", "/api/sites/{id}/web-vitals/breakdown"} {
+	for _, path := range []string{
+		"/ingest/web-vitals",
+		"/api/sites/{id}/web-vitals/summary",
+		"/api/sites/{id}/web-vitals/timeseries",
+		"/api/sites/{id}/web-vitals/pages",
+		"/api/sites/{id}/web-vitals/breakdown",
+		"/api/share/{token}/sites/{id}/web-vitals/summary",
+		"/api/share/{token}/sites/{id}/web-vitals/timeseries",
+		"/api/share/{token}/sites/{id}/web-vitals/pages",
+		"/api/share/{token}/sites/{id}/web-vitals/breakdown",
+	} {
 		if _, ok := paths[path]; !ok {
 			t.Fatalf("expected %s path to exist", path)
 		}

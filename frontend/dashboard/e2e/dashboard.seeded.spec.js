@@ -46,8 +46,9 @@ test("dashboard renders seeded data and product controls", async ({ page }) => {
     await expect(page).toHaveURL(/\/dashboard(?:\?.*)?$/);
     await expect(page.getByText("Latest Hits")).toBeVisible();
     await expect(page.getByText("Top Sources")).toBeVisible();
-    await expect(page.locator('[data-testid="team-switcher-trigger"]:visible').first()).toBeVisible();
-    await expect(page.locator(".layout-topbar__account-cluster").getByText("Acme Analytics").first()).toBeVisible();
+    const teamSwitcher = page.locator('[data-testid="team-switcher-trigger"]:visible').first();
+    await expect(teamSwitcher).toBeVisible();
+    await expect(teamSwitcher).toContainText("Acme Analytics");
 
     await page.getByRole("button", { name: /share dashboard/i }).click();
     await expect(page.getByRole("dialog").getByText("Share dashboard")).toBeVisible();

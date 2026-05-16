@@ -1,7 +1,9 @@
-import { ChangeDetectionStrategy, Component, ElementRef, input, model, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, input, model, inject } from '@angular/core';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
+import { INSTANCE_CAPABILITIES, SITE_CAPABILITIES } from '@core/access/capabilities';
 import { Site } from '@models/analytics.types';
+import { AccessService } from '@services/access.service';
 
 // PrimeNG
 import { DrawerModule } from 'primeng/drawer';
@@ -26,14 +28,56 @@ import { SiteExclusionSettings } from '@features/sites/components/site-exclusion
 export class SiteSettingsDrawer {
     private transloco = inject(TranslocoService);
     private elementRef = inject(ElementRef<HTMLElement>);
+    private access = inject(AccessService);
 
     visible = model<boolean>(false);
     site = input.required<Site | null>();
     activeTab = model<string>('0');
 
+    protected readonly canManageData = computed(() => {
+        const site = this.site();
+        return !!site && this.access.canSite(site.id, SITE_CAPABILITIES.manageData);
+    });
+    protected readonly canManageFiltering = computed(() => {
+        const site = this.site();
+        return !!site && (this.access.canSite(site.id, SITE_CAPABILITIES.manageData) || this.access.hasInstance(INSTANCE_CAPABILITIES.manageSiteExclusions));
+    });
+    protected readonly canManageTeam = computed(() => {
+        const site = this.site();
+        return !!site && this.access.canSite(site.id, SITE_CAPABILITIES.manageTeam);
+    });
+    protected readonly canDeleteSite = computed(() => {
+        const site = this.site();
+        return !!site && this.access.canSite(site.id, SITE_CAPABILITIES.delete);
+    });
+
+    constructor() {
+        effect(() => {
+            if (!this.isTabAvailable(this.activeTab())) {
+                this.activeTab.set('0');
+            }
+        });
+    }
+
     onActiveTabChange(value: string | number | undefined) {
-        this.activeTab.set(value == null ? '0' : String(value));
+        const nextTab = value == null ? '0' : String(value);
+        this.activeTab.set(this.isTabAvailable(nextTab) ? nextTab : '0');
         this.schedulePanelScrollReset();
+    }
+
+    private isTabAvailable(value: string): boolean {
+        switch (value) {
+            case '2':
+                return this.canManageFiltering();
+            case '3':
+                return this.canManageData();
+            case '4':
+                return this.canManageTeam();
+            case '5':
+                return this.canDeleteSite();
+            default:
+                return true;
+        }
     }
 
     private schedulePanelScrollReset(): void {

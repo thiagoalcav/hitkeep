@@ -1,17 +1,30 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { WritableSignal, signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { provideTranslocoLocale } from '@jsverse/transloco-locale';
 import { vi } from 'vitest';
+import { SITE_CAPABILITIES } from '@core/access/capabilities';
+import { AccessService } from '@services/access.service';
 import { SiteService } from '@features/sites/services/site.service';
 import { TeamService } from '@services/team.service';
 import { SiteTeamSettings } from './site-team-settings';
 
 interface SiteTeamSettingsTestAccess {
     availableTransferTeams(): { label: string; value: string }[];
+    addMember(): void;
     transferSite(): void;
+    confirmRemoveMember(member: { user_id: string; email: string }): void;
+    memberForm: {
+        email(): {
+            control(): {
+                setValue(value: string): void;
+            };
+        };
+    };
+    isAddMemberDialogVisible(): boolean;
+    memberSuccessKey(): string | null;
     transferForm: {
         teamId(): {
             control(): {
@@ -26,6 +39,8 @@ describe('SiteTeamSettings', () => {
     let fixture: ComponentFixture<SiteTeamSettings>;
     let component: SiteTeamSettings;
     let httpMock: HttpTestingController;
+    let canSiteMock: ReturnType<typeof vi.fn>;
+    let allowedSiteCapabilities: WritableSignal<string[] | null>;
 
     const currentSite = {
         id: 'site-1',
@@ -68,11 +83,70 @@ describe('SiteTeamSettings', () => {
     };
 
     beforeEach(async () => {
+        allowedSiteCapabilities = signal<string[] | null>(null);
+        canSiteMock = vi.fn((_siteId: string, capability: string) => allowedSiteCapabilities()?.includes(capability) ?? true);
+
         await TestBed.configureTestingModule({
             imports: [
                 SiteTeamSettings,
                 TranslocoTestingModule.forRoot({
-                    langs: { en: {} },
+                    langs: {
+                        en: {
+                            common: {
+                                actions: {
+                                    cancel: 'Cancel'
+                                },
+                                columns: {
+                                    actions: 'Actions',
+                                    added: 'Added',
+                                    email: 'Email',
+                                    role: 'Role'
+                                },
+                                emailAddress: 'Email address',
+                                searchPlaceholder: 'Search...'
+                            },
+                            roles: {
+                                owner: 'Owner',
+                                admin: 'Admin',
+                                editor: 'Editor',
+                                viewer: 'Viewer'
+                            },
+                            sites: {
+                                settings: {
+                                    tabs: {
+                                        team: 'Team'
+                                    }
+                                },
+                                team: {
+                                    emailPlaceholder: 'user@example.com',
+                                    addMemberAction: 'Add site member',
+                                    addMemberDialogTitle: 'Add site member',
+                                    addMemberSuccess: 'Site member added.',
+                                    confirmRemove: 'Remove {{email}} from site?',
+                                    transfer: {
+                                        title: 'Transfer site',
+                                        description: 'Move this site and its analytics data into another team you can administer.',
+                                        teamLabel: 'Destination team',
+                                        teamPlaceholder: 'Select a destination team',
+                                        action: 'Transfer site',
+                                        success: 'Site transferred successfully.',
+                                        errors: {
+                                            forbidden: 'You do not have permission to transfer this site to the selected team.',
+                                            generic: 'Failed to transfer site.'
+                                        }
+                                    },
+                                    errors: {
+                                        addFailed: 'Failed to add member. Ensure user exists.'
+                                    }
+                                }
+                            },
+                            teams: {
+                                management: {
+                                    removeAction: 'Remove'
+                                }
+                            }
+                        }
+                    },
                     translocoConfig: {
                         availableLangs: ['en'],
                         defaultLang: 'en'
@@ -85,6 +159,12 @@ describe('SiteTeamSettings', () => {
                 provideHttpClientTesting(),
                 { provide: TeamService, useValue: teamServiceMock },
                 { provide: SiteService, useValue: siteServiceMock },
+                {
+                    provide: AccessService,
+                    useValue: {
+                        canSite: canSiteMock
+                    }
+                },
                 provideTranslocoLocale({
                     langToLocaleMapping: {
                         en: 'en-US'
@@ -137,5 +217,58 @@ describe('SiteTeamSettings', () => {
         expect(siteServiceMock.activeSite()).toBeNull();
         expect(siteServiceMock.loadSites).toHaveBeenCalled();
         expect(access.transferSuccessKey()).toBe('sites.team.transfer.success');
+    });
+
+    it('does not call write endpoints without site team-management capability', () => {
+        allowedSiteCapabilities.set([SITE_CAPABILITIES.view]);
+        const access = component as unknown as SiteTeamSettingsTestAccess;
+        access.memberForm.email().control().setValue('teammate@example.com');
+        access.transferForm.teamId().control().setValue('team-2');
+
+        access.addMember();
+        access.transferSite();
+        access.confirmRemoveMember({
+            user_id: 'user-2',
+            email: 'teammate@example.com'
+        });
+
+        httpMock.expectNone('/api/sites/site-1/members');
+        httpMock.expectNone('/api/sites/site-1/transfer-team');
+        httpMock.expectNone('/api/sites/site-1/members/user-2');
+    });
+
+    it('opens the add-site-member form in a CRUD dialog from the member table', () => {
+        expect(fixture.nativeElement.querySelector('#member-email')).toBeNull();
+
+        const addButton = Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find((button) => button.textContent?.includes('Add site member'));
+        expect(addButton).toBeTruthy();
+
+        addButton?.click();
+        fixture.detectChanges();
+
+        expect(document.body.querySelector('#member-email')).toBeTruthy();
+        expect(document.body.textContent).toContain('Add site member');
+    });
+
+    it('adds a site member from the dialog and shows local table feedback', () => {
+        const access = component as unknown as SiteTeamSettingsTestAccess;
+        const addButton = Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find((button) => button.textContent?.includes('Add site member'));
+        addButton?.click();
+        fixture.detectChanges();
+
+        access.memberForm.email().control().setValue('teammate@example.com');
+        access.addMember();
+
+        const request = httpMock.expectOne('/api/sites/site-1/members');
+        expect(request.request.method).toBe('POST');
+        expect(request.request.body).toEqual({
+            email: 'teammate@example.com',
+            role: 'viewer'
+        });
+        request.flush({ status: 'ok' });
+        httpMock.expectOne('/api/sites/site-1/members').flush([]);
+
+        expect(access.isAddMemberDialogVisible()).toBe(false);
+        expect(access.memberSuccessKey()).toBe('sites.team.addMemberSuccess');
     });
 });

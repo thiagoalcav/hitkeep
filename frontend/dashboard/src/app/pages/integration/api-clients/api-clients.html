@@ -9,6 +9,6 @@
     </app-page-header>
 
     <div class="integration-content max-w-5xl mx-auto w-full">
-        <app-settings-api-clients />
+        <app-settings-api-clients [showTeamClientsLink]="canManageTeamAPIClients()" />
     </div>
 </div>

@@ -27,6 +27,8 @@
         "utm": "UTM",
         "apiClients": "Clients API",
         "apiReference": "Référence API",
+        "expandItem": "Développer {{item}}",
+        "collapseItem": "Réduire {{item}}",
         "imports": "Imports",
         "importsAria": "Aller aux imports",
         "importExport": "Import et export",
@@ -37,8 +39,8 @@
         "docsAria": "Ouvrir la documentation HitKeep dans un nouvel onglet",
         "support": "Support",
         "supportAria": "Ouvrir le support HitKeep dans un nouvel onglet",
-        "settings": "Paramètres utilisateur",
-        "settingsAria": "Aller aux paramètres utilisateur",
+        "settings": "Paramètres",
+        "settingsAria": "Aller aux paramètres",
         "emailReports": "Rapports par email",
         "emailReportsAria": "Aller aux rapports par email",
         "administration": "Administration",
@@ -360,6 +362,7 @@
             "openAction": "Gérer l'équipe",
             "openAria": "Ouvrir la gestion de l'équipe",
             "dialogTitle": "Gérer {{team}}",
+            "inviteDialogTitle": "Inviter un membre de l'équipe",
             "noTeam": "Aucune équipe active sélectionnée.",
             "readOnly": "Vous pouvez voir les membres, mais vous ne pouvez pas gérer l'équipe avec votre rôle actuel.",
             "notAllowed": "Non autorisé",
@@ -434,7 +437,8 @@
             "exportCsv": "Exporter CSV",
             "open": "Ouvrir",
             "refresh": "Actualiser",
-            "save": "Enregistrer"
+            "save": "Enregistrer",
+            "more": "Plus d'actions"
         },
         "previous": "Précédent",
         "next": "Suivant",
@@ -639,6 +643,7 @@
             "editTitle": "Modifier l’objectif",
             "editTooltip": "Modifier l’objectif",
             "deleteTooltip": "Supprimer l’objectif",
+            "confirmDelete": "Supprimer l’objectif « {{name}} » ?",
             "namePlaceholder": "ex. Inscription réussie",
             "typePagePath": "Chemin",
             "typeCustomEvent": "Événement",
@@ -697,6 +702,7 @@
             "editTitle": "Modifier l’entonnoir",
             "editTooltip": "Modifier l’entonnoir",
             "deleteTooltip": "Supprimer l’entonnoir",
+            "confirmDelete": "Supprimer l’entonnoir « {{name}} » ?",
             "namePlaceholder": "ex: Flux de paiement",
             "stepPathPlaceholder": "/chemin",
             "stepEventPlaceholder": "event_name",
@@ -870,7 +876,7 @@
             }
         },
         "user": {
-            "breadcrumb": "Paramètres utilisateur",
+            "breadcrumb": "Paramètres",
             "subtitle": "Gérez la sécurité et les préférences de votre compte.",
             "profile": {
                 "title": "Profil",
@@ -946,10 +952,19 @@
             "loading": "Chargement des clients API...",
             "empty": "Aucun client API pour le moment.",
             "listTitle": "Clients API existants",
+            "createDialogTitle": "Ajouter un client API",
+            "editDialogTitle": "Modifier le client API",
             "confirmDelete": "Supprimer le client API \"{{name}}\" ?",
+            "confirmRotate": "Renouveler le jeton du client API \"{{name}}\" ? L'ancien jeton cessera immédiatement de fonctionner.",
+            "noSiteAccess": "Aucun accès aux sites",
+            "noSiteAccessInstanceOnly": "Instance/admin uniquement ; aucun accès aux sites",
+            "siteGrantCount": "{{count}} accès sites",
+            "siteGrantPopoverTitle": "Accès sites",
             "status": {
                 "active": "Actif",
-                "revoked": "Révoqué"
+                "inactive": "Inactif",
+                "revoked": "Révoqué",
+                "expired": "Expiré"
             },
             "meta": {
                 "instanceRole": "Rôle d'instance",
@@ -958,14 +973,16 @@
                 "expires": "Expire"
             },
             "actions": {
+                "add": "Ajouter un client API",
                 "create": "Créer un client",
                 "save": "Enregistrer les modifications",
                 "edit": "Modifier",
                 "revoke": "Revoquer",
                 "reactivate": "Réactiver",
                 "delete": "Supprimer",
-                "addScope": "Ajouter une portée",
-                "refresh": "Actualiser"
+                "addScope": "Ajouter une autorisation",
+                "refresh": "Actualiser",
+                "rollToken": "Renouveler le jeton"
             },
             "form": {
                 "nameLabel": "Nom du client",
@@ -975,8 +992,8 @@
                 "instanceRoleLabel": "Rôle d'instance",
                 "expiresAtLabel": "Expiration",
                 "expiresAtHint": "Si vide, le jeton n'expire jamais. Ce n'est pas recommandé.",
-                "siteScopesLabel": "Portées de site",
-                "siteScopesHint": "Optionnel : limitez ce client à des sites et rôles de site spécifiques.",
+                "siteScopesLabel": "Autorisations de site",
+                "siteScopesHint": "L'accès aux analytics de site, à MCP et à l'ingest nécessite une autorisation de site explicite.",
                 "selectSitePlaceholder": "Sélectionner un site",
                 "validation": {
                     "nameRequired": "Le nom du client est obligatoire.",
@@ -984,9 +1001,9 @@
                     "instanceRoleRequired": "Le rôle d'instance est obligatoire.",
                     "expiresAtPast": "La date d'expiration doit être dans le futur.",
                     "expiresAtInvalid": "La date d'expiration est invalide.",
-                    "scopeSiteRequired": "Sélectionnez un site avant d'ajouter une portée."
+                    "scopeSiteRequired": "Sélectionnez un site avant d'ajouter une autorisation."
                 },
-                "teamSiteScopesHint": "Limitez ce client à des sites précis dans l'équipe sélectionnée."
+                "teamSiteScopesHint": "Les clients d'équipe ne peuvent accéder qu'aux sites ajoutés ici avec un rôle de site."
             },
             "tokenNotice": {
                 "title": "Copiez ce jeton maintenant",
@@ -997,12 +1014,14 @@
                 "updated": "Client API mis à jour.",
                 "deleted": "Client API supprimé.",
                 "revoked": "Client API révoqué.",
-                "reactivated": "Client API réactivé."
+                "reactivated": "Client API réactivé.",
+                "rotated": "Jeton API renouvelé. Copiez le nouveau jeton maintenant."
             },
             "errors": {
                 "loadFailed": "Impossible de charger les clients API.",
                 "createFailed": "Impossible de créer le client API.",
                 "updateFailed": "Impossible de mettre à jour le client API.",
+                "rotateFailed": "Impossible de renouveler le jeton API.",
                 "deleteFailed": "Impossible de supprimer le client API.",
                 "invalidExpiration": "La date d'expiration est invalide.",
                 "notFound": "Client API introuvable."
@@ -1133,6 +1152,10 @@
                 "loadFailed": "Impossible de charger les exclusions.",
                 "createFailed": "Impossible de créer l'exclusion.",
                 "deleteFailed": "Impossible de supprimer l'exclusion."
+            },
+            "status": {
+                "createSuccess": "Exclusion {{cidr}} créée.",
+                "deleteSuccess": "Exclusion {{cidr}} supprimée."
             }
         },
         "selector": {
@@ -1178,7 +1201,10 @@
         },
         "team": {
             "emailPlaceholder": "user@example.com",
-            "addMemberAction": "Ajouter un membre",
+            "addMemberAction": "Ajouter un membre du site",
+            "addMemberDialogTitle": "Ajouter un membre du site",
+            "addMemberSuccess": "Membre du site ajouté.",
+            "removeMemberSuccess": "Membre du site retiré.",
             "confirmRemove": "Retirer {{email}} du site ?",
             "transfer": {
                 "title": "Transférer le site",
@@ -1293,6 +1319,7 @@
                 "deleteFailed": "Impossible de supprimer le filtre global."
             },
             "status": {
+                "createSuccess": "Filtre global {{cidr}} créé.",
                 "deleteSuccess": "Filtre global {{cidr}} supprimé."
             }
         },
@@ -1939,7 +1966,7 @@
     },
     "userMenu": {
         "administration": "Administration",
-        "userSettings": "Paramètres utilisateur",
+        "userSettings": "Paramètres",
         "preferences": "Préférences",
         "sessionStatus": "Session : encore {{remaining}}",
         "rememberedSessionStatus": "Se souvenir de moi : encore {{remaining}}",
@@ -2155,15 +2182,8 @@
     },
     "aiVisibility": {
         "title": "Visibilité IA",
-        "docsAction": "Guide de visibilité IA",
+        "docsAction": "Guide de configuration",
         "noSiteDescription": "Sélectionne ou crée un site pour voir l’analyse des fetchs IA et des corrélations.",
-        "setup": {
-            "title": "Capture server-side requise",
-            "badge": "Configuration requise",
-            "description": "Cette page ne suit les fetchs des crawlers IA qu’après leur transfert vers HitKeep via une ingestion edge ou basée sur les logs.",
-            "detail": "L’installation de hk.js seule ne capture pas les fetchs de bots. Les visites référées par l’IA depuis ChatGPT, Gemini, Perplexity et des assistants similaires peuvent quand même apparaître ailleurs dans l’analytics via le referrer.",
-            "action": "Ouvrir le guide de configuration"
-        },
         "header": {
             "title": "Analyse de visibilité IA",
             "description": "Suis les fetchs server-side des crawlers IA, où les erreurs de crawl se concentrent et quelles pages récupérées attirent ensuite des visites référées par l’IA."
@@ -2245,7 +2265,8 @@
     },
     "integration": {
         "apiClients": {
-            "subtitle": "Créez et gérez des clients API pour vos intégrations."
+            "subtitle": "Créez et gérez des clients API pour vos intégrations.",
+            "manageTeamClients": "Gérer les clients API d'équipe"
         },
         "apiReference": {
             "subtitle": "Référence REST versionnée avec les détails d'authentification par session et clé API.",

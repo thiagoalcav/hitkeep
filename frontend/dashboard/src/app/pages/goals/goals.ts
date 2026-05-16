@@ -15,6 +15,7 @@ import { MetricList } from '@features/analytics/components/metric-list';
 import { GoalManager } from '@features/goals/components/goal-manager';
 import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
 import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
+import { PageState } from '@components/page-state/page-state';
 import { SeriesChart, SeriesDefinition, SeriesChartPoint } from '@features/analytics/components/series-chart';
 import { Goal, GoalSeriesPoint, SiteStats } from '@models/analytics.types';
 import { KpiCard } from '@features/analytics/components/kpi-card';
@@ -30,7 +31,7 @@ interface MetricFilter {
 @Component({
     selector: 'app-goals',
     standalone: true,
-    imports: [ReactiveFormsModule, ButtonModule, CardModule, SelectModule, PageHeader, PageHeaderLeft, PageBreadcrumb, RangeToolbar, SeriesChart, KpiCard, MetricList, GoalList, GoalManager, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, CardModule, SelectModule, PageHeader, PageHeaderLeft, PageBreadcrumb, PageState, RangeToolbar, SeriesChart, KpiCard, MetricList, GoalList, GoalManager, TranslocoPipe],
     templateUrl: './goals.html',
     styleUrl: './goals.css',
     changeDetection: ChangeDetectionStrategy.OnPush

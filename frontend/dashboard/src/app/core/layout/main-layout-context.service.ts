@@ -2,7 +2,9 @@ import { Injectable, TemplateRef, computed, effect, inject, signal } from '@angu
 import { Router } from '@angular/router';
 import { TranslocoService } from '@jsverse/transloco';
 import { Team } from '@models/analytics.types';
+import { TEAM_CAPABILITIES } from '@core/access/capabilities';
 import { DashboardBootstrapService } from '@services/dashboard-bootstrap.service';
+import { AccessService } from '@services/access.service';
 import { PermissionService } from '@services/permission.service';
 import { ShareService } from '@services/share.service';
 import { SiteSettingsService } from '@services/site-settings.service';
@@ -16,6 +18,7 @@ export class MainLayoutContextService {
     readonly shareService = inject(ShareService);
     private readonly siteSettings = inject(SiteSettingsService);
     private readonly bootstrap = inject(DashboardBootstrapService);
+    private readonly access = inject(AccessService);
     readonly teamService = inject(TeamService);
     readonly perms = inject(PermissionService);
     private readonly transloco = inject(TranslocoService);
@@ -23,10 +26,7 @@ export class MainLayoutContextService {
     readonly cloudHosted = this.bootstrap.cloudHosted;
     readonly cloudSupportUrl = this.bootstrap.cloudSupportUrl;
     readonly canCreateTeams = computed(() => !this.cloudHosted());
-    readonly isTeamAdmin = computed(() => {
-        const role = this.teamService.activeTeam()?.role;
-        return role === 'owner' || role === 'admin';
-    });
+    readonly isTeamAdmin = computed(() => this.access.canActiveTeam(TEAM_CAPABILITIES.manageSettings));
 
     readonly isMobileDrawerOpen = signal(false);
     readonly isAddSiteVisible = signal(false);

@@ -1,11 +1,14 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { signal } from '@angular/core';
+import { WritableSignal, signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { provideTranslocoLocale } from '@jsverse/transloco-locale';
+import { vi } from 'vitest';
+import { INSTANCE_CAPABILITIES, SITE_CAPABILITIES } from '@core/access/capabilities';
+import { AccessService } from '@services/access.service';
 import { TeamService } from '@services/team.service';
 import { SiteService } from '@features/sites/services/site.service';
 import { SiteSettingsDrawer } from './site-settings-drawer';
@@ -13,6 +16,10 @@ import { SiteSettingsDrawer } from './site-settings-drawer';
 describe('SiteSettingsDrawer', () => {
     let fixture: ComponentFixture<SiteSettingsDrawer>;
     let httpMock: HttpTestingController;
+    let canSiteMock: ReturnType<typeof vi.fn>;
+    let hasInstanceMock: ReturnType<typeof vi.fn>;
+    let allowedSiteCapabilities: WritableSignal<string[] | null>;
+    let allowedInstanceCapabilities: WritableSignal<string[]>;
 
     const site = {
         id: 'site-1',
@@ -48,6 +55,11 @@ describe('SiteSettingsDrawer', () => {
     };
 
     beforeEach(async () => {
+        allowedSiteCapabilities = signal<string[] | null>(null);
+        allowedInstanceCapabilities = signal<string[]>([]);
+        canSiteMock = vi.fn((_siteId: string, capability: string) => allowedSiteCapabilities()?.includes(capability) ?? true);
+        hasInstanceMock = vi.fn((capability: string) => allowedInstanceCapabilities().includes(capability));
+
         await TestBed.configureTestingModule({
             imports: [
                 SiteSettingsDrawer,
@@ -112,6 +124,13 @@ describe('SiteSettingsDrawer', () => {
                 provideNoopAnimations(),
                 { provide: TeamService, useValue: teamServiceMock },
                 { provide: SiteService, useValue: siteServiceMock },
+                {
+                    provide: AccessService,
+                    useValue: {
+                        canSite: canSiteMock,
+                        hasInstance: hasInstanceMock
+                    }
+                },
                 provideTranslocoLocale({
                     langToLocaleMapping: {
                         en: 'en-US'
@@ -146,5 +165,20 @@ describe('SiteSettingsDrawer', () => {
 
         expect(fixture.nativeElement.textContent).toContain('Transfer site');
         expect(fixture.nativeElement.textContent).toContain('Destination team');
+    });
+
+    it('hides write-only site settings tabs from site viewers', () => {
+        allowedSiteCapabilities.set([SITE_CAPABILITIES.view]);
+        allowedInstanceCapabilities.set([INSTANCE_CAPABILITIES.viewSystem]);
+        fixture.detectChanges();
+
+        const text = fixture.nativeElement.textContent as string;
+
+        expect(text).toContain('General');
+        expect(text).toContain('Tracking');
+        expect(text).not.toContain('Filtering');
+        expect(text).not.toContain('Retention');
+        expect(text).not.toContain('Team');
+        expect(text).not.toContain('Danger zone');
     });
 });

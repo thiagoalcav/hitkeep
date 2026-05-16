@@ -6,9 +6,9 @@ import { compatForm } from '@angular/forms/signals/compat';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { switchMap, finalize } from 'rxjs';
-import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
-import { DividerModule } from 'primeng/divider';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ConfirmationService } from 'primeng/api';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
 import { InputGroupModule } from 'primeng/inputgroup';
@@ -21,6 +21,10 @@ import { TooltipModule } from 'primeng/tooltip';
 import { MessageModule } from 'primeng/message';
 import { AnalyticsService } from '@services/analytics.service';
 import { Funnel, FunnelStep } from '@models/analytics.types';
+import { CrudDialog } from '@components/crud-dialog/crud-dialog';
+import { DialogShell } from '@components/dialog-shell/dialog-shell';
+import { dialogCancelButton, dialogDangerButton } from '@components/dialog-actions/dialog-actions';
+import { TableRowActionItem, TableRowActions } from '@components/table-row-actions/table-row-actions';
 
 type FunnelManagerAction = 'create' | 'update' | 'delete';
 
@@ -34,9 +38,8 @@ interface FunnelStepControl {
     imports: [
         DragDropModule,
         ReactiveFormsModule,
-        DialogModule,
         ButtonModule,
-        DividerModule,
+        ConfirmDialogModule,
         IconFieldModule,
         InputIconModule,
         InputGroupModule,
@@ -47,21 +50,34 @@ interface FunnelStepControl {
         TagModule,
         TooltipModule,
         MessageModule,
+        CrudDialog,
+        DialogShell,
+        TableRowActions,
         TranslocoPipe
     ],
     changeDetection: ChangeDetectionStrategy.OnPush,
+    providers: [ConfirmationService],
     template: `
-        <p-dialog [header]="'funnels.manager.dialogTitle' | transloco" [(visible)]="visible" [modal]="true" [style]="dialogStyle" [draggable]="false" [resizable]="false" (onHide)="onHide()">
+        <p-confirmdialog />
+
+        <app-dialog-shell
+            [title]="'funnels.manager.dialogTitle' | transloco"
+            [visible]="visible()"
+            (visibleChange)="onManagerVisibleChange($event)"
+            width="880px"
+            [secondaryLabel]="'common.actions.close' | transloco"
+            [showPrimary]="false"
+        >
             <p class="text-sm text-muted-color mb-4">{{ "funnels.manager.dialogDescription" | transloco }}</p>
 
             @if (successKey(); as key) {
                 <p-message severity="success" styleClass="w-full mb-4" [text]="key | transloco" />
-            } @else if (errorKey(); as key) {
+            } @else if (!isEditorDialogVisible() && errorKey(); as key) {
                 <p-message severity="error" styleClass="w-full mb-4" [text]="key | transloco" />
             }
 
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
-                <p-button [label]="'funnels.manager.newAction' | transloco" icon="pi pi-plus" (onClick)="resetEditor()" [outlined]="true" size="small" />
+                <p-button [label]="'funnels.manager.newAction' | transloco" icon="pi pi-plus" (onClick)="openCreateDialog()" [outlined]="true" size="small" />
                 <p-iconfield>
                     <p-inputicon class="pi pi-search" />
                     <input pInputText #funnelSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="funnelsTable.filterGlobal($any($event.target).value, 'contains')" class="w-full" />
@@ -77,11 +93,11 @@ interface FunnelStepControl {
                                 <p-sortIcon field="name" />
                             </th>
                             <th>{{ "funnels.manager.stepsLabel" | transloco }}</th>
-                            <th style="width: 8rem"></th>
+                            <th class="hk-actions-column">{{ "common.columns.actions" | transloco }}</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-funnel>
-                        <tr [class]="editingFunnel()?.id === funnel.id ? 'bg-surface-50 dark:bg-surface-800' : ''">
+                        <tr>
                             <td class="font-medium">{{ funnel.name }}</td>
                             <td>
                                 <div class="flex items-center gap-1 flex-wrap">
@@ -93,37 +109,8 @@ interface FunnelStepControl {
                                     }
                                 </div>
                             </td>
-                            <td>
-                                <div class="flex gap-1 justify-end">
-                                    <p-button
-                                        icon="pi pi-chart-bar"
-                                        (onClick)="viewFunnel.emit(funnel)"
-                                        styleClass="p-button-text p-button-sm"
-                                        [rounded]="true"
-                                        [pTooltip]="'funnels.manager.viewStats' | transloco"
-                                        [ariaLabel]="'funnels.manager.viewStats' | transloco"
-                                        [disabled]="isBusy()"
-                                    />
-                                    <p-button
-                                        icon="pi pi-pencil"
-                                        (onClick)="editFunnel(funnel)"
-                                        styleClass="p-button-text p-button-sm"
-                                        [rounded]="true"
-                                        [pTooltip]="'funnels.manager.editTooltip' | transloco"
-                                        [ariaLabel]="'funnels.manager.editTooltip' | transloco"
-                                        [disabled]="isBusy()"
-                                    />
-                                    <p-button
-                                        icon="pi pi-trash"
-                                        (onClick)="deleteFunnel(funnel.id)"
-                                        styleClass="p-button-text p-button-danger p-button-sm"
-                                        [rounded]="true"
-                                        [pTooltip]="'funnels.manager.deleteTooltip' | transloco"
-                                        [ariaLabel]="'funnels.manager.deleteTooltip' | transloco"
-                                        [loading]="deletingFunnelId() === funnel.id"
-                                        [disabled]="isBusy()"
-                                    />
-                                </div>
+                            <td class="hk-actions-cell">
+                                <app-table-row-actions [items]="funnelActions(funnel)" [loading]="deletingFunnelId() === funnel.id" />
                             </td>
                         </tr>
                     </ng-template>
@@ -134,17 +121,19 @@ interface FunnelStepControl {
                     </ng-template>
                 </p-table>
             </div>
+        </app-dialog-shell>
 
-            <p-divider />
-
-            <div class="flex items-center justify-between gap-3 mb-4">
-                <h4 class="font-semibold text-sm mt-0 mb-0">{{ editorTitle() }}</h4>
-                @if (editingFunnel()) {
-                    <p-button [label]="'common.actions.cancel' | transloco" (onClick)="resetEditor()" [text]="true" size="small" />
-                }
-            </div>
-
-            <div class="flex flex-col gap-4">
+        <app-crud-dialog
+            [title]="editorTitle()"
+            [visible]="isEditorDialogVisible()"
+            (visibleChange)="onEditorDialogVisibleChange($event)"
+            [submitLabel]="primaryActionLabel()"
+            [cancelLabel]="'common.actions.cancel' | transloco"
+            [saving]="saving()"
+            width="48rem"
+            (submitted)="saveFunnel()"
+        >
+            <form class="flex flex-col gap-4" (ngSubmit)="saveFunnel()">
                 <div class="flex flex-col gap-1">
                     <label for="f-name" class="text-xs font-medium">{{ "common.columns.name" | transloco }}</label>
                     <input pInputText id="f-name" [formControl]="newFunnelForm.name().control()" [placeholder]="'funnels.manager.namePlaceholder' | transloco" class="w-full" />
@@ -178,12 +167,12 @@ interface FunnelStepControl {
 
                     <p-button [label]="'funnels.manager.addStep' | transloco" icon="pi pi-plus" (onClick)="addStep()" [text]="true" size="small" class="mt-1" [disabled]="isBusy()" />
                 </div>
-            </div>
 
-            <ng-template pTemplate="footer">
-                <p-button [label]="primaryActionLabel()" [icon]="editingFunnel() ? 'pi pi-save' : 'pi pi-plus'" (onClick)="saveFunnel()" [loading]="saving()" [disabled]="!canSave()" size="small" />
-            </ng-template>
-        </p-dialog>
+                @if (errorKey(); as key) {
+                    <p-message severity="error" styleClass="w-full" [text]="key | transloco" />
+                }
+            </form>
+        </app-crud-dialog>
     `
 })
 export class FunnelManager {
@@ -195,11 +184,12 @@ export class FunnelManager {
 
     private analyticsService = inject(AnalyticsService);
     private transloco = inject(TranslocoService);
+    private confirmationService = inject(ConfirmationService);
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
-    protected readonly dialogStyle = { width: '880px', maxWidth: '94vw' };
     protected readonly saving = signal(false);
     protected readonly deletingFunnelId = signal<string | null>(null);
+    protected readonly isEditorDialogVisible = signal(false);
     protected readonly editingFunnel = signal<Funnel | null>(null);
     protected readonly isBusy = computed(() => this.saving() || this.deletingFunnelId() !== null);
     protected readonly successKey = signal<string | null>(null);
@@ -257,6 +247,12 @@ export class FunnelManager {
         });
     }
 
+    protected openCreateDialog() {
+        if (this.isBusy()) return;
+        this.resetEditor();
+        this.isEditorDialogVisible.set(true);
+    }
+
     addStep() {
         if (this.isBusy()) return;
         this.stepControls.update((steps) => [...steps, this.createStepControl()]);
@@ -286,6 +282,7 @@ export class FunnelManager {
             steps.push({ type: 'path', value: '' });
         }
         this.stepControls.set(steps.map((step) => this.createStepControl(step.type, step.value)));
+        this.isEditorDialogVisible.set(true);
     }
 
     resetEditor() {
@@ -297,8 +294,65 @@ export class FunnelManager {
 
     onHide() {
         this.visible.set(false);
+        this.isEditorDialogVisible.set(false);
         this.resetEditor();
         this.lastAppliedEditFunnelId.set(null);
+    }
+
+    protected onManagerVisibleChange(visible: boolean) {
+        if (visible) {
+            this.visible.set(true);
+            return;
+        }
+        this.onHide();
+    }
+
+    protected onEditorDialogVisibleChange(visible: boolean) {
+        if (!visible && this.saving()) {
+            this.isEditorDialogVisible.set(true);
+            return;
+        }
+        this.isEditorDialogVisible.set(visible);
+        if (!visible) {
+            this.resetEditor();
+        }
+    }
+
+    protected funnelActions(funnel: Funnel): TableRowActionItem[] {
+        this.activeLanguage();
+        return [
+            {
+                label: this.transloco.translate('funnels.manager.viewStats'),
+                icon: 'pi pi-chart-bar',
+                disabled: this.isBusy(),
+                command: () => this.viewFunnel.emit(funnel)
+            },
+            {
+                label: this.transloco.translate('funnels.manager.editTooltip'),
+                icon: 'pi pi-pencil',
+                disabled: this.isBusy(),
+                command: () => this.editFunnel(funnel)
+            },
+            { separator: true },
+            {
+                label: this.transloco.translate('funnels.manager.deleteTooltip'),
+                icon: 'pi pi-trash',
+                danger: true,
+                disabled: this.isBusy(),
+                command: () => this.confirmDeleteFunnel(funnel)
+            }
+        ];
+    }
+
+    protected confirmDeleteFunnel(funnel: Funnel) {
+        if (this.isBusy()) return;
+        this.confirmationService.confirm({
+            message: this.transloco.translate('funnels.manager.confirmDelete', { name: funnel.name }),
+            icon: 'pi pi-exclamation-triangle',
+            rejectButtonProps: dialogCancelButton(this.transloco.translate('common.actions.cancel')),
+            acceptButtonProps: dialogDangerButton(this.transloco.translate('funnels.manager.deleteTooltip')),
+            accept: () => this.deleteFunnel(funnel.id)
+        });
     }
 
     saveFunnel() {
@@ -321,6 +375,7 @@ export class FunnelManager {
         request.pipe(finalize(() => this.saving.set(false))).subscribe({
             next: () => {
                 this.resetEditor();
+                this.isEditorDialogVisible.set(false);
                 this.funnelsResource.reload();
                 this.funnelsChanged.emit();
                 this.setSuccess(action);

@@ -301,9 +301,6 @@ func (s *service) requireSiteView(ctx context.Context, siteID uuid.UUID) (*datab
 	if err != nil {
 		return nil, err
 	}
-	if authz.InstanceRole.HasPermission(authcore.PermSiteView) {
-		return authz, nil
-	}
 	role, ok := authz.SiteRoles[siteID]
 	if !ok || !role.HasPermission(authcore.PermSiteView) {
 		return nil, errors.New("forbidden")

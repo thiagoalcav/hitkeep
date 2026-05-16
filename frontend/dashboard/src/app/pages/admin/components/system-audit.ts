@@ -3,6 +3,8 @@ import { finalize } from 'rxjs';
 
 import { AuditTableComponent } from '@components/audit-table/audit-table';
 import { AuditTableExportStatus, AuditTableQuery } from '@components/audit-table/audit-table.types';
+import { INSTANCE_CAPABILITIES } from '@core/access/capabilities';
+import { AccessService } from '@services/access.service';
 import { AdminSystemService, InstanceAuditEntry, InstanceAuditListResponse } from '@services/admin-system.service';
 import { AuditPresentationService } from '@services/audit-presentation.service';
 
@@ -15,6 +17,7 @@ import { AuditPresentationService } from '@services/audit-presentation.service';
 })
 export class SystemAudit implements OnInit {
     private readonly system = inject(AdminSystemService);
+    private readonly access = inject(AccessService);
     private readonly presentation = inject(AuditPresentationService);
     private auditRequestID = 0;
 
@@ -32,6 +35,7 @@ export class SystemAudit implements OnInit {
     protected readonly actionOptions = computed(() => this.presentation.actionOptions('system'));
     protected readonly outcomeOptions = computed(() => this.presentation.outcomeOptions());
     protected readonly targetTypeOptions = computed(() => this.presentation.targetTypeOptions());
+    protected readonly canExportAudit = computed(() => this.access.hasInstance(INSTANCE_CAPABILITIES.exportAudit));
 
     ngOnInit() {
         this.loadEntries(this.query());
@@ -49,6 +53,10 @@ export class SystemAudit implements OnInit {
     }
 
     protected exportAudit() {
+        if (!this.canExportAudit()) {
+            return;
+        }
+
         this.exportStatus.set(null);
         this.isExporting.set(true);
         this.system

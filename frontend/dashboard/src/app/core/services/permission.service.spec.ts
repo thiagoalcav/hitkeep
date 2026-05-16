@@ -14,42 +14,25 @@ describe('PermissionService', () => {
         service = TestBed.inject(PermissionService);
     });
 
-    it('does not treat instance admin as site data manager without the permission', () => {
-        service.applyPermissions({
-            instance_role: 'admin',
-            instance_permissions: ['instance.view_all_sites', 'site.view'],
-            permissions: {}
-        });
-
-        expect(service.canViewSite('site-1')).toBe(true);
-        expect(service.canManageSite('site-1')).toBe(false);
-    });
-
-    it('allows site management when the user has site.manage_data through instance permissions', () => {
-        service.applyPermissions({
-            instance_role: 'owner',
-            instance_permissions: ['site.view', 'site.manage_data'],
-            permissions: {}
-        });
-
-        expect(service.canManageSite('site-1')).toBe(true);
-    });
-
-    it('allows site management for site owner and admin roles', () => {
+    it('stores the latest permission context from the API', () => {
         service.applyPermissions({
             instance_role: 'user',
-            instance_permissions: [],
+            instance_permissions: ['site.view'],
+            instance_capabilities: ['site.view'],
             permissions: {
-                'site-owner': 'owner',
-                'site-admin': 'admin',
-                'site-editor': 'editor',
-                'site-viewer': 'viewer'
-            }
+                'site-1': 'owner'
+            },
+            site_capabilities: {
+                'site-1': ['site.view', 'site.delete']
+            },
+            active_team_role: 'admin',
+            active_team_capabilities: ['team.manage_settings']
         });
 
-        expect(service.canManageSite('site-owner')).toBe(true);
-        expect(service.canManageSite('site-admin')).toBe(true);
-        expect(service.canManageSite('site-editor')).toBe(false);
-        expect(service.canManageSite('site-viewer')).toBe(false);
+        const context = service.permissions();
+        expect(context?.instance_capabilities).toEqual(['site.view']);
+        expect(context?.site_capabilities).toEqual({ 'site-1': ['site.view', 'site.delete'] });
+        expect(context?.active_team_role).toBe('admin');
+        expect(context?.active_team_capabilities).toEqual(['team.manage_settings']);
     });
 });

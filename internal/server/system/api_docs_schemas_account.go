@@ -613,7 +613,18 @@ func openAPIV1AccountSchemas() map[string]any {
 					"type":                 "object",
 					"additionalProperties": map[string]any{"type": "string"},
 				},
-				"instance_permissions": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+				"instance_permissions":  map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+				"instance_capabilities": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
+				"site_capabilities": map[string]any{
+					"type": "object",
+					"additionalProperties": map[string]any{
+						"type":  "array",
+						"items": map[string]any{"type": "string"},
+					},
+				},
+				"active_team_id":           map[string]any{"type": "string", "format": "uuid"},
+				"active_team_role":         map[string]any{"type": "string"},
+				"active_team_capabilities": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 			},
 		},
 		"APIClientSiteRole": map[string]any{
@@ -638,7 +649,7 @@ func openAPIV1AccountSchemas() map[string]any {
 				"revoked_at":    map[string]any{"type": "string", "format": "date-time"},
 				"created_at":    map[string]any{"type": "string", "format": "date-time"},
 				"updated_at":    map[string]any{"type": "string", "format": "date-time"},
-				"site_roles":    map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/APIClientSiteRole"}},
+				"site_roles":    map[string]any{"type": "array", "description": "Explicit site grants. Empty means the API client has no site-scoped analytics, MCP, or ingest access.", "items": map[string]any{"$ref": "#/components/schemas/APIClientSiteRole"}},
 			},
 		},
 		"APIClientCreateResponse": map[string]any{

@@ -44,38 +44,6 @@
     background: var(--ai-correlation-shell-bg);
 }
 
-.ai-visibility__setup-callout {
-    border-radius: 1rem;
-}
-
-.ai-visibility__setup-icon {
-    align-items: center;
-    background: color-mix(in srgb, var(--p-primary-color) 10%, var(--p-surface-0));
-    border: 1px solid color-mix(in srgb, var(--p-primary-color) 18%, transparent);
-    border-radius: 1rem;
-    color: var(--p-primary-color);
-    display: inline-flex;
-    flex-shrink: 0;
-    font-size: 1.125rem;
-    height: 2.75rem;
-    justify-content: center;
-    width: 2.75rem;
-}
-
-.ai-visibility__setup-badge {
-    align-items: center;
-    background: color-mix(in srgb, var(--p-primary-color) 10%, var(--p-surface-0));
-    border: 1px solid color-mix(in srgb, var(--p-primary-color) 18%, transparent);
-    border-radius: 9999px;
-    color: color-mix(in srgb, var(--p-primary-color) 72%, var(--p-text-color));
-    display: inline-flex;
-    font-size: 0.72rem;
-    font-weight: 700;
-    line-height: 1;
-    padding: 0.35rem 0.65rem;
-    text-transform: uppercase;
-}
-
 .ai-visibility__correlation-kpis-band {
     background: var(--ai-correlation-kpis-bg);
     border: 1px solid var(--ai-correlation-kpis-border);

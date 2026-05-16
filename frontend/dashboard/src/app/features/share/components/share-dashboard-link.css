@@ -1,6 +1,5 @@
-.share-actions-col {
-    width: 8.5rem;
-    text-align: right;
+.share-dialog-header {
+    min-width: 0;
 }
 
 .share-token {
@@ -13,4 +12,16 @@
 
 .share-url-input {
     min-width: 14rem;
+}
+
+@media (max-width: 640px) {
+    .share-dialog-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    :host ::ng-deep .share-dialog-header p-button,
+    :host ::ng-deep .share-dialog-header .p-button {
+        width: 100%;
+    }
 }

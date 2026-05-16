@@ -110,24 +110,32 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleUpdateAPIClient()))
+	mux.HandleFunc("POST /api/user/api-clients/{id}/rotate", ctx.Handler(shared.HandlerConfig{
+		RequireAuth: true,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleRotateAPIClient()))
 	mux.HandleFunc("DELETE /api/user/api-clients/{id}", ctx.Handler(shared.HandlerConfig{
 		RequireAuth: true,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleDeleteAPIClient()))
 	mux.HandleFunc("GET /api/user/teams/{id}/api-clients", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamManageAPIClients,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleListTeamAPIClients()))
 	mux.HandleFunc("POST /api/user/teams/{id}/api-clients", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamManageAPIClients,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleCreateTeamAPIClient()))
 	mux.HandleFunc("PUT /api/user/teams/{id}/api-clients/{clientId}", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamManageAPIClients,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleUpdateTeamAPIClient()))
+	mux.HandleFunc("POST /api/user/teams/{id}/api-clients/{clientId}/rotate", ctx.Handler(shared.HandlerConfig{
+		TeamCap:     authcore.CapTeamManageAPIClients,
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleRotateTeamAPIClient()))
 	mux.HandleFunc("DELETE /api/user/teams/{id}/api-clients/{clientId}", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamManageAPIClients,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleDeleteTeamAPIClient()))
 	mux.HandleFunc("GET /api/user/report-subscriptions", ctx.Handler(shared.HandlerConfig{
@@ -155,43 +163,43 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleSetActiveTeam()))
 	mux.HandleFunc("PATCH /api/user/teams/{id}", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamManageSettings,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleUpdateTeam()))
 	mux.HandleFunc("PUT /api/user/teams/{id}", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamManageSettings,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleUpdateTeam()))
 	mux.HandleFunc("POST /api/user/teams/{id}/transfer-ownership", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamTransferOwnership,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleTransferTeamOwnership()))
 	mux.HandleFunc("POST /api/user/teams/{id}/archive", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamArchive,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleArchiveTeam()))
 	mux.HandleFunc("GET /api/user/teams/{id}/members", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamViewMembers,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleGetTeamMembers()))
 	mux.HandleFunc("GET /api/user/teams/{id}/invites", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamManageMembers,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleGetTeamInvites()))
 	mux.HandleFunc("GET /api/user/teams/{id}/audit", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamViewAudit,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleGetTeamAudit()))
 	mux.HandleFunc("GET /api/user/teams/{id}/integrations/google-search-console/status", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamManageIntegrations,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleGetGoogleSearchConsoleStatus()))
 	mux.HandleFunc("POST /api/user/teams/{id}/integrations/google-search-console/connect", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamManageIntegrations,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleConnectGoogleSearchConsole()))
 	mux.HandleFunc("GET /api/user/teams/{id}/integrations/google-search-console/properties", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamManageIntegrations,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleListGoogleSearchConsoleProperties()))
 	mux.HandleFunc("GET /api/sites/{id}/integrations/google-search-console", ctx.Handler(shared.HandlerConfig{
@@ -211,23 +219,23 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleRequestGoogleSearchConsoleSiteSync()))
 	mux.HandleFunc("DELETE /api/user/teams/{id}/integrations/google-search-console", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamManageIntegrations,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleDisconnectGoogleSearchConsole()))
 	mux.HandleFunc("POST /api/user/teams/{id}/members", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamManageMembers,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleAddTeamMember()))
 	mux.HandleFunc("POST /api/user/teams/{id}/invites/{inviteId}/resend", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamManageMembers,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleResendTeamInvite()))
 	mux.HandleFunc("DELETE /api/user/teams/{id}/invites/{inviteId}", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamManageMembers,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleRevokeTeamInvite()))
 	mux.HandleFunc("DELETE /api/user/teams/{id}/members/{userId}", ctx.Handler(shared.HandlerConfig{
-		RequireAuth: true,
+		TeamCap:     authcore.CapTeamManageMembers,
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleRemoveTeamMember()))
 	mux.HandleFunc("DELETE /api/user/teams/{id}/leave", ctx.Handler(shared.HandlerConfig{

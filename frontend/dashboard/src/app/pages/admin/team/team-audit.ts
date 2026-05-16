@@ -5,7 +5,9 @@ import { finalize } from 'rxjs';
 
 import { AuditTableComponent } from '@components/audit-table/audit-table';
 import { AuditTableQuery } from '@components/audit-table/audit-table.types';
+import { TEAM_CAPABILITIES } from '@core/access/capabilities';
 import { TeamAuditEntry } from '@models/analytics.types';
+import { AccessService } from '@services/access.service';
 import { AuditPresentationService } from '@services/audit-presentation.service';
 import { TeamService } from '@services/team.service';
 
@@ -18,6 +20,7 @@ import { TeamService } from '@services/team.service';
 })
 export class TeamAuditPage {
     private readonly teamService = inject(TeamService);
+    private readonly access = inject(AccessService);
     private readonly presentation = inject(AuditPresentationService);
     private readonly activeLoadedTeamID = signal<string | null>(null);
     private auditRequestID = 0;
@@ -36,10 +39,7 @@ export class TeamAuditPage {
     protected readonly outcomeOptions = computed(() => this.presentation.outcomeOptions());
     protected readonly targetTypeOptions = computed(() => this.presentation.targetTypeOptions());
 
-    protected readonly canViewAudit = computed(() => {
-        const role = this.team()?.role;
-        return role === 'owner' || role === 'admin';
-    });
+    protected readonly canViewAudit = computed(() => this.access.canActiveTeam(TEAM_CAPABILITIES.viewAudit));
 
     constructor() {
         effect(() => {

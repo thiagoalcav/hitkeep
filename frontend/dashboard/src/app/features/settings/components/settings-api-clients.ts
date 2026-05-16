@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
@@ -7,14 +8,21 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
 import { ConfirmationService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
-import { ConfirmPopupModule } from 'primeng/confirmpopup';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { dialogCancelButton, dialogDangerButton, dialogPrimaryButton } from '@components/dialog-actions/dialog-actions';
+import { IconFieldModule } from 'primeng/iconfield';
+import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
+import { PopoverModule } from 'primeng/popover';
 import { SelectModule } from 'primeng/select';
 import { TableModule } from 'primeng/table';
+import { TagModule } from 'primeng/tag';
 
 import { SettingsCard } from '@features/settings/components/settings-card';
 import { CopyControl } from '@components/copy-control/copy-control';
+import { CrudDialog } from '@components/crud-dialog/crud-dialog';
 import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
+import { TableRowActionItem, TableRowActions } from '@components/table-row-actions/table-row-actions';
 import { APIClient, APIClientSiteRole, APIClientsService, CreateAPIClientRequest, InstanceRole, SiteRole } from '@services/api-clients.service';
 import { PermissionService } from '@services/permission.service';
 
@@ -22,6 +30,9 @@ interface SelectOption<TValue extends string> {
     label: string;
     value: TValue;
 }
+
+type APIClientStatus = 'active' | 'inactive' | 'expired';
+type APIClientFeedbackRegion = 'dialog' | 'list';
 
 const truncateToMinute = (value: Date): number => {
     const copy = new Date(value);
@@ -51,7 +62,25 @@ const expiresAtNotPastValidator = (): ValidatorFn => {
 
 @Component({
     selector: 'app-settings-api-clients',
-    imports: [ReactiveFormsModule, ButtonModule, ConfirmPopupModule, InputTextModule, SelectModule, TableModule, SettingsCard, CopyControl, RelativeDateTime, TranslocoPipe],
+    imports: [
+        RouterLink,
+        ReactiveFormsModule,
+        ButtonModule,
+        ConfirmDialogModule,
+        IconFieldModule,
+        InputIconModule,
+        InputTextModule,
+        PopoverModule,
+        SelectModule,
+        TableModule,
+        TagModule,
+        SettingsCard,
+        CopyControl,
+        CrudDialog,
+        RelativeDateTime,
+        TableRowActions,
+        TranslocoPipe
+    ],
     templateUrl: './settings-api-clients.html',
     styleUrl: './settings-api-clients.css',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -66,12 +95,15 @@ export class SettingsAPIClients {
 
     readonly scope = input<'personal' | 'team'>('personal');
     readonly teamId = input<string | null>(null);
+    readonly showTeamClientsLink = input(false);
 
     protected readonly isLoading = signal(false);
     protected readonly isSaving = signal(false);
     protected readonly error = signal<string | null>(null);
     protected readonly success = signal<string | null>(null);
     protected readonly createdToken = signal<string | null>(null);
+    protected readonly feedbackRegion = signal<APIClientFeedbackRegion>('list');
+    protected readonly isFormDialogVisible = signal(false);
     protected readonly editingClientID = signal<string | null>(null);
 
     protected readonly clients = signal<APIClient[]>([]);
@@ -136,6 +168,12 @@ export class SettingsAPIClients {
     protected readonly isTeamScope = computed(() => this.scope() === 'team');
     protected readonly titleKey = computed(() => (this.isTeamScope() ? 'settings.apiClients.teamTitle' : 'settings.apiClients.title'));
     protected readonly descriptionKey = computed(() => (this.isTeamScope() ? 'settings.apiClients.teamDescription' : 'settings.apiClients.description'));
+    protected readonly dialogTitleKey = computed(() => (this.isEditing() ? 'settings.apiClients.editDialogTitle' : 'settings.apiClients.createDialogTitle'));
+    protected readonly dialogSubmitLabelKey = computed(() => (this.isEditing() ? 'settings.apiClients.actions.save' : 'settings.apiClients.actions.create'));
+    protected readonly dialogError = computed(() => (this.feedbackRegion() === 'dialog' ? this.error() : null));
+    protected readonly listError = computed(() => (this.feedbackRegion() === 'list' ? this.error() : null));
+    protected readonly listSuccess = computed(() => (this.feedbackRegion() === 'list' ? this.success() : null));
+    protected readonly listCreatedToken = computed(() => (this.feedbackRegion() === 'list' ? this.createdToken() : null));
 
     constructor() {
         effect(() => {
@@ -146,6 +184,7 @@ export class SettingsAPIClients {
     }
 
     protected reload(): void {
+        this.feedbackRegion.set('list');
         this.isLoading.set(true);
         this.error.set(null);
 
@@ -166,6 +205,10 @@ export class SettingsAPIClients {
     }
 
     protected submit(): void {
+        if (this.isSaving()) {
+            return;
+        }
+        this.feedbackRegion.set('dialog');
         this.error.set(null);
         this.form.controls.expiresAt.updateValueAndValidity({ emitEvent: false });
 
@@ -176,6 +219,7 @@ export class SettingsAPIClients {
 
         const payload = this.buildPayload();
         if (!payload) {
+            this.feedbackRegion.set('dialog');
             this.error.set('settings.apiClients.errors.invalidExpiration');
             return;
         }
@@ -194,7 +238,8 @@ export class SettingsAPIClients {
                         this.clients.update((current) => [resp.client, ...current]);
                         this.createdToken.set(resp.token);
                         this.success.set('settings.apiClients.messages.created');
-                        this.resetForm();
+                        this.closeFormDialog();
+                        this.feedbackRegion.set('list');
                     },
                     error: () => {
                         this.error.set('settings.apiClients.errors.createFailed');
@@ -206,6 +251,7 @@ export class SettingsAPIClients {
         const existing = this.clients().find((client) => client.id === editingClientID);
         if (!existing) {
             this.isSaving.set(false);
+            this.feedbackRegion.set('dialog');
             this.error.set('settings.apiClients.errors.notFound');
             return;
         }
@@ -225,7 +271,8 @@ export class SettingsAPIClients {
                     this.clients.update((current) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
                     this.success.set('settings.apiClients.messages.updated');
                     this.createdToken.set(null);
-                    this.resetForm();
+                    this.closeFormDialog();
+                    this.feedbackRegion.set('list');
                 },
                 error: () => {
                     this.error.set('settings.apiClients.errors.updateFailed');
@@ -234,10 +281,12 @@ export class SettingsAPIClients {
     }
 
     protected startEdit(client: APIClient): void {
+        this.feedbackRegion.set('dialog');
         this.editingClientID.set(client.id);
         this.error.set(null);
         this.success.set(null);
         this.createdToken.set(null);
+        this.isFormDialogVisible.set(true);
 
         this.form.controls.name.setValue(client.name);
         this.form.controls.description.setValue(client.description ?? '');
@@ -248,31 +297,85 @@ export class SettingsAPIClients {
     }
 
     protected cancelEdit(): void {
-        this.resetForm();
-        this.error.set(null);
-        this.success.set(null);
+        this.closeFormDialog();
     }
 
-    protected confirmDeleteClient(event: Event, client: APIClient): void {
+    protected openCreateDialog(): void {
+        this.resetForm();
+        this.feedbackRegion.set('dialog');
+        this.error.set(null);
+        this.success.set(null);
+        this.createdToken.set(null);
+        this.isFormDialogVisible.set(true);
+    }
+
+    protected onFormDialogVisibleChange(visible: boolean): void {
+        if (!visible && this.isSaving()) {
+            this.isFormDialogVisible.set(true);
+            return;
+        }
+        this.isFormDialogVisible.set(visible);
+        if (!visible) {
+            this.closeFormDialog();
+        }
+    }
+
+    protected apiClientActions(client: APIClient): TableRowActionItem[] {
+        this.activeLanguage();
+        return [
+            {
+                label: this.transloco.translate('settings.apiClients.actions.edit'),
+                icon: 'pi pi-pencil',
+                command: () => this.startEdit(client)
+            },
+            {
+                label: this.transloco.translate('settings.apiClients.actions.rollToken'),
+                icon: 'pi pi-refresh',
+                disabled: !this.canRotateClient(client) || this.isSaving(),
+                command: () => this.confirmRotateClient(client)
+            },
+            {
+                label: this.transloco.translate(client.revoked_at ? 'settings.apiClients.actions.reactivate' : 'settings.apiClients.actions.revoke'),
+                icon: client.revoked_at ? 'pi pi-lock-open' : 'pi pi-lock',
+                disabled: this.isSaving(),
+                command: () => this.toggleRevoked(client)
+            },
+            { separator: true },
+            {
+                label: this.transloco.translate('settings.apiClients.actions.delete'),
+                icon: 'pi pi-trash',
+                danger: true,
+                disabled: this.isSaving(),
+                command: () => this.confirmDeleteClient(client)
+            }
+        ];
+    }
+
+    protected confirmDeleteClient(client: APIClient): void {
         this.confirmationService.confirm({
-            key: 'api-client-delete',
-            target: event.currentTarget as EventTarget,
             message: this.transloco.translate('settings.apiClients.confirmDelete', { name: client.name }),
             icon: 'pi pi-exclamation-triangle',
-            rejectButtonProps: {
-                label: this.transloco.translate('common.actions.cancel'),
-                severity: 'secondary',
-                outlined: true
-            },
-            acceptButtonProps: {
-                label: this.transloco.translate('settings.apiClients.actions.delete'),
-                severity: 'danger'
-            },
+            rejectButtonProps: dialogCancelButton(this.transloco.translate('common.actions.cancel')),
+            acceptButtonProps: dialogDangerButton(this.transloco.translate('settings.apiClients.actions.delete')),
             accept: () => this.deleteClient(client)
         });
     }
 
+    protected confirmRotateClient(client: APIClient): void {
+        if (!this.canRotateClient(client)) {
+            return;
+        }
+        this.confirmationService.confirm({
+            message: this.transloco.translate('settings.apiClients.confirmRotate', { name: client.name }),
+            icon: 'pi pi-refresh',
+            rejectButtonProps: dialogCancelButton(this.transloco.translate('common.actions.cancel')),
+            acceptButtonProps: dialogPrimaryButton(this.transloco.translate('settings.apiClients.actions.rollToken')),
+            accept: () => this.rotateClient(client)
+        });
+    }
+
     private deleteClient(client: APIClient): void {
+        this.feedbackRegion.set('list');
         this.error.set(null);
         this.success.set(null);
         this.isSaving.set(true);
@@ -284,7 +387,7 @@ export class SettingsAPIClients {
                     this.clients.update((current) => current.filter((entry) => entry.id !== client.id));
                     this.success.set('settings.apiClients.messages.deleted');
                     if (this.editingClientID() === client.id) {
-                        this.resetForm();
+                        this.closeFormDialog();
                     }
                 },
                 error: () => {
@@ -294,6 +397,7 @@ export class SettingsAPIClients {
     }
 
     protected toggleRevoked(client: APIClient): void {
+        this.feedbackRegion.set('list');
         this.error.set(null);
         this.success.set(null);
         this.isSaving.set(true);
@@ -321,6 +425,78 @@ export class SettingsAPIClients {
                     this.error.set('settings.apiClients.errors.updateFailed');
                 }
             });
+    }
+
+    protected rotateClient(client: APIClient): void {
+        if (!this.canRotateClient(client)) {
+            return;
+        }
+        this.feedbackRegion.set('list');
+        this.error.set(null);
+        this.success.set(null);
+        this.isSaving.set(true);
+
+        this.apiClientsService
+            .rotateClient(client.id, this.teamIdForRequests())
+            .pipe(finalize(() => this.isSaving.set(false)))
+            .subscribe({
+                next: (resp) => {
+                    this.clients.update((current) => current.map((entry) => (entry.id === resp.client.id ? resp.client : entry)));
+                    this.createdToken.set(resp.token);
+                    this.success.set('settings.apiClients.messages.rotated');
+                    if (this.editingClientID() === resp.client.id) {
+                        this.closeFormDialog();
+                    }
+                },
+                error: () => {
+                    this.error.set('settings.apiClients.errors.rotateFailed');
+                }
+            });
+    }
+
+    protected canRotateClient(client: APIClient): boolean {
+        return !client.revoked_at && !this.isExpired(client);
+    }
+
+    protected clientStatus(client: APIClient): APIClientStatus {
+        if (client.revoked_at) {
+            return 'inactive';
+        }
+        if (this.isExpired(client)) {
+            return 'expired';
+        }
+        return 'active';
+    }
+
+    protected clientStatusIconClass(client: APIClient): string {
+        switch (this.clientStatus(client)) {
+            case 'inactive':
+                return 'pi pi-ban api-client-status-icon api-client-status-icon--inactive';
+            case 'expired':
+                return 'pi pi-clock api-client-status-icon api-client-status-icon--expired';
+            case 'active':
+            default:
+                return 'pi pi-check-circle api-client-status-icon api-client-status-icon--active';
+        }
+    }
+
+    protected clientStatusLabelKey(client: APIClient): string {
+        return `settings.apiClients.status.${this.clientStatus(client)}`;
+    }
+
+    protected isExpired(client: APIClient): boolean {
+        if (!client.expires_at) {
+            return false;
+        }
+        const parsed = new Date(client.expires_at);
+        return !Number.isNaN(parsed.getTime()) && parsed.getTime() <= Date.now();
+    }
+
+    protected emptyGrantLabelKey(client: APIClient): string {
+        if (!this.isTeamScope() && (client.instance_role === 'owner' || client.instance_role === 'admin')) {
+            return 'settings.apiClients.noSiteAccessInstanceOnly';
+        }
+        return 'settings.apiClients.noSiteAccess';
     }
 
     protected addSiteScope(): void {
@@ -354,6 +530,30 @@ export class SettingsAPIClients {
 
     protected siteDomain(siteID: string): string {
         return this.sites().find((site) => site.id === siteID)?.domain ?? siteID;
+    }
+
+    protected siteGrantLabel(scope: APIClientSiteRole): string {
+        this.activeLanguage();
+        return `${this.siteDomain(scope.site_id)} · ${this.transloco.translate(`roles.${scope.role}`)}`;
+    }
+
+    protected siteGrantCountLabel(count: number): string {
+        this.activeLanguage();
+        return this.transloco.translate('settings.apiClients.siteGrantCount', { count });
+    }
+
+    protected siteGrantSeverity(role: SiteRole): 'success' | 'info' | 'secondary' | 'contrast' {
+        switch (role) {
+            case 'owner':
+                return 'contrast';
+            case 'admin':
+                return 'info';
+            case 'editor':
+                return 'success';
+            case 'viewer':
+            default:
+                return 'secondary';
+        }
     }
 
     protected expiresAtMin(): string {
@@ -406,6 +606,12 @@ export class SettingsAPIClients {
             expiresAt: null
         });
         this.siteRoleForm.reset({ siteID: null, role: 'viewer' });
+    }
+
+    private closeFormDialog(): void {
+        this.isFormDialogVisible.set(false);
+        this.resetForm();
+        this.error.set(null);
     }
 
     private toDateTimeLocal(value: string | null | undefined): string | null {

@@ -3,17 +3,27 @@ import { Component, inject, model, signal } from '@angular/core';
 import { ReactiveFormsModule, FormControl, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { compatForm } from '@angular/forms/signals/compat';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { DialogModule } from 'primeng/dialog';
-import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
+import { DialogShell } from '@components/dialog-shell/dialog-shell';
 import { SiteService } from '@features/sites/services/site.service';
 @Component({
     selector: 'app-add-site-dialog',
     standalone: true,
-    imports: [ReactiveFormsModule, DialogModule, ButtonModule, InputTextModule, MessageModule, TranslocoPipe],
+    imports: [ReactiveFormsModule, DialogShell, InputTextModule, MessageModule, TranslocoPipe],
     template: `
-        <p-dialog [header]="'sites.addDialog.title' | transloco" [(visible)]="visible" [modal]="true" [style]="{ width: '450px', maxWidth: '90vw' }" (onHide)="resetForm()">
+        <app-dialog-shell
+            [title]="'sites.addDialog.title' | transloco"
+            [visible]="visible()"
+            (visibleChange)="onDialogVisibleChange($event)"
+            [secondaryLabel]="'common.actions.cancel' | transloco"
+            [primaryLabel]="'sites.addDialog.addAction' | transloco"
+            [primaryLoading]="isSubmitting()"
+            [primaryDisabled]="isSubmitting() || form().invalid()"
+            [busy]="isSubmitting()"
+            width="450px"
+            (primaryAction)="onSubmit()"
+        >
             <form (submit)="onSubmit($event)" class="flex flex-col gap-6 pt-2" novalidate>
                 <!-- Instructions -->
                 <div class="bg-[var(--p-surface-50)] dark:bg-[var(--p-surface-800)] p-3 rounded-md border border-[var(--p-surface-border)] flex gap-3">
@@ -57,12 +67,7 @@ import { SiteService } from '@features/sites/services/site.service';
                     }
                 </div>
             </form>
-
-            <ng-template pTemplate="footer">
-                <p-button [label]="'common.actions.cancel' | transloco" (onClick)="visible.set(false)" styleClass="p-button-text" />
-                <p-button [label]="'sites.addDialog.addAction' | transloco" (onClick)="onSubmit()" [loading]="isSubmitting()" [disabled]="isSubmitting() || form().invalid()" />
-            </ng-template>
-        </p-dialog>
+        </app-dialog-shell>
     `
 })
 export class AddSiteDialog {
@@ -110,6 +115,12 @@ export class AddSiteDialog {
         this.createError.set(null);
         this.isSubmitting.set(false);
     }
+    protected onDialogVisibleChange(visible: boolean) {
+        this.visible.set(visible);
+        if (!visible) {
+            this.resetForm();
+        }
+    }
     onSubmit(event?: Event) {
         event?.preventDefault();
         if (this.form().invalid()) {
@@ -127,7 +138,7 @@ export class AddSiteDialog {
 
         this.siteService.createSite(domain).subscribe({
             next: () => {
-                this.visible.set(false);
+                this.onDialogVisibleChange(false);
             },
             error: () => {
                 this.createError.set('sites.addDialog.errors.createFailed');

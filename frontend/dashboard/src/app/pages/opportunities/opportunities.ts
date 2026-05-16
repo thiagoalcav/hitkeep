@@ -10,10 +10,11 @@ import { PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb'
 import { EmptyState } from '@components/molecules/empty-state';
 import { PageFrame } from '@components/page-frame/page-frame';
 import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from '@components/range-toolbar/range-toolbar';
+import { INSTANCE_CAPABILITIES, SITE_CAPABILITIES } from '@core/access/capabilities';
 import { injectActiveLang } from '@core/i18n/active-lang';
 import { AdminSystemService, SystemAIStatus } from '@services/admin-system.service';
 import { Opportunity, OpportunityStatus, OpportunitiesService } from '@services/opportunities.service';
-import { PermissionService } from '@services/permission.service';
+import { AccessService } from '@services/access.service';
 import { OpportunityCard } from './opportunity-card';
 import { OpportunityDetailDrawer } from './opportunity-detail-drawer';
 import { OpportunityFilterRail } from './opportunity-filter-rail';
@@ -30,7 +31,7 @@ export class OpportunitiesPage {
     protected readonly siteService = inject(SiteService);
     private readonly opportunitiesService = inject(OpportunitiesService);
     private readonly adminSystemService = inject(AdminSystemService);
-    private readonly permissionService = inject(PermissionService);
+    private readonly access = inject(AccessService);
     private readonly transloco = inject(TranslocoService);
     private readonly destroyRef = inject(DestroyRef);
     private readonly activeLanguage = injectActiveLang();
@@ -58,10 +59,7 @@ export class OpportunitiesPage {
     protected readonly statusFilters = ['all', 'new', 'saved', 'done'] as const;
     protected readonly opportunities = signal<Opportunity[]>([]);
 
-    protected readonly canManageActiveSite = computed(() => {
-        const site = this.siteService.activeSite();
-        return site ? this.permissionService.canManageSite(site.id) : false;
-    });
+    protected readonly canManageActiveSite = computed(() => this.access.canActiveSite(SITE_CAPABILITIES.manageData));
 
     protected readonly aiStatusLabel = computed(() => {
         this.activeLanguage();
@@ -206,7 +204,7 @@ export class OpportunitiesPage {
         });
 
         effect(() => {
-            if (!this.permissionService.isInstanceAdmin()) {
+            if (!this.access.hasInstance(INSTANCE_CAPABILITIES.viewSystem)) {
                 this.aiStatus.set(null);
                 return;
             }

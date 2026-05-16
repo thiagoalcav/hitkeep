@@ -3,6 +3,7 @@ import { signal } from '@angular/core';
 import { provideRouter, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { TranslocoTestingModule } from '@jsverse/transloco';
+import { TEAM_CAPABILITIES } from '@core/access/capabilities';
 import { TeamSettingsPage } from './team-settings';
 import { TeamService } from '@services/team.service';
 import { SiteService } from '@features/sites/services/site.service';
@@ -33,6 +34,7 @@ describe('TeamSettingsPage', () => {
     });
 
     const teamServiceMock = {
+        activeTeamId: signal('team-1'),
         activeTeam,
         updateTeam: vi.fn(() => of({ status: 'ok' })),
         leaveTeam: vi.fn(() => of({ status: 'ok', active_team_id: 'team-2' })),
@@ -47,10 +49,24 @@ describe('TeamSettingsPage', () => {
     };
 
     const permissionServiceMock = {
+        permissions: signal({
+            instance_role: 'user' as const,
+            permissions: {},
+            active_team_id: 'team-1',
+            active_team_role: 'owner' as const,
+            active_team_capabilities: [TEAM_CAPABILITIES.manageSettings, TEAM_CAPABILITIES.archive]
+        }),
         loadPermissions: vi.fn(() => of({}))
     };
 
     beforeEach(async () => {
+        permissionServiceMock.permissions.set({
+            instance_role: 'user',
+            permissions: {},
+            active_team_id: 'team-1',
+            active_team_role: 'owner',
+            active_team_capabilities: [TEAM_CAPABILITIES.manageSettings, TEAM_CAPABILITIES.archive]
+        });
         await TestBed.configureTestingModule({
             imports: [
                 TeamSettingsPage,

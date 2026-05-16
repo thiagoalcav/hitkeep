@@ -3,6 +3,7 @@ package user
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -1019,6 +1020,197 @@ func TestHandleTeamAPIClientLifecycle(t *testing.T) {
 	}
 }
 
+func TestHandlePersonalAPIClientRotateAndAudit(t *testing.T) {
+	h, store, userID := setupUserSecurityTestEnv(t)
+	defer store.Close()
+
+	site, err := store.CreateSite(context.Background(), userID, "personal-api-handler.example")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	createBody, _ := json.Marshal(map[string]any{
+		"name":          "Personal automation",
+		"description":   "Runs personal syncs",
+		"instance_role": "admin",
+		"site_roles": []map[string]string{
+			{"site_id": site.ID.String(), "role": "viewer"},
+		},
+	})
+	createReq := withTestUser(httptest.NewRequest(http.MethodPost, "/api/user/api-clients", bytes.NewReader(createBody)), userID)
+	createW := httptest.NewRecorder()
+	h.handleCreateAPIClient().ServeHTTP(createW, createReq)
+	if createW.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, createW.Code, createW.Body.String())
+	}
+
+	var createResp struct {
+		Client api.APIClient `json:"client"`
+		Token  string        `json:"token"`
+	}
+	if err := json.NewDecoder(createW.Body).Decode(&createResp); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+	if createResp.Token == "" {
+		t.Fatalf("expected one-time token")
+	}
+
+	rotateReq := withTestUser(httptest.NewRequest(http.MethodPost, "/api/user/api-clients/"+createResp.Client.ID.String()+"/rotate", nil), userID)
+	rotateReq.SetPathValue("id", createResp.Client.ID.String())
+	rotateW := httptest.NewRecorder()
+	h.handleRotateAPIClient().ServeHTTP(rotateW, rotateReq)
+	if rotateW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rotateW.Code, rotateW.Body.String())
+	}
+
+	var rotateResp struct {
+		Client api.APIClient `json:"client"`
+		Token  string        `json:"token"`
+	}
+	if err := json.NewDecoder(rotateW.Body).Decode(&rotateResp); err != nil {
+		t.Fatalf("decode rotate response: %v", err)
+	}
+	if rotateResp.Token == "" || rotateResp.Token == createResp.Token {
+		t.Fatalf("expected a fresh rotated token")
+	}
+	if len(rotateResp.Client.SiteRoles) != 1 || rotateResp.Client.SiteRoles[0].SiteID != site.ID {
+		t.Fatalf("expected rotated client to preserve site grants, got %+v", rotateResp.Client.SiteRoles)
+	}
+
+	oldAuth, err := store.GetAPIClientAuth(context.Background(), createResp.Token)
+	if err != nil {
+		t.Fatalf("get old api client auth: %v", err)
+	}
+	if oldAuth != nil {
+		t.Fatalf("expected old token to be invalidated after rotate")
+	}
+
+	for _, action := range []string{"api_client.created", "api_client.rotated"} {
+		assertAPIClientAuditEntry(t, store, action, userID, createResp.Client.ID.String(), createResp.Client.Name, "")
+	}
+}
+
+func TestHandlePersonalAPIClientCreateFailsWhenAuditCannotBeWritten(t *testing.T) {
+	h, store, userID := setupUserSecurityTestEnv(t)
+	defer store.Close()
+
+	if err := store.Transact(context.Background(), func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(context.Background(), "DROP TABLE instance_audit_log")
+		return err
+	}); err != nil {
+		t.Fatalf("drop audit table: %v", err)
+	}
+
+	createBody, _ := json.Marshal(map[string]any{
+		"name":          "Unaudited automation",
+		"description":   "should fail",
+		"instance_role": "user",
+		"site_roles":    []map[string]string{},
+	})
+	createReq := withTestUser(httptest.NewRequest(http.MethodPost, "/api/user/api-clients", bytes.NewReader(createBody)), userID)
+	createW := httptest.NewRecorder()
+	h.handleCreateAPIClient().ServeHTTP(createW, createReq)
+
+	if createW.Code != http.StatusInternalServerError {
+		t.Fatalf("expected audit failure status %d, got %d: %s", http.StatusInternalServerError, createW.Code, createW.Body.String())
+	}
+	if !strings.Contains(createW.Body.String(), "Failed to audit api client action") {
+		t.Fatalf("expected audit failure response, got %q", createW.Body.String())
+	}
+}
+
+func TestHandleTeamAPIClientRotateRejectsRevokedAndAudits(t *testing.T) {
+	h, store, ownerID := setupUserSecurityTestEnv(t)
+	defer store.Close()
+
+	team, err := store.CreateTenant(context.Background(), ownerID, "Team Rotate Keys", "")
+	if err != nil {
+		t.Fatalf("create tenant: %v", err)
+	}
+	if err := store.SetActiveTenantID(context.Background(), ownerID, team.ID); err != nil {
+		t.Fatalf("set active tenant: %v", err)
+	}
+	site, err := store.CreateSite(context.Background(), ownerID, "team-rotate-api-handler.example")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	createBody, _ := json.Marshal(map[string]any{
+		"name":        "Team rotation",
+		"description": "shared",
+		"site_roles": []map[string]string{
+			{"site_id": site.ID.String(), "role": "viewer"},
+		},
+	})
+	createReq := withTestUser(httptest.NewRequest(http.MethodPost, "/api/user/teams/"+team.ID.String()+"/api-clients", bytes.NewReader(createBody)), ownerID)
+	createReq.SetPathValue("id", team.ID.String())
+	createW := httptest.NewRecorder()
+	h.handleCreateTeamAPIClient().ServeHTTP(createW, createReq)
+	if createW.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, createW.Code, createW.Body.String())
+	}
+	var createResp struct {
+		Client api.APIClient `json:"client"`
+		Token  string        `json:"token"`
+	}
+	if err := json.NewDecoder(createW.Body).Decode(&createResp); err != nil {
+		t.Fatalf("decode create response: %v", err)
+	}
+
+	rotateReq := withTestUser(httptest.NewRequest(http.MethodPost, "/api/user/teams/"+team.ID.String()+"/api-clients/"+createResp.Client.ID.String()+"/rotate", nil), ownerID)
+	rotateReq.SetPathValue("id", team.ID.String())
+	rotateReq.SetPathValue("clientId", createResp.Client.ID.String())
+	rotateW := httptest.NewRecorder()
+	h.handleRotateTeamAPIClient().ServeHTTP(rotateW, rotateReq)
+	if rotateW.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, rotateW.Code, rotateW.Body.String())
+	}
+	var rotateResp struct {
+		Client api.APIClient `json:"client"`
+		Token  string        `json:"token"`
+	}
+	if err := json.NewDecoder(rotateW.Body).Decode(&rotateResp); err != nil {
+		t.Fatalf("decode rotate response: %v", err)
+	}
+	if rotateResp.Token == "" || rotateResp.Token == createResp.Token {
+		t.Fatalf("expected a fresh rotated team token")
+	}
+	oldAuth, err := store.GetAPIClientAuth(context.Background(), createResp.Token)
+	if err != nil {
+		t.Fatalf("get old team api client auth: %v", err)
+	}
+	if oldAuth != nil {
+		t.Fatalf("expected old team token to be invalidated after rotate")
+	}
+	assertAPIClientAuditEntry(t, store, "api_client.rotated", ownerID, createResp.Client.ID.String(), createResp.Client.Name, team.ID.String())
+
+	updateBody, _ := json.Marshal(map[string]any{
+		"name":        createResp.Client.Name,
+		"description": createResp.Client.Description,
+		"revoked":     true,
+		"site_roles": []map[string]string{
+			{"site_id": site.ID.String(), "role": "viewer"},
+		},
+	})
+	updateReq := withTestUser(httptest.NewRequest(http.MethodPut, "/api/user/teams/"+team.ID.String()+"/api-clients/"+createResp.Client.ID.String(), bytes.NewReader(updateBody)), ownerID)
+	updateReq.SetPathValue("id", team.ID.String())
+	updateReq.SetPathValue("clientId", createResp.Client.ID.String())
+	updateW := httptest.NewRecorder()
+	h.handleUpdateTeamAPIClient().ServeHTTP(updateW, updateReq)
+	if updateW.Code != http.StatusOK {
+		t.Fatalf("expected revoke status %d, got %d: %s", http.StatusOK, updateW.Code, updateW.Body.String())
+	}
+
+	revokedRotateReq := withTestUser(httptest.NewRequest(http.MethodPost, "/api/user/teams/"+team.ID.String()+"/api-clients/"+createResp.Client.ID.String()+"/rotate", nil), ownerID)
+	revokedRotateReq.SetPathValue("id", team.ID.String())
+	revokedRotateReq.SetPathValue("clientId", createResp.Client.ID.String())
+	revokedRotateW := httptest.NewRecorder()
+	h.handleRotateTeamAPIClient().ServeHTTP(revokedRotateW, revokedRotateReq)
+	if revokedRotateW.Code != http.StatusConflict {
+		t.Fatalf("expected revoked rotate status %d, got %d: %s", http.StatusConflict, revokedRotateW.Code, revokedRotateW.Body.String())
+	}
+}
+
 func TestHandleTeamAPIClientRequiresTeamAdmin(t *testing.T) {
 	h, store, ownerID := setupUserSecurityTestEnv(t)
 	defer store.Close()
@@ -1043,4 +1235,46 @@ func TestHandleTeamAPIClientRequiresTeamAdmin(t *testing.T) {
 	if w.Code != http.StatusForbidden {
 		t.Fatalf("expected status %d, got %d: %s", http.StatusForbidden, w.Code, w.Body.String())
 	}
+}
+
+func assertAPIClientAuditEntry(t *testing.T, store *database.Store, action string, actorID uuid.UUID, targetID, targetLabel, teamID string) {
+	t.Helper()
+
+	entry := findAPIClientAuditEntry(t, store, action, actorID, targetID)
+	if entry.TargetLabel != targetLabel {
+		t.Fatalf("expected audit target label %q, got %q", targetLabel, entry.TargetLabel)
+	}
+	if teamID != "" && (entry.TeamID == nil || entry.TeamID.String() != teamID) {
+		t.Fatalf("expected audit team id %q, got %+v", teamID, entry.TeamID)
+	}
+	if strings.Contains(entry.Details, "token") || strings.Contains(entry.Details, "secret") {
+		t.Fatalf("audit details must not mention token material, got %q", entry.Details)
+	}
+}
+
+func findAPIClientAuditEntry(t *testing.T, store *database.Store, action string, actorID uuid.UUID, targetID string) api.InstanceAuditEntry {
+	t.Helper()
+
+	entries, total, err := store.ListInstanceAuditEntries(context.Background(), database.InstanceAuditFilter{
+		Action:     action,
+		ActorID:    actorID,
+		TargetType: "api_client",
+		Outcome:    "success",
+		Limit:      10,
+	})
+	if err != nil {
+		t.Fatalf("list audit entries for %s: %v", action, err)
+	}
+	if total < 1 || len(entries) < 1 {
+		t.Fatalf("expected at least one %s audit entry, total=%d len=%d", action, total, len(entries))
+	}
+
+	for _, entry := range entries {
+		if entry.TargetID == targetID {
+			return entry
+		}
+	}
+
+	t.Fatalf("expected %s audit entry for target %s, got %+v", action, targetID, entries)
+	return api.InstanceAuditEntry{}
 }

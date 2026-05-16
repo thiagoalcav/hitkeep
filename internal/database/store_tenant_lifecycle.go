@@ -280,9 +280,13 @@ func (s *Store) DeleteArchivedTenantMetadata(ctx context.Context, tenantID uuid.
 			{table: "cloud_billing_events", query: "DELETE FROM cloud_billing_events WHERE tenant_id = ?", args: []any{tenantID}},
 			{table: "cloud_billing_accounts", query: "DELETE FROM cloud_billing_accounts WHERE tenant_id = ?", args: []any{tenantID}},
 			{table: "instance_audit_log", query: "DELETE FROM instance_audit_log WHERE team_id = ?", args: []any{tenantID}},
+			{table: "site_activity_hourly_counts", query: "DELETE FROM site_activity_hourly_counts WHERE tenant_id = ?", args: []any{tenantID}},
+			{table: "site_activity_summary", query: "DELETE FROM site_activity_summary WHERE tenant_id = ?", args: []any{tenantID}},
+			{table: "site_tenants", query: "DELETE FROM site_tenants WHERE tenant_id = ?", args: []any{tenantID}},
 			{table: "team_invites", query: "DELETE FROM team_invites WHERE tenant_id = ?", args: []any{tenantID}},
 			{table: "tenant_members", query: "DELETE FROM tenant_members WHERE tenant_id = ?", args: []any{tenantID}},
 			{table: "tenant_archives", query: "DELETE FROM tenant_archives WHERE tenant_id = ?", args: []any{tenantID}},
+			{table: "user_preferences", query: "UPDATE user_preferences SET active_tenant_id = NULL WHERE active_tenant_id = ?", args: []any{tenantID}},
 		}
 
 		for _, stmt := range statements {

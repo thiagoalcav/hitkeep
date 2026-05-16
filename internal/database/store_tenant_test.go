@@ -513,6 +513,57 @@ func TestDeleteArchivedTenantMetadataRemovesCloudAndAPIClientRows(t *testing.T) 
 	assertTenantPurgeCount("cloud_billing_events")
 }
 
+func TestDeleteArchivedTenantMetadataRemovesTenantScopedActivityRows(t *testing.T) {
+	store := setupTenantStore(t)
+	ctx := context.Background()
+
+	ownerID, err := store.CreateUser(ctx, "purge-activity-owner@tenant.test", "hash")
+	if err != nil {
+		t.Fatalf("create owner user: %v", err)
+	}
+	site, err := store.CreateSite(ctx, ownerID, "purge-activity.example")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+	team, err := store.CreateTenant(ctx, ownerID, "Purge Activity Ready", "")
+	if err != nil {
+		t.Fatalf("create team: %v", err)
+	}
+	if err := store.ArchiveTenant(ctx, team.ID, ownerID); err != nil {
+		t.Fatalf("archive tenant: %v", err)
+	}
+
+	bucket := time.Now().UTC().Truncate(time.Hour)
+	if _, err := store.DB().ExecContext(ctx, `
+		INSERT INTO site_activity_summary (site_id, tenant_id, updated_at)
+		VALUES (?, ?, ?)
+	`, site.ID, team.ID, bucket); err != nil {
+		t.Fatalf("insert stale activity summary: %v", err)
+	}
+	if _, err := store.DB().ExecContext(ctx, `
+		INSERT INTO site_activity_hourly_counts (site_id, tenant_id, bucket, hits, events, updated_at)
+		VALUES (?, ?, ?, 1, 0, ?)
+	`, site.ID, team.ID, bucket, bucket); err != nil {
+		t.Fatalf("insert stale activity counts: %v", err)
+	}
+
+	deleted, err := store.DeleteArchivedTenantMetadata(ctx, team.ID)
+	if err != nil {
+		t.Fatalf("delete archived tenant metadata: %v", err)
+	}
+	if deleted == nil || deleted.ID != team.ID {
+		t.Fatalf("expected deleted team %s, got %+v", team.ID, deleted)
+	}
+
+	remaining, err := store.GetTenant(ctx, team.ID)
+	if err != nil {
+		t.Fatalf("get tenant after purge: %v", err)
+	}
+	if remaining != nil {
+		t.Fatalf("expected tenant to be deleted, got %+v", remaining)
+	}
+}
+
 func TestDeleteArchivedTenantMetadataRequiresArchivedTeam(t *testing.T) {
 	store := setupTenantStore(t)
 	ctx := context.Background()

@@ -4,6 +4,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TranslocoTestingModule } from '@jsverse/transloco';
+import { INSTANCE_CAPABILITIES } from '@core/access/capabilities';
 import { PermissionService } from '@services/permission.service';
 import { SiteService } from '@features/sites/services/site.service';
 import { routes } from './app.routes';
@@ -27,6 +28,15 @@ describe('routes', () => {
         expect(importExportRoute?.children?.some((route) => route.path === 'import')).toBe(true);
         expect(importExportRoute?.children?.some((route) => route.path === 'export')).toBe(true);
         expect(children.some((route) => route.path === 'imports')).toBe(false);
+    });
+
+    it('gates system status and system settings by their backend capabilities', () => {
+        const adminChildren = routes.find((route) => route.path === '')?.children?.find((route) => route.path === 'admin')?.children ?? [];
+        const statusRoute = adminChildren.find((route) => route.path === 'status');
+        const settingsRoute = adminChildren.find((route) => route.path === 'system');
+
+        expect(statusRoute?.data?.['instanceCapability']).toBe(INSTANCE_CAPABILITIES.viewSystem);
+        expect(settingsRoute?.data?.['instanceCapability']).toBe(INSTANCE_CAPABILITIES.manageUsers);
     });
 
     it('should navigate /import-export to Import for active-site managers', async () => {

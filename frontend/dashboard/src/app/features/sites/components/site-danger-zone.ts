@@ -3,8 +3,8 @@ import { finalize } from 'rxjs';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
 import { Site } from '@models/analytics.types';
-import { PermissionService } from '@services/permission.service';
-import { UserProfileService } from '@services/user-profile.service';
+import { SITE_CAPABILITIES } from '@core/access/capabilities';
+import { AccessService } from '@services/access.service';
 import { SiteService } from '@features/sites/services/site.service';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -42,8 +42,7 @@ import { InputTextModule } from 'primeng/inputtext';
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SiteDangerZone {
-    private perms = inject(PermissionService);
-    private profile = inject(UserProfileService);
+    private access = inject(AccessService);
     private siteService = inject(SiteService);
     private transloco = inject(TranslocoService);
 
@@ -53,14 +52,7 @@ export class SiteDangerZone {
     protected canDeleteSite = computed(() => {
         const site = this.site();
         if (!site) return false;
-
-        const perms = this.perms.permissions();
-        if (perms?.permissions?.[site.id] === 'owner') {
-            return true;
-        }
-
-        const profile = this.profile.profile();
-        return !!profile && profile.id === site.user_id;
+        return this.access.canSite(site.id, SITE_CAPABILITIES.delete);
     });
     protected canConfirmDelete = computed(() => {
         const site = this.site();

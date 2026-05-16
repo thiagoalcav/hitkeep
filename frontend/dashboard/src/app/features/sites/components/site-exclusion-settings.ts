@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, effect, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs';
@@ -6,21 +7,31 @@ import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
 import { ConfirmationService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
-import { ConfirmPopupModule } from 'primeng/confirmpopup';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { InputTextModule } from 'primeng/inputtext';
+import { MessageModule } from 'primeng/message';
 import { TableModule } from 'primeng/table';
 
 import { IPExclusion, Site } from '@models/analytics.types';
 import { ExclusionsService } from '@services/exclusions.service';
 import { CopyControl } from '@components/copy-control/copy-control';
+import { CrudDialog } from '@components/crud-dialog/crud-dialog';
+import { dialogCancelButton, dialogDangerButton } from '@components/dialog-actions/dialog-actions';
 import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
+import { TableRowActionItem, TableRowActions } from '@components/table-row-actions/table-row-actions';
 
 const ipOrCIDRPattern = /^(([0-9]{1,3}\.){3}[0-9]{1,3}(\/(3[0-2]|[12]?[0-9]))?|([0-9A-Fa-f:]+)(\/(12[0-8]|1[01][0-9]|[1-9]?[0-9]))?)$/;
+
+interface ActionStatus {
+    severity: 'success' | 'error';
+    key: string;
+    params?: Record<string, string | number>;
+}
 
 @Component({
     selector: 'app-site-exclusion-settings',
     standalone: true,
-    imports: [ReactiveFormsModule, ButtonModule, ConfirmPopupModule, InputTextModule, TableModule, CopyControl, RelativeDateTime, TranslocoPipe],
+    imports: [ReactiveFormsModule, ButtonModule, ConfirmDialogModule, InputTextModule, MessageModule, TableModule, CopyControl, CrudDialog, RelativeDateTime, TableRowActions, TranslocoPipe],
     templateUrl: './site-exclusion-settings.html',
     styleUrl: './site-exclusion-settings.css',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -32,13 +43,27 @@ export class SiteExclusionSettings {
     private exclusionsService = inject(ExclusionsService);
     private confirmationService = inject(ConfirmationService);
     private transloco = inject(TranslocoService);
+    private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
     protected readonly exclusions = signal<IPExclusion[]>([]);
     protected readonly isLoading = signal(false);
     protected readonly isSaving = signal(false);
     protected readonly error = signal<string | null>(null);
+    protected readonly createError = signal<string | null>(null);
+    protected readonly actionStatus = signal<ActionStatus | null>(null);
+    protected readonly deletingRuleID = signal<string | null>(null);
+    protected readonly isAddDialogVisible = signal(false);
     protected readonly isCurrentIPLoading = signal(false);
     protected readonly currentIPCIDR = signal('');
+    protected readonly actionStatusMessage = computed(() => {
+        this.activeLanguage();
+        const status = this.actionStatus();
+        if (!status) {
+            return '';
+        }
+
+        return this.transloco.translate(status.key, status.params);
+    });
 
     protected readonly form = new FormGroup({
         cidr: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(ipOrCIDRPattern)] }),
@@ -59,6 +84,9 @@ export class SiteExclusionSettings {
     }
 
     protected addRule(): void {
+        if (this.isSaving()) {
+            return;
+        }
         const site = this.site();
         if (!site) {
             return;
@@ -69,7 +97,8 @@ export class SiteExclusionSettings {
             return;
         }
 
-        this.error.set(null);
+        this.createError.set(null);
+        this.actionStatus.set(null);
         this.isSaving.set(true);
 
         this.exclusionsService
@@ -81,48 +110,83 @@ export class SiteExclusionSettings {
             .subscribe({
                 next: (rule) => {
                     this.exclusions.update((current) => [rule, ...current]);
-                    this.form.reset({ cidr: '', description: '' });
+                    this.actionStatus.set({
+                        severity: 'success',
+                        key: 'sites.exclusions.status.createSuccess',
+                        params: { cidr: rule.cidr }
+                    });
+                    this.closeAddDialog();
                 },
                 error: () => {
-                    this.error.set('sites.exclusions.errors.createFailed');
+                    this.createError.set('sites.exclusions.errors.createFailed');
                 }
             });
     }
 
-    protected confirmDeleteRule(event: Event, rule: IPExclusion): void {
+    protected openAddDialog(): void {
+        this.form.reset({ cidr: '', description: '' });
+        this.createError.set(null);
+        this.isAddDialogVisible.set(true);
+    }
+
+    protected onAddDialogVisibleChange(visible: boolean): void {
+        if (!visible && this.isSaving()) {
+            this.isAddDialogVisible.set(true);
+            return;
+        }
+        this.isAddDialogVisible.set(visible);
+        if (!visible) {
+            this.closeAddDialog();
+        }
+    }
+
+    protected ruleActions(rule: IPExclusion): TableRowActionItem[] {
+        return [
+            {
+                label: this.transloco.translate('share.dialog.deleteAction'),
+                icon: 'pi pi-trash',
+                danger: true,
+                command: () => this.confirmDeleteRule(rule)
+            }
+        ];
+    }
+
+    protected confirmDeleteRule(rule: IPExclusion): void {
         const site = this.site();
         if (!site) {
             return;
         }
 
         this.confirmationService.confirm({
-            key: 'site-exclusion-delete',
-            target: event.currentTarget as EventTarget,
             message: this.transloco.translate('sites.exclusions.confirmDelete', { cidr: rule.cidr }),
             icon: 'pi pi-exclamation-triangle',
-            rejectButtonProps: {
-                label: this.transloco.translate('common.actions.cancel'),
-                severity: 'secondary',
-                outlined: true
-            },
-            acceptButtonProps: {
-                label: this.transloco.translate('share.dialog.deleteAction'),
-                severity: 'danger'
-            },
+            rejectButtonProps: dialogCancelButton(this.transloco.translate('common.actions.cancel')),
+            acceptButtonProps: dialogDangerButton(this.transloco.translate('share.dialog.deleteAction')),
             accept: () => this.deleteRule(site.id, rule)
         });
     }
 
-    private deleteRule(siteID: string, rule: IPExclusion): void {
+    protected deleteRule(siteID: string, rule: IPExclusion): void {
         this.error.set(null);
-        this.exclusionsService.deleteSiteExclusion(siteID, rule.id).subscribe({
-            next: () => {
-                this.exclusions.update((current) => current.filter((entry) => entry.id !== rule.id));
-            },
-            error: () => {
-                this.error.set('sites.exclusions.errors.deleteFailed');
-            }
-        });
+        this.actionStatus.set(null);
+        this.deletingRuleID.set(rule.id);
+        this.exclusionsService
+            .deleteSiteExclusion(siteID, rule.id)
+            .pipe(finalize(() => this.deletingRuleID.set(null)))
+            .subscribe({
+                next: () => {
+                    this.exclusions.update((current) => current.filter((entry) => entry.id !== rule.id));
+                    this.actionStatus.set({
+                        severity: 'success',
+                        key: 'sites.exclusions.status.deleteSuccess',
+                        params: { cidr: rule.cidr }
+                    });
+                },
+                error: () => {
+                    this.actionStatus.set(null);
+                    this.error.set('sites.exclusions.errors.deleteFailed');
+                }
+            });
     }
 
     private loadCurrentIP(): void {
@@ -145,6 +209,7 @@ export class SiteExclusionSettings {
     private loadExclusions(siteID: string): void {
         this.isLoading.set(true);
         this.error.set(null);
+        this.actionStatus.set(null);
 
         this.exclusionsService
             .listSiteExclusions(siteID)
@@ -157,5 +222,11 @@ export class SiteExclusionSettings {
                     this.error.set('sites.exclusions.errors.loadFailed');
                 }
             });
+    }
+
+    private closeAddDialog(): void {
+        this.isAddDialogVisible.set(false);
+        this.form.reset({ cidr: '', description: '' });
+        this.createError.set(null);
     }
 }

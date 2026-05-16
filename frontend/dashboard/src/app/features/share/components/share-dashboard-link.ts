@@ -1,16 +1,24 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { Clipboard } from '@angular/cdk/clipboard';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { finalize } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
-import { DialogModule } from 'primeng/dialog';
+import { IconFieldModule } from 'primeng/iconfield';
+import { InputIconModule } from 'primeng/inputicon';
 import { InputTextModule } from 'primeng/inputtext';
 import { TableModule } from 'primeng/table';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
+import { DialogShell } from '@components/dialog-shell/dialog-shell';
+import { dialogCancelButton, dialogDangerButton } from '@components/dialog-actions/dialog-actions';
+import { SITE_CAPABILITIES } from '@core/access/capabilities';
+import { AccessService } from '@services/access.service';
 import { ShareLink, ShareService } from '@services/share.service';
 import { SiteService } from '@features/sites/services/site.service';
-import { CopyControl } from '@components/copy-control/copy-control';
 import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
+import { TableRowActionItem, TableRowActions } from '@components/table-row-actions/table-row-actions';
 
 interface ShareNotice {
     kind: 'success' | 'error';
@@ -19,7 +27,7 @@ interface ShareNotice {
 
 @Component({
     selector: 'app-share-dashboard-link',
-    imports: [ButtonModule, DialogModule, InputTextModule, TableModule, ConfirmDialogModule, CopyControl, RelativeDateTime, TranslocoPipe],
+    imports: [ButtonModule, DialogShell, IconFieldModule, InputIconModule, InputTextModule, TableModule, ConfirmDialogModule, RelativeDateTime, TableRowActions, TranslocoPipe],
     providers: [ConfirmationService],
     templateUrl: './share-dashboard-link.html',
     styleUrl: './share-dashboard-link.css',
@@ -28,8 +36,11 @@ interface ShareNotice {
 export class ShareDashboardLink {
     private shareService = inject(ShareService);
     protected siteService = inject(SiteService);
+    private access = inject(AccessService);
     private confirmation = inject(ConfirmationService);
     private transloco = inject(TranslocoService);
+    private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
+    private clipboard = inject(Clipboard);
 
     protected isShareMode = computed(() => this.shareService.isShareMode());
     protected showShareDialog = signal(false);
@@ -39,6 +50,10 @@ export class ShareDashboardLink {
     protected deletingShareId = signal<string | null>(null);
     protected notice = signal<ShareNotice | null>(null);
     private shareSiteId = signal<string | null>(null);
+    protected readonly canManageShares = computed(() => {
+        const site = this.siteService.activeSite();
+        return !!site && this.access.canSite(site.id, SITE_CAPABILITIES.manageTeam);
+    });
 
     constructor() {
         effect(() => {
@@ -50,13 +65,17 @@ export class ShareDashboardLink {
             this.shareSiteId.set(siteId);
             this.resetShareState();
 
-            if (this.showShareDialog() && siteId) {
+            if (this.showShareDialog() && siteId && this.canManageShares()) {
                 this.loadShareLinks(siteId);
             }
         });
     }
 
     protected openShareDialog() {
+        if (!this.canManageShares()) {
+            return;
+        }
+
         this.notice.set(null);
         this.showShareDialog.set(true);
 
@@ -67,34 +86,35 @@ export class ShareDashboardLink {
     }
 
     open() {
-        if (this.isShareMode()) return;
+        if (this.isShareMode() || !this.canManageShares()) return;
         this.openShareDialog();
     }
 
     protected generateShareLink() {
         const siteId = this.siteService.activeSite()?.id;
-        if (!siteId || this.createLoading()) {
+        if (!siteId || this.createLoading() || !this.canManageShares()) {
             return;
         }
 
         this.createLoading.set(true);
         this.notice.set(null);
 
-        this.shareService.createShareLink(siteId).subscribe({
-            next: (link) => {
-                this.shareLinks.update((links) => [link, ...links.filter((existing) => existing.id !== link.id)]);
-                this.createLoading.set(false);
-                this.notice.set({ kind: 'success', key: 'share.dialog.createSuccess' });
-            },
-            error: () => {
-                this.createLoading.set(false);
-                this.notice.set({ kind: 'error', key: 'share.dialog.generateFailed' });
-            }
-        });
+        this.shareService
+            .createShareLink(siteId)
+            .pipe(finalize(() => this.createLoading.set(false)))
+            .subscribe({
+                next: (link) => {
+                    this.shareLinks.update((links) => [link, ...links.filter((existing) => existing.id !== link.id)]);
+                    this.notice.set({ kind: 'success', key: 'share.dialog.createSuccess' });
+                },
+                error: () => {
+                    this.notice.set({ kind: 'error', key: 'share.dialog.generateFailed' });
+                }
+            });
     }
 
     protected confirmDeleteShareLink(link: ShareLink) {
-        if (this.deletingShareId() !== null) {
+        if (this.deletingShareId() !== null || !this.canManageShares()) {
             return;
         }
 
@@ -102,11 +122,30 @@ export class ShareDashboardLink {
             message: this.transloco.translate('share.dialog.deleteConfirmMessage'),
             header: this.transloco.translate('share.dialog.deleteConfirmTitle'),
             icon: 'pi pi-exclamation-triangle',
-            acceptLabel: this.transloco.translate('share.dialog.deleteAction'),
-            rejectLabel: this.transloco.translate('common.actions.cancel'),
-            acceptButtonStyleClass: 'p-button-danger',
+            rejectButtonProps: dialogCancelButton(this.transloco.translate('common.actions.cancel')),
+            acceptButtonProps: dialogDangerButton(this.transloco.translate('share.dialog.deleteAction')),
             accept: () => this.deleteShareLink(link)
         });
+    }
+
+    protected shareLinkActions(link: ShareLink): TableRowActionItem[] {
+        this.activeLanguage();
+        return [
+            {
+                label: this.transloco.translate('common.copyControl.copy'),
+                icon: 'pi pi-copy',
+                disabled: !link.url,
+                command: () => this.copyShareLink(link)
+            },
+            { separator: true },
+            {
+                label: this.transloco.translate('share.dialog.deleteAction'),
+                icon: 'pi pi-trash',
+                danger: true,
+                disabled: this.deletingShareId() !== null,
+                command: () => this.confirmDeleteShareLink(link)
+            }
+        ];
     }
 
     protected resetShareDialog() {
@@ -115,40 +154,61 @@ export class ShareDashboardLink {
         this.deletingShareId.set(null);
     }
 
+    protected onShareDialogVisibleChange(visible: boolean) {
+        this.showShareDialog.set(visible);
+        if (!visible) {
+            this.resetShareDialog();
+        }
+    }
+
     private loadShareLinks(siteId: string) {
+        if (!this.canManageShares()) {
+            return;
+        }
+
         this.linksLoading.set(true);
         this.notice.set(null);
 
-        this.shareService.listShareLinks(siteId).subscribe({
-            next: (links) => {
-                this.shareLinks.set(this.mergeKnownURLs(links));
-                this.linksLoading.set(false);
-            },
-            error: () => {
-                this.linksLoading.set(false);
-                this.notice.set({ kind: 'error', key: 'share.dialog.loadFailed' });
-            }
-        });
+        this.shareService
+            .listShareLinks(siteId)
+            .pipe(finalize(() => this.linksLoading.set(false)))
+            .subscribe({
+                next: (links) => {
+                    this.shareLinks.set(this.mergeKnownURLs(links));
+                },
+                error: () => {
+                    this.notice.set({ kind: 'error', key: 'share.dialog.loadFailed' });
+                }
+            });
     }
 
     private deleteShareLink(link: ShareLink) {
         const siteId = this.siteService.activeSite()?.id;
-        if (!siteId) {
+        if (!siteId || !this.canManageShares()) {
             return;
         }
 
         this.deletingShareId.set(link.id);
-        this.shareService.deleteShareLink(siteId, link.id).subscribe({
-            next: () => {
-                this.shareLinks.update((links) => links.filter((existing) => existing.id !== link.id));
-                this.deletingShareId.set(null);
-                this.notice.set({ kind: 'success', key: 'share.dialog.deleteSuccess' });
-            },
-            error: () => {
-                this.deletingShareId.set(null);
-                this.notice.set({ kind: 'error', key: 'share.dialog.deleteFailed' });
-            }
-        });
+        this.shareService
+            .deleteShareLink(siteId, link.id)
+            .pipe(finalize(() => this.deletingShareId.set(null)))
+            .subscribe({
+                next: () => {
+                    this.shareLinks.update((links) => links.filter((existing) => existing.id !== link.id));
+                    this.notice.set({ kind: 'success', key: 'share.dialog.deleteSuccess' });
+                },
+                error: () => {
+                    this.notice.set({ kind: 'error', key: 'share.dialog.deleteFailed' });
+                }
+            });
+    }
+
+    private copyShareLink(link: ShareLink) {
+        if (!link.url) {
+            return;
+        }
+        const copied = this.clipboard.copy(link.url);
+        this.notice.set({ kind: copied ? 'success' : 'error', key: copied ? 'common.copyControl.copied' : 'common.copyControl.failed' });
     }
 
     private mergeKnownURLs(links: ShareLink[]): ShareLink[] {
@@ -162,7 +222,7 @@ export class ShareDashboardLink {
 
         return links.map((link) => ({
             ...link,
-            url: knownByID.get(link.id)
+            url: knownByID.get(link.id) ?? link.url
         }));
     }
 

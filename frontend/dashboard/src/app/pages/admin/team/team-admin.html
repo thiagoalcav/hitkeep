@@ -1,5 +1,5 @@
 <app-admin-page-frame [breadcrumbItems]="breadcrumbItems()">
-    <p-tabs [(value)]="activeTab" class="hk-admin-tabs">
+    <p-tabs [value]="activeTab()" (valueChange)="onTabChange($event)" class="hk-admin-tabs">
         <p-tablist>
             @for (tab of tabs(); track tab.value) {
             <p-tab [value]="tab.value">{{ tab.label }}</p-tab>

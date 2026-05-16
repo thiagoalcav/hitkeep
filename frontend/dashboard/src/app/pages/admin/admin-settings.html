@@ -1,5 +1,4 @@
-<p-confirmpopup key="admin-delete" />
-<p-confirmpopup key="admin-disable-mfa" />
+<p-confirmdialog />
 
 <app-admin-page-frame [breadcrumbItems]="breadcrumbItems()">
     <div class="admin-status">
@@ -91,33 +90,7 @@
                                         </td>
                                         <td><app-relative-date-time [value]="user.created_at" /></td>
                                         <td>
-                                            <div class="admin-row-actions">
-                                                @if (canDisableUserMfa()) {
-                                                <p-button
-                                                    icon="pi pi-shield"
-                                                    severity="warn"
-                                                    [text]="true"
-                                                    [rounded]="true"
-                                                    [pTooltip]="'admin.users.disable2faAction' | transloco"
-                                                    tooltipPosition="top"
-                                                    [ariaLabel]="'admin.users.disable2faAction' | transloco"
-                                                    [loading]="isDisablingUser(user)"
-                                                    (onClick)="confirmDisableUserMfa($event, user)"
-                                                />
-                                                }
-                                                <p-button
-                                                    icon="pi pi-trash"
-                                                    severity="danger"
-                                                    [text]="true"
-                                                    [rounded]="true"
-                                                    [pTooltip]="'share.dialog.deleteAction' | transloco"
-                                                    tooltipPosition="top"
-                                                    [ariaLabel]="'share.dialog.deleteAction' | transloco"
-                                                    (onClick)="confirmDeleteUser($event, user)"
-                                                    [loading]="isDeletingUser(user)"
-                                                    [disabled]="user.id === currentUserId() || isDeletingUser(user)"
-                                                />
-                                            </div>
+                                            <app-table-row-actions [items]="userActions(user)" [loading]="isDisablingUser(user) || isDeletingUser(user)" />
                                         </td>
                                     </tr>
                                 </ng-template>
@@ -168,20 +141,7 @@
                                         <td>{{ siteOwnerEmail(site) }}</td>
                                         <td><app-relative-date-time [value]="site.created_at" /></td>
                                         <td>
-                                            <div class="admin-row-actions">
-                                                <p-button
-                                                    icon="pi pi-trash"
-                                                    severity="danger"
-                                                    [text]="true"
-                                                    [rounded]="true"
-                                                    [pTooltip]="'share.dialog.deleteAction' | transloco"
-                                                    tooltipPosition="top"
-                                                    [ariaLabel]="'share.dialog.deleteAction' | transloco"
-                                                    (onClick)="confirmDeleteSite($event, site)"
-                                                    [loading]="isDeletingSite(site)"
-                                                    [disabled]="isDeletingSite(site)"
-                                                />
-                                            </div>
+                                            <app-table-row-actions [items]="siteActions(site)" [loading]="isDeletingSite(site)" />
                                         </td>
                                     </tr>
                                 </ng-template>
@@ -242,22 +202,7 @@
                                             }
                                         </td>
                                         <td>
-                                            @if (!team.is_default) {
-                                            <div class="admin-row-actions">
-                                                <p-button
-                                                    icon="pi pi-trash"
-                                                    severity="danger"
-                                                    [text]="true"
-                                                    [rounded]="true"
-                                                    [pTooltip]="'share.dialog.deleteAction' | transloco"
-                                                    tooltipPosition="top"
-                                                    [ariaLabel]="'share.dialog.deleteAction' | transloco"
-                                                    (onClick)="confirmDeleteTeam($event, team)"
-                                                    [loading]="isDeletingTeam(team)"
-                                                    [disabled]="isDeletingTeam(team)"
-                                                />
-                                            </div>
-                                            }
+                                            <app-table-row-actions [items]="teamActions(team)" [loading]="isDeletingTeam(team)" />
                                         </td>
                                     </tr>
                                 </ng-template>
@@ -306,7 +251,7 @@
             <p-tablist>
                 <p-tab value="runtime">{{ "admin.system.console.tabs.runtime" | transloco }}</p-tab>
                 <p-tab value="operations">{{ "admin.system.console.tabs.operations" | transloco }}</p-tab>
-                @if (perms.isInstanceOwner()) {
+                @if (canViewActivation()) {
                 <p-tab value="activation">{{ "admin.system.console.tabs.activation" | transloco }}</p-tab>
                 }
                 <p-tab value="audit">{{ "admin.system.console.tabs.audit" | transloco }}</p-tab>
@@ -751,7 +696,7 @@
                             [title]="'admin.system.spam.title' | transloco"
                             [loading]="isLoadingSpam()"
                             [refreshLabel]="'admin.system.console.refreshCard' | transloco"
-                            [actionLabel]="perms.isInstanceAdmin() ? ('admin.system.spam.actions.refresh' | transloco) : ''"
+                            [actionLabel]="canRunMaintenance() ? ('admin.system.spam.actions.refresh' | transloco) : ''"
                             actionIcon="pi pi-sync"
                             [actionLoading]="isRefreshingSpam()"
                             (refreshClicked)="loadSystemSpam()"
@@ -796,7 +741,7 @@
                             [refreshLabel]="'admin.system.console.refreshCard' | transloco"
                             [metricLabel]="'admin.system.importCleanup.staleBytes' | transloco"
                             [metricValue]="formatBytesValue(systemImportCleanup()?.stale_bytes ?? 0)"
-                            [actionLabel]="perms.isInstanceAdmin() ? ('admin.system.importCleanup.actions.run' | transloco) : ''"
+                            [actionLabel]="canRunMaintenance() ? ('admin.system.importCleanup.actions.run' | transloco) : ''"
                             actionIcon="pi pi-eraser"
                             actionSeverity="warn"
                             [actionLoading]="isRunningImportCleanup()"
@@ -897,7 +842,7 @@
                             </dl>
                             @if (mailTestResult(); as result) {
                             <p-message [severity]="result.severity" styleClass="w-full mt-3" [text]="result.message" />
-                            } @if (perms.isInstanceAdmin() && mail.configured) {
+                            } @if (canRunMaintenance() && mail.configured) {
                             <div system-status-card-footer class="admin-mail-test">
                                 <div class="admin-mail-test__field">
                                     <label for="admin-mail-test-recipient">{{ "admin.system.mail.recipientLabel" | transloco }}</label>
@@ -935,7 +880,7 @@
                 </p-tabpanel>
 
                 <p-tabpanel value="activation">
-                    @if (activeAdminTab() === "activation" && perms.isInstanceOwner()) {
+                    @if (activeAdminTab() === "activation" && canViewActivation()) {
                     <section class="admin-panel admin-panel--wide admin-panel--table" aria-labelledby="activation-title">
                         <div class="admin-panel__header admin-panel__header--stacked">
                             <div class="admin-panel__title-block">
@@ -1045,37 +990,7 @@
                                         <td>{{ row.hits_last_7d | number }}</td>
                                         <td>{{ row.events_last_7d | number }}</td>
                                         <td>
-                                            <div class="admin-row-actions">
-                                                <p-button
-                                                    icon="pi pi-filter"
-                                                    [text]="true"
-                                                    [rounded]="true"
-                                                    [pTooltip]="'admin.system.activation.actions.filterTeam' | transloco"
-                                                    tooltipPosition="top"
-                                                    [ariaLabel]="'admin.system.activation.actions.filterTeam' | transloco"
-                                                    (onClick)="filterActivationTeam(row)"
-                                                />
-                                                <p-button
-                                                    icon="pi pi-copy"
-                                                    [text]="true"
-                                                    [rounded]="true"
-                                                    [pTooltip]="'admin.system.activation.actions.copyContext' | transloco"
-                                                    tooltipPosition="top"
-                                                    [ariaLabel]="'admin.system.activation.actions.copyContext' | transloco"
-                                                    (onClick)="copyActivationContext(row)"
-                                                />
-                                                <p-button
-                                                    icon="pi pi-arrow-right"
-                                                    [text]="true"
-                                                    [rounded]="true"
-                                                    [pTooltip]="'admin.system.activation.actions.openTeam' | transloco"
-                                                    tooltipPosition="top"
-                                                    [ariaLabel]="'admin.system.activation.actions.openTeam' | transloco"
-                                                    (onClick)="openActivationTeam(row)"
-                                                    [loading]="openingActivationTeamId() === row.team_id"
-                                                    [disabled]="!!openingActivationTeamId()"
-                                                />
-                                            </div>
+                                            <app-table-row-actions [items]="activationRowActions(row)" [loading]="openingActivationTeamId() === row.team_id" />
                                         </td>
                                     </tr>
                                 </ng-template>

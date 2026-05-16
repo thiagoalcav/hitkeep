@@ -1,13 +1,15 @@
-import { Component, input, output, ChangeDetectionStrategy, inject, effect, signal, viewChild } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, computed, inject, effect, signal, viewChild } from '@angular/core';
 
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { compatForm } from '@angular/forms/signals/compat';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { SelectModule } from 'primeng/select';
 import { SkeletonModule } from 'primeng/skeleton';
+import { SITE_CAPABILITIES } from '@core/access/capabilities';
 import { Site } from '@models/analytics.types';
 import { SiteFavicon } from '@features/sites/components/site-favicon';
 import { ShareDashboardLink } from '@features/share/components/share-dashboard-link';
+import { AccessService } from '@services/access.service';
 import { ShareService } from '@services/share.service';
 @Component({
     selector: 'app-site-selector',
@@ -91,7 +93,7 @@ import { ShareService } from '@services/share.service';
                                     class="cursor-pointer flex h-8 flex-1 items-center justify-center rounded-md text-muted-color transition-colors hover:bg-surface-100 hover:text-[var(--p-text-color)] focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:hover:bg-surface-800"
                                     [attr.aria-label]="'sites.selector.shareDashboardAria' | transloco"
                                     [title]="'sites.selector.shareDashboardAria' | transloco"
-                                    [disabled]="!current()"
+                                    [disabled]="!canShareCurrentSite()"
                                 >
                                     <i class="pi pi-share-alt text-sm" aria-hidden="true"></i>
                                 </button>
@@ -108,6 +110,7 @@ import { ShareService } from '@services/share.service';
 })
 export class SiteSelector {
     protected shareService = inject(ShareService);
+    private access = inject(AccessService);
     private readonly shareDialog = viewChild<ShareDashboardLink>('shareDialog');
     private readonly siteFormModel = signal({
         selectedSite: new FormControl<Site | null>(null)
@@ -123,6 +126,10 @@ export class SiteSelector {
     addClicked = output<void>();
     settingsClicked = output<void>();
     trackingClicked = output<void>();
+    protected readonly canShareCurrentSite = computed(() => {
+        const site = this.current();
+        return !!site && this.access.canSite(site.id, SITE_CAPABILITIES.manageTeam);
+    });
 
     constructor() {
         effect(() => {
@@ -152,6 +159,10 @@ export class SiteSelector {
     }
 
     protected openShareDialog() {
+        if (!this.canShareCurrentSite()) {
+            return;
+        }
+
         this.shareDialogLoaded.set(true);
         this.pendingShareDialogOpen.set(true);
     }

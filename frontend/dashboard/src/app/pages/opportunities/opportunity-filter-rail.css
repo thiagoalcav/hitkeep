@@ -9,9 +9,9 @@
     flex-direction: column;
     gap: 1rem;
     padding: 0.875rem;
-    border: 1px solid var(--p-surface-200);
+    border: 1px solid var(--p-content-border-color);
     border-radius: 8px;
-    background: var(--p-surface-card);
+    background: var(--p-content-background);
 }
 
 .opportunities-sidebar h2 {
@@ -51,7 +51,7 @@
 
 .opportunities-filter:hover,
 .opportunities-filter:focus-visible {
-    background: var(--p-surface-100);
+    background: var(--p-content-hover-background);
     outline: none;
 }
 

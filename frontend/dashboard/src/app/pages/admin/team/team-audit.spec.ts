@@ -1,9 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { of } from 'rxjs';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { provideTranslocoLocale } from '@jsverse/transloco-locale';
 import { vi } from 'vitest';
+import { TEAM_CAPABILITIES } from '@core/access/capabilities';
+import { PermissionService } from '@services/permission.service';
 import { TeamAuditPage } from './team-audit';
 import { TeamService } from '@services/team.service';
 import { AuditPresentationService } from '@services/audit-presentation.service';
@@ -44,13 +48,30 @@ describe('TeamAuditPage', () => {
     };
 
     const teamServiceMock = {
+        activeTeamId: signal('team-1'),
         activeTeam,
         listTeamAudit: vi.fn(() => of(auditResponse))
+    };
+    const permissionServiceMock = {
+        permissions: signal({
+            instance_role: 'user' as const,
+            permissions: {},
+            active_team_id: 'team-1',
+            active_team_role: 'owner' as const,
+            active_team_capabilities: [TEAM_CAPABILITIES.viewAudit]
+        })
     };
 
     beforeEach(async () => {
         teamServiceMock.listTeamAudit.mockClear();
         teamServiceMock.listTeamAudit.mockReturnValue(of(auditResponse));
+        permissionServiceMock.permissions.set({
+            instance_role: 'user',
+            permissions: {},
+            active_team_id: 'team-1',
+            active_team_role: 'owner',
+            active_team_capabilities: [TEAM_CAPABILITIES.viewAudit]
+        });
         activeTeam.set({
             id: 'team-1',
             name: 'Acme',
@@ -72,7 +93,10 @@ describe('TeamAuditPage', () => {
                 })
             ],
             providers: [
+                provideHttpClient(),
+                provideHttpClientTesting(),
                 { provide: TeamService, useValue: teamServiceMock },
+                { provide: PermissionService, useValue: permissionServiceMock },
                 {
                     provide: AuditPresentationService,
                     useValue: {

@@ -478,6 +478,42 @@ func TestMCPToolDeniesUnscopedSite(t *testing.T) {
 	}
 }
 
+func TestMCPToolRequiresExplicitSiteGrantEvenForOwnerAPIClient(t *testing.T) {
+	store, site, _ := setupMCPStore(t)
+	ctx := context.Background()
+	userID, err := store.CreateUser(ctx, "mcp-owner-token@example.test", "hash")
+	if err != nil {
+		t.Fatalf("CreateUser owner token: %v", err)
+	}
+	_, token, err := store.CreateAPIClient(ctx, userID, "mcp-owner-no-sites", "", authcore.InstanceOwner, map[uuid.UUID]authcore.SiteRole{}, nil)
+	if err != nil {
+		t.Fatalf("CreateAPIClient owner token: %v", err)
+	}
+
+	conf := testMCPConfig(t, "")
+	handler := NewHandler(conf, store, nil, nil, nil)
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	session := connectMCPClient(t, ts.URL+conf.MCPPath, token)
+	defer session.Close()
+
+	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "hitkeep_get_site_overview",
+		Arguments: map[string]any{
+			"site_id": site.ID.String(),
+			"from":    "2026-01-01T00:00:00Z",
+			"to":      "2026-01-02T00:00:00Z",
+		},
+	})
+	if err != nil {
+		t.Fatalf("CallTool: %v", err)
+	}
+	if !res.IsError {
+		t.Fatalf("expected owner api client without site grant to be denied")
+	}
+}
+
 func TestMCPOpportunitiesReturnsSafeFinalData(t *testing.T) {
 	store, site, token := setupMCPStore(t)
 	ctx := context.Background()

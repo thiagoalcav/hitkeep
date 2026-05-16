@@ -1,9 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import type { InstanceRole, SiteRole } from '@core/access/capabilities';
 
-export type InstanceRole = 'owner' | 'admin' | 'user';
-export type SiteRole = 'owner' | 'admin' | 'editor' | 'viewer';
+export type { InstanceRole, SiteRole } from '@core/access/capabilities';
 
 export interface APIClientSiteRole {
     site_id: string;
@@ -67,6 +67,10 @@ export class APIClientsService {
 
     updateClient(clientID: string, payload: UpdateAPIClientRequest, teamID?: string | null): Observable<APIClient> {
         return this.http.put<APIClient>(`${this.basePath(teamID)}/${encodeURIComponent(clientID)}`, payload);
+    }
+
+    rotateClient(clientID: string, teamID?: string | null): Observable<CreateAPIClientResponse> {
+        return this.http.post<CreateAPIClientResponse>(`${this.basePath(teamID)}/${encodeURIComponent(clientID)}/rotate`, {});
     }
 
     deleteClient(clientID: string, teamID?: string | null): Observable<void> {

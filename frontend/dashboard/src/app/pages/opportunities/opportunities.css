@@ -2,8 +2,8 @@
     display: block;
     min-height: 100%;
     background: var(--p-surface-ground);
-    --opportunities-border: var(--p-surface-200);
-    --opportunities-panel: var(--p-surface-card);
+    --opportunities-border: var(--p-content-border-color);
+    --opportunities-panel: var(--p-content-background);
 }
 
 .opportunities-loading {

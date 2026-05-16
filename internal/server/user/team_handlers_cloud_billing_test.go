@@ -39,6 +39,28 @@ func TestHandleCreateTeamRejectsHostedCloud(t *testing.T) {
 	}
 }
 
+func TestHandleArchiveTeamRejectsHostedCloud(t *testing.T) {
+	h, store, userID := setupUserSecurityTestEnv(t)
+	defer store.Close()
+
+	h.ctx.Config.CloudHosted = true
+
+	team, err := store.CreateTenant(context.Background(), userID, "Cloud Team", "")
+	if err != nil {
+		t.Fatalf("create team: %v", err)
+	}
+
+	req := withTestUser(httptest.NewRequest(http.MethodPost, "/api/user/teams/"+team.ID.String()+"/archive", nil), userID)
+	req.SetPathValue("id", team.ID.String())
+	w := httptest.NewRecorder()
+
+	h.handleArchiveTeam().ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusForbidden, w.Code, w.Body.String())
+	}
+}
+
 func TestHandleUpsertTeamMemberRejectsExistingHostedCloudUserFromOtherTeam(t *testing.T) {
 	h, store, ownerID := setupUserSecurityTestEnv(t)
 	defer store.Close()

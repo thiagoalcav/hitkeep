@@ -427,9 +427,14 @@ type UserTeamsResponse struct {
 }
 
 type PermissionContext struct {
-	InstanceRole        string            `json:"instance_role"`
-	Permissions         map[string]string `json:"permissions"`
-	InstancePermissions []string          `json:"instance_permissions"`
+	InstanceRole           string              `json:"instance_role"`
+	Permissions            map[string]string   `json:"permissions"`
+	InstancePermissions    []string            `json:"instance_permissions"`
+	InstanceCapabilities   []string            `json:"instance_capabilities"`
+	SiteCapabilities       map[string][]string `json:"site_capabilities"`
+	ActiveTeamID           *uuid.UUID          `json:"active_team_id,omitempty"`
+	ActiveTeamRole         string              `json:"active_team_role,omitempty"`
+	ActiveTeamCapabilities []string            `json:"active_team_capabilities"`
 }
 
 type SystemStatus struct {

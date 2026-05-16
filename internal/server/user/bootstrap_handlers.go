@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
-	authcore "hitkeep/internal/auth"
+	"hitkeep/internal/server/access"
 	"hitkeep/internal/server/shared"
 )
 
@@ -154,34 +154,7 @@ func (h *handler) userTeamsResponse(r *http.Request, userID uuid.UUID) (api.User
 }
 
 func (h *handler) userPermissionContext(ctx context.Context, userID uuid.UUID, sites []api.Site) (api.PermissionContext, error) {
-	instanceRole, err := h.ctx.Store.GetInstanceRole(ctx, userID)
-	if err != nil {
-		return api.PermissionContext{}, fmt.Errorf("get instance role: %w", err)
-	}
-
-	siteRoles := map[string]string{}
-	for _, site := range sites {
-		role, err := h.ctx.Store.GetSiteRole(ctx, userID, site.ID)
-		if err != nil {
-			if !instanceRole.HasPermission(authcore.PermInstanceViewAllSites) {
-				return api.PermissionContext{}, fmt.Errorf("resolve site role %s: %w", site.ID, err)
-			}
-			continue
-		}
-		siteRoles[site.ID.String()] = string(role)
-	}
-
-	instancePermissions := instanceRole.Permissions()
-	permissions := make([]string, 0, len(instancePermissions))
-	for _, permission := range instancePermissions {
-		permissions = append(permissions, string(permission))
-	}
-
-	return api.PermissionContext{
-		InstanceRole:        string(instanceRole),
-		Permissions:         siteRoles,
-		InstancePermissions: permissions,
-	}, nil
+	return access.Builder{Store: h.ctx.Store}.ForUserSites(ctx, userID, sites)
 }
 
 func (h *handler) userSitesResponse(ctx context.Context, userID uuid.UUID) ([]api.Site, error) {

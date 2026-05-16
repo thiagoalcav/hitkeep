@@ -574,7 +574,7 @@ func openAPIV1CorePaths() map[string]any {
 		},
 		"/api/user/api-clients": map[string]any{
 			"get": op([]string{"User"}, "List API clients", "Lists API clients for authenticated user.", secCookie(), nil, nil, map[string]any{"200": jsonSchemaResp("API clients", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/APIClient"}})}),
-			"post": op([]string{"User"}, "Create API client", "Creates delegated API client and returns one-time token.", secCookie(), nil,
+			"post": op([]string{"User"}, "Create API client", "Creates delegated API client and returns one-time token. Site analytics, MCP, and ingest access require explicit site_roles grants.", secCookie(), nil,
 				jsonBody(map[string]any{"type": "object", "properties": map[string]any{
 					"name":          map[string]any{"type": "string"},
 					"description":   map[string]any{"type": "string"},
@@ -597,9 +597,16 @@ func openAPIV1CorePaths() map[string]any {
 				map[string]any{"200": jsonRefResp("Updated API client", "#/components/schemas/APIClient")}),
 			"delete": op([]string{"User"}, "Delete API client", "Deletes delegated API client.", secCookie(), []any{paramRef("#/components/parameters/apiClientID")}, nil, map[string]any{"204": desc("Deleted")}),
 		},
+		"/api/user/api-clients/{id}/rotate": map[string]any{
+			"post": op([]string{"User"}, "Roll API client token", "Generates a new one-time token for an active delegated API client and immediately invalidates the previous token.", secCookie(), []any{paramRef("#/components/parameters/apiClientID")}, nil,
+				map[string]any{
+					"200": jsonRefResp("Rolled API client token", "#/components/schemas/APIClientCreateResponse"),
+					"409": desc("API client is revoked or expired"),
+				}),
+		},
 		"/api/user/teams/{id}/api-clients": map[string]any{
 			"get": op([]string{"Teams"}, "List team API clients", "Lists team-owned API clients for a team owner or admin.", secCookie(), []any{paramRef("#/components/parameters/teamID")}, nil, map[string]any{"200": jsonSchemaResp("Team API clients", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/APIClient"}})}),
-			"post": op([]string{"Teams"}, "Create team API client", "Creates a team-owned API client and returns a one-time token. Team-owned clients are limited to delegated site scopes within the team.", secCookie(), []any{paramRef("#/components/parameters/teamID")},
+			"post": op([]string{"Teams"}, "Create team API client", "Creates a team-owned API client and returns a one-time token. Team-owned clients can access only delegated site_roles grants within the team.", secCookie(), []any{paramRef("#/components/parameters/teamID")},
 				jsonBody(map[string]any{"type": "object", "properties": map[string]any{
 					"name":        map[string]any{"type": "string"},
 					"description": map[string]any{"type": "string"},
@@ -620,9 +627,16 @@ func openAPIV1CorePaths() map[string]any {
 				map[string]any{"200": jsonRefResp("Updated team API client", "#/components/schemas/APIClient")}),
 			"delete": op([]string{"Teams"}, "Delete team API client", "Deletes a team-owned API client.", secCookie(), []any{paramRef("#/components/parameters/teamID"), paramRef("#/components/parameters/teamAPIClientID")}, nil, map[string]any{"204": desc("Deleted")}),
 		},
+		"/api/user/teams/{id}/api-clients/{clientId}/rotate": map[string]any{
+			"post": op([]string{"Teams"}, "Roll team API client token", "Generates a new one-time token for an active team-owned API client and immediately invalidates the previous token.", secCookie(), []any{paramRef("#/components/parameters/teamID"), paramRef("#/components/parameters/teamAPIClientID")}, nil,
+				map[string]any{
+					"200": jsonRefResp("Rolled team API client token", "#/components/schemas/APIClientCreateResponse"),
+					"409": desc("API client is revoked or expired"),
+				}),
+		},
 
 		"/api/user/permissions": map[string]any{
-			"get": op([]string{"Permissions"}, "Get permission context", "Returns authenticated user's instance permissions.", secCookie(), nil, nil, map[string]any{"200": jsonRefResp("Permission context", "#/components/schemas/PermissionContext")}),
+			"get": op([]string{"Permissions"}, "Get permission context", "Returns authenticated user's roles, raw permissions, and derived access capabilities.", secCookie(), nil, nil, map[string]any{"200": jsonRefResp("Permission context", "#/components/schemas/PermissionContext")}),
 		},
 	}
 }

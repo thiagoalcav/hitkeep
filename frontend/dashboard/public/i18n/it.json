@@ -27,6 +27,8 @@
         "utm": "UTM",
         "apiClients": "Client API",
         "apiReference": "Riferimento API",
+        "expandItem": "Espandi {{item}}",
+        "collapseItem": "Comprimi {{item}}",
         "imports": "Importazioni",
         "importsAria": "Vai alle importazioni",
         "importExport": "Importazione ed esportazione",
@@ -37,8 +39,8 @@
         "docsAria": "Apri la documentazione di HitKeep in una nuova scheda",
         "support": "Supporto",
         "supportAria": "Apri il supporto di HitKeep in una nuova scheda",
-        "settings": "Impostazioni utente",
-        "settingsAria": "Vai alle impostazioni utente",
+        "settings": "Impostazioni",
+        "settingsAria": "Vai alle impostazioni",
         "emailReports": "Report email",
         "emailReportsAria": "Vai ai report email",
         "administration": "Amministrazione",
@@ -360,6 +362,7 @@
             "openAction": "Gestisci team",
             "openAria": "Apri gestione team",
             "dialogTitle": "Gestisci {{team}}",
+            "inviteDialogTitle": "Invita membro del team",
             "noTeam": "Nessun team attivo selezionato.",
             "readOnly": "Puoi vedere i membri, ma non puoi gestire il team con il tuo ruolo corrente.",
             "notAllowed": "Non consentito",
@@ -434,7 +437,8 @@
             "exportCsv": "Esporta CSV",
             "open": "Apri",
             "refresh": "Aggiorna",
-            "save": "Salva"
+            "save": "Salva",
+            "more": "Altre azioni"
         },
         "previous": "Precedente",
         "next": "Successivo",
@@ -639,6 +643,7 @@
             "editTitle": "Modifica obiettivo",
             "editTooltip": "Modifica obiettivo",
             "deleteTooltip": "Elimina obiettivo",
+            "confirmDelete": "Eliminare l’obiettivo \"{{name}}\"?",
             "namePlaceholder": "es. Registrazione completata",
             "typePagePath": "Percorso",
             "typeCustomEvent": "Evento",
@@ -697,6 +702,7 @@
             "editTitle": "Modifica funnel",
             "editTooltip": "Modifica funnel",
             "deleteTooltip": "Elimina funnel",
+            "confirmDelete": "Eliminare il funnel \"{{name}}\"?",
             "namePlaceholder": "es. Flusso checkout",
             "stepPathPlaceholder": "/percorso",
             "stepEventPlaceholder": "event_name",
@@ -870,7 +876,7 @@
             }
         },
         "user": {
-            "breadcrumb": "Impostazioni utente",
+            "breadcrumb": "Impostazioni",
             "subtitle": "Gestisci sicurezza e preferenze del tuo account.",
             "profile": {
                 "title": "Profilo",
@@ -946,10 +952,19 @@
             "loading": "Caricamento client API...",
             "empty": "Nessun client API al momento.",
             "listTitle": "Client API esistenti",
+            "createDialogTitle": "Aggiungi client API",
+            "editDialogTitle": "Modifica client API",
             "confirmDelete": "Eliminare il client API \"{{name}}\"?",
+            "confirmRotate": "Rigenerare il token per il client API \"{{name}}\"? Il vecchio token smetterà subito di funzionare.",
+            "noSiteAccess": "Nessun accesso ai siti",
+            "noSiteAccessInstanceOnly": "Solo istanza/admin; nessun accesso ai siti",
+            "siteGrantCount": "{{count}} autorizzazioni sito",
+            "siteGrantPopoverTitle": "Autorizzazioni sito",
             "status": {
                 "active": "Attivo",
-                "revoked": "Revocato"
+                "inactive": "Inattivo",
+                "revoked": "Revocato",
+                "expired": "Scaduto"
             },
             "meta": {
                 "instanceRole": "Ruolo istanza",
@@ -958,14 +973,16 @@
                 "expires": "Scade"
             },
             "actions": {
+                "add": "Aggiungi client API",
                 "create": "Crea client",
                 "save": "Salva modifiche",
                 "edit": "Modifica",
                 "revoke": "Revoca",
                 "reactivate": "Riattiva",
                 "delete": "Elimina",
-                "addScope": "Aggiungi ambito",
-                "refresh": "Aggiorna"
+                "addScope": "Aggiungi autorizzazione",
+                "refresh": "Aggiorna",
+                "rollToken": "Rigenera token"
             },
             "form": {
                 "nameLabel": "Nome client",
@@ -975,8 +992,8 @@
                 "instanceRoleLabel": "Ruolo istanza",
                 "expiresAtLabel": "Scadenza",
                 "expiresAtHint": "Se lasciato vuoto, il token non scade mai. Non è consigliato.",
-                "siteScopesLabel": "Ambiti sito",
-                "siteScopesHint": "Opzionale: limita questo client a siti e ruoli sito specifici.",
+                "siteScopesLabel": "Autorizzazioni sito",
+                "siteScopesHint": "L'accesso ad analytics sito, MCP e ingest richiede un'autorizzazione sito esplicita.",
                 "selectSitePlaceholder": "Seleziona sito",
                 "validation": {
                     "nameRequired": "Il nome del client è obbligatorio.",
@@ -984,9 +1001,9 @@
                     "instanceRoleRequired": "Il ruolo istanza è obbligatorio.",
                     "expiresAtPast": "La scadenza deve essere nel futuro.",
                     "expiresAtInvalid": "La data di scadenza non è valida.",
-                    "scopeSiteRequired": "Seleziona un sito prima di aggiungere un ambito."
+                    "scopeSiteRequired": "Seleziona un sito prima di aggiungere un'autorizzazione."
                 },
-                "teamSiteScopesHint": "Limita questo client a siti specifici all'interno del team selezionato."
+                "teamSiteScopesHint": "I client del team possono accedere solo ai siti aggiunti qui con un ruolo sito."
             },
             "tokenNotice": {
                 "title": "Copia ora questo token",
@@ -997,12 +1014,14 @@
                 "updated": "Client API aggiornato.",
                 "deleted": "Client API eliminato.",
                 "revoked": "Client API revocato.",
-                "reactivated": "Client API riattivato."
+                "reactivated": "Client API riattivato.",
+                "rotated": "Token API rigenerato. Copia subito il nuovo token."
             },
             "errors": {
                 "loadFailed": "Impossibile caricare i client API.",
                 "createFailed": "Impossibile creare il client API.",
                 "updateFailed": "Impossibile aggiornare il client API.",
+                "rotateFailed": "Impossibile rigenerare il token API.",
                 "deleteFailed": "Impossibile eliminare il client API.",
                 "invalidExpiration": "Data di scadenza non valida.",
                 "notFound": "Client API non trovato."
@@ -1133,6 +1152,10 @@
                 "loadFailed": "Impossibile caricare le esclusioni.",
                 "createFailed": "Impossibile creare l'esclusione.",
                 "deleteFailed": "Impossibile eliminare l'esclusione."
+            },
+            "status": {
+                "createSuccess": "Esclusione {{cidr}} creata.",
+                "deleteSuccess": "Esclusione {{cidr}} eliminata."
             }
         },
         "selector": {
@@ -1178,7 +1201,10 @@
         },
         "team": {
             "emailPlaceholder": "user@example.com",
-            "addMemberAction": "Aggiungi membro",
+            "addMemberAction": "Aggiungi membro del sito",
+            "addMemberDialogTitle": "Aggiungi membro del sito",
+            "addMemberSuccess": "Membro del sito aggiunto.",
+            "removeMemberSuccess": "Membro del sito rimosso.",
             "confirmRemove": "Rimuovere {{email}} dal sito?",
             "transfer": {
                 "title": "Trasferisci sito",
@@ -1293,6 +1319,7 @@
                 "deleteFailed": "Impossibile eliminare il filtro globale."
             },
             "status": {
+                "createSuccess": "Filtro globale {{cidr}} creato.",
                 "deleteSuccess": "Filtro globale {{cidr}} eliminato."
             }
         },
@@ -1939,7 +1966,7 @@
     },
     "userMenu": {
         "administration": "Amministrazione",
-        "userSettings": "Impostazioni utente",
+        "userSettings": "Impostazioni",
         "preferences": "Preferenze",
         "sessionStatus": "Sessione: ancora {{remaining}}",
         "rememberedSessionStatus": "Ricordami: ancora {{remaining}}",
@@ -2155,15 +2182,8 @@
     },
     "aiVisibility": {
         "title": "Visibilità AI",
-        "docsAction": "Guida alla visibilità AI",
+        "docsAction": "Guida alla configurazione",
         "noSiteDescription": "Seleziona o crea un sito per vedere l’analisi dei fetch AI e delle correlazioni.",
-        "setup": {
-            "title": "Acquisizione server-side richiesta",
-            "badge": "Setup richiesto",
-            "description": "Questa pagina monitora i fetch dei crawler AI solo dopo che li inoltri a HitKeep tramite ingestione edge o dai log.",
-            "detail": "Installare solo hk.js non cattura i fetch dei bot. Le visite riferite dall’AI da ChatGPT, Gemini, Perplexity e assistenti simili possono comunque apparire altrove nelle analytics tramite il referrer.",
-            "action": "Apri la guida di configurazione"
-        },
         "header": {
             "title": "Analisi della visibilità AI",
             "description": "Monitora i fetch server-side dei crawler AI, dove si concentrano gli errori di crawl e quali pagine recuperate attirano poi visite riferite dall’AI."
@@ -2245,7 +2265,8 @@
     },
     "integration": {
         "apiClients": {
-            "subtitle": "Crea e gestisci client API per le integrazioni."
+            "subtitle": "Crea e gestisci client API per le integrazioni.",
+            "manageTeamClients": "Gestisci client API del team"
         },
         "apiReference": {
             "subtitle": "Riferimento REST versionato con dettagli su autenticazione via sessione e API key.",

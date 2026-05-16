@@ -1,0 +1,12 @@
+<p-menu #menu [model]="openMenuItems()" [popup]="true" appendTo="body" styleClass="table-row-actions-menu" (onHide)="clearActiveMenu(menu)" />
+<p-button
+    icon="pi pi-ellipsis-h"
+    [text]="true"
+    [rounded]="true"
+    severity="secondary"
+    [type]="'button'"
+    [loading]="loading()"
+    [disabled]="disabled() || loading() || !hasItems()"
+    [ariaLabel]="ariaLabelKey() | transloco"
+    (onClick)="toggleMenu($event, menu)"
+/>

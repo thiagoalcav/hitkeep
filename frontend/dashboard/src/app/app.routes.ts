@@ -1,10 +1,10 @@
 import { Routes } from '@angular/router';
 import { setupGuard } from '@guards/setup-guard';
 import { authGuard } from '@guards/auth-guard';
-import { adminGuard } from '@guards/admin-guard';
-import { teamAdminGuard } from '@guards/team-admin-guard';
+import { capabilityGuard } from '@guards/capability-guard';
 import { cloudSignupGuard } from '@guards/cloud-signup-guard';
 import { importExportDefaultGuard } from '@pages/import-export/import-export-default.guard';
+import { INSTANCE_CAPABILITIES, TEAM_CAPABILITIES } from '@core/access/capabilities';
 
 export const routes: Routes = [
     {
@@ -137,7 +137,8 @@ export const routes: Routes = [
             {
                 path: 'integration/google-search-console',
                 loadComponent: () => import('@pages/integration/google-search-console/google-search-console').then((m) => m.GoogleSearchConsolePage),
-                canActivate: [teamAdminGuard]
+                canActivate: [capabilityGuard],
+                data: { activeTeamCapability: TEAM_CAPABILITIES.manageIntegrations }
             },
             {
                 path: 'import-export',
@@ -165,19 +166,20 @@ export const routes: Routes = [
                     {
                         path: 'status',
                         loadComponent: () => import('@pages/admin/admin-settings').then((m) => m.AdminSettings),
-                        canActivate: [adminGuard],
-                        data: { adminPage: 'status' }
+                        canActivate: [capabilityGuard],
+                        data: { adminPage: 'status', instanceCapability: INSTANCE_CAPABILITIES.viewSystem }
                     },
                     {
                         path: 'system',
                         loadComponent: () => import('@pages/admin/admin-settings').then((m) => m.AdminSettings),
-                        canActivate: [adminGuard],
-                        data: { adminPage: 'settings' }
+                        canActivate: [capabilityGuard],
+                        data: { adminPage: 'settings', instanceCapability: INSTANCE_CAPABILITIES.manageUsers }
                     },
                     {
                         path: 'team',
                         loadComponent: () => import('@pages/admin/team/team-admin').then((m) => m.TeamAdminPage),
-                        canActivate: [teamAdminGuard]
+                        canActivate: [capabilityGuard],
+                        data: { activeTeamCapability: TEAM_CAPABILITIES.manageSettings }
                     },
                     { path: 'team/overview', redirectTo: 'team', pathMatch: 'full' },
                     { path: 'team/members', redirectTo: 'team', pathMatch: 'full' },

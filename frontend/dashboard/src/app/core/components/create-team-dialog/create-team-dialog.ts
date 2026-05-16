@@ -4,9 +4,8 @@ import { Router } from '@angular/router';
 import { ReactiveFormsModule, FormControl, Validators } from '@angular/forms';
 import { compatForm } from '@angular/forms/signals/compat';
 import { TranslocoPipe } from '@jsverse/transloco';
-import { DialogModule } from 'primeng/dialog';
-import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
+import { DialogShell } from '@components/dialog-shell/dialog-shell';
 import { SiteService } from '@features/sites/services/site.service';
 import { TeamService } from '@services/team.service';
 import { PermissionService } from '@services/permission.service';
@@ -14,9 +13,20 @@ import { PermissionService } from '@services/permission.service';
 @Component({
     selector: 'app-create-team-dialog',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [ReactiveFormsModule, DialogModule, ButtonModule, InputTextModule, TranslocoPipe],
+    imports: [ReactiveFormsModule, DialogShell, InputTextModule, TranslocoPipe],
     template: `
-        <p-dialog [header]="'teams.createDialog.title' | transloco" [(visible)]="visible" [modal]="true" [style]="{ width: '450px', maxWidth: '90vw' }" (onHide)="resetForm()">
+        <app-dialog-shell
+            [title]="'teams.createDialog.title' | transloco"
+            [visible]="visible()"
+            (visibleChange)="onDialogVisibleChange($event)"
+            [secondaryLabel]="'common.actions.cancel' | transloco"
+            [primaryLabel]="'teams.createDialog.createAction' | transloco"
+            [primaryLoading]="isSubmitting()"
+            [primaryDisabled]="isSubmitting() || form().invalid()"
+            [busy]="isSubmitting()"
+            width="450px"
+            (primaryAction)="onSubmit()"
+        >
             <form (submit)="onSubmit($event)" class="flex flex-col gap-6 pt-2" novalidate>
                 <div class="flex flex-col gap-2">
                     <label for="team-name" class="font-semibold text-sm text-[var(--p-text-color)]">{{ "teams.createDialog.nameLabel" | transloco }}</label>
@@ -29,12 +39,7 @@ import { PermissionService } from '@services/permission.service';
                     }
                 </div>
             </form>
-
-            <ng-template pTemplate="footer">
-                <p-button [label]="'common.actions.cancel' | transloco" (onClick)="visible.set(false)" styleClass="p-button-text" />
-                <p-button [label]="'teams.createDialog.createAction' | transloco" (onClick)="onSubmit()" [loading]="isSubmitting()" [disabled]="isSubmitting() || form().invalid()" />
-            </ng-template>
-        </p-dialog>
+        </app-dialog-shell>
     `
 })
 export class CreateTeamDialog {
@@ -63,6 +68,13 @@ export class CreateTeamDialog {
         this.isSubmitting.set(false);
     }
 
+    protected onDialogVisibleChange(visible: boolean) {
+        this.visible.set(visible);
+        if (!visible) {
+            this.resetForm();
+        }
+    }
+
     onSubmit(event?: Event) {
         event?.preventDefault();
         if (this.form().invalid()) {
@@ -86,13 +98,13 @@ export class CreateTeamDialog {
                     next: () => {
                         this.siteService.loadSites();
                         this.perms.loadPermissions().subscribe({ error: () => undefined });
-                        this.visible.set(false);
+                        this.onDialogVisibleChange(false);
                         this.router.navigateByUrl('/dashboard');
                     },
                     error: () => {
                         this.siteService.loadSites();
                         this.perms.loadPermissions().subscribe({ error: () => undefined });
-                        this.visible.set(false);
+                        this.onDialogVisibleChange(false);
                         this.router.navigateByUrl('/dashboard');
                     }
                 });

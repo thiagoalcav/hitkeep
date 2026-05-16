@@ -1,4 +1,38 @@
-<p-confirmpopup key="global-exclusion-delete" />
+<p-confirmdialog />
+<app-crud-dialog
+    [title]="'admin.exclusions.addAction' | transloco"
+    [visible]="isAddDialogVisible()"
+    (visibleChange)="onAddDialogVisibleChange($event)"
+    [submitLabel]="'admin.exclusions.addAction' | transloco"
+    [cancelLabel]="'common.actions.cancel' | transloco"
+    [saving]="isSaving()"
+    (submitted)="addRule()"
+>
+    <form [formGroup]="form" class="admin-exclusions__form" (ngSubmit)="addRule()">
+        <div class="admin-exclusions__composer">
+            <div class="admin-exclusions__field">
+                <label for="instance-exclusion-cidr">{{ "admin.exclusions.cidrLabel" | transloco }}</label>
+                <input id="instance-exclusion-cidr" pInputText formControlName="cidr" [placeholder]="'admin.exclusions.cidrPlaceholder' | transloco" />
+                @if (form.controls.cidr.touched && form.controls.cidr.invalid) {
+                <small>{{ "admin.exclusions.errors.invalidCidr" | transloco }}</small>
+                }
+            </div>
+
+            <div class="admin-exclusions__field">
+                <label for="instance-exclusion-description">{{ "admin.exclusions.descriptionLabel" | transloco }}</label>
+                <input id="instance-exclusion-description" pInputText formControlName="description" [placeholder]="'admin.exclusions.descriptionPlaceholder' | transloco" />
+                @if (form.controls.description.touched && form.controls.description.invalid) {
+                <small>{{ "admin.exclusions.errors.descriptionTooLong" | transloco }}</small>
+                }
+            </div>
+        </div>
+
+        @if (createError(); as errorKey) {
+        <div class="hk-feedback-message hk-feedback-message--error">{{ errorKey | transloco }}</div>
+        }
+    </form>
+</app-crud-dialog>
+
 <div class="admin-exclusions">
     @if (actionStatus(); as status) {
     <p-message [severity]="status.severity" styleClass="w-full" [text]="actionStatusMessage()" />
@@ -18,35 +52,17 @@
         </div>
     </div>
 
-    <form [formGroup]="form" class="admin-exclusions__form" (ngSubmit)="addRule()">
-        <div class="admin-exclusions__composer">
-            <div class="admin-exclusions__field">
-                <label for="instance-exclusion-cidr">{{ "admin.exclusions.cidrLabel" | transloco }}</label>
-                <input id="instance-exclusion-cidr" pInputText formControlName="cidr" [placeholder]="'admin.exclusions.cidrPlaceholder' | transloco" />
-                @if (form.controls.cidr.touched && form.controls.cidr.invalid) {
-                <small>{{ "admin.exclusions.errors.invalidCidr" | transloco }}</small>
-                }
-            </div>
-
-            <div class="admin-exclusions__field">
-                <label for="instance-exclusion-description">{{ "admin.exclusions.descriptionLabel" | transloco }}</label>
-                <input id="instance-exclusion-description" pInputText formControlName="description" [placeholder]="'admin.exclusions.descriptionPlaceholder' | transloco" />
-                @if (form.controls.description.touched && form.controls.description.invalid) {
-                <small>{{ "admin.exclusions.errors.descriptionTooLong" | transloco }}</small>
-                }
-            </div>
-
-            <div class="admin-exclusions__actions">
-                <p-button [label]="'admin.exclusions.addAction' | transloco" icon="pi pi-plus" size="small" [loading]="isSaving()" [disabled]="isSaving()" [type]="'submit'" />
-                <p-button [label]="'settings.apiClients.actions.refresh' | transloco" icon="pi pi-refresh" [text]="true" size="small" [type]="'button'" [disabled]="isLoading()" (onClick)="reload()" />
-            </div>
-        </div>
-    </form>
-
+    <div class="admin-exclusions__actions">
+        <p-button [label]="'admin.exclusions.addAction' | transloco" icon="pi pi-plus" size="small" [type]="'button'" (onClick)="openAddDialog()" />
+        <p-button [label]="'settings.apiClients.actions.refresh' | transloco" icon="pi pi-refresh" [text]="true" size="small" [type]="'button'" [disabled]="isLoading()" (onClick)="reload()" />
+    </div>
     @if (isLoading()) {
     <p class="admin-exclusions__state">{{ "admin.exclusions.loading" | transloco }}</p>
     } @else if (exclusions().length === 0) {
-    <p class="admin-exclusions__state">{{ "admin.exclusions.empty" | transloco }}</p>
+    <div class="admin-exclusions__empty">
+        <p class="admin-exclusions__state">{{ "admin.exclusions.empty" | transloco }}</p>
+        <p-button [label]="'admin.exclusions.addAction' | transloco" icon="pi pi-plus" [outlined]="true" size="small" [type]="'button'" (onClick)="openAddDialog()" />
+    </div>
     } @else {
     <div class="flex justify-end mb-3">
         <p-iconfield class="hk-crud-search">
@@ -81,7 +97,7 @@
                     <td>{{ rule.description || "-" }}</td>
                     <td><app-relative-date-time [value]="rule.created_at" /></td>
                     <td>
-                        <p-button icon="pi pi-trash" severity="danger" [text]="true" [rounded]="true" [type]="'button'" (onClick)="confirmDeleteRule($event, rule)" />
+                        <app-table-row-actions [items]="ruleActions(rule)" [loading]="deletingRuleID() === rule.id" />
                     </td>
                 </tr>
             </ng-template>

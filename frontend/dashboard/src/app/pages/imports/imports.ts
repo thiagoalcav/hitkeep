@@ -9,8 +9,10 @@ import { MessageModule } from 'primeng/message';
 import { ProgressBarModule } from 'primeng/progressbar';
 import { TagModule } from 'primeng/tag';
 import { TableModule } from 'primeng/table';
+import { SITE_CAPABILITIES } from '@core/access/capabilities';
+import { PageState } from '@components/page-state/page-state';
 import { SiteService } from '@features/sites/services/site.service';
-import { PermissionService } from '@services/permission.service';
+import { AccessService } from '@services/access.service';
 import { ImportJob, ImportManifest, ImportProviderDescriptor, ImportsService } from '@services/imports.service';
 import { injectActiveLang } from '@core/i18n/active-lang';
 
@@ -77,7 +79,7 @@ function safeList<T>(value: readonly T[] | null | undefined): T[] {
 
 @Component({
     selector: 'app-imports',
-    imports: [DatePipe, DecimalPipe, TranslocoPipe, ButtonModule, CardModule, FileUploadModule, MessageModule, ProgressBarModule, TagModule, TableModule],
+    imports: [DatePipe, DecimalPipe, TranslocoPipe, ButtonModule, CardModule, FileUploadModule, MessageModule, ProgressBarModule, TagModule, TableModule, PageState],
     templateUrl: './imports.html',
     styleUrl: './imports.css',
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -86,7 +88,7 @@ export class ImportsPage {
     private readonly fileUpload = viewChild<FileUpload>('fileUpload');
     private readonly imports = inject(ImportsService);
     private readonly siteService = inject(SiteService);
-    private readonly perms = inject(PermissionService);
+    private readonly access = inject(AccessService);
     private readonly transloco = inject(TranslocoService);
     private readonly destroyRef = inject(DestroyRef);
     private readonly activeLanguage = injectActiveLang();
@@ -94,7 +96,7 @@ export class ImportsPage {
     protected readonly activeSite = computed(() => this.siteService.activeSite());
     protected readonly canImport = computed(() => {
         const site = this.activeSite();
-        return !!site && this.perms.canManageSite(site.id);
+        return !!site && this.access.canSite(site.id, SITE_CAPABILITIES.manageData);
     });
     protected readonly providers = signal<ImportProviderDescriptor[]>([]);
     protected readonly selectedProvider = signal('');

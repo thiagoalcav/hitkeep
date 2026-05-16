@@ -1,0 +1,45 @@
+:host {
+    display: block;
+}
+
+.page-state {
+    align-items: center;
+    border: 1px solid var(--p-surface-border);
+    border-radius: 0.5rem;
+    color: var(--p-text-muted-color);
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    justify-content: center;
+    min-height: 18rem;
+    padding: 2rem;
+    text-align: center;
+}
+
+.page-state__icon {
+    align-items: center;
+    background: var(--p-surface-100);
+    border-radius: 9999px;
+    color: var(--p-text-color);
+    display: inline-flex;
+    height: 2.5rem;
+    justify-content: center;
+    width: 2.5rem;
+}
+
+:host-context(.p-dark) .page-state__icon {
+    background: var(--p-surface-800);
+}
+
+.page-state h2 {
+    color: var(--p-text-color);
+    font-size: 1.25rem;
+    font-weight: 650;
+    line-height: 1.25;
+    margin: 0;
+}
+
+.page-state p {
+    margin: 0;
+    max-width: 34rem;
+}

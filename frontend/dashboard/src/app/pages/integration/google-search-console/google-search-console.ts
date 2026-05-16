@@ -12,6 +12,7 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { finalize } from 'rxjs';
 
+import { dialogCancelButton, dialogDangerButton } from '@components/dialog-actions/dialog-actions';
 import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
 import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
 import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
@@ -381,9 +382,8 @@ export class GoogleSearchConsolePage {
             message: this.transloco.translate('integration.googleSearchConsole.confirm.disconnectMessage'),
             header: this.transloco.translate('integration.googleSearchConsole.actions.confirmDisconnect'),
             icon: 'pi pi-exclamation-triangle',
-            acceptLabel: this.transloco.translate('integration.googleSearchConsole.confirm.disconnectAccept'),
-            rejectLabel: this.transloco.translate('integration.googleSearchConsole.confirm.cancel'),
-            acceptButtonStyleClass: 'p-button-danger',
+            rejectButtonProps: dialogCancelButton(this.transloco.translate('common.actions.cancel')),
+            acceptButtonProps: dialogDangerButton(this.transloco.translate('integration.googleSearchConsole.confirm.disconnectAccept')),
             accept: () => this.disconnect(teamID)
         });
     }
@@ -445,9 +445,8 @@ export class GoogleSearchConsolePage {
             message: this.transloco.translate('integration.googleSearchConsole.confirm.removeMappingMessage'),
             header: this.transloco.translate('integration.googleSearchConsole.actions.confirmRemoveMapping'),
             icon: 'pi pi-exclamation-triangle',
-            acceptLabel: this.transloco.translate('integration.googleSearchConsole.confirm.removeMappingAccept'),
-            rejectLabel: this.transloco.translate('integration.googleSearchConsole.confirm.cancel'),
-            acceptButtonStyleClass: 'p-button-danger',
+            rejectButtonProps: dialogCancelButton(this.transloco.translate('common.actions.cancel')),
+            acceptButtonProps: dialogDangerButton(this.transloco.translate('integration.googleSearchConsole.confirm.removeMappingAccept')),
             accept: () => this.unmapProperty(siteID)
         });
     }

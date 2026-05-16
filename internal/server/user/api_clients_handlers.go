@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"hitkeep/internal/api"
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/database"
 	"hitkeep/internal/server/shared"
@@ -39,6 +40,11 @@ type updateAPIClientRequest struct {
 	SiteRoles    []apiClientSiteRoleInput `json:"site_roles"`
 }
 
+type apiClientTokenResponse struct {
+	Client api.APIClient `json:"client"`
+	Token  string        `json:"token"`
+}
+
 func (h *handler) handleListAPIClients() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := shared.GetUserIDFromContext(r)
@@ -62,11 +68,6 @@ func (h *handler) handleListAPIClients() http.HandlerFunc {
 }
 
 func (h *handler) handleCreateAPIClient() http.HandlerFunc {
-	type response struct {
-		Client any    `json:"client"`
-		Token  string `json:"token"`
-	}
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := shared.GetUserIDFromContext(r)
 		if userID == uuid.Nil {
@@ -134,9 +135,15 @@ func (h *handler) handleCreateAPIClient() http.HandlerFunc {
 			return
 		}
 
+		if err := h.appendAPIClientAudit(r, userID, uuid.Nil, "api_client.created", client); err != nil {
+			slog.Error("Failed to audit api client create", "error", err, "user_id", userID, "client_id", client.ID)
+			http.Error(w, "Failed to audit api client action", http.StatusInternalServerError)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		if err := json.NewEncoder(w).Encode(response{Client: client, Token: token}); err != nil {
+		if err := json.NewEncoder(w).Encode(apiClientTokenResponse{Client: *client, Token: token}); err != nil {
 			slog.Error("Failed to encode create api client response", "error", err, "user_id", userID)
 		}
 	}
@@ -235,9 +242,61 @@ func (h *handler) handleUpdateAPIClient() http.HandlerFunc {
 			return
 		}
 
+		if err := h.appendAPIClientAudit(r, userID, uuid.Nil, apiClientUpdateAuditAction(existing, updated), updated); err != nil {
+			slog.Error("Failed to audit api client update", "error", err, "user_id", userID, "client_id", clientID)
+			http.Error(w, "Failed to audit api client action", http.StatusInternalServerError)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(updated); err != nil {
 			slog.Error("Failed to encode api client update response", "error", err, "user_id", userID, "client_id", clientID)
+		}
+	}
+}
+
+func (h *handler) handleRotateAPIClient() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID := shared.GetUserIDFromContext(r)
+		if userID == uuid.Nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		clientID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+		if err != nil {
+			http.Error(w, "Invalid client ID", http.StatusBadRequest)
+			return
+		}
+
+		client, token, err := h.ctx.Store.RotateAPIClient(r.Context(), userID, clientID)
+		if err != nil {
+			if errors.Is(err, database.ErrAPIClientNotFound) {
+				http.Error(w, "API client not found", http.StatusNotFound)
+				return
+			}
+			if errors.Is(err, database.ErrAPIClientInactive) {
+				http.Error(w, "API client is revoked or expired", http.StatusConflict)
+				return
+			}
+			slog.Error("Failed to rotate api client", "error", err, "user_id", userID, "client_id", clientID)
+			http.Error(w, "Failed to rotate api client", http.StatusInternalServerError)
+			return
+		}
+		if client == nil {
+			http.Error(w, "API client not found", http.StatusNotFound)
+			return
+		}
+
+		if err := h.appendAPIClientAudit(r, userID, uuid.Nil, "api_client.rotated", client); err != nil {
+			slog.Error("Failed to audit api client rotation", "error", err, "user_id", userID, "client_id", clientID)
+			http.Error(w, "Failed to audit api client action", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(apiClientTokenResponse{Client: *client, Token: token}); err != nil {
+			slog.Error("Failed to encode rotate api client response", "error", err, "user_id", userID, "client_id", clientID)
 		}
 	}
 }
@@ -256,6 +315,17 @@ func (h *handler) handleDeleteAPIClient() http.HandlerFunc {
 			return
 		}
 
+		existing, err := h.ctx.Store.GetAPIClient(r.Context(), userID, clientID)
+		if err != nil {
+			slog.Error("Failed to load api client before delete", "error", err, "user_id", userID, "client_id", clientID)
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		if existing == nil {
+			http.Error(w, "API client not found", http.StatusNotFound)
+			return
+		}
+
 		err = h.ctx.Store.DeleteAPIClient(r.Context(), userID, clientID)
 		if err != nil {
 			if errors.Is(err, database.ErrAPIClientNotFound) {
@@ -267,6 +337,11 @@ func (h *handler) handleDeleteAPIClient() http.HandlerFunc {
 			return
 		}
 
+		if err := h.appendAPIClientAudit(r, userID, uuid.Nil, "api_client.deleted", existing); err != nil {
+			slog.Error("Failed to audit api client delete", "error", err, "user_id", userID, "client_id", clientID)
+			http.Error(w, "Failed to audit api client action", http.StatusInternalServerError)
+			return
+		}
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
@@ -293,11 +368,6 @@ func (h *handler) handleListTeamAPIClients() http.HandlerFunc {
 }
 
 func (h *handler) handleCreateTeamAPIClient() http.HandlerFunc {
-	type response struct {
-		Client any    `json:"client"`
-		Token  string `json:"token"`
-	}
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		actorID, teamID, ok := h.resolveTeamAPIClientScope(w, r)
 		if !ok {
@@ -343,11 +413,15 @@ func (h *handler) handleCreateTeamAPIClient() http.HandlerFunc {
 			return
 		}
 
-		h.appendTeamAudit(r, teamID, actorID, "api_client.created", fmt.Sprintf("Team API client %q created", name), nil)
+		if err := h.appendAPIClientAudit(r, actorID, teamID, "api_client.created", client); err != nil {
+			slog.Error("Failed to audit team api client create", "error", err, "team_id", teamID, "actor_id", actorID, "client_id", client.ID)
+			http.Error(w, "Failed to audit api client action", http.StatusInternalServerError)
+			return
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		if err := json.NewEncoder(w).Encode(response{Client: client, Token: token}); err != nil {
+		if err := json.NewEncoder(w).Encode(apiClientTokenResponse{Client: *client, Token: token}); err != nil {
 			slog.Error("Failed to encode create team api client response", "error", err, "team_id", teamID, "actor_id", actorID)
 		}
 	}
@@ -427,17 +501,60 @@ func (h *handler) handleUpdateTeamAPIClient() http.HandlerFunc {
 			return
 		}
 
-		action := "api_client.updated"
-		details := fmt.Sprintf("Team API client %q updated", updated.Name)
-		if updated.RevokedAt != nil {
-			action = "api_client.revoked"
-			details = fmt.Sprintf("Team API client %q revoked", updated.Name)
+		if err := h.appendAPIClientAudit(r, actorID, teamID, apiClientUpdateAuditAction(existing, updated), updated); err != nil {
+			slog.Error("Failed to audit team api client update", "error", err, "team_id", teamID, "actor_id", actorID, "client_id", clientID)
+			http.Error(w, "Failed to audit api client action", http.StatusInternalServerError)
+			return
 		}
-		h.appendTeamAudit(r, teamID, actorID, action, details, nil)
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(updated); err != nil {
 			slog.Error("Failed to encode team api client update response", "error", err, "team_id", teamID, "actor_id", actorID, "client_id", clientID)
+		}
+	}
+}
+
+func (h *handler) handleRotateTeamAPIClient() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		actorID, teamID, ok := h.resolveTeamAPIClientScope(w, r)
+		if !ok {
+			return
+		}
+
+		clientID, err := uuid.Parse(strings.TrimSpace(r.PathValue("clientId")))
+		if err != nil {
+			http.Error(w, "Invalid client ID", http.StatusBadRequest)
+			return
+		}
+
+		client, token, err := h.ctx.Store.RotateTeamAPIClient(r.Context(), teamID, clientID)
+		if err != nil {
+			if errors.Is(err, database.ErrAPIClientNotFound) {
+				http.Error(w, "API client not found", http.StatusNotFound)
+				return
+			}
+			if errors.Is(err, database.ErrAPIClientInactive) {
+				http.Error(w, "API client is revoked or expired", http.StatusConflict)
+				return
+			}
+			slog.Error("Failed to rotate team api client", "error", err, "team_id", teamID, "actor_id", actorID, "client_id", clientID)
+			http.Error(w, "Failed to rotate api client", http.StatusInternalServerError)
+			return
+		}
+		if client == nil {
+			http.Error(w, "API client not found", http.StatusNotFound)
+			return
+		}
+
+		if err := h.appendAPIClientAudit(r, actorID, teamID, "api_client.rotated", client); err != nil {
+			slog.Error("Failed to audit team api client rotation", "error", err, "team_id", teamID, "actor_id", actorID, "client_id", clientID)
+			http.Error(w, "Failed to audit api client action", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(apiClientTokenResponse{Client: *client, Token: token}); err != nil {
+			slog.Error("Failed to encode rotate team api client response", "error", err, "team_id", teamID, "actor_id", actorID, "client_id", clientID)
 		}
 	}
 }
@@ -477,9 +594,47 @@ func (h *handler) handleDeleteTeamAPIClient() http.HandlerFunc {
 			return
 		}
 
-		h.appendTeamAudit(r, teamID, actorID, "api_client.deleted", fmt.Sprintf("Team API client %q deleted", existing.Name), nil)
+		if err := h.appendAPIClientAudit(r, actorID, teamID, "api_client.deleted", existing); err != nil {
+			slog.Error("Failed to audit team api client delete", "error", err, "team_id", teamID, "actor_id", actorID, "client_id", clientID)
+			http.Error(w, "Failed to audit api client action", http.StatusInternalServerError)
+			return
+		}
 		w.WriteHeader(http.StatusNoContent)
 	}
+}
+
+func apiClientUpdateAuditAction(existing, updated *api.APIClient) string {
+	if existing != nil && existing.RevokedAt == nil && updated != nil && updated.RevokedAt != nil {
+		return "api_client.revoked"
+	}
+	if existing != nil && existing.RevokedAt != nil && updated != nil && updated.RevokedAt == nil {
+		return "api_client.reactivated"
+	}
+	return "api_client.updated"
+}
+
+func (h *handler) appendAPIClientAudit(r *http.Request, actorID, teamID uuid.UUID, action string, client *api.APIClient) error {
+	if client == nil {
+		return nil
+	}
+	ownerType := client.OwnerType
+	if ownerType == "" {
+		ownerType = database.APIClientOwnerPersonal
+		if client.TenantID != nil {
+			ownerType = database.APIClientOwnerTeam
+		}
+	}
+	details := fmt.Sprintf("API client %q %s (owner=%s, client_id=%s)", client.Name, strings.TrimPrefix(action, "api_client."), ownerType, client.ID)
+	return h.ctx.AppendAuditEventChecked(r.Context(), r, shared.AuditEvent{
+		ActorID:     actorID,
+		TeamID:      teamID,
+		Action:      action,
+		TargetType:  "api_client",
+		TargetID:    client.ID.String(),
+		TargetLabel: client.Name,
+		Outcome:     "success",
+		Details:     details,
+	})
 }
 
 func (h *handler) validateDelegatedSiteRoles(r *http.Request, userID uuid.UUID, actorInstanceRole authcore.InstanceRole, roles []apiClientSiteRoleInput) (map[uuid.UUID]authcore.SiteRole, error) {
@@ -580,7 +735,7 @@ func (h *handler) resolveTeamAPIClientScope(w http.ResponseWriter, r *http.Reque
 	}
 
 	role, err := h.ctx.Store.GetTenantRole(r.Context(), teamID, actorID)
-	if err != nil || !canManageTeam(role) {
+	if err != nil || !authcore.TeamRoleHasCapability(role, authcore.CapTeamManageAPIClients) {
 		http.Error(w, "Access denied", http.StatusForbidden)
 		return uuid.Nil, uuid.Nil, false
 	}

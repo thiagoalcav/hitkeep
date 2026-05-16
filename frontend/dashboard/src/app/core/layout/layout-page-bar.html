@@ -1,0 +1,28 @@
+@if (context.hasPageHeader()) {
+<div class="mb-6 flex min-h-[36px] items-center justify-between gap-4 border-b border-surface-200 pb-4 dark:border-surface-700">
+    <div class="min-w-0 flex flex-1 items-center">
+        <ng-container [ngTemplateOutlet]="context.pageHeaderLeft()" />
+    </div>
+
+    <div class="hidden shrink-0 items-center gap-2 md:flex">
+        @if (context.pageHeaderRight(); as headerRight) {
+        <ng-container [ngTemplateOutlet]="headerRight" />
+        } @if (!shareService.isShareMode()) {
+        <app-team-switcher
+            class="max-w-[16rem]"
+            [teams]="teamService.teams()"
+            [currentTeamId]="teamService.activeTeamId()"
+            [loading]="teamService.isLoading()"
+            [switching]="teamService.isSwitching()"
+            [showBrand]="false"
+            [showAdd]="canCreateTeams()"
+            [compact]="true"
+            [beforeSwitch]="beforeTeamSwitch"
+            (teamSelected)="context.onTeamSelected($event)"
+            (addClicked)="isCreateTeamVisible.set(true)"
+        />
+        }
+        <app-user-controls [showMenu]="!shareService.isShareMode()" />
+    </div>
+</div>
+}

@@ -34,6 +34,14 @@
     padding: 0.75rem;
 }
 
+.team-members__header-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
 .team-members__meta-title {
     font-size: 0.95rem;
     font-weight: 600;
@@ -45,11 +53,10 @@
     margin-top: 0.2rem;
 }
 
-.team-members__invite {
-    border: 1px solid var(--p-content-border-color);
-    border-radius: 0.75rem;
-    margin-bottom: 1rem;
-    padding: 0.75rem;
+.team-members__invite-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
 }
 
 .team-members__invite-grid {
@@ -72,13 +79,6 @@
 .team-members__field small {
     color: var(--p-red-600);
     font-size: 0.75rem;
-}
-
-.team-members__invite-actions {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
-    margin-top: 0.75rem;
 }
 
 .team-members__readonly {
@@ -141,12 +141,17 @@
 }
 
 @media (max-width: 768px) {
+    .team-members__meta {
+        flex-direction: column;
+    }
+
     .team-members__invite-grid {
         grid-template-columns: 1fr;
     }
 
-    .team-members__invite-actions {
-        justify-content: stretch;
+    .team-members__header-actions {
+        align-items: flex-start;
+        justify-content: flex-start;
     }
 
     .team-members__actions {

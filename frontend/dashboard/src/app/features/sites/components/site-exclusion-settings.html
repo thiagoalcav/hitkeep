@@ -1,4 +1,38 @@
-<p-confirmpopup key="site-exclusion-delete" />
+<p-confirmdialog />
+<app-crud-dialog
+    [title]="'sites.exclusions.addAction' | transloco"
+    [visible]="isAddDialogVisible()"
+    (visibleChange)="onAddDialogVisibleChange($event)"
+    [submitLabel]="'sites.exclusions.addAction' | transloco"
+    [cancelLabel]="'common.actions.cancel' | transloco"
+    [saving]="isSaving()"
+    (submitted)="addRule()"
+>
+    <form [formGroup]="form" class="site-exclusions__form" (ngSubmit)="addRule()">
+        <div class="site-settings-field-grid site-exclusions__field-grid">
+            <div class="site-settings-field">
+                <label for="site-exclusion-cidr">{{ "sites.exclusions.cidrLabel" | transloco }}</label>
+                <input id="site-exclusion-cidr" pInputText formControlName="cidr" [placeholder]="'sites.exclusions.cidrPlaceholder' | transloco" />
+                @if (form.controls.cidr.touched && form.controls.cidr.invalid) {
+                <small class="site-exclusions__error-text">{{ "sites.exclusions.errors.invalidCidr" | transloco }}</small>
+                }
+            </div>
+
+            <div class="site-settings-field">
+                <label for="site-exclusion-description">{{ "sites.exclusions.descriptionLabel" | transloco }}</label>
+                <input id="site-exclusion-description" pInputText formControlName="description" [placeholder]="'sites.exclusions.descriptionPlaceholder' | transloco" />
+                @if (form.controls.description.touched && form.controls.description.invalid) {
+                <small class="site-exclusions__error-text">{{ "sites.exclusions.errors.descriptionTooLong" | transloco }}</small>
+                }
+            </div>
+        </div>
+
+        @if (createError(); as errorKey) {
+        <div class="hk-feedback-message hk-feedback-message--error">{{ errorKey | transloco }}</div>
+        }
+    </form>
+</app-crud-dialog>
+
 <div class="site-settings-stack site-exclusions">
     @if (error(); as errorKey) {
     <div class="site-settings-alert site-settings-alert--error">{{ errorKey | transloco }}</div>
@@ -22,40 +56,6 @@
         </div>
     </section>
 
-    <form [formGroup]="form" class="site-settings-card" (ngSubmit)="addRule()">
-        <header class="site-settings-card__header">
-            <div class="site-settings-card__title-row">
-                <span class="site-settings-card__icon"><i class="pi pi-filter-slash" aria-hidden="true"></i></span>
-                <div>
-                    <h3>{{ "sites.exclusions.addAction" | transloco }}</h3>
-                    <p>{{ "sites.exclusions.description" | transloco }}</p>
-                </div>
-            </div>
-        </header>
-        <div class="site-settings-card__body">
-            <div class="site-settings-field-grid site-exclusions__field-grid">
-                <div class="site-settings-field">
-                    <label for="site-exclusion-cidr">{{ "sites.exclusions.cidrLabel" | transloco }}</label>
-                    <input id="site-exclusion-cidr" pInputText formControlName="cidr" [placeholder]="'sites.exclusions.cidrPlaceholder' | transloco" />
-                    @if (form.controls.cidr.touched && form.controls.cidr.invalid) {
-                    <small class="site-exclusions__error-text">{{ "sites.exclusions.errors.invalidCidr" | transloco }}</small>
-                    }
-                </div>
-
-                <div class="site-settings-field">
-                    <label for="site-exclusion-description">{{ "sites.exclusions.descriptionLabel" | transloco }}</label>
-                    <input id="site-exclusion-description" pInputText formControlName="description" [placeholder]="'sites.exclusions.descriptionPlaceholder' | transloco" />
-                    @if (form.controls.description.touched && form.controls.description.invalid) {
-                    <small class="site-exclusions__error-text">{{ "sites.exclusions.errors.descriptionTooLong" | transloco }}</small>
-                    }
-                </div>
-            </div>
-        </div>
-        <footer class="site-settings-card__footer">
-            <p-button styleClass="site-settings-action-btn" [label]="'sites.exclusions.addAction' | transloco" icon="pi pi-plus" [loading]="isSaving()" [disabled]="isSaving()" [type]="'submit'" />
-        </footer>
-    </form>
-
     <section class="site-settings-card">
         <header class="site-settings-card__header">
             <div class="site-settings-card__title-row">
@@ -65,9 +65,12 @@
                     <p>{{ "sites.exclusions.description" | transloco }}</p>
                 </div>
             </div>
+            <p-button styleClass="site-settings-action-btn" [label]="'sites.exclusions.addAction' | transloco" icon="pi pi-plus" [type]="'button'" (onClick)="openAddDialog()" />
         </header>
         <div class="site-settings-card__body">
-            @if (isLoading()) {
+            @if (actionStatus(); as status) {
+            <p-message [severity]="status.severity" styleClass="w-full" [text]="actionStatusMessage()" />
+            } @if (isLoading()) {
             <div class="site-settings-empty">
                 <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
                 <span>{{ "sites.exclusions.loading" | transloco }}</span>
@@ -76,6 +79,7 @@
             <div class="site-settings-empty">
                 <i class="pi pi-filter-slash" aria-hidden="true"></i>
                 <span>{{ "sites.exclusions.empty" | transloco }}</span>
+                <p-button [label]="'sites.exclusions.addAction' | transloco" icon="pi pi-plus" [outlined]="true" [type]="'button'" (onClick)="openAddDialog()" />
             </div>
             } @else {
             <div class="site-settings-table-shell">
@@ -113,7 +117,7 @@
                                 <td>{{ rule.description || "-" }}</td>
                                 <td><app-relative-date-time [value]="rule.created_at" /></td>
                                 <td>
-                                    <p-button icon="pi pi-trash" severity="danger" [text]="true" [type]="'button'" (onClick)="confirmDeleteRule($event, rule)" />
+                                    <app-table-row-actions [items]="ruleActions(rule)" [loading]="deletingRuleID() === rule.id" />
                                 </td>
                             </tr>
                         </ng-template>

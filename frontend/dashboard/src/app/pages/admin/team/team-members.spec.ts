@@ -1,15 +1,29 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { of } from 'rxjs';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { provideTranslocoLocale } from '@jsverse/transloco-locale';
 import { vi } from 'vitest';
+import { TEAM_CAPABILITIES } from '@core/access/capabilities';
+import { PermissionService } from '@services/permission.service';
 import { TeamMembersPage } from './team-members';
 import { TeamService } from '@services/team.service';
 
 interface TeamMembersTestAccess {
     members(): unknown[];
     pendingInvites(): unknown[];
+    inviteForm: {
+        email(): {
+            control(): {
+                setValue(value: string): void;
+            };
+        };
+    };
+    inviteMember(): void;
+    isInviteDialogVisible(): boolean;
+    successKey(): string | null;
 }
 
 describe('TeamMembersPage', () => {
@@ -17,6 +31,7 @@ describe('TeamMembersPage', () => {
     let component: TeamMembersPage;
 
     const teamServiceMock = {
+        activeTeamId: signal('team-1'),
         activeTeam: signal({
             id: 'team-1',
             name: 'Acme',
@@ -50,20 +65,75 @@ describe('TeamMembersPage', () => {
                 }
             ]);
         }),
-        upsertTeamMember: vi.fn(() => of({ status: 'ok', is_invite: true })),
+        upsertTeamMember: vi.fn((teamID: string, payload: { email: string; role: string }) => {
+            void teamID;
+            void payload;
+            return of({ status: 'ok', is_invite: true });
+        }),
         removeTeamMember: vi.fn(() => of({ status: 'ok' })),
         resendTeamInvite: vi.fn(() => of({ status: 'ok' })),
         revokeTeamInvite: vi.fn(() => of({ status: 'ok' })),
         transferTeamOwnership: vi.fn(() => of({ status: 'ok' })),
         loadTeams: vi.fn(() => of({ active_team_id: 'team-1', teams: [] }))
     };
+    const permissionServiceMock = {
+        permissions: signal({
+            instance_role: 'user' as const,
+            permissions: {},
+            active_team_id: 'team-1',
+            active_team_role: 'owner' as const,
+            active_team_capabilities: [TEAM_CAPABILITIES.manageMembers, TEAM_CAPABILITIES.transferOwnership]
+        })
+    };
 
     beforeEach(async () => {
+        permissionServiceMock.permissions.set({
+            instance_role: 'user',
+            permissions: {},
+            active_team_id: 'team-1',
+            active_team_role: 'owner',
+            active_team_capabilities: [TEAM_CAPABILITIES.manageMembers, TEAM_CAPABILITIES.transferOwnership]
+        });
         await TestBed.configureTestingModule({
             imports: [
                 TeamMembersPage,
                 TranslocoTestingModule.forRoot({
-                    langs: { en: {} },
+                    langs: {
+                        en: {
+                            teams: {
+                                management: {
+                                    title: 'Team members',
+                                    subtitle: 'Manage access and roles for {{team}}.',
+                                    inviteDialogTitle: 'Invite team member',
+                                    invite: {
+                                        emailLabel: 'Email address',
+                                        emailPlaceholder: 'user@example.com',
+                                        emailInvalid: 'Enter a valid email address.',
+                                        roleLabel: 'Role',
+                                        submitAction: 'Invite member'
+                                    }
+                                },
+                                roles: {
+                                    owner: 'Owner',
+                                    admin: 'Admin',
+                                    member: 'Member'
+                                }
+                            },
+                            common: {
+                                actions: {
+                                    cancel: 'Cancel',
+                                    refresh: 'Refresh'
+                                },
+                                columns: {
+                                    actions: 'Actions',
+                                    added: 'Added',
+                                    email: 'Email',
+                                    role: 'Role'
+                                },
+                                searchPlaceholder: 'Search...'
+                            }
+                        }
+                    },
                     translocoConfig: {
                         availableLangs: ['en'],
                         defaultLang: 'en'
@@ -72,7 +142,10 @@ describe('TeamMembersPage', () => {
                 })
             ],
             providers: [
+                provideHttpClient(),
+                provideHttpClientTesting(),
                 { provide: TeamService, useValue: teamServiceMock },
+                { provide: PermissionService, useValue: permissionServiceMock },
                 provideTranslocoLocale({
                     langToLocaleMapping: {
                         en: 'en-US'
@@ -96,5 +169,39 @@ describe('TeamMembersPage', () => {
         expect(teamServiceMock.listTeamInvites).toHaveBeenCalledWith('team-1');
         expect(access.members().length).toBe(1);
         expect(access.pendingInvites().length).toBe(1);
+    });
+
+    it('keeps the invite form in a CRUD dialog opened from the table surface', () => {
+        expect(fixture.nativeElement.querySelector('#team-member-email')).toBeNull();
+
+        const inviteButton = Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find((button) => button.textContent?.includes('Invite member'));
+        expect(inviteButton).toBeTruthy();
+
+        inviteButton?.click();
+        fixture.detectChanges();
+
+        expect(document.body.querySelector('#team-member-email')).toBeTruthy();
+        expect(document.body.textContent).toContain('Invite team member');
+    });
+
+    it('invites a member from the dialog and returns feedback to the member surface', () => {
+        const access = component as unknown as TeamMembersTestAccess;
+        const inviteButton = Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find((button) => button.textContent?.includes('Invite member'));
+        inviteButton?.click();
+        fixture.detectChanges();
+
+        access.inviteForm.email().control().setValue('New.Member@Example.com');
+        access.inviteMember();
+
+        expect(teamServiceMock.upsertTeamMember).toHaveBeenCalled();
+        expect(teamServiceMock.upsertTeamMember.mock.calls.at(-1)).toEqual([
+            'team-1',
+            {
+                email: 'new.member@example.com',
+                role: 'member'
+            }
+        ]);
+        expect(access.isInviteDialogVisible()).toBe(false);
+        expect(access.successKey()).toBe('teams.management.status.inviteSent');
     });
 });

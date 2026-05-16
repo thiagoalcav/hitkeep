@@ -8,6 +8,8 @@ import { provideRouter } from '@angular/router';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { vi } from 'vitest';
 
+import { INSTANCE_CAPABILITIES } from '@core/access/capabilities';
+import { AccessService } from '@services/access.service';
 import { UserProfileService } from '@services/user-profile.service';
 import { PermissionService } from '@services/permission.service';
 import { AdminSettings } from './admin-settings';
@@ -15,15 +17,7 @@ import { AdminSettings } from './admin-settings';
 interface AdminSettingsTestAccess {
     handleDeleteUserError(err: unknown, user: { email: string }): boolean;
     resolveDeleteErrorKey(err: unknown, fallbackKey: string): string;
-    confirmDeleteSite(
-        event: Event,
-        site: {
-            id: string;
-            domain: string;
-            user_id: string;
-            created_at: string;
-        }
-    ): void;
+    confirmDeleteSite(site: { id: string; domain: string; user_id: string; created_at: string }): void;
     deleteUserBlock(): {
         email: string;
         teams: string[];
@@ -62,6 +56,8 @@ interface AdminSettingsTestAccess {
         params?: Record<string, string | number>;
     } | null;
     importCleanupActionStatusMessage(): string;
+    canRunMaintenance(): boolean;
+    canViewActivation(): boolean;
     isLoadingSearchConsole(): boolean;
     loadSearchConsoleStatus(): void;
     isLoadingAIStatus(): boolean;
@@ -116,8 +112,10 @@ describe('AdminSettings', () => {
     let confirmationServiceMock: {
         confirm: ReturnType<typeof vi.fn>;
     };
+    let hasInstanceMock: ReturnType<typeof vi.fn>;
     const permissionServiceMock = {
         isInstanceOwner: signal(false),
+        isInstanceAdmin: signal(false),
         permissions: signal(null)
     };
 
@@ -125,6 +123,7 @@ describe('AdminSettings', () => {
         confirmationServiceMock = {
             confirm: vi.fn()
         };
+        hasInstanceMock = vi.fn(() => true);
 
         TestBed.configureTestingModule({
             imports: [
@@ -184,11 +183,18 @@ describe('AdminSettings', () => {
                 {
                     provide: PermissionService,
                     useValue: permissionServiceMock
+                },
+                {
+                    provide: AccessService,
+                    useValue: {
+                        hasInstance: hasInstanceMock
+                    }
                 }
             ]
         });
 
         permissionServiceMock.isInstanceOwner.set(false);
+        permissionServiceMock.isInstanceAdmin.set(false);
         permissionServiceMock.permissions.set(null);
         httpMock = TestBed.inject(HttpTestingController);
         component = TestBed.runInInjectionContext(() => new AdminSettings()) as unknown as AdminSettingsTestAccess;
@@ -264,7 +270,7 @@ describe('AdminSettings', () => {
     it('shows in-place success feedback after deleting a site', () => {
         confirmationServiceMock.confirm.mockImplementation((options: { accept?: () => void }) => options.accept?.());
 
-        component.confirmDeleteSite({ currentTarget: document.createElement('button') } as unknown as Event, {
+        component.confirmDeleteSite({
             id: 'site-1',
             domain: 'example.com',
             user_id: 'user-1',
@@ -292,7 +298,7 @@ describe('AdminSettings', () => {
         const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         confirmationServiceMock.confirm.mockImplementation((options: { accept?: () => void }) => options.accept?.());
 
-        component.confirmDeleteSite({ currentTarget: document.createElement('button') } as unknown as Event, {
+        component.confirmDeleteSite({
             id: 'site-1',
             domain: 'example.com',
             user_id: 'user-1',
@@ -404,6 +410,18 @@ describe('AdminSettings', () => {
         expect(component.importCleanupActionStatusMessage()).toBe('Could not clean staged import files.');
     });
 
+    it('does not call maintenance endpoints without run-maintenance capability', () => {
+        hasInstanceMock.mockImplementation((capability: string) => capability !== INSTANCE_CAPABILITIES.runMaintenance);
+
+        expect(component.canRunMaintenance()).toBe(false);
+
+        component.refreshSpamFilter();
+        component.runImportStageCleanup();
+
+        httpMock.expectNone('/api/admin/system/spam-filter/refresh');
+        httpMock.expectNone('/api/admin/system/import-stage-cleanup/run');
+    });
+
     it('loads Search Console system status for the runtime console', () => {
         component.loadSearchConsoleStatus();
 
@@ -479,5 +497,12 @@ describe('AdminSettings', () => {
         ]);
 
         expect(component.canDisableUserMfa()).toBe(true);
+    });
+
+    it('uses view-activation capability instead of owner role for activation visibility', () => {
+        hasInstanceMock.mockImplementation((capability: string) => capability === INSTANCE_CAPABILITIES.viewActivation);
+        permissionServiceMock.isInstanceOwner.set(false);
+
+        expect(component.canViewActivation()).toBe(true);
     });
 });

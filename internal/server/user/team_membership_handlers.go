@@ -470,6 +470,11 @@ func (h *handler) handleArchiveTeam() http.HandlerFunc {
 			return
 		}
 
+		if h.ctx.Config.CloudHosted {
+			writeTeamActionError(w, http.StatusForbidden, "team_archive_cloud_forbidden", "Managed cloud teams cannot be archived")
+			return
+		}
+
 		if err := h.ctx.Store.ArchiveTenant(r.Context(), teamID, actorID); err != nil {
 			switch {
 			case errors.Is(err, database.ErrTenantMembershipRequired), errors.Is(err, database.ErrTeamArchiveRequiresOwner):

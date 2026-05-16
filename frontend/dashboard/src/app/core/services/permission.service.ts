@@ -1,11 +1,17 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs';
+import type { InstanceRole, SiteRole, TeamRole } from '@core/access/capabilities';
 
 export interface UserPermissions {
-    instance_role: 'owner' | 'admin' | 'user';
-    permissions: Record<string, 'owner' | 'admin' | 'editor' | 'viewer'>;
+    instance_role: InstanceRole;
+    permissions: Record<string, SiteRole>;
     instance_permissions?: string[];
+    instance_capabilities?: string[];
+    site_capabilities?: Record<string, string[]>;
+    active_team_id?: string;
+    active_team_role?: TeamRole | '';
+    active_team_capabilities?: string[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -24,37 +30,5 @@ export class PermissionService {
 
     applyPermissions(perms: UserPermissions) {
         this.permissions.set(perms);
-    }
-
-    canManageSite(siteId: string): boolean {
-        const perms = this.permissions();
-        if (!perms) return false;
-
-        if (this.hasInstancePermission('site.manage_data')) return true;
-
-        const siteRole = perms.permissions[siteId];
-        return ['owner', 'admin'].includes(siteRole);
-    }
-
-    canViewSite(siteId: string): boolean {
-        const perms = this.permissions();
-        if (!perms) return false;
-
-        if (this.hasInstancePermission('site.view')) return true;
-
-        return !!perms.permissions[siteId];
-    }
-
-    canDeleteSite(siteId: string): boolean {
-        const perms = this.permissions();
-        if (!perms) return false;
-
-        if (this.hasInstancePermission('site.delete')) return true;
-
-        return perms.permissions[siteId] === 'owner';
-    }
-
-    private hasInstancePermission(permission: string): boolean {
-        return this.permissions()?.instance_permissions?.includes(permission) ?? false;
     }
 }

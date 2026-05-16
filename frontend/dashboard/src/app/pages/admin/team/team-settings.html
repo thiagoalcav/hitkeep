@@ -1,5 +1,4 @@
-<p-confirmpopup [key]="leaveConfirmKey" />
-<p-confirmpopup [key]="archiveConfirmKey" />
+<p-confirmdialog />
 
 @if (team(); as t) {
 <div class="team-settings__sections">
@@ -48,7 +47,9 @@
         <p-button [label]="'admin.team.settings.saveAction' | transloco" [loading]="isSaving()" [disabled]="form.invalid || isSaving()" (onClick)="saveSettings()" />
     </div>
 
-    <app-settings-api-clients scope="team" [teamId]="t.id" />
+    <div #apiClientsSection id="team-api-clients" class="team-settings__api-clients" tabindex="-1">
+        <app-settings-api-clients scope="team" [teamId]="t.id" />
+    </div>
     }
 
     <p-card>
@@ -61,7 +62,7 @@
             <p-message severity="error" [text]="key | transloco" />
             }
             <div class="team-settings__danger-actions">
-                <p-button severity="danger" [label]="'admin.team.settings.leaveAction' | transloco" [loading]="isLeaving()" [disabled]="isLeaving()" (onClick)="confirmLeaveTeam($event)" />
+                <p-button severity="danger" [label]="'admin.team.settings.leaveAction' | transloco" [loading]="isLeaving()" [disabled]="isLeaving()" (onClick)="confirmLeaveTeam()" />
             </div>
         </div>
     </p-card>
@@ -78,7 +79,7 @@
             }
             <div class="team-settings__danger-note">{{ "admin.team.settings.archiveSectionHint" | transloco }}</div>
             <div class="team-settings__danger-actions">
-                <p-button severity="danger" [label]="'admin.team.settings.archiveAction' | transloco" [loading]="isArchiving()" [disabled]="isArchiving()" (onClick)="confirmArchiveTeam($event)" />
+                <p-button severity="danger" [label]="'admin.team.settings.archiveAction' | transloco" [loading]="isArchiving()" [disabled]="isArchiving()" (onClick)="confirmArchiveTeam()" />
             </div>
         </div>
     </p-card>

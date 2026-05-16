@@ -43,6 +43,7 @@ type HandlerConfig struct {
 	RequireAuth   bool
 	InstancePerm  auth.Permission
 	SitePerm      auth.Permission
+	TeamCap       auth.Capability
 	AllowAPIKey   bool
 	APIClientOnly bool
 	RateLimiter   *IPRateLimiter
@@ -123,25 +124,8 @@ func GetUserIDFromContext(r *http.Request) uuid.UUID {
 
 // Handler wraps common middleware patterns.
 func (c *Context) Handler(config HandlerConfig, fn http.HandlerFunc) http.HandlerFunc {
-	handler := fn
-
-	// Apply site permission check if needed.
-	if config.SitePerm != "" {
-		handler = c.RequirePermission(config.SitePerm)(handler)
-	}
-
-	// Apply instance permission check if needed.
-	if config.InstancePerm != "" {
-		handler = c.RequirePermission(config.InstancePerm)(handler)
-	}
-
-	// Apply auth if needed.
-	if config.APIClientOnly {
-		handler = c.RequireAPIClientAuth(handler)
-	} else if config.RequireAuth || config.InstancePerm != "" || config.SitePerm != "" {
-		allowAPIKey := config.AllowAPIKey || config.InstancePerm != "" || config.SitePerm != ""
-		handler = c.RequireAuth(allowAPIKey, handler)
-	}
+	handler := c.applyAccessChecks(config, fn)
+	handler = c.applyAuthentication(config, handler)
 
 	// Apply rate limiting.
 	if config.RateLimiter != nil {
@@ -149,6 +133,41 @@ func (c *Context) Handler(config HandlerConfig, fn http.HandlerFunc) http.Handle
 	}
 
 	return handler
+}
+
+func (c *Context) applyAccessChecks(config HandlerConfig, handler http.HandlerFunc) http.HandlerFunc {
+	if config.SitePerm != "" {
+		handler = c.RequirePermission(config.SitePerm)(handler)
+	}
+
+	if config.TeamCap != "" {
+		handler = c.RequireTeamCapability(config.TeamCap)(handler)
+	}
+
+	// Apply instance permission check if needed.
+	if config.InstancePerm != "" {
+		handler = c.RequirePermission(config.InstancePerm)(handler)
+	}
+
+	return handler
+}
+
+func (c *Context) applyAuthentication(config HandlerConfig, handler http.HandlerFunc) http.HandlerFunc {
+	if config.APIClientOnly {
+		return c.RequireAPIClientAuth(handler)
+	}
+	if config.requiresUserAuth() {
+		return c.RequireAuth(config.allowsAPIKey(), handler)
+	}
+	return handler
+}
+
+func (config HandlerConfig) requiresUserAuth() bool {
+	return config.RequireAuth || config.InstancePerm != "" || config.SitePerm != "" || config.TeamCap != ""
+}
+
+func (config HandlerConfig) allowsAPIKey() bool {
+	return config.AllowAPIKey || config.InstancePerm != "" || config.SitePerm != ""
 }
 
 // RequirePermission checks if user has the required permission.
@@ -169,7 +188,32 @@ func (c *Context) RequirePermission(perm auth.Permission) func(http.HandlerFunc)
 				return
 			}
 
-			// Check instance-level permission.
+			// API clients need an explicit site grant for every site-scoped route.
+			if isSitePermission(perm) && apiClientAuth != nil {
+				siteID, err := siteIDFromRequest(r)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				siteRole, err := c.resolveSiteRole(r.Context(), userID, apiClientAuth, siteID)
+				if err != nil {
+					http.Error(w, "Access denied", http.StatusForbidden)
+					return
+				}
+
+				if siteRole.HasPermission(perm) {
+					ctx := context.WithValue(r.Context(), PermissionKey, PermissionContext{
+						UserID:       userID,
+						InstanceRole: instanceRole,
+						SiteRole:     siteRole,
+					})
+					next(w, r.WithContext(ctx))
+					return
+				}
+			}
+
+			// Check instance-level permission for human sessions and instance-scoped API routes.
 			if instanceRole.HasPermission(perm) {
 				ctx := context.WithValue(r.Context(), PermissionKey, PermissionContext{
 					UserID:       userID,
@@ -179,8 +223,8 @@ func (c *Context) RequirePermission(perm auth.Permission) func(http.HandlerFunc)
 				return
 			}
 
-			// For site-level permissions, check site role.
-			if strings.HasPrefix(string(perm), "site.") {
+			// For site-level human-session permissions, check site role after instance role.
+			if isSitePermission(perm) {
 				siteID, err := siteIDFromRequest(r)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusBadRequest)
@@ -209,6 +253,66 @@ func (c *Context) RequirePermission(perm auth.Permission) func(http.HandlerFunc)
 	}
 }
 
+func (c *Context) RequireTeamCapability(capability auth.Capability) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			userID := GetUserIDFromContext(r)
+			if userID == uuid.Nil {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			teamID, ok := teamIDFromRequest(r, w)
+			if !ok {
+				return
+			}
+
+			if !c.userHasTeamCapability(r.Context(), teamID, userID, capability) {
+				http.Error(w, "Access denied", http.StatusForbidden)
+				return
+			}
+
+			next(w, r)
+		}
+	}
+}
+
+func teamIDFromRequest(r *http.Request, w http.ResponseWriter) (uuid.UUID, bool) {
+	teamID, err := uuid.Parse(strings.TrimSpace(r.PathValue("id")))
+	if err != nil {
+		http.Error(w, "Invalid team ID", http.StatusBadRequest)
+		return uuid.Nil, false
+	}
+	return teamID, true
+}
+
+func (c *Context) userHasTeamCapability(ctx context.Context, teamID, userID uuid.UUID, capability auth.Capability) bool {
+	role, err := c.Store.GetTenantRole(ctx, teamID, userID)
+	return err == nil && auth.TeamRoleHasCapability(role, capability)
+}
+
+func (c *Context) sitePermissionContext(
+	ctx context.Context,
+	userID uuid.UUID,
+	apiClientAuth *database.APIClientAuth,
+	instanceRole auth.InstanceRole,
+	siteID uuid.UUID,
+	perm auth.Permission,
+) (context.Context, bool, error) {
+	siteRole, err := c.resolveSiteRole(ctx, userID, apiClientAuth, siteID)
+	if err != nil {
+		return nil, false, err
+	}
+	if !siteRole.HasPermission(perm) {
+		return nil, false, nil
+	}
+	return context.WithValue(ctx, PermissionKey, PermissionContext{
+		UserID:       userID,
+		InstanceRole: instanceRole,
+		SiteRole:     siteRole,
+	}), true, nil
+}
+
 // RequireSiteOrInstancePermission allows route-specific exceptions where a site
 // permission can also be satisfied by a narrow instance-level permission.
 func (c *Context) RequireSiteOrInstancePermission(sitePerm, instancePerm auth.Permission) func(http.HandlerFunc) http.HandlerFunc {
@@ -228,6 +332,30 @@ func (c *Context) RequireSiteOrInstancePermission(sitePerm, instancePerm auth.Pe
 				return
 			}
 
+			if sitePerm != "" {
+				siteID, err := siteIDFromRequest(r)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				siteCtx, ok, err := c.sitePermissionContext(r.Context(), userID, apiClientAuth, instanceRole, siteID, sitePerm)
+				if err != nil {
+					if apiClientAuth != nil {
+						http.Error(w, "Access denied", http.StatusForbidden)
+						return
+					}
+				}
+				if ok {
+					next(w, r.WithContext(siteCtx))
+					return
+				}
+				if apiClientAuth != nil {
+					http.Error(w, "Forbidden", http.StatusForbidden)
+					return
+				}
+			}
+
 			if instancePerm != "" && instanceRole.HasPermission(instancePerm) {
 				ctx := context.WithValue(r.Context(), PermissionKey, PermissionContext{
 					UserID:       userID,
@@ -237,33 +365,13 @@ func (c *Context) RequireSiteOrInstancePermission(sitePerm, instancePerm auth.Pe
 				return
 			}
 
-			if sitePerm != "" {
-				siteID, err := siteIDFromRequest(r)
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusBadRequest)
-					return
-				}
-
-				siteRole, err := c.resolveSiteRole(r.Context(), userID, apiClientAuth, siteID)
-				if err != nil {
-					http.Error(w, "Access denied", http.StatusForbidden)
-					return
-				}
-
-				if siteRole.HasPermission(sitePerm) {
-					ctx := context.WithValue(r.Context(), PermissionKey, PermissionContext{
-						UserID:       userID,
-						InstanceRole: instanceRole,
-						SiteRole:     siteRole,
-					})
-					next(w, r.WithContext(ctx))
-					return
-				}
-			}
-
 			http.Error(w, "Forbidden", http.StatusForbidden)
 		}
 	}
+}
+
+func isSitePermission(perm auth.Permission) bool {
+	return strings.HasPrefix(string(perm), "site.")
 }
 
 func (c *Context) resolveInstanceRole(ctx context.Context, userID uuid.UUID, apiClientAuth *database.APIClientAuth) (auth.InstanceRole, error) {

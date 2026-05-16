@@ -57,6 +57,12 @@ func TestHandleGetUserBootstrap(t *testing.T) {
 	if resp.Permissions.InstanceRole == "" {
 		t.Fatalf("expected permission context")
 	}
+	if resp.Permissions.ActiveTeamID == nil || *resp.Permissions.ActiveTeamID == uuid.Nil || resp.Permissions.ActiveTeamRole != "owner" {
+		t.Fatalf("expected active team access context, got %+v", resp.Permissions)
+	}
+	if len(resp.Permissions.ActiveTeamCapabilities) == 0 || len(resp.Permissions.InstanceCapabilities) == 0 {
+		t.Fatalf("expected derived access capabilities, got %+v", resp.Permissions)
+	}
 	if len(resp.Sites) != 1 || resp.Sites[0].Domain != "bootstrap.example.com" {
 		t.Fatalf("expected bootstrap site, got %+v", resp.Sites)
 	}

@@ -1,0 +1,23 @@
+.crud-dialog-body {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.crud-dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+    .crud-dialog-footer {
+        flex-direction: column-reverse;
+    }
+
+    :host ::ng-deep .crud-dialog-footer p-button,
+    :host ::ng-deep .crud-dialog-footer .p-button {
+        width: 100%;
+    }
+}

@@ -1,3 +1,6 @@
+import type { TeamRole } from '@core/access/capabilities';
+export type { TeamRole } from '@core/access/capabilities';
+
 export interface Site {
     id: string;
     user_id: string;
@@ -5,8 +8,6 @@ export interface Site {
     created_at: string;
     data_retention_days?: number;
 }
-
-export type TeamRole = 'owner' | 'admin' | 'member';
 
 export interface Team {
     id: string;

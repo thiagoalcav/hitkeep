@@ -131,15 +131,15 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RateLimiter:  ctx.ApiLimiter,
 	}, h.handleAdminDeleteTeam()))
 	mux.HandleFunc("GET /api/admin/exclusions", ctx.Handler(shared.HandlerConfig{
-		InstancePerm: authcore.PermInstanceViewAllSites,
+		InstancePerm: authcore.PermInstanceManageSiteExclusions,
 		RateLimiter:  ctx.ApiLimiter,
 	}, h.handleListInstanceExclusions()))
 	mux.HandleFunc("POST /api/admin/exclusions", ctx.Handler(shared.HandlerConfig{
-		InstancePerm: authcore.PermInstanceViewAllSites,
+		InstancePerm: authcore.PermInstanceManageSiteExclusions,
 		RateLimiter:  ctx.ApiLimiter,
 	}, h.handleCreateInstanceExclusion()))
 	mux.HandleFunc("DELETE /api/admin/exclusions/{ruleID}", ctx.Handler(shared.HandlerConfig{
-		InstancePerm: authcore.PermInstanceViewAllSites,
+		InstancePerm: authcore.PermInstanceManageSiteExclusions,
 		RateLimiter:  ctx.ApiLimiter,
 	}, h.handleDeleteInstanceExclusion()))
 

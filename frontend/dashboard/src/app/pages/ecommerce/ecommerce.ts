@@ -11,6 +11,7 @@ import { SiteService } from '@features/sites/services/site.service';
 import { AnalyticsService } from '@core/services/analytics.service';
 import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
 import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
+import { TableRowActionItem, TableRowActions } from '@components/table-row-actions/table-row-actions';
 import { KpiCard } from '@features/analytics/components/kpi-card';
 import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from '@components/range-toolbar/range-toolbar';
 import { MetricList } from '@features/analytics/components/metric-list';
@@ -31,7 +32,7 @@ interface ProductFilter {
 
 @Component({
     selector: 'app-ecommerce',
-    imports: [ReactiveFormsModule, TranslocoPipe, ButtonModule, CardModule, TableModule, PageHeader, PageHeaderLeft, PageBreadcrumb, RangeToolbar, KpiCard, MetricList, SeriesChart],
+    imports: [ReactiveFormsModule, TranslocoPipe, ButtonModule, CardModule, TableModule, PageHeader, PageHeaderLeft, PageBreadcrumb, TableRowActions, RangeToolbar, KpiCard, MetricList, SeriesChart],
     templateUrl: './ecommerce.html',
     styleUrl: './ecommerce.css',
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -235,6 +236,18 @@ export class EcommercePage {
     protected isProductFilterActive(product: EcommerceProductStat): boolean {
         const current = this.selectedProduct();
         return current?.itemId === product.item_id && current?.itemName === product.item_name;
+    }
+
+    protected productActions(product: EcommerceProductStat): TableRowActionItem[] {
+        this.activeLanguage();
+        const active = this.isProductFilterActive(product);
+        return [
+            {
+                label: this.transloco.translate(active ? 'ecommerce.actions.clearProductFilter' : 'ecommerce.actions.filterProduct'),
+                icon: active ? 'pi pi-filter-slash' : 'pi pi-filter',
+                command: () => this.toggleProductFilter(product)
+            }
+        ];
     }
 
     protected formatCurrency(value: number, currency: string): string {

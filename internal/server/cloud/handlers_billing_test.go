@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	stripe "github.com/stripe/stripe-go/v84"
 	"github.com/stripe/stripe-go/v84/webhook"
 	"golang.org/x/time/rate"
@@ -373,6 +374,100 @@ func TestHandleVerifySignupCreatesAccount(t *testing.T) {
 	}
 	if billingAccount.PlanCode != database.CloudPlanFree || billingAccount.SubscriptionStatus != database.CloudSubscriptionStatusFree {
 		t.Fatalf("unexpected billing account: %+v", billingAccount)
+	}
+}
+
+func TestHandleVerifySignupWithExistingDefaultTeamDoesNotJoinDefaultTeam(t *testing.T) {
+	h, store := setupCloudTestHandler(t)
+	defer store.Close()
+
+	defaultOwnerID, defaultTenantID := createDefaultOwner(t, store)
+	requireTenantMembership(t, store, defaultTenantID, defaultOwnerID, true, "seeded owner")
+
+	token := createPendingPublicSignupToken(t, store, "public-signup@example.com")
+	verifySignupToken(t, h, token)
+	userID := requireCloudSignupUser(t, store, "public-signup@example.com")
+
+	requireTenantMembership(t, store, defaultTenantID, userID, false, "public signup user")
+	requireSingleNonDefaultActiveTeam(t, store, userID, defaultTenantID)
+}
+
+func createDefaultOwner(t *testing.T, store *database.Store) (uuid.UUID, uuid.UUID) {
+	t.Helper()
+	defaultOwnerID, err := store.CreateUser(context.Background(), "default-owner@example.com", "hashed")
+	if err != nil {
+		t.Fatalf("create default owner: %v", err)
+	}
+	defaultTenantID, err := store.GetDefaultTenantID(context.Background())
+	if err != nil {
+		t.Fatalf("get default tenant: %v", err)
+	}
+	return defaultOwnerID, defaultTenantID
+}
+
+func createPendingPublicSignupToken(t *testing.T, store *database.Store, email string) string {
+	t.Helper()
+	token, err := store.CreatePendingSignup(context.Background(), database.PendingSignupEntry{
+		Email:          email,
+		HashedPassword: "$2a$10$testhashedpassword",
+		TeamName:       "Public Signup Team",
+		Jurisdiction:   "EU",
+		Locale:         "en",
+	})
+	if err != nil {
+		t.Fatalf("create pending signup: %v", err)
+	}
+	return token
+}
+
+func verifySignupToken(t *testing.T, h *handler, token string) {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodGet, "/api/cloud/signup/verify?token="+token, nil)
+	w := httptest.NewRecorder()
+	h.handleVerifySignup().ServeHTTP(w, req)
+
+	if w.Code != http.StatusFound {
+		t.Fatalf("expected redirect status %d, got %d: %s", http.StatusFound, w.Code, w.Body.String())
+	}
+}
+
+func requireCloudSignupUser(t *testing.T, store *database.Store, email string) uuid.UUID {
+	t.Helper()
+	user, err := store.GetUserByEmail(context.Background(), email)
+	if err != nil {
+		t.Fatalf("get created user: %v", err)
+	}
+	if user == nil {
+		t.Fatal("expected public signup user to be created")
+	}
+	return user.ID
+}
+
+func requireTenantMembership(t *testing.T, store *database.Store, tenantID, userID uuid.UUID, want bool, label string) {
+	t.Helper()
+	isMember, err := store.IsTenantMember(context.Background(), tenantID, userID)
+	if err != nil {
+		t.Fatalf("check %s tenant membership: %v", label, err)
+	}
+	if isMember != want {
+		t.Fatalf("expected %s default membership %v, got %v", label, want, isMember)
+	}
+}
+
+func requireSingleNonDefaultActiveTeam(t *testing.T, store *database.Store, userID, defaultTenantID uuid.UUID) {
+	t.Helper()
+	teams, activeTenantID, err := store.ListUserTeams(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("list public signup teams: %v", err)
+	}
+	if len(teams) != 1 {
+		t.Fatalf("expected one public signup team, got %d", len(teams))
+	}
+	if teams[0].ID == defaultTenantID {
+		t.Fatalf("expected public signup team not to be default team %s", defaultTenantID)
+	}
+	if activeTenantID != teams[0].ID {
+		t.Fatalf("expected active team %s, got %s", teams[0].ID, activeTenantID)
 	}
 }
 

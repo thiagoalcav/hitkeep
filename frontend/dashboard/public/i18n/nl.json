@@ -27,6 +27,8 @@
         "utm": "UTM",
         "apiClients": "API-clients",
         "apiReference": "API-referentie",
+        "expandItem": "{{item}} uitklappen",
+        "collapseItem": "{{item}} inklappen",
         "imports": "Imports",
         "importsAria": "Ga naar imports",
         "importExport": "Import & export",
@@ -37,8 +39,8 @@
         "docsAria": "Open HitKeep-docs in een nieuw tabblad",
         "support": "Support",
         "supportAria": "Open HitKeep-support in een nieuw tabblad",
-        "settings": "Gebruikersinstellingen",
-        "settingsAria": "Ga naar gebruikersinstellingen",
+        "settings": "Instellingen",
+        "settingsAria": "Ga naar instellingen",
         "emailReports": "E-mailrapporten",
         "emailReportsAria": "Ga naar e-mailrapporten",
         "administration": "Administratie",
@@ -360,6 +362,7 @@
             "openAction": "Beheer team",
             "openAria": "Open teammanagement",
             "dialogTitle": "Beheer {{team}}",
+            "inviteDialogTitle": "Teamlid uitnodigen",
             "noTeam": "Geen actief team geselecteerd.",
             "readOnly": "Je kunt leden bekijken, maar geen teamlidmaatschap beheren met je huidige rol.",
             "notAllowed": "Niet toegestaan",
@@ -434,7 +437,8 @@
             "exportCsv": "CSV exporteren",
             "open": "Openen",
             "refresh": "Vernieuwen",
-            "save": "Opslaan"
+            "save": "Opslaan",
+            "more": "Meer acties"
         },
         "yes": "Ja",
         "no": "Nee",
@@ -639,6 +643,7 @@
             "editTitle": "Doel bewerken",
             "editTooltip": "Doel bewerken",
             "deleteTooltip": "Doel verwijderen",
+            "confirmDelete": "Doel \"{{name}}\" verwijderen?",
             "namePlaceholder": "bijv. Succes met aanmelden",
             "typePagePath": "Pad",
             "typeCustomEvent": "Event",
@@ -697,6 +702,7 @@
             "editTitle": "Funnel bewerken",
             "editTooltip": "Funnel bewerken",
             "deleteTooltip": "Funnel verwijderen",
+            "confirmDelete": "Funnel \"{{name}}\" verwijderen?",
             "namePlaceholder": "bijv. Afrekenstroom",
             "stepPathPlaceholder": "/pad",
             "stepEventPlaceholder": "gebeurtenisnaam",
@@ -870,7 +876,7 @@
             }
         },
         "user": {
-            "breadcrumb": "Gebruikersinstellingen",
+            "breadcrumb": "Instellingen",
             "subtitle": "Beheer je accountbeveiliging en voorkeuren.",
             "profile": {
                 "title": "Profiel",
@@ -946,10 +952,19 @@
             "loading": "API-clients laden...",
             "empty": "Nog geen API-clients.",
             "listTitle": "Bestaande API-clients",
+            "createDialogTitle": "API-client toevoegen",
+            "editDialogTitle": "API-client bewerken",
             "confirmDelete": "API-client \"{{name}}\" verwijderen?",
+            "confirmRotate": "Token voor API-client \"{{name}}\" vernieuwen? Het oude token werkt direct niet meer.",
+            "noSiteAccess": "Geen sitetoegang",
+            "noSiteAccessInstanceOnly": "Alleen instantie/admin; geen sitetoegang",
+            "siteGrantCount": "{{count}} sitetoekenningen",
+            "siteGrantPopoverTitle": "Sitetoekenningen",
             "status": {
                 "active": "Actief",
-                "revoked": "Ingetrokken"
+                "inactive": "Inactief",
+                "revoked": "Ingetrokken",
+                "expired": "Verlopen"
             },
             "meta": {
                 "instanceRole": "Instantierol",
@@ -958,14 +973,16 @@
                 "expires": "Verloopt"
             },
             "actions": {
+                "add": "API-client toevoegen",
                 "create": "Klant aanmaken",
                 "save": "Wijzigingen opslaan",
                 "edit": "Bewerking",
                 "revoke": "Herroepen",
                 "reactivate": "Opnieuw activeren",
                 "delete": "Verwijderen",
-                "addScope": "Voeg bereik toe",
-                "refresh": "Vernieuwen"
+                "addScope": "Grant toevoegen",
+                "refresh": "Vernieuwen",
+                "rollToken": "Token vernieuwen"
             },
             "form": {
                 "nameLabel": "Klantnaam",
@@ -975,8 +992,8 @@
                 "instanceRoleLabel": "Instantierol",
                 "expiresAtLabel": "Vervaldatum",
                 "expiresAtHint": "Als je dit leeg laat, wordt een token zonder vervaldatum gemaakt, wat niet wordt aanbevolen.",
-                "siteScopesLabel": "Sitebereiken",
-                "siteScopesHint": "Optioneel: beperk deze client tot specifieke sites en siterollen.",
+                "siteScopesLabel": "Sitegrants",
+                "siteScopesHint": "Toegang tot site-analytics, MCP en ingest vereist een expliciete sitegrant.",
                 "selectSitePlaceholder": "Selecteer locatie",
                 "validation": {
                     "nameRequired": "Klantnaam is vereist.",
@@ -984,9 +1001,9 @@
                     "instanceRoleRequired": "Instantierol is vereist.",
                     "expiresAtPast": "De vervaldatum moet in de toekomst liggen.",
                     "expiresAtInvalid": "Vervaltijdstempel is ongeldig.",
-                    "scopeSiteRequired": "Selecteer een site voordat je een bereik toevoegt."
+                    "scopeSiteRequired": "Selecteer een site voordat je een grant toevoegt."
                 },
-                "teamSiteScopesHint": "Beperk deze klant tot specifieke sites binnen het geselecteerde team."
+                "teamSiteScopesHint": "Teamclients hebben alleen toegang tot sites die hier met een siterol zijn toegevoegd."
             },
             "tokenNotice": {
                 "title": "Kopieer dit token nu",
@@ -997,12 +1014,14 @@
                 "updated": "API-client bijgewerkt.",
                 "deleted": "API-client verwijderd.",
                 "revoked": "API-client ingetrokken.",
-                "reactivated": "API-client opnieuw geactiveerd."
+                "reactivated": "API-client opnieuw geactiveerd.",
+                "rotated": "API-token vernieuwd. Kopieer het nieuwe token nu."
             },
             "errors": {
                 "loadFailed": "Kan API-clients niet laden.",
                 "createFailed": "Kan API-client niet maken.",
                 "updateFailed": "Kan de API-client niet updaten.",
+                "rotateFailed": "Kan API-token niet vernieuwen.",
                 "deleteFailed": "Kan API-client niet verwijderen.",
                 "invalidExpiration": "Vervaltijdstempel is ongeldig.",
                 "notFound": "API-client niet gevonden."
@@ -1133,6 +1152,10 @@
                 "loadFailed": "Kan uitsluitingen niet laden.",
                 "createFailed": "Kan geen uitsluiting maken.",
                 "deleteFailed": "Kan de uitsluiting niet verwijderen."
+            },
+            "status": {
+                "createSuccess": "Uitsluiting {{cidr}} gemaakt.",
+                "deleteSuccess": "Uitsluiting {{cidr}} verwijderd."
             }
         },
         "selector": {
@@ -1178,7 +1201,10 @@
         },
         "team": {
             "emailPlaceholder": "gebruiker@voorbeeld.com",
-            "addMemberAction": "Lid toevoegen",
+            "addMemberAction": "Sitelid toevoegen",
+            "addMemberDialogTitle": "Sitelid toevoegen",
+            "addMemberSuccess": "Sitelid toegevoegd.",
+            "removeMemberSuccess": "Sitelid verwijderd.",
             "confirmRemove": "{{email}} van de site verwijderen?",
             "transfer": {
                 "title": "Overdrachtsplaats",
@@ -1293,6 +1319,7 @@
                 "deleteFailed": "Kan het globale filter niet verwijderen."
             },
             "status": {
+                "createSuccess": "Globaal filter {{cidr}} gemaakt.",
                 "deleteSuccess": "Globaal filter {{cidr}} verwijderd."
             }
         },
@@ -1939,7 +1966,7 @@
     },
     "userMenu": {
         "administration": "Administratie",
-        "userSettings": "Gebruikersinstellingen",
+        "userSettings": "Instellingen",
         "preferences": "Voorkeuren",
         "sessionStatus": "Sessie:{{remaining}} over",
         "rememberedSessionStatus": "Onthoud mij:{{remaining}} over",
@@ -2155,15 +2182,8 @@
     },
     "aiVisibility": {
         "title": "AIZichtbaarheid",
-        "docsAction": "AI-zichtbaarheidsgids",
+        "docsAction": "Installatiegids",
         "noSiteDescription": "Selecteer of maak een site om AI-ophaal- en correlatieanalyses te bekijken.",
-        "setup": {
-            "title": "Ophaalopname aan de serverzijde vereist",
-            "badge": "Instelling vereist",
-            "description": "Op deze pagina worden de ophaalacties van de AI-crawler alleen bijgehouden nadat je ze doorstuurt naar HitKeep via edge- of log-gebaseerde opname.",
-            "detail": "Als je alleen hk.js installeert, worden bot-ophaalacties niet vastgelegd. Door AI verwezen bezoeken van ChatGPT, Gemini, Perplexity en vergelijkbare assistenten kunnen nog steeds elders in de analytics van verwijzers verschijnen.",
-            "action": "Installatiehandleiding openen"
-        },
         "header": {
             "title": "AI zichtbaarheidsanalyses",
             "description": "Volg ophaalacties van de AI-crawler op de server, waar crawlfouten zich concentreren, en welke opgehaalde pagina's later door AI verwezen bezoeken aantrekken."
@@ -2245,7 +2265,8 @@
     },
     "integration": {
         "apiClients": {
-            "subtitle": "Creëer en beheer API-clients voor integraties."
+            "subtitle": "Creëer en beheer API-clients voor integraties.",
+            "manageTeamClients": "Team-API-clients beheren"
         },
         "apiReference": {
             "subtitle": "VersieversieRESTAPI-referentie met sessie- en API-sleutelauthenticatiedetails.",

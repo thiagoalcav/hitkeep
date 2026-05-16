@@ -1,8 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
-import { ButtonModule } from 'primeng/button';
-import { DialogModule } from 'primeng/dialog';
+import { DialogShell } from '@components/dialog-shell/dialog-shell';
 import { formatDurationInterval } from '@core/i18n/duration-format';
 import { AuthService } from '@services/auth.service';
 
@@ -10,7 +9,7 @@ import { AuthService } from '@services/auth.service';
     selector: 'app-session-expiry-indicator',
     standalone: true,
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [ButtonModule, DialogModule, TranslocoPipe],
+    imports: [DialogShell, TranslocoPipe],
     templateUrl: './session-expiry-indicator.html',
     styleUrl: './session-expiry-indicator.css'
 })

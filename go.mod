@@ -22,7 +22,7 @@ require (
 	github.com/modelcontextprotocol/go-sdk v1.6.0
 	github.com/nsqio/go-nsq v1.1.0
 	github.com/nsqio/nsq v1.3.0
-	github.com/phuslu/iploc v1.0.20260501
+	github.com/phuslu/iploc v1.0.20260515
 	github.com/pquerna/otp v1.5.0
 	github.com/rs/cors v1.11.1
 	github.com/stripe/stripe-go/v84 v84.4.1
@@ -102,6 +102,6 @@ require (
 	golang.org/x/net v0.54.0 // indirect
 	golang.org/x/tools v0.45.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260511170946-3700d4141b60 // indirect
-	google.golang.org/grpc v1.81.0 // indirect
+	google.golang.org/grpc v1.81.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )

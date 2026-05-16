@@ -616,6 +616,37 @@ func TestHandleServerIngestRequiresAPIClientManageDataForResolvedURL(t *testing.
 	}
 }
 
+func TestHandleServerIngestRequiresExplicitSiteGrantEvenForOwnerAPIClient(t *testing.T) {
+	store, ctx, userID, _, _ := setupServerIngestTestEnv(t, auth.SiteOwner, func(ctx *shared.Context) {
+		ctx.Producer = &capturingProducer{}
+	})
+	_, token, err := store.CreateAPIClient(context.Background(), userID, "Owner without site grant", "admin-only", auth.InstanceOwner, map[uuid.UUID]auth.SiteRole{}, nil)
+	if err != nil {
+		t.Fatalf("create owner api client without site grant: %v", err)
+	}
+
+	mux := http.NewServeMux()
+	Register(mux, ctx)
+
+	body := map[string]any{
+		"url":        "https://example.com/docs",
+		"timestamp":  "2026-04-03T12:30:45Z",
+		"visitor_ip": "198.51.100.22",
+		"user_agent": "Mozilla/5.0",
+	}
+	payload, _ := json.Marshal(body)
+	req := httptest.NewRequest(http.MethodPost, "/api/ingest/server/pageview", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-API-Key", token)
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("expected %d, got %d body=%s", http.StatusForbidden, rec.Code, rec.Body.String())
+	}
+}
+
 func TestHandleServerPageviewIngestDNTDropsWithoutStoring(t *testing.T) {
 	producer := &capturingProducer{}
 	_, ctx, _, _, token := setupServerIngestTestEnv(t, auth.SiteOwner, func(ctx *shared.Context) {

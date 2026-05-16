@@ -65,7 +65,7 @@ interface CorrelationTableTab {
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AIVisibility {
-    protected readonly docsUrl = 'https://hitkeep.com/guides/analytics/ai-visibility/';
+    protected readonly docsUrl = 'https://hitkeep.com/guides/tracking/ai-fetch-ingest/';
     private readonly siteService = inject(SiteService);
     private readonly analyticsService = inject(AnalyticsService);
     private readonly transloco = inject(TranslocoService);
@@ -95,11 +95,6 @@ export class AIVisibility {
     protected readonly isLoadingSeries = signal(false);
     protected readonly isLoadingCorrelation = signal(false);
     protected readonly isLoading = computed(() => this.isLoadingOverview() || this.isLoadingSeries() || this.isLoadingCorrelation());
-    protected readonly showSetupNotice = computed(() => {
-        if (!this.activeSite() || this.isLoadingOverview()) return false;
-        return (this.overview()?.total_requests ?? 0) === 0;
-    });
-
     protected readonly isExporting = signal(false);
     protected readonly exportState = signal<'idle' | 'success' | 'error'>('idle');
 

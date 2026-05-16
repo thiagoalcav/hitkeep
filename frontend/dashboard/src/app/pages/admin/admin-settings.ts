@@ -4,7 +4,7 @@ import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { DecimalPipe } from '@angular/common';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ConfirmationService } from 'primeng/api';
-import { ConfirmPopupModule } from 'primeng/confirmpopup';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { TableModule } from 'primeng/table';
 import { ButtonModule } from 'primeng/button';
 import { SelectModule } from 'primeng/select';
@@ -19,9 +19,14 @@ import { HttpClient } from '@angular/common/http';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { dialogCancelButton, dialogDangerButton, dialogWarnButton } from '@components/dialog-actions/dialog-actions';
 import { PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
 import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
+import { TableRowActionItem, TableRowActions } from '@components/table-row-actions/table-row-actions';
+import { INSTANCE_CAPABILITIES } from '@core/access/capabilities';
+import type { InstanceRole } from '@core/access/capabilities';
 import { formatDurationInterval } from '@core/i18n/duration-format';
+import { AccessService } from '@services/access.service';
 import { PermissionService } from '@services/permission.service';
 import { TeamService } from '@services/team.service';
 import { UserProfileService } from '@services/user-profile.service';
@@ -50,7 +55,6 @@ import {
 import { formatBytes } from '@pages/ai-visibility/ai-visibility.utils';
 import { finalize } from 'rxjs';
 
-type InstanceRole = 'owner' | 'admin' | 'user';
 type AdminStatusTab = 'runtime' | 'operations' | 'activation' | 'audit';
 type AdminSettingsTab = 'users' | 'sites' | 'teams' | 'globalFilters';
 
@@ -112,7 +116,7 @@ interface StatusState {
     imports: [
         DecimalPipe,
         ReactiveFormsModule,
-        ConfirmPopupModule,
+        ConfirmDialogModule,
         TableModule,
         ButtonModule,
         SelectModule,
@@ -128,6 +132,7 @@ interface StatusState {
         SystemStatusCard,
         SystemAudit,
         RelativeDateTime,
+        TableRowActions,
         TranslocoPipe
     ],
     templateUrl: './admin-settings.html',
@@ -144,6 +149,7 @@ export class AdminSettings implements OnInit {
     private destroyRef = inject(DestroyRef);
     private profile = inject(UserProfileService);
     protected perms = inject(PermissionService);
+    private access = inject(AccessService);
     private userTeamService = inject(TeamService);
     private system = inject(AdminSystemService);
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
@@ -261,7 +267,7 @@ export class AdminSettings implements OnInit {
     protected readonly recentHits = computed(() => this.systemIngest()?.recent_hits ?? 0);
     protected readonly importCleanupActionDisabled = computed(() => {
         const cleanup = this.systemImportCleanup();
-        return !cleanup?.enabled || cleanup.stale_files === 0;
+        return !this.canRunMaintenance() || !cleanup?.enabled || cleanup.stale_files === 0;
     });
     protected readonly activationRows = computed(() => this.systemActivation()?.rows ?? []);
     protected readonly activationLiveSites = computed(() => this.activationRows().filter((row) => row.status === 'live').length);
@@ -380,7 +386,10 @@ export class AdminSettings implements OnInit {
         this.activeLanguage();
         return [{ label: this.transloco.translate('nav.administration') }, { label: this.transloco.translate(this.pageTitleKey()), isCurrent: true }];
     });
-    protected readonly canDisableUserMfa = computed(() => this.perms.isInstanceOwner() || this.usersByID().get(this.currentUserId())?.instance_role === 'owner');
+    protected readonly canManageUsers = computed(() => this.access.hasInstance(INSTANCE_CAPABILITIES.manageUsers));
+    protected readonly canRunMaintenance = computed(() => this.access.hasInstance(INSTANCE_CAPABILITIES.runMaintenance));
+    protected readonly canViewActivation = computed(() => this.access.hasInstance(INSTANCE_CAPABILITIES.viewActivation));
+    protected readonly canDisableUserMfa = computed(() => this.canManageUsers() && (this.perms.isInstanceOwner() || this.usersByID().get(this.currentUserId())?.instance_role === 'owner'));
 
     protected roleOptions = computed(() => {
         this.activeLanguage();
@@ -470,7 +479,7 @@ export class AdminSettings implements OnInit {
                     }
                     break;
                 case 'activation':
-                    if (this.perms.isInstanceOwner() && !this.loadedActivation()) {
+                    if (this.canViewActivation() && !this.loadedActivation()) {
                         this.loadedActivation.set(true);
                         this.loadSystemActivation();
                     }
@@ -602,6 +611,10 @@ export class AdminSettings implements OnInit {
     }
 
     protected refreshSpamFilter() {
+        if (!this.canRunMaintenance()) {
+            return;
+        }
+
         this.isRefreshingSpam.set(true);
         this.spamActionStatus.set(null);
         this.system
@@ -625,6 +638,10 @@ export class AdminSettings implements OnInit {
     }
 
     protected runImportStageCleanup() {
+        if (!this.canRunMaintenance()) {
+            return;
+        }
+
         this.isRunningImportCleanup.set(true);
         this.importCleanupActionStatus.set(null);
         this.system
@@ -652,6 +669,10 @@ export class AdminSettings implements OnInit {
     }
 
     protected testMail() {
+        if (!this.canRunMaintenance()) {
+            return;
+        }
+
         this.mailTestRecipient.markAsTouched();
         if (this.mailTestRecipient.invalid) {
             this.mailTestResult.set({ severity: 'error', message: this.transloco.translate('admin.system.mail.recipientInvalid') });
@@ -693,7 +714,7 @@ export class AdminSettings implements OnInit {
     }
 
     protected loadSystemActivation(offset = 0) {
-        if (!this.perms.isInstanceOwner()) return;
+        if (!this.canViewActivation()) return;
         const requestID = ++this.activationRequestID;
         this.isLoadingActivation.set(true);
         this.system
@@ -776,7 +797,7 @@ export class AdminSettings implements OnInit {
     }
 
     protected openActivationTeam(row: SystemActivationRow) {
-        if (!this.perms.isInstanceOwner() || this.openingActivationTeamId()) return;
+        if (!this.canViewActivation() || this.openingActivationTeamId()) return;
         this.openingActivationTeamId.set(row.team_id);
         this.userTeamService
             .setActiveTeam(row.team_id)
@@ -788,6 +809,81 @@ export class AdminSettings implements OnInit {
                 next: () => void this.router.navigate(['/admin/team']),
                 error: () => undefined
             });
+    }
+
+    protected userActions(user: User): TableRowActionItem[] {
+        this.activeLanguage();
+        const actions: TableRowActionItem[] = [];
+        if (this.canDisableUserMfa()) {
+            actions.push({
+                label: this.transloco.translate('admin.users.disable2faAction'),
+                icon: 'pi pi-shield',
+                disabled: this.isDisablingUser(user),
+                command: () => this.confirmDisableUserMfa(user)
+            });
+        }
+        if (actions.length > 0) {
+            actions.push({ separator: true });
+        }
+        actions.push({
+            label: this.transloco.translate('share.dialog.deleteAction'),
+            icon: 'pi pi-trash',
+            danger: true,
+            disabled: user.id === this.currentUserId() || this.isDeletingUser(user),
+            command: () => this.confirmDeleteUser(user)
+        });
+        return actions;
+    }
+
+    protected siteActions(site: Site): TableRowActionItem[] {
+        this.activeLanguage();
+        return [
+            {
+                label: this.transloco.translate('share.dialog.deleteAction'),
+                icon: 'pi pi-trash',
+                danger: true,
+                disabled: this.isDeletingSite(site),
+                command: () => this.confirmDeleteSite(site)
+            }
+        ];
+    }
+
+    protected teamActions(team: AdminTeam): TableRowActionItem[] {
+        if (team.is_default) {
+            return [];
+        }
+        this.activeLanguage();
+        return [
+            {
+                label: this.transloco.translate('share.dialog.deleteAction'),
+                icon: 'pi pi-trash',
+                danger: true,
+                disabled: this.isDeletingTeam(team),
+                command: () => this.confirmDeleteTeam(team)
+            }
+        ];
+    }
+
+    protected activationRowActions(row: SystemActivationRow): TableRowActionItem[] {
+        this.activeLanguage();
+        return [
+            {
+                label: this.transloco.translate('admin.system.activation.actions.filterTeam'),
+                icon: 'pi pi-filter',
+                command: () => this.filterActivationTeam(row)
+            },
+            {
+                label: this.transloco.translate('admin.system.activation.actions.copyContext'),
+                icon: 'pi pi-copy',
+                command: () => this.copyActivationContext(row)
+            },
+            {
+                label: this.transloco.translate('admin.system.activation.actions.openTeam'),
+                icon: 'pi pi-arrow-right',
+                disabled: !!this.openingActivationTeamId(),
+                command: () => this.openActivationTeam(row)
+            }
+        ];
     }
 
     private setActivationCopyStatus(status: 'success' | 'error') {
@@ -1048,26 +1144,16 @@ export class AdminSettings implements OnInit {
         return 'user';
     }
 
-    protected confirmDisableUserMfa(event: Event, user: User): void {
-        const target = event.currentTarget;
-        if (!(target instanceof HTMLElement) || !this.canDisableUserMfa() || this.isDisablingUser(user)) {
+    protected confirmDisableUserMfa(user: User): void {
+        if (!this.canDisableUserMfa() || this.isDisablingUser(user)) {
             return;
         }
 
         this.confirmationService.confirm({
-            key: 'admin-disable-mfa',
-            target,
             message: this.transloco.translate('admin.confirmDisable2fa', { email: user.email }),
             icon: 'pi pi-exclamation-triangle',
-            rejectButtonProps: {
-                label: this.transloco.translate('common.actions.cancel'),
-                severity: 'secondary',
-                outlined: true
-            },
-            acceptButtonProps: {
-                label: this.transloco.translate('admin.users.disable2faAction'),
-                severity: 'warn'
-            },
+            rejectButtonProps: dialogCancelButton(this.transloco.translate('common.actions.cancel')),
+            acceptButtonProps: dialogWarnButton(this.transloco.translate('admin.users.disable2faAction')),
             accept: () => {
                 this.userMfaStatus.set(null);
                 this.disablingUserId.set(user.id);
@@ -1094,26 +1180,16 @@ export class AdminSettings implements OnInit {
         });
     }
 
-    confirmDeleteUser(event: Event, user: User) {
-        const target = event.currentTarget;
-        if (!(target instanceof HTMLElement) || user.id === this.currentUserId() || this.isDeletingUser(user)) {
+    confirmDeleteUser(user: User) {
+        if (user.id === this.currentUserId() || this.isDeletingUser(user)) {
             return;
         }
 
         this.confirmationService.confirm({
-            key: 'admin-delete',
-            target,
             message: this.transloco.translate('admin.confirmDeleteUser', { email: user.email }),
             icon: 'pi pi-exclamation-triangle',
-            rejectButtonProps: {
-                label: this.transloco.translate('common.actions.cancel'),
-                severity: 'secondary',
-                outlined: true
-            },
-            acceptButtonProps: {
-                label: this.transloco.translate('share.dialog.deleteAction'),
-                severity: 'danger'
-            },
+            rejectButtonProps: dialogCancelButton(this.transloco.translate('common.actions.cancel')),
+            acceptButtonProps: dialogDangerButton(this.transloco.translate('share.dialog.deleteAction')),
             accept: () => {
                 this.deleteUserBlock.set(null);
                 this.userMfaStatus.set(null);
@@ -1147,26 +1223,16 @@ export class AdminSettings implements OnInit {
         });
     }
 
-    confirmDeleteSite(event: Event, site: Site) {
-        const target = event.currentTarget;
-        if (!(target instanceof HTMLElement) || this.isDeletingSite(site)) {
+    confirmDeleteSite(site: Site) {
+        if (this.isDeletingSite(site)) {
             return;
         }
 
         this.confirmationService.confirm({
-            key: 'admin-delete',
-            target,
             message: this.transloco.translate('admin.confirmDeleteSite', { domain: site.domain }),
             icon: 'pi pi-exclamation-triangle',
-            rejectButtonProps: {
-                label: this.transloco.translate('common.actions.cancel'),
-                severity: 'secondary',
-                outlined: true
-            },
-            acceptButtonProps: {
-                label: this.transloco.translate('share.dialog.deleteAction'),
-                severity: 'danger'
-            },
+            rejectButtonProps: dialogCancelButton(this.transloco.translate('common.actions.cancel')),
+            acceptButtonProps: dialogDangerButton(this.transloco.translate('share.dialog.deleteAction')),
             accept: () => {
                 this.siteActionStatus.set(null);
                 this.deletingSiteId.set(site.id);
@@ -1209,28 +1275,18 @@ export class AdminSettings implements OnInit {
         });
     }
 
-    confirmDeleteTeam(event: Event, team: AdminTeam) {
-        const target = event.currentTarget;
-        if (!(target instanceof HTMLElement) || this.isDeletingTeam(team)) {
+    confirmDeleteTeam(team: AdminTeam) {
+        if (this.isDeletingTeam(team)) {
             return;
         }
 
         const messageKey = team.site_count > 0 ? 'admin.confirmDeleteTeamWithSites' : 'admin.confirmDeleteTeam';
 
         this.confirmationService.confirm({
-            key: 'admin-delete',
-            target,
             message: this.transloco.translate(messageKey, { name: team.name, sites: team.site_count }),
             icon: 'pi pi-exclamation-triangle',
-            rejectButtonProps: {
-                label: this.transloco.translate('common.actions.cancel'),
-                severity: 'secondary',
-                outlined: true
-            },
-            acceptButtonProps: {
-                label: this.transloco.translate('share.dialog.deleteAction'),
-                severity: 'danger'
-            },
+            rejectButtonProps: dialogCancelButton(this.transloco.translate('common.actions.cancel')),
+            acceptButtonProps: dialogDangerButton(this.transloco.translate('share.dialog.deleteAction')),
             accept: () => {
                 this.teamActionStatus.set(null);
                 this.deletingTeamId.set(team.id);

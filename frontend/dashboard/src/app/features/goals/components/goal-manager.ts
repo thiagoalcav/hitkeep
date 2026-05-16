@@ -5,9 +5,9 @@ import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { compatForm } from '@angular/forms/signals/compat';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { switchMap, finalize } from 'rxjs';
-import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
-import { DividerModule } from 'primeng/divider';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ConfirmationService } from 'primeng/api';
 import { IconFieldModule } from 'primeng/iconfield';
 import { InputIconModule } from 'primeng/inputicon';
 import { InputGroupModule } from 'primeng/inputgroup';
@@ -20,6 +20,10 @@ import { TooltipModule } from 'primeng/tooltip';
 import { MessageModule } from 'primeng/message';
 import { AnalyticsService } from '@services/analytics.service';
 import { Goal } from '@models/analytics.types';
+import { CrudDialog } from '@components/crud-dialog/crud-dialog';
+import { DialogShell } from '@components/dialog-shell/dialog-shell';
+import { dialogCancelButton, dialogDangerButton } from '@components/dialog-actions/dialog-actions';
+import { TableRowActionItem, TableRowActions } from '@components/table-row-actions/table-row-actions';
 
 type GoalManagerAction = 'create' | 'update' | 'delete';
 
@@ -27,9 +31,8 @@ type GoalManagerAction = 'create' | 'update' | 'delete';
     selector: 'app-goal-manager',
     imports: [
         ReactiveFormsModule,
-        DialogModule,
         ButtonModule,
-        DividerModule,
+        ConfirmDialogModule,
         IconFieldModule,
         InputIconModule,
         InputGroupModule,
@@ -40,21 +43,34 @@ type GoalManagerAction = 'create' | 'update' | 'delete';
         TagModule,
         TooltipModule,
         MessageModule,
+        CrudDialog,
+        DialogShell,
+        TableRowActions,
         TranslocoPipe
     ],
     changeDetection: ChangeDetectionStrategy.OnPush,
+    providers: [ConfirmationService],
     template: `
-        <p-dialog [header]="'goals.manager.dialogTitle' | transloco" [(visible)]="visible" [modal]="true" [style]="dialogStyle" [draggable]="false" [resizable]="false" (onHide)="resetEditor()">
+        <p-confirmdialog />
+
+        <app-dialog-shell
+            [title]="'goals.manager.dialogTitle' | transloco"
+            [visible]="visible()"
+            (visibleChange)="onManagerVisibleChange($event)"
+            width="760px"
+            [secondaryLabel]="'common.actions.close' | transloco"
+            [showPrimary]="false"
+        >
             <p class="text-sm text-muted-color mb-4">{{ "goals.manager.dialogDescription" | transloco }}</p>
 
             @if (successKey(); as key) {
                 <p-message severity="success" styleClass="w-full mb-4" [text]="key | transloco" />
-            } @else if (errorKey(); as key) {
+            } @else if (!isEditorDialogVisible() && errorKey(); as key) {
                 <p-message severity="error" styleClass="w-full mb-4" [text]="key | transloco" />
             }
 
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
-                <p-button [label]="'goals.manager.newAction' | transloco" icon="pi pi-plus" (onClick)="resetEditor()" [outlined]="true" size="small" />
+                <p-button [label]="'goals.manager.newAction' | transloco" icon="pi pi-plus" (onClick)="openCreateDialog()" [outlined]="true" size="small" />
                 <p-iconfield>
                     <p-inputicon class="pi pi-search" />
                     <input pInputText #goalSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="goalsTable.filterGlobal($any($event.target).value, 'contains')" class="w-full" />
@@ -77,38 +93,18 @@ type GoalManagerAction = 'create' | 'update' | 'delete';
                                 {{ "common.columns.value" | transloco }}
                                 <p-sortIcon field="value" />
                             </th>
-                            <th style="width: 7rem"></th>
+                            <th class="hk-actions-column">{{ "common.columns.actions" | transloco }}</th>
                         </tr>
                     </ng-template>
                     <ng-template pTemplate="body" let-goal>
-                        <tr [class]="editingGoal()?.id === goal.id ? 'bg-surface-50 dark:bg-surface-800' : ''">
+                        <tr>
                             <td class="font-medium">{{ goal.name }}</td>
                             <td>
                                 <p-tag [value]="goalTypeLabel(goal.type)" [severity]="goal.type === 'event' ? 'info' : 'warn'" [rounded]="true" />
                             </td>
                             <td class="font-mono text-sm text-muted-color truncate max-w-[150px]" [title]="goal.value">{{ goal.value }}</td>
-                            <td>
-                                <div class="flex justify-end gap-1">
-                                    <p-button
-                                        icon="pi pi-pencil"
-                                        (onClick)="editGoal(goal)"
-                                        styleClass="p-button-text p-button-sm"
-                                        [rounded]="true"
-                                        [pTooltip]="'goals.manager.editTooltip' | transloco"
-                                        [ariaLabel]="'goals.manager.editTooltip' | transloco"
-                                        [disabled]="isBusy()"
-                                    />
-                                    <p-button
-                                        icon="pi pi-trash"
-                                        (onClick)="deleteGoal(goal.id)"
-                                        styleClass="p-button-text p-button-danger p-button-sm"
-                                        [rounded]="true"
-                                        [pTooltip]="'goals.manager.deleteTooltip' | transloco"
-                                        [ariaLabel]="'goals.manager.deleteTooltip' | transloco"
-                                        [loading]="deletingGoalId() === goal.id"
-                                        [disabled]="isBusy()"
-                                    />
-                                </div>
+                            <td class="hk-actions-cell">
+                                <app-table-row-actions [items]="goalActions(goal)" [loading]="deletingGoalId() === goal.id" />
                             </td>
                         </tr>
                     </ng-template>
@@ -119,17 +115,19 @@ type GoalManagerAction = 'create' | 'update' | 'delete';
                     </ng-template>
                 </p-table>
             </div>
+        </app-dialog-shell>
 
-            <p-divider />
-
-            <div class="flex items-center justify-between gap-3 mb-4">
-                <h4 class="font-semibold text-sm mt-0 mb-0">{{ editorTitle() }}</h4>
-                @if (editingGoal()) {
-                    <p-button [label]="'common.actions.cancel' | transloco" (onClick)="resetEditor()" [text]="true" size="small" />
-                }
-            </div>
-
-            <div class="flex flex-col gap-4">
+        <app-crud-dialog
+            [title]="editorTitle()"
+            [visible]="isEditorDialogVisible()"
+            (visibleChange)="onEditorDialogVisibleChange($event)"
+            [submitLabel]="primaryActionLabel()"
+            [cancelLabel]="'common.actions.cancel' | transloco"
+            [saving]="saving()"
+            width="38rem"
+            (submitted)="saveGoal()"
+        >
+            <form class="flex flex-col gap-4" (ngSubmit)="saveGoal()">
                 <div class="flex flex-col gap-1">
                     <label for="g-name" class="text-xs font-medium">{{ "common.columns.name" | transloco }}</label>
                     <input pInputText id="g-name" [formControl]="newGoalForm.name().control()" [placeholder]="'goals.manager.namePlaceholder' | transloco" class="w-full" />
@@ -158,12 +156,12 @@ type GoalManagerAction = 'create' | 'update' | 'delete';
                         <small class="text-xs text-muted-color"> {{ "goals.manager.eventNameHelpPrefix" | transloco }} <code>hk.event('name')</code>{{ "goals.manager.eventNameHelpSuffix" | transloco }} </small>
                     }
                 </div>
-            </div>
 
-            <ng-template pTemplate="footer">
-                <p-button [label]="primaryActionLabel()" [icon]="editingGoal() ? 'pi pi-save' : 'pi pi-plus'" (onClick)="saveGoal()" [loading]="saving()" [disabled]="!canSave()" size="small" />
-            </ng-template>
-        </p-dialog>
+                @if (errorKey(); as key) {
+                    <p-message severity="error" styleClass="w-full" [text]="key | transloco" />
+                }
+            </form>
+        </app-crud-dialog>
     `
 })
 export class GoalManager {
@@ -173,11 +171,12 @@ export class GoalManager {
 
     private analyticsService = inject(AnalyticsService);
     private transloco = inject(TranslocoService);
+    private confirmationService = inject(ConfirmationService);
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
-    protected readonly dialogStyle = { width: '760px', maxWidth: '94vw' };
     protected readonly saving = signal(false);
     protected readonly deletingGoalId = signal<string | null>(null);
+    protected readonly isEditorDialogVisible = signal(false);
     protected readonly editingGoal = signal<Goal | null>(null);
     protected readonly isBusy = computed(() => this.saving() || this.deletingGoalId() !== null);
     protected readonly successKey = signal<string | null>(null);
@@ -231,6 +230,12 @@ export class GoalManager {
         return this.transloco.translate('goals.manager.typePagePath');
     }
 
+    protected openCreateDialog() {
+        if (this.isBusy()) return;
+        this.resetEditor();
+        this.isEditorDialogVisible.set(true);
+    }
+
     editGoal(goal: Goal) {
         if (this.isBusy()) return;
         this.clearFeedback();
@@ -238,6 +243,63 @@ export class GoalManager {
         this.newGoalForm.name().control().setValue(goal.name);
         this.newGoalForm.type().control().setValue(goal.type);
         this.newGoalForm.value().control().setValue(goal.value);
+        this.isEditorDialogVisible.set(true);
+    }
+
+    protected onEditorDialogVisibleChange(visible: boolean) {
+        if (!visible && this.saving()) {
+            this.isEditorDialogVisible.set(true);
+            return;
+        }
+        this.isEditorDialogVisible.set(visible);
+        if (!visible) {
+            this.resetEditor();
+        }
+    }
+
+    protected onManagerHide() {
+        this.visible.set(false);
+        this.isEditorDialogVisible.set(false);
+        this.resetEditor();
+    }
+
+    protected onManagerVisibleChange(visible: boolean) {
+        if (visible) {
+            this.visible.set(true);
+            return;
+        }
+        this.onManagerHide();
+    }
+
+    protected goalActions(goal: Goal): TableRowActionItem[] {
+        this.activeLanguage();
+        return [
+            {
+                label: this.transloco.translate('goals.manager.editTooltip'),
+                icon: 'pi pi-pencil',
+                disabled: this.isBusy(),
+                command: () => this.editGoal(goal)
+            },
+            { separator: true },
+            {
+                label: this.transloco.translate('goals.manager.deleteTooltip'),
+                icon: 'pi pi-trash',
+                danger: true,
+                disabled: this.isBusy(),
+                command: () => this.confirmDeleteGoal(goal)
+            }
+        ];
+    }
+
+    protected confirmDeleteGoal(goal: Goal) {
+        if (this.isBusy()) return;
+        this.confirmationService.confirm({
+            message: this.transloco.translate('goals.manager.confirmDelete', { name: goal.name }),
+            icon: 'pi pi-exclamation-triangle',
+            rejectButtonProps: dialogCancelButton(this.transloco.translate('common.actions.cancel')),
+            acceptButtonProps: dialogDangerButton(this.transloco.translate('goals.manager.deleteTooltip')),
+            accept: () => this.deleteGoal(goal.id)
+        });
     }
 
     resetEditor() {
@@ -266,6 +328,7 @@ export class GoalManager {
         request.pipe(finalize(() => this.saving.set(false))).subscribe({
             next: () => {
                 this.resetEditor();
+                this.isEditorDialogVisible.set(false);
                 this.goalsResource.reload();
                 this.goalsChanged.emit();
                 this.setSuccess(action);

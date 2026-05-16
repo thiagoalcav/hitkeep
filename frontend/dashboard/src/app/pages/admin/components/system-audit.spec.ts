@@ -4,6 +4,7 @@ import { of, throwError } from 'rxjs';
 import { vi } from 'vitest';
 
 import { AdminSystemService } from '@services/admin-system.service';
+import { AccessService } from '@services/access.service';
 import { AuditPresentationService } from '@services/audit-presentation.service';
 import { SystemAudit } from './system-audit';
 
@@ -17,12 +18,14 @@ interface SystemAuditTestAccess {
 describe('SystemAudit', () => {
     let component: SystemAuditTestAccess;
     let exportAuditMock: ReturnType<typeof vi.fn>;
+    let hasInstanceMock: ReturnType<typeof vi.fn>;
     let createObjectURLMock: ReturnType<typeof vi.fn>;
     let revokeObjectURLMock: ReturnType<typeof vi.fn>;
     let clickSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
         exportAuditMock = vi.fn();
+        hasInstanceMock = vi.fn(() => true);
         createObjectURLMock = vi.fn(() => 'blob:instance-audit');
         revokeObjectURLMock = vi.fn();
         clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
@@ -61,6 +64,12 @@ describe('SystemAudit', () => {
                         actionOptions: vi.fn(() => []),
                         outcomeOptions: vi.fn(() => []),
                         targetTypeOptions: vi.fn(() => [])
+                    }
+                },
+                {
+                    provide: AccessService,
+                    useValue: {
+                        hasInstance: hasInstanceMock
                     }
                 }
             ]
@@ -102,5 +111,14 @@ describe('SystemAudit', () => {
             severity: 'error',
             key: 'admin.system.audit.exportFailed'
         });
+    });
+
+    it('does not call the audit export endpoint without export capability', () => {
+        hasInstanceMock.mockReturnValue(false);
+
+        component.exportAudit();
+
+        expect(exportAuditMock).not.toHaveBeenCalled();
+        expect(component.isExporting()).toBe(false);
     });
 });

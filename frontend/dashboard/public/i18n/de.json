@@ -27,6 +27,8 @@
         "utm": "UTM",
         "apiClients": "API-Clients",
         "apiReference": "API-Referenz",
+        "expandItem": "{{item}} aufklappen",
+        "collapseItem": "{{item}} zuklappen",
         "imports": "Importe",
         "importsAria": "Zu den Importen",
         "importExport": "Import & Export",
@@ -37,8 +39,8 @@
         "docsAria": "HitKeep-Dokumentation in neuem Tab öffnen",
         "support": "Support",
         "supportAria": "HitKeep-Support in neuem Tab öffnen",
-        "settings": "Benutzereinstellungen",
-        "settingsAria": "Zu den Benutzereinstellungen",
+        "settings": "Einstellungen",
+        "settingsAria": "Zu den Einstellungen",
         "emailReports": "E-Mail-Berichte",
         "emailReportsAria": "Zu den E-Mail-Berichten",
         "administration": "Verwaltung",
@@ -360,6 +362,7 @@
             "openAction": "Team verwalten",
             "openAria": "Teamverwaltung öffnen",
             "dialogTitle": "{{team}} verwalten",
+            "inviteDialogTitle": "Teammitglied einladen",
             "noTeam": "Kein aktives Team ausgewählt.",
             "readOnly": "Du kannst Mitglieder sehen, aber mit deiner Rolle keine Teammitgliedschaften verwalten.",
             "notAllowed": "Nicht erlaubt",
@@ -434,7 +437,8 @@
             "exportCsv": "CSV exportieren",
             "open": "Öffnen",
             "refresh": "Aktualisieren",
-            "save": "Speichern"
+            "save": "Speichern",
+            "more": "Weitere Aktionen"
         },
         "previous": "Zurück",
         "next": "Weiter",
@@ -639,6 +643,7 @@
             "editTitle": "Ziel bearbeiten",
             "editTooltip": "Ziel bearbeiten",
             "deleteTooltip": "Ziel löschen",
+            "confirmDelete": "Ziel \"{{name}}\" löschen?",
             "namePlaceholder": "z. B. Erfolgreiche Registrierung",
             "typePagePath": "Pfad",
             "typeCustomEvent": "Event",
@@ -697,6 +702,7 @@
             "editTitle": "Funnel bearbeiten",
             "editTooltip": "Funnel bearbeiten",
             "deleteTooltip": "Funnel löschen",
+            "confirmDelete": "Funnel \"{{name}}\" löschen?",
             "namePlaceholder": "z. B. Checkout-Ablauf",
             "stepPathPlaceholder": "/pfad",
             "stepEventPlaceholder": "event_name",
@@ -870,7 +876,7 @@
             }
         },
         "user": {
-            "breadcrumb": "Benutzereinstellungen",
+            "breadcrumb": "Einstellungen",
             "subtitle": "Verwalte die Sicherheit und Einstellungen deines Kontos.",
             "profile": {
                 "title": "Profil",
@@ -946,10 +952,19 @@
             "loading": "API-Clients werden geladen...",
             "empty": "Noch keine API-Clients.",
             "listTitle": "Vorhandene API-Clients",
+            "createDialogTitle": "API-Client hinzufügen",
+            "editDialogTitle": "API-Client bearbeiten",
             "confirmDelete": "API-Client \"{{name}}\" löschen?",
+            "confirmRotate": "Token für API-Client \"{{name}}\" neu ausstellen? Das alte Token funktioniert sofort nicht mehr.",
+            "noSiteAccess": "Kein Site-Zugriff",
+            "noSiteAccessInstanceOnly": "Nur Instanz/Admin; kein Site-Zugriff",
+            "siteGrantCount": "{{count}} Site-Freigaben",
+            "siteGrantPopoverTitle": "Site-Freigaben",
             "status": {
                 "active": "Aktiv",
-                "revoked": "Widerrufen"
+                "inactive": "Inaktiv",
+                "revoked": "Widerrufen",
+                "expired": "Abgelaufen"
             },
             "meta": {
                 "instanceRole": "Instanzrolle",
@@ -958,14 +973,16 @@
                 "expires": "Läuft ab"
             },
             "actions": {
+                "add": "API-Client hinzufügen",
                 "create": "Client erstellen",
                 "save": "Änderungen speichern",
                 "edit": "Bearbeiten",
                 "revoke": "Widerrufen",
                 "reactivate": "Reaktivieren",
                 "delete": "Löschen",
-                "addScope": "Scope hinzufügen",
-                "refresh": "Aktualisieren"
+                "addScope": "Grant hinzufügen",
+                "refresh": "Aktualisieren",
+                "rollToken": "Token neu ausstellen"
             },
             "form": {
                 "nameLabel": "Client-Name",
@@ -975,8 +992,8 @@
                 "instanceRoleLabel": "Instanzrolle",
                 "expiresAtLabel": "Ablaufzeit",
                 "expiresAtHint": "Wenn leer, läuft das Token nie ab. Das wird nicht empfohlen.",
-                "siteScopesLabel": "Site-Scopes",
-                "siteScopesHint": "Optional: Diesen Client auf bestimmte Sites und Site-Rollen beschränken.",
+                "siteScopesLabel": "Site-Grants",
+                "siteScopesHint": "Zugriff auf Site-Analytics, MCP und Ingest benötigt einen ausdrücklichen Site-Grant.",
                 "selectSitePlaceholder": "Site auswählen",
                 "validation": {
                     "nameRequired": "Client-Name ist erforderlich.",
@@ -984,9 +1001,9 @@
                     "instanceRoleRequired": "Instanzrolle ist erforderlich.",
                     "expiresAtPast": "Ablaufzeit muss in der Zukunft liegen.",
                     "expiresAtInvalid": "Ablaufzeit ist ungültig.",
-                    "scopeSiteRequired": "Wähle eine Site, bevor du einen Scope hinzufügst."
+                    "scopeSiteRequired": "Wähle eine Site, bevor du einen Grant hinzufügst."
                 },
-                "teamSiteScopesHint": "Beschränke diesen Client auf bestimmte Sites innerhalb des ausgewählten Teams."
+                "teamSiteScopesHint": "Team-Clients können nur auf Sites zugreifen, die hier mit Site-Rolle hinzugefügt wurden."
             },
             "tokenNotice": {
                 "title": "Dieses Token jetzt kopieren",
@@ -997,12 +1014,14 @@
                 "updated": "API-Client aktualisiert.",
                 "deleted": "API-Client gelöscht.",
                 "revoked": "API-Client widerrufen.",
-                "reactivated": "API-Client reaktiviert."
+                "reactivated": "API-Client reaktiviert.",
+                "rotated": "API-Token neu ausgestellt. Kopiere das neue Token jetzt."
             },
             "errors": {
                 "loadFailed": "API-Clients konnten nicht geladen werden.",
                 "createFailed": "API-Client konnte nicht erstellt werden.",
                 "updateFailed": "API-Client konnte nicht aktualisiert werden.",
+                "rotateFailed": "API-Token konnte nicht neu ausgestellt werden.",
                 "deleteFailed": "API-Client konnte nicht gelöscht werden.",
                 "invalidExpiration": "Der Ablaufzeitpunkt ist ungültig.",
                 "notFound": "API-Client nicht gefunden."
@@ -1133,6 +1152,10 @@
                 "loadFailed": "Ausschlüsse konnten nicht geladen werden.",
                 "createFailed": "Ausschluss konnte nicht erstellt werden.",
                 "deleteFailed": "Ausschluss konnte nicht gelöscht werden."
+            },
+            "status": {
+                "createSuccess": "Ausschluss {{cidr}} wurde erstellt.",
+                "deleteSuccess": "Ausschluss {{cidr}} wurde gelöscht."
             }
         },
         "selector": {
@@ -1178,7 +1201,10 @@
         },
         "team": {
             "emailPlaceholder": "user@example.com",
-            "addMemberAction": "Mitglied hinzufügen",
+            "addMemberAction": "Site-Mitglied hinzufügen",
+            "addMemberDialogTitle": "Site-Mitglied hinzufügen",
+            "addMemberSuccess": "Site-Mitglied hinzugefügt.",
+            "removeMemberSuccess": "Site-Mitglied entfernt.",
             "confirmRemove": "{{email}} von der Seite entfernen?",
             "transfer": {
                 "title": "Website verschieben",
@@ -1293,6 +1319,7 @@
                 "deleteFailed": "Globaler Filter konnte nicht gelöscht werden."
             },
             "status": {
+                "createSuccess": "Globaler Filter {{cidr}} wurde erstellt.",
                 "deleteSuccess": "Globaler Filter {{cidr}} wurde gelöscht."
             }
         },
@@ -1939,7 +1966,7 @@
     },
     "userMenu": {
         "administration": "Verwaltung",
-        "userSettings": "Benutzereinstellungen",
+        "userSettings": "Einstellungen",
         "preferences": "Einstellungen",
         "sessionStatus": "Session: noch {{remaining}}",
         "rememberedSessionStatus": "Angemeldet bleiben: noch {{remaining}}",
@@ -2155,15 +2182,8 @@
     },
     "aiVisibility": {
         "title": "AI-Sichtbarkeit",
-        "docsAction": "Leitfaden zur AI-Sichtbarkeit",
+        "docsAction": "Setup-Leitfaden",
         "noSiteDescription": "Wähle eine Website aus oder erstelle eine, um AI-Fetch- und Korrelationsanalysen anzuzeigen.",
-        "setup": {
-            "title": "Serverseitige Fetch-Erfassung erforderlich",
-            "badge": "Setup erforderlich",
-            "description": "Diese Seite erfasst AI-Crawler-Fetches erst, nachdem du sie per Edge- oder Log-Ingestion an HitKeep weiterleitest.",
-            "detail": "Das Installieren von hk.js allein erfasst keine Bot-Fetches. AI-vermittelte Besuche von ChatGPT, Gemini, Perplexity und ähnlichen Assistenten können an anderer Stelle in der Analytics weiterhin über Referrer erscheinen.",
-            "action": "Setup-Leitfaden öffnen"
-        },
         "header": {
             "title": "AI-Sichtbarkeitsanalyse",
             "description": "Verfolge serverseitige AI-Crawler-Fetches, wo sich Crawl-Fehler häufen und welche abgerufenen Seiten später AI-vermittelte Besuche erzeugen."
@@ -2245,7 +2265,8 @@
     },
     "integration": {
         "apiClients": {
-            "subtitle": "Erstelle und verwalte API-Clients für Integrationen."
+            "subtitle": "Erstelle und verwalte API-Clients für Integrationen.",
+            "manageTeamClients": "Team-API-Clients verwalten"
         },
         "apiReference": {
             "subtitle": "Versionierte REST-API-Referenz mit Details zu Session- und API-Key-Authentifizierung.",

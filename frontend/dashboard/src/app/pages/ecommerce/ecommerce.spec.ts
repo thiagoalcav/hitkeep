@@ -91,7 +91,7 @@ describe('EcommercePage', () => {
                                 noActiveFilter: 'No active filter',
                                 removeFilterAria: 'Remove filter',
                                 selectDateRange: 'Select date range',
-                                actions: { apply: 'Apply', cancel: 'Cancel', clearAll: 'Clear all' },
+                                actions: { apply: 'Apply', cancel: 'Cancel', clearAll: 'Clear all', more: 'More actions' },
                                 columns: { actions: 'Actions' },
                                 timeRanges: {
                                     last24Hours: 'Last 24 hours',

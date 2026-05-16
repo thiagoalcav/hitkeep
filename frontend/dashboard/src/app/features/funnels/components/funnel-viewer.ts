@@ -2,18 +2,27 @@ import { Component, inject, signal, OnChanges, input, model, output } from '@ang
 
 import { TranslocoPipe } from '@jsverse/transloco';
 import { TranslocoDecimalPipe } from '@jsverse/transloco-locale';
-import { DialogModule } from 'primeng/dialog';
 import { SkeletonModule } from 'primeng/skeleton';
-import { ButtonModule } from 'primeng/button';
+import { DialogShell } from '@components/dialog-shell/dialog-shell';
 import { AnalyticsService } from '@services/analytics.service';
 import { FunnelStats } from '@models/analytics.types';
 
 @Component({
     selector: 'app-funnel-viewer',
     standalone: true,
-    imports: [DialogModule, SkeletonModule, ButtonModule, TranslocoPipe, TranslocoDecimalPipe],
+    imports: [DialogShell, SkeletonModule, TranslocoPipe, TranslocoDecimalPipe],
     template: `
-        <p-dialog [header]="stats()?.name || ('funnels.viewer.dialogTitle' | transloco)" [(visible)]="visible" [modal]="true" [style]="dialogStyle" [draggable]="false" [resizable]="false" (onHide)="onHide()">
+        <app-dialog-shell
+            [title]="stats()?.name || ('funnels.viewer.dialogTitle' | transloco)"
+            [visible]="visible()"
+            (visibleChange)="onVisibleChange($event)"
+            width="900px"
+            [secondaryLabel]="'common.actions.close' | transloco"
+            [primaryLabel]="'funnels.viewer.editAction' | transloco"
+            primaryIcon="pi pi-pencil"
+            [showPrimary]="canEdit()"
+            (primaryAction)="editClicked.emit()"
+        >
             @if (loading()) {
                 <div class="flex flex-col gap-4 p-4">
                     <p-skeleton height="200px" styleClass="w-full" />
@@ -79,13 +88,7 @@ import { FunnelStats } from '@models/analytics.types';
                     </div>
                 </div>
             }
-            <ng-template pTemplate="footer">
-                <p-button [label]="'common.actions.close' | transloco" (onClick)="onHide()" [text]="true" size="small" />
-                @if (canEdit()) {
-                    <p-button [label]="'funnels.viewer.editAction' | transloco" icon="pi pi-pencil" (onClick)="editClicked.emit()" size="small" />
-                }
-            </ng-template>
-        </p-dialog>
+        </app-dialog-shell>
     `
 })
 export class FunnelViewer implements OnChanges {
@@ -101,7 +104,6 @@ export class FunnelViewer implements OnChanges {
 
     private analyticsService = inject(AnalyticsService);
 
-    protected readonly dialogStyle = { width: '900px', maxWidth: '95vw' };
     stats = signal<FunnelStats | null>(null);
     loading = signal(false);
     private lastLoadKey: string | null = null;
@@ -142,5 +144,13 @@ export class FunnelViewer implements OnChanges {
         this.visible.set(false);
         this.stats.set(null);
         this.lastLoadKey = null;
+    }
+
+    protected onVisibleChange(visible: boolean) {
+        if (visible) {
+            this.visible.set(true);
+            return;
+        }
+        this.onHide();
     }
 }

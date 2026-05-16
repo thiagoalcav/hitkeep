@@ -92,7 +92,15 @@ describe('AIVisibility', () => {
         expect(instance.errorRateSeverity(5)).toBe('danger');
     });
 
-    it('should show the setup notice when a site is selected but no AI fetches exist', () => {
+    it('should link to the AI fetch setup guide from the toolbar', () => {
+        const setupGuideLink = fixture.nativeElement.querySelector('a[href="https://hitkeep.com/guides/tracking/ai-fetch-ingest/"]');
+
+        expect(setupGuideLink).not.toBeNull();
+        expect(setupGuideLink.getAttribute('target')).toBe('_blank');
+        expect(setupGuideLink.textContent).toContain('aiVisibility.docsAction');
+    });
+
+    it('should not render a setup-required callout when a site is selected but no AI fetches exist', () => {
         const siteService = TestBed.inject(SiteService);
         siteService.activeSite.set({
             id: 'site-1',
@@ -137,8 +145,6 @@ describe('AIVisibility', () => {
 
         fixture.detectChanges();
 
-        const instance = component as AIVisibility & { showSetupNotice: () => boolean };
-        expect(instance.showSetupNotice()).toBe(true);
-        expect(fixture.nativeElement.textContent).toContain('aiVisibility.setup.title');
+        expect(fixture.nativeElement.textContent).not.toContain('Server-side fetch capture required');
     });
 });

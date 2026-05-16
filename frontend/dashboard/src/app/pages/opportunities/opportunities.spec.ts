@@ -434,6 +434,10 @@ describe('OpportunitiesPage', () => {
 
     afterEach(() => {
         httpMock.verify();
+        document.documentElement.classList.remove('p-dark');
+        for (const property of ['--p-content-background', '--p-content-border-color', '--p-content-hover-background', '--p-surface-0', '--p-surface-card', '--p-surface-200']) {
+            document.documentElement.style.removeProperty(property);
+        }
     });
 
     it('renders the opportunity inbox without promotional or money positioning', () => {
@@ -448,6 +452,26 @@ describe('OpportunitiesPage', () => {
         expect(fixture.nativeElement.textContent).not.toContain('API should not render me');
         expect(fixture.nativeElement.textContent).not.toContain('$8,500');
         expect(fixture.nativeElement.textContent).not.toContain('Upside');
+    });
+
+    it('uses dark-mode content surfaces for the inbox cards and filter rail', () => {
+        document.documentElement.classList.add('p-dark');
+        document.documentElement.style.setProperty('--p-content-background', 'rgb(24, 24, 27)');
+        document.documentElement.style.setProperty('--p-content-border-color', 'rgb(63, 63, 70)');
+        document.documentElement.style.setProperty('--p-content-hover-background', 'rgb(39, 39, 42)');
+        document.documentElement.style.setProperty('--p-surface-0', 'rgb(255, 255, 255)');
+        document.documentElement.style.setProperty('--p-surface-card', 'rgb(255, 255, 255)');
+        document.documentElement.style.setProperty('--p-surface-200', 'rgb(229, 231, 235)');
+
+        renderDashboard();
+
+        const card = fixture.nativeElement.querySelector('.opportunity-card') as HTMLElement;
+        const rail = fixture.nativeElement.querySelector('.opportunities-sidebar') as HTMLElement;
+
+        expect(getComputedStyle(card).backgroundColor).toBe('rgb(24, 24, 27)');
+        expect(getComputedStyle(card).borderTopColor).toBe('rgb(63, 63, 70)');
+        expect(getComputedStyle(rail).backgroundColor).toBe('rgb(24, 24, 27)');
+        expect(getComputedStyle(rail).borderTopColor).toBe('rgb(63, 63, 70)');
     });
 
     it('keeps opportunities in the inbox without a separate top actions section', () => {

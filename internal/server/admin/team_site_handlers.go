@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,14 @@ import (
 	serverauth "hitkeep/internal/server/auth"
 	"hitkeep/internal/server/shared"
 )
+
+var errHostedCloudSiteMemberRequiresTeam = errors.New("hosted cloud site member must join a team first")
+
+type resolvedSiteMemberUser struct {
+	userID      uuid.UUID
+	isNewUser   bool
+	inviteToken string
+}
 
 func (h *handler) handleAdminListTeams() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -44,6 +53,11 @@ func (h *handler) handleAdminArchiveTeam() http.HandlerFunc {
 		}
 
 		actorID := shared.GetUserIDFromContext(r)
+
+		if h.ctx.Config.CloudHosted {
+			http.Error(w, "Managed cloud teams cannot be archived", http.StatusForbidden)
+			return
+		}
 
 		err = h.ctx.Store.AdminArchiveTenant(r.Context(), teamID, actorID)
 		if err != nil {
@@ -82,36 +96,53 @@ func (h *handler) handleAdminDeleteTeam() http.HandlerFunc {
 		force := r.URL.Query().Get("force") == "true"
 
 		if force {
-			actorID := shared.GetUserIDFromContext(r)
-
-			sites, sitesErr := h.ctx.Store.ListSitesForTenant(r.Context(), teamID)
-			if sitesErr != nil {
-				slog.Error("Failed to list sites for team during force delete", "error", sitesErr, "team_id", teamID)
-				http.Error(w, "Failed to delete team", http.StatusInternalServerError)
-				return
-			}
-			for _, site := range sites {
-				if h.ctx.TenantStores != nil {
-					err = h.ctx.TenantStores.DeleteSite(r.Context(), site.ID)
-				} else {
-					err = h.ctx.Store.DeleteSite(r.Context(), site.ID)
-				}
-				if err != nil {
-					slog.Error("Failed to delete site during force team delete", "error", err, "site_id", site.ID, "team_id", teamID)
+			if h.ctx.Config.CloudHosted {
+				purgeable, purgeableErr := h.ctx.Store.GetPurgeableTenant(r.Context(), teamID)
+				if purgeableErr != nil {
+					if errors.Is(purgeableErr, database.ErrTeamPurgeNotArchived) {
+						http.Error(w, "Managed cloud teams cannot be force deleted", http.StatusForbidden)
+						return
+					}
+					slog.Error("Failed to check archived team before cloud force delete", "error", purgeableErr, "team_id", teamID)
 					http.Error(w, "Failed to delete team", http.StatusInternalServerError)
 					return
 				}
-			}
-
-			archiveErr := h.ctx.Store.AdminArchiveTenant(r.Context(), teamID, actorID)
-			if archiveErr != nil && !errors.Is(archiveErr, database.ErrTenantMembershipRequired) {
-				if errors.Is(archiveErr, database.ErrTeamArchiveDefaultTenant) {
-					http.Error(w, "The default team cannot be deleted", http.StatusBadRequest)
+				if purgeable == nil {
+					http.Error(w, "Managed cloud teams cannot be force deleted", http.StatusForbidden)
 					return
 				}
-				slog.Error("Failed to archive team during force delete", "error", archiveErr, "team_id", teamID)
-				http.Error(w, "Failed to delete team", http.StatusInternalServerError)
-				return
+			} else {
+				actorID := shared.GetUserIDFromContext(r)
+
+				sites, sitesErr := h.ctx.Store.ListSitesForTenant(r.Context(), teamID)
+				if sitesErr != nil {
+					slog.Error("Failed to list sites for team during force delete", "error", sitesErr, "team_id", teamID)
+					http.Error(w, "Failed to delete team", http.StatusInternalServerError)
+					return
+				}
+				for _, site := range sites {
+					if h.ctx.TenantStores != nil {
+						err = h.ctx.TenantStores.DeleteSite(r.Context(), site.ID)
+					} else {
+						err = h.ctx.Store.DeleteSite(r.Context(), site.ID)
+					}
+					if err != nil {
+						slog.Error("Failed to delete site during force team delete", "error", err, "site_id", site.ID, "team_id", teamID)
+						http.Error(w, "Failed to delete team", http.StatusInternalServerError)
+						return
+					}
+				}
+
+				archiveErr := h.ctx.Store.AdminArchiveTenant(r.Context(), teamID, actorID)
+				if archiveErr != nil && !errors.Is(archiveErr, database.ErrTenantMembershipRequired) {
+					if errors.Is(archiveErr, database.ErrTeamArchiveDefaultTenant) {
+						http.Error(w, "The default team cannot be deleted", http.StatusBadRequest)
+						return
+					}
+					slog.Error("Failed to archive team during force delete", "error", archiveErr, "team_id", teamID)
+					http.Error(w, "Failed to delete team", http.StatusInternalServerError)
+					return
+				}
 			}
 		}
 
@@ -232,41 +263,19 @@ func (h *handler) handleAddSiteMember() http.HandlerFunc {
 			return
 		}
 
-		user, err := h.ctx.Store.GetUserByEmail(r.Context(), req.Email)
+		resolvedUser, err := h.resolveSiteMemberUser(r.Context(), req.Email)
+		if errors.Is(err, errHostedCloudSiteMemberRequiresTeam) {
+			http.Error(w, "Managed cloud users must join a team before site access can be granted", http.StatusConflict)
+			return
+		}
 		if err != nil {
-			slog.Error("Database error checking user", "error", err)
+			slog.Error("Failed to resolve site member user", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-
-		var userID uuid.UUID
-		var isNewUser bool
-		var inviteToken string
-
-		if user == nil {
-			tempPassword := uuid.New().String()
-			hashedPassword, err := serverauth.HashPassword(tempPassword)
-			if err != nil {
-				slog.Error("Failed to hash password", "error", err)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
-
-			userID, err = h.ctx.Store.CreateUser(r.Context(), req.Email, hashedPassword)
-			if err != nil {
-				slog.Error("Failed to create user", "error", err)
-				http.Error(w, "Failed to create user", http.StatusInternalServerError)
-				return
-			}
-			isNewUser = true
-
-			inviteToken, err = h.ctx.Store.CreatePasswordResetToken(r.Context(), req.Email)
-			if err != nil {
-				slog.Error("Failed to create invite token", "error", err)
-			}
-		} else {
-			userID = user.ID
-		}
+		userID := resolvedUser.userID
+		isNewUser := resolvedUser.isNewUser
+		inviteToken := resolvedUser.inviteToken
 
 		actorID := shared.GetUserIDFromContext(r)
 		teamID, teamErr := h.ctx.Store.GetSiteTenantID(r.Context(), siteID)
@@ -342,6 +351,37 @@ func (h *handler) handleAddSiteMember() http.HandlerFunc {
 			slog.Error("Failed to encode response", "error", err)
 		}
 	}
+}
+
+func (h *handler) resolveSiteMemberUser(ctx context.Context, email string) (resolvedSiteMemberUser, error) {
+	user, err := h.ctx.Store.GetUserByEmail(ctx, email)
+	if err != nil {
+		return resolvedSiteMemberUser{}, fmt.Errorf("check user: %w", err)
+	}
+	if user != nil {
+		return resolvedSiteMemberUser{userID: user.ID}, nil
+	}
+	if h.ctx.Config.CloudHosted {
+		return resolvedSiteMemberUser{}, errHostedCloudSiteMemberRequiresTeam
+	}
+
+	tempPassword := uuid.New().String()
+	hashedPassword, err := serverauth.HashPassword(tempPassword)
+	if err != nil {
+		return resolvedSiteMemberUser{}, fmt.Errorf("hash temporary password: %w", err)
+	}
+
+	userID, err := h.ctx.Store.CreateUser(ctx, email, hashedPassword)
+	if err != nil {
+		return resolvedSiteMemberUser{}, fmt.Errorf("create user: %w", err)
+	}
+
+	inviteToken, err := h.ctx.Store.CreatePasswordResetToken(ctx, email)
+	if err != nil {
+		slog.Error("Failed to create invite token", "error", err)
+	}
+
+	return resolvedSiteMemberUser{userID: userID, isNewUser: true, inviteToken: inviteToken}, nil
 }
 
 func (h *handler) handleRemoveSiteMember() http.HandlerFunc {

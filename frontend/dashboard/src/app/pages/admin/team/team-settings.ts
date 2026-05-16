@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { NgOptimizedImage } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -7,18 +7,21 @@ import { CardModule } from 'primeng/card';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
 import { MessageModule } from 'primeng/message';
+import { TEAM_CAPABILITIES } from '@core/access/capabilities';
+import { AccessService } from '@services/access.service';
 import { TeamActionErrorResponse, TeamService } from '@services/team.service';
 import { SiteService } from '@features/sites/services/site.service';
 import { PermissionService } from '@services/permission.service';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ConfirmationService } from 'primeng/api';
-import { ConfirmPopupModule } from 'primeng/confirmpopup';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { finalize } from 'rxjs';
 import { SettingsAPIClients } from '@features/settings/components/settings-api-clients';
+import { dialogCancelButton, dialogDangerButton } from '@components/dialog-actions/dialog-actions';
 
 @Component({
     selector: 'app-team-settings',
-    imports: [CardModule, TranslocoPipe, ReactiveFormsModule, InputTextModule, ButtonModule, MessageModule, ConfirmPopupModule, SettingsAPIClients, NgOptimizedImage],
+    imports: [CardModule, TranslocoPipe, ReactiveFormsModule, InputTextModule, ButtonModule, MessageModule, ConfirmDialogModule, SettingsAPIClients, NgOptimizedImage],
     templateUrl: './team-settings.html',
     styleUrl: './team-settings.css',
     changeDetection: ChangeDetectionStrategy.OnPush,
@@ -26,18 +29,18 @@ import { SettingsAPIClients } from '@features/settings/components/settings-api-c
 })
 export class TeamSettingsPage {
     private readonly router = inject(Router);
+    private readonly route = inject(ActivatedRoute);
     private readonly confirmationService = inject(ConfirmationService);
     private readonly transloco = inject(TranslocoService);
+    private readonly access = inject(AccessService);
     protected readonly teamService = inject(TeamService);
     private readonly siteService = inject(SiteService);
     private readonly perms = inject(PermissionService);
     protected readonly team = this.teamService.activeTeam;
+    private readonly apiClientsSection = viewChild<ElementRef<HTMLElement>>('apiClientsSection');
 
-    protected readonly canEdit = computed(() => {
-        const role = this.team()?.role;
-        return role === 'owner' || role === 'admin';
-    });
-    protected readonly canArchive = computed(() => this.team()?.role === 'owner');
+    protected readonly canEdit = computed(() => this.access.canActiveTeam(TEAM_CAPABILITIES.manageSettings));
+    protected readonly canArchive = computed(() => this.access.canActiveTeam(TEAM_CAPABILITIES.archive));
 
     protected readonly isSaving = signal(false);
     protected readonly isLeaving = signal(false);
@@ -48,9 +51,6 @@ export class TeamSettingsPage {
     protected readonly leaveSuccessKey = signal('');
     protected readonly archiveErrorKey = signal('');
     protected readonly archiveSuccessKey = signal('');
-    protected readonly leaveConfirmKey = 'team-settings-leave';
-    protected readonly archiveConfirmKey = 'team-settings-archive';
-
     protected readonly form = new FormGroup({
         name: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(120)] }),
         logo_url: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(2048)] })
@@ -61,6 +61,17 @@ export class TeamSettingsPage {
             const t = this.team();
             if (t) {
                 this.form.patchValue({ name: t.name, logo_url: t.logo_url ?? '' }, { emitEvent: false });
+            }
+        });
+
+        effect(() => {
+            const section = this.route.snapshot.queryParamMap.get('section');
+            const target = this.apiClientsSection()?.nativeElement;
+            if (section === 'api-clients' && target) {
+                queueMicrotask(() => {
+                    target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+                    target.focus({ preventScroll: true });
+                });
             }
         });
     }
@@ -92,26 +103,16 @@ export class TeamSettingsPage {
         });
     }
 
-    protected confirmLeaveTeam(event: Event): void {
-        const target = event.currentTarget;
-        if (!(target instanceof HTMLElement) || this.isLeaving()) {
+    protected confirmLeaveTeam(): void {
+        if (this.isLeaving()) {
             return;
         }
 
         this.confirmationService.confirm({
-            key: this.leaveConfirmKey,
-            target,
             message: this.transloco.translate('admin.team.settings.leaveConfirm'),
             icon: 'pi pi-exclamation-triangle',
-            rejectButtonProps: {
-                label: this.transloco.translate('common.actions.cancel'),
-                severity: 'secondary',
-                outlined: true
-            },
-            acceptButtonProps: {
-                label: this.transloco.translate('admin.team.settings.leaveAction'),
-                severity: 'danger'
-            },
+            rejectButtonProps: dialogCancelButton(this.transloco.translate('common.actions.cancel')),
+            acceptButtonProps: dialogDangerButton(this.transloco.translate('admin.team.settings.leaveAction')),
             accept: () => this.leaveTeam()
         });
     }
@@ -157,26 +158,16 @@ export class TeamSettingsPage {
             });
     }
 
-    protected confirmArchiveTeam(event: Event): void {
-        const target = event.currentTarget;
-        if (!(target instanceof HTMLElement) || this.isArchiving() || !this.canArchive()) {
+    protected confirmArchiveTeam(): void {
+        if (this.isArchiving() || !this.canArchive()) {
             return;
         }
 
         this.confirmationService.confirm({
-            key: this.archiveConfirmKey,
-            target,
             message: this.transloco.translate('admin.team.settings.archiveConfirm'),
             icon: 'pi pi-exclamation-triangle',
-            rejectButtonProps: {
-                label: this.transloco.translate('common.actions.cancel'),
-                severity: 'secondary',
-                outlined: true
-            },
-            acceptButtonProps: {
-                label: this.transloco.translate('admin.team.settings.archiveAction'),
-                severity: 'danger'
-            },
+            rejectButtonProps: dialogCancelButton(this.transloco.translate('common.actions.cancel')),
+            acceptButtonProps: dialogDangerButton(this.transloco.translate('admin.team.settings.archiveAction')),
             accept: () => this.archiveTeam()
         });
     }

@@ -121,10 +121,6 @@
         />
     </div>
     } @else {
-    <div class="flex flex-col items-center justify-center h-[50vh] gap-4">
-        <i class="pi pi-globe text-6xl text-primary opacity-20"></i>
-        <h2 class="text-2xl font-semibold text-muted-color">{{ "common.noSiteSelected" | transloco }}</h2>
-        <p class="text-muted-color">{{ "utm.noSiteDescription" | transloco }}</p>
-    </div>
+    <app-page-state titleKey="common.noSiteSelected" messageKey="utm.noSiteDescription" icon="pi pi-globe" />
     }
 </div>

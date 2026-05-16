@@ -1,0 +1,30 @@
+<p-dialog
+    [header]="title()"
+    [visible]="visible()"
+    (visibleChange)="onVisibleChange($event)"
+    [modal]="true"
+    [closable]="closable() && !busy()"
+    [closeOnEscape]="closeOnEscape() && !busy()"
+    [role]="role()"
+    [draggable]="false"
+    [resizable]="false"
+    appendTo="body"
+    [style]="dialogStyle()"
+    [breakpoints]="breakpoints"
+>
+    <div class="dialog-shell-body">
+        <ng-content />
+    </div>
+
+    @if (hasFooter()) {
+    <ng-template pTemplate="footer">
+        <div class="dialog-shell-footer">
+            @if (showSecondary() && secondaryLabel()) {
+            <p-button [label]="secondaryLabel()" [outlined]="true" severity="secondary" [type]="'button'" [disabled]="busy()" (onClick)="onSecondaryAction()" />
+            } @if (showPrimary() && primaryLabel()) {
+            <p-button [label]="primaryLabel()" [icon]="primaryIcon()" [severity]="primarySeverity()" [type]="'button'" [loading]="primaryLoading() || busy()" [disabled]="primaryDisabled() || busy()" (onClick)="primaryAction.emit()" />
+            }
+        </div>
+    </ng-template>
+    }
+</p-dialog>

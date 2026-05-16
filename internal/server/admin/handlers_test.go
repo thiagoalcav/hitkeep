@@ -374,6 +374,113 @@ func TestHandleDeleteTeamRequiresArchiveFirst(t *testing.T) {
 	}
 }
 
+func TestHandleAdminArchiveTeamRejectsHostedCloudWithoutDefaultFallback(t *testing.T) {
+	h, store, _, _, actorUserID, _ := setupAdminTestEnv(t)
+	h.ctx.Config.CloudHosted = true
+	ctx := context.Background()
+
+	customerID, err := store.CreateUserWithoutDefaultTenant(ctx, "cloud-customer@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create cloud customer: %v", err)
+	}
+	team, err := store.CreateTenant(ctx, customerID, "Customer Cloud Team", "")
+	if err != nil {
+		t.Fatalf("create customer team: %v", err)
+	}
+	defaultTenantID, err := store.GetDefaultTenantID(ctx)
+	if err != nil {
+		t.Fatalf("get default tenant: %v", err)
+	}
+
+	req := withAdminTestUser(httptest.NewRequest(http.MethodPost, "/api/admin/teams/"+team.ID.String()+"/archive", nil), actorUserID)
+	req.SetPathValue("id", team.ID.String())
+	w := httptest.NewRecorder()
+
+	h.handleAdminArchiveTeam().ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusForbidden, w.Code, w.Body.String())
+	}
+
+	isDefaultMember, err := store.IsTenantMember(ctx, defaultTenantID, customerID)
+	if err != nil {
+		t.Fatalf("check default membership: %v", err)
+	}
+	if isDefaultMember {
+		t.Fatal("expected rejected cloud archive not to add customer to default team")
+	}
+}
+
+func TestHandleAdminForceDeleteTeamRejectsHostedCloudWithoutDefaultFallback(t *testing.T) {
+	h, store, _, _, actorUserID, _ := setupAdminTestEnv(t)
+	h.ctx.Config.CloudHosted = true
+	ctx := context.Background()
+
+	customerID, err := store.CreateUserWithoutDefaultTenant(ctx, "cloud-force-delete@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create cloud customer: %v", err)
+	}
+	team, err := store.CreateTenant(ctx, customerID, "Force Delete Cloud Team", "")
+	if err != nil {
+		t.Fatalf("create customer team: %v", err)
+	}
+	defaultTenantID, err := store.GetDefaultTenantID(ctx)
+	if err != nil {
+		t.Fatalf("get default tenant: %v", err)
+	}
+
+	req := withAdminTestUser(httptest.NewRequest(http.MethodDelete, "/api/admin/teams/"+team.ID.String()+"?force=true", nil), actorUserID)
+	req.SetPathValue("id", team.ID.String())
+	w := httptest.NewRecorder()
+
+	h.handleAdminDeleteTeam().ServeHTTP(w, req)
+	if w.Code != http.StatusForbidden {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusForbidden, w.Code, w.Body.String())
+	}
+
+	isDefaultMember, err := store.IsTenantMember(ctx, defaultTenantID, customerID)
+	if err != nil {
+		t.Fatalf("check default membership: %v", err)
+	}
+	if isDefaultMember {
+		t.Fatal("expected rejected cloud force delete not to add customer to default team")
+	}
+}
+
+func TestHandleAdminForceDeletePurgesAlreadyArchivedHostedCloudTeam(t *testing.T) {
+	h, store, _, _, actorUserID, _ := setupAdminTestEnv(t)
+	h.ctx.Config.CloudHosted = true
+	ctx := context.Background()
+
+	customerID, err := store.CreateUserWithoutDefaultTenant(ctx, "archived-cloud-customer@example.com", "hash")
+	if err != nil {
+		t.Fatalf("create cloud customer: %v", err)
+	}
+	team, err := store.CreateTenant(ctx, customerID, "Already Archived Cloud Team", "")
+	if err != nil {
+		t.Fatalf("create customer team: %v", err)
+	}
+	if _, err := store.DB().ExecContext(ctx, "INSERT INTO tenant_archives (tenant_id, archived_at, archived_by) VALUES (?, ?, ?)", team.ID, time.Now().UTC(), actorUserID); err != nil {
+		t.Fatalf("archive team directly: %v", err)
+	}
+
+	req := withAdminTestUser(httptest.NewRequest(http.MethodDelete, "/api/admin/teams/"+team.ID.String()+"?force=true", nil), actorUserID)
+	req.SetPathValue("id", team.ID.String())
+	w := httptest.NewRecorder()
+
+	h.handleAdminDeleteTeam().ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusOK, w.Code, w.Body.String())
+	}
+
+	deleted, err := store.GetTenant(ctx, team.ID)
+	if err != nil {
+		t.Fatalf("get deleted team: %v", err)
+	}
+	if deleted != nil {
+		t.Fatalf("expected archived hosted cloud team to be purged, got %+v", deleted)
+	}
+}
+
 func TestHandleAddSiteMemberUsesInviterLocaleForNewUserInvite(t *testing.T) {
 	h, store, _, _, actorUserID, _ := setupAdminTestEnv(t)
 	ctx := context.Background()
@@ -408,6 +515,38 @@ func TestHandleAddSiteMemberUsesInviterLocaleForNewUserInvite(t *testing.T) {
 	}
 	if !strings.Contains(drv.textBody, "Einladung annehmen") {
 		t.Fatalf("expected localized German CTA, got:\n%s", drv.textBody)
+	}
+}
+
+func TestHandleAddSiteMemberInHostedCloudRejectsNewUserInsteadOfJoiningDefaultTeam(t *testing.T) {
+	h, store, _, _, actorUserID, _ := setupAdminTestEnv(t)
+	h.ctx.Config.CloudHosted = true
+	ctx := context.Background()
+
+	site, err := store.CreateSite(ctx, actorUserID, "cloud-admin-invite.example")
+	if err != nil {
+		t.Fatalf("create site: %v", err)
+	}
+
+	drv := &adminTestMailDriver{}
+	h.ctx.Mailer = mailer.NewWithDriver(drv, h.ctx.Config)
+
+	body := strings.NewReader(`{"email":"cloud-site-member@example.com","role":"viewer"}`)
+	req := withAdminTestUser(httptest.NewRequest(http.MethodPost, "/api/admin/sites/"+site.ID.String()+"/members", body), actorUserID)
+	req.SetPathValue("id", site.ID.String())
+	w := httptest.NewRecorder()
+
+	h.handleAddSiteMember().ServeHTTP(w, req)
+	if w.Code != http.StatusConflict {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusConflict, w.Code, w.Body.String())
+	}
+
+	user, err := store.GetUserByEmail(ctx, "cloud-site-member@example.com")
+	if err != nil {
+		t.Fatalf("get rejected user: %v", err)
+	}
+	if user != nil {
+		t.Fatalf("expected hosted-cloud site member path not to create a user, got %+v", user)
 	}
 }
 

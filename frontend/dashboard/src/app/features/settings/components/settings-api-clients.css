@@ -7,6 +7,15 @@
     color: inherit;
 }
 
+.api-client-card-actions {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.625rem;
+    flex-wrap: wrap;
+}
+
 .api-client-form {
     display: flex;
     flex-direction: column;
@@ -71,17 +80,6 @@
     gap: 0.15rem;
 }
 
-.api-client-form-actions {
-    display: flex;
-    gap: 0.75rem;
-    justify-content: flex-end;
-}
-
-.api-client-divider {
-    height: 1px;
-    background: var(--p-content-border-color);
-}
-
 .api-client-listing {
     display: flex;
     flex-direction: column;
@@ -95,80 +93,99 @@
     gap: 0.75rem;
 }
 
-.api-client-list {
+.api-client-table-tools {
     display: flex;
-    flex-direction: column;
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-end;
     gap: 0.75rem;
 }
 
-.api-client-item {
+.api-client-table-caption {
     display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.875rem;
-    border: 1px solid var(--p-content-border-color);
-    border-radius: 0.75rem;
-    background: var(--p-content-background);
+    justify-content: flex-end;
 }
 
-.api-client-item-main {
+.api-client-empty-state {
     display: flex;
+    min-height: 10rem;
     flex-direction: column;
-    gap: 0.45rem;
-    min-width: 0;
-}
-
-.api-client-item-head {
-    display: flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: center;
+    gap: 0.85rem;
+    border: 1px dashed var(--p-content-border-color);
+    border-radius: 0.75rem;
+    background: var(--p-content-hover-background);
+    text-align: center;
 }
 
-.api-client-status {
-    border-radius: 999px;
-    padding: 0.125rem 0.5rem;
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
+.api-client-name-row {
+    display: inline-flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.45rem;
 }
 
-.api-client-status.active {
+.api-client-date-cell {
+    white-space: nowrap;
+}
+
+.api-client-status-icon {
+    flex: none;
+    font-size: 0.9rem;
+    line-height: 1;
+}
+
+.api-client-status-icon--active {
     color: var(--p-green-700);
-    background: color-mix(in srgb, var(--p-green-100) 82%, var(--p-content-background));
 }
 
-.api-client-status.revoked {
+.api-client-status-icon--inactive {
     color: var(--p-red-700);
-    background: color-mix(in srgb, var(--p-red-100) 82%, var(--p-content-background));
 }
 
-.api-client-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 1rem;
-    font-size: 0.75rem;
-    color: var(--p-text-muted-color);
+.api-client-status-icon--expired {
+    color: var(--p-amber-700);
 }
 
-.api-client-site-scope-list {
+.api-client-site-grant-list {
     display: flex;
+    max-width: 18rem;
     flex-wrap: wrap;
     gap: 0.35rem;
 }
 
-.api-client-scope-pill {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.45rem;
-    border-radius: 999px;
-    border: 1px solid var(--p-content-border-color);
-    background: var(--p-content-hover-background);
+.api-client-site-grant-summary {
+    display: inline-flex;
+    max-width: 18rem;
+    align-items: center;
+    gap: 0.35rem;
 }
 
-.api-client-item-actions {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.2rem;
+:host ::ng-deep .api-client-site-grant-tag,
+:host ::ng-deep .api-client-no-site-access-tag {
+    max-width: 100%;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+:host ::ng-deep .api-client-site-grant-tag .p-tag-label,
+:host ::ng-deep .api-client-no-site-access-tag .p-tag-label {
+    max-width: 13rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+:host ::ng-deep .api-client-site-grant-count-button.p-button {
+    flex: none;
+    padding: 0.22rem 0.55rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+:host ::ng-deep .api-client-site-grant-count-button .p-button-label {
+    line-height: 1;
 }
 
 :host-context(.p-dark) .api-client-required-asterisk,
@@ -180,24 +197,16 @@
     background: color-mix(in srgb, var(--p-surface-800) 78%, var(--p-content-background));
 }
 
-:host-context(.p-dark) .api-client-status.active {
+:host-context(.p-dark) .api-client-status-icon--active {
     color: var(--p-green-300);
-    background: color-mix(in srgb, var(--p-green-900) 48%, var(--p-content-background));
 }
 
-:host-context(.p-dark) .api-client-status.revoked {
+:host-context(.p-dark) .api-client-status-icon--inactive {
     color: var(--p-red-300);
-    background: color-mix(in srgb, var(--p-red-900) 48%, var(--p-content-background));
 }
 
-@media (max-width: 900px) {
-    .api-client-item {
-        flex-direction: column;
-    }
-
-    .api-client-item-actions {
-        align-items: flex-start;
-    }
+:host-context(.p-dark) .api-client-status-icon--expired {
+    color: var(--p-amber-300);
 }
 
 @media (max-width: 768px) {
@@ -205,13 +214,31 @@
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .api-client-form-actions {
-        justify-content: flex-start;
-        flex-wrap: wrap;
-    }
-
     .api-client-listing-header {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .api-client-table-caption {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .api-client-table-tools {
+        width: auto;
+        align-items: flex-start;
+    }
+
+    .api-client-card-actions {
+        width: 100%;
+        align-items: stretch;
+    }
+
+    :host ::ng-deep .api-client-card-actions p-button,
+    :host ::ng-deep .api-client-card-actions .p-button,
+    :host ::ng-deep .api-client-table-tools p-button,
+    :host ::ng-deep .api-client-table-tools .p-button {
+        width: 100%;
     }
 }

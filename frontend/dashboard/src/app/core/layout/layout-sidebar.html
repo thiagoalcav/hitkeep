@@ -1,0 +1,117 @@
+<aside class="hidden md:flex w-64 flex-col bg-[var(--p-surface-card)] border-r border-surface-200 dark:border-surface-700 p-4 gap-6 overflow-y-auto" [attr.aria-label]="'nav.mainSidebarAria' | transloco">
+    <div class="px-1">
+        <app-brand size="small" />
+    </div>
+
+    <div class="flex min-w-0 items-center gap-2">
+        <app-site-selector
+            class="min-w-0 flex-1"
+            [sites]="siteService.sites()"
+            [current]="siteService.activeSite()"
+            [loading]="siteService.isLoading()"
+            (siteSelected)="siteService.selectSite($event)"
+            (addClicked)="isAddSiteVisible.set(true)"
+            (settingsClicked)="openSiteSettings('0')"
+            (trackingClicked)="openSiteSettings('1')"
+        />
+    </div>
+
+    <nav class="flex-1" [attr.aria-label]="'nav.primaryNavigationAria' | transloco">
+        <ng-container *ngTemplateOutlet="sidebarMenu; context: { items: desktopMenuItems() }" />
+    </nav>
+</aside>
+
+<p-drawer [visible]="isMobileDrawerOpen()" (visibleChange)="isMobileDrawerOpen.set($event)">
+    <div class="flex flex-col gap-6 h-full">
+        @if (!shareService.isShareMode()) {
+        <app-team-switcher
+            [teams]="teamService.teams()"
+            [currentTeamId]="teamService.activeTeamId()"
+            [loading]="teamService.isLoading()"
+            [switching]="teamService.isSwitching()"
+            [showAdd]="canCreateTeams()"
+            [compact]="false"
+            [beforeSwitch]="beforeTeamSwitch"
+            (teamSelected)="context.onTeamSelected($event)"
+            (addClicked)="isCreateTeamVisible.set(true)"
+        />
+        }
+
+        <app-site-selector
+            [sites]="siteService.sites()"
+            [current]="siteService.activeSite()"
+            [loading]="siteService.isLoading()"
+            (siteSelected)="siteService.selectSite($event); closeMobileDrawer()"
+            (addClicked)="isAddSiteVisible.set(true)"
+            (settingsClicked)="openSiteSettings('0'); closeMobileDrawer()"
+            (trackingClicked)="openSiteSettings('1'); closeMobileDrawer()"
+        />
+
+        <nav class="flex-1" [attr.aria-label]="'nav.primaryNavigationAria' | transloco">
+            <ng-container *ngTemplateOutlet="sidebarMenu; context: { items: mobileMenuItems() }" />
+        </nav>
+    </div>
+</p-drawer>
+
+<ng-template #sidebarMenu let-items="items">
+    <div class="layout-sidebar-menu">
+        @for (section of items; track section.label) {
+        <section class="layout-sidebar-menu__section">
+            <h2 class="layout-sidebar-menu__section-label">{{ section.label }}</h2>
+            <ul class="layout-sidebar-menu__list" role="tree">
+                @for (item of section.items ?? []; track item.label) {
+                <ng-container *ngTemplateOutlet="sidebarMenuItem; context: { $implicit: item, level: 1 }" />
+                }
+            </ul>
+        </section>
+        }
+    </div>
+</ng-template>
+
+<ng-template #sidebarMenuItem let-item let-level="level">
+    <li class="layout-sidebar-menu__node" role="treeitem" [attr.aria-label]="item.label" [attr.aria-expanded]="item.items?.length ? (item.expanded ? 'true' : 'false') : null" [attr.aria-level]="level" aria-selected="false">
+        <span class="layout-sidebar-menu__item-row">
+            @if (item.routerLink) {
+            <a
+                class="layout-sidebar-menu__item-main"
+                [routerLink]="item.routerLink"
+                routerLinkActive="p-panelmenu-item-link-active"
+                [routerLinkActiveOptions]="item.routerLinkActiveOptions || { exact: false }"
+                [target]="item.target"
+                [attr.title]="item.title"
+                (click)="onMenuItemNavigate($event)"
+            >
+                <span class="layout-sidebar-menu__item-icon" [class]="item.icon" aria-hidden="true"></span>
+                <span class="layout-sidebar-menu__item-label">{{ item.label }}</span>
+            </a>
+            } @else if (item.url) {
+            <a class="layout-sidebar-menu__item-main" [href]="item.url" [target]="item.target" [attr.title]="item.title" (click)="onMenuItemNavigate($event)">
+                <span class="layout-sidebar-menu__item-icon" [class]="item.icon" aria-hidden="true"></span>
+                <span class="layout-sidebar-menu__item-label">{{ item.label }}</span>
+            </a>
+            } @else {
+            <span class="layout-sidebar-menu__item-main">
+                <span class="layout-sidebar-menu__item-icon" [class]="item.icon" aria-hidden="true"></span>
+                <span class="layout-sidebar-menu__item-label">{{ item.label }}</span>
+            </span>
+            } @if (item.items?.length) {
+            <button
+                type="button"
+                class="layout-sidebar-menu__toggle"
+                [attr.aria-label]="(item.expanded ? 'nav.collapseItem' : 'nav.expandItem') | transloco: { item: item.label }"
+                [attr.aria-expanded]="item.expanded ? 'true' : 'false'"
+                (click)="toggleMenuItem(item, item.expanded, $event)"
+            >
+                <i [class]="item.expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'" aria-hidden="true"></i>
+            </button>
+            }
+        </span>
+        @if (item.items?.length && item.expanded) {
+        <ul class="layout-sidebar-menu__list layout-sidebar-menu__list--nested" role="group">
+            @for (child of item.items ?? []; track child.label) {
+            <ng-container *ngTemplateOutlet="sidebarMenuItem; context: { $implicit: child, level: level + 1 }" />
+            }
+        </ul>
+        }
+    </li>
+</ng-template>

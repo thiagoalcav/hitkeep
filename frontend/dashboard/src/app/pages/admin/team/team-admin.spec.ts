@@ -7,6 +7,8 @@ import { TranslocoTestingModule } from '@jsverse/transloco';
 import { provideTranslocoLocale } from '@jsverse/transloco-locale';
 import { of } from 'rxjs';
 import { Team, TeamAuditListResponse, TeamInvite, TeamMember } from '@models/analytics.types';
+import { TEAM_CAPABILITIES } from '@core/access/capabilities';
+import { PermissionService, UserPermissions } from '@services/permission.service';
 import { TeamService } from '@services/team.service';
 import { TeamAdminPage } from './team-admin';
 
@@ -40,6 +42,7 @@ describe('TeamAdminPage', () => {
     };
     const teamServiceMock = {
         activeTeam,
+        activeTeamId: signal('team-1'),
         teams,
         listTeamMembers: () => of(members),
         listTeamInvites: () => of(invites),
@@ -52,8 +55,24 @@ describe('TeamAdminPage', () => {
             return of({ teams: teams(), active_team_id: activeTeam().id });
         }
     };
+    const permissionServiceMock = {
+        permissions: signal<UserPermissions>({
+            instance_role: 'user' as const,
+            permissions: {},
+            active_team_id: 'team-1',
+            active_team_role: 'owner' as const,
+            active_team_capabilities: [TEAM_CAPABILITIES.viewAudit, TEAM_CAPABILITIES.manageMembers, TEAM_CAPABILITIES.manageSettings, TEAM_CAPABILITIES.archive]
+        })
+    };
 
     beforeEach(async () => {
+        permissionServiceMock.permissions.set({
+            instance_role: 'user',
+            permissions: {},
+            active_team_id: 'team-1',
+            active_team_role: 'owner',
+            active_team_capabilities: [TEAM_CAPABILITIES.viewAudit, TEAM_CAPABILITIES.manageMembers, TEAM_CAPABILITIES.manageSettings, TEAM_CAPABILITIES.archive]
+        });
         await TestBed.configureTestingModule({
             imports: [
                 TeamAdminPage,
@@ -78,6 +97,10 @@ describe('TeamAdminPage', () => {
                 {
                     provide: TeamService,
                     useValue: teamServiceMock
+                },
+                {
+                    provide: PermissionService,
+                    useValue: permissionServiceMock
                 }
             ]
         }).compileComponents();
@@ -103,6 +126,13 @@ describe('TeamAdminPage', () => {
             role: 'member',
             created_at: '2026-01-01T00:00:00Z'
         });
+        permissionServiceMock.permissions.set({
+            instance_role: 'user',
+            permissions: {},
+            active_team_id: 'team-1',
+            active_team_role: 'member',
+            active_team_capabilities: []
+        });
 
         fixture.detectChanges();
 
@@ -118,9 +148,22 @@ describe('TeamAdminPage', () => {
             role: 'member',
             created_at: '2026-01-01T00:00:00Z'
         });
+        permissionServiceMock.permissions.set({
+            instance_role: 'user',
+            permissions: {},
+            active_team_id: 'team-1',
+            active_team_role: 'member',
+            active_team_capabilities: []
+        });
 
         fixture.detectChanges();
 
         expect(component['activeTab']()).toBe('0');
+    });
+
+    it('maps settings query params to the settings tab deep link', () => {
+        expect(component['tabValueFromQuery']('settings')).toBe('2');
+        expect(component['tabValueFromQuery']('2')).toBe('2');
+        expect(component['tabQueryFromValue']('2')).toBe('settings');
     });
 });

@@ -10,14 +10,21 @@ import { PermissionService } from '@services/permission.service';
 import { ShareService } from '@services/share.service';
 import { TeamService } from '@services/team.service';
 import { SiteService } from '@features/sites/services/site.service';
+import { LayoutPageBar } from './layout-page-bar';
+import { LayoutSidebar } from './layout-sidebar';
+import { MainLayoutContextService } from './main-layout-context.service';
+import { MenuItem } from 'primeng/api';
 import { vi } from 'vitest';
 
-interface MainLayoutTestAccess {
-    beforeTeamSwitch(): boolean;
-    isSiteSettingsVisible: {
-        (): boolean;
-        set(value: boolean): void;
-    };
+interface LayoutSidebarTestAccess {
+    openSiteSettings(tab?: string): void;
+    closeMobileDrawer(): void;
+    mobileMenuItems(): MenuItem[];
+    canCreateTeams(): boolean;
+}
+
+interface LayoutPageBarTestAccess {
+    canCreateTeams(): boolean;
 }
 
 describe('MainLayout', () => {
@@ -25,6 +32,7 @@ describe('MainLayout', () => {
     let fixture: ComponentFixture<MainLayout>;
     let httpMock: HttpTestingController;
     let bootstrap: DashboardBootstrapService;
+    let layoutContext: MainLayoutContextService;
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
@@ -34,8 +42,12 @@ describe('MainLayout', () => {
                     langs: {
                         en: {
                             nav: {
+                                utm: 'UTM',
+                                utmBuilder: 'UTM Builder',
                                 importExport: 'Import & Export',
-                                importExportAria: 'Go to import and export'
+                                importExportAria: 'Go to import and export',
+                                expandItem: 'Expand {{item}}',
+                                collapseItem: 'Collapse {{item}}'
                             }
                         }
                     },
@@ -53,6 +65,7 @@ describe('MainLayout', () => {
         component = fixture.componentInstance;
         httpMock = TestBed.inject(HttpTestingController);
         bootstrap = TestBed.inject(DashboardBootstrapService);
+        layoutContext = fixture.debugElement.injector.get(MainLayoutContextService);
         seedLayoutState();
         fixture.detectChanges();
         fixture.detectChanges();
@@ -154,7 +167,7 @@ describe('MainLayout', () => {
 
         expect(importExportLink).toBeTruthy();
         expect(importExportLink?.getAttribute('href')).toBe('/import-export');
-        expect(importExportLink?.getAttribute('aria-label')).toBe('Go to import and export');
+        expect(importExportLink?.getAttribute('aria-label') ?? importExportLink?.closest('[role="treeitem"]')?.getAttribute('aria-label')).toBe('Import & Export');
     });
 
     it('should hide Import & Export navigation in share mode', () => {
@@ -165,6 +178,32 @@ describe('MainLayout', () => {
         const importExportLink = navLinks.find((link) => link.getAttribute('href') === '/import-export');
 
         expect(importExportLink).toBeFalsy();
+    });
+
+    it('should keep collapsible sidebar parents navigable while the chevron expands children', () => {
+        let utmLink = fixture.nativeElement.querySelector('aside a[href="/utm"]') as HTMLAnchorElement | null;
+        let utmBuilderLink = fixture.nativeElement.querySelector('aside a[href="/utm/builder"]') as HTMLAnchorElement | null;
+        let utmTreeItem = utmLink?.closest('[role="treeitem"]') as HTMLElement | null;
+        let toggle = utmTreeItem?.querySelector('button.layout-sidebar-menu__toggle') as HTMLButtonElement | null;
+
+        expect(utmLink).toBeTruthy();
+        expect(utmBuilderLink).toBeNull();
+        expect(utmTreeItem?.getAttribute('aria-expanded')).toBe('false');
+        expect(toggle?.getAttribute('aria-label')).toBe('Expand UTM');
+
+        toggle?.click();
+        fixture.detectChanges();
+
+        utmLink = fixture.nativeElement.querySelector('aside a[href="/utm"]') as HTMLAnchorElement | null;
+        utmBuilderLink = fixture.nativeElement.querySelector('aside a[href="/utm/builder"]') as HTMLAnchorElement | null;
+        utmTreeItem = utmLink?.closest('[role="treeitem"]') as HTMLElement | null;
+        toggle = utmTreeItem?.querySelector('button.layout-sidebar-menu__toggle') as HTMLButtonElement | null;
+
+        expect(utmLink).toBeTruthy();
+        expect(utmBuilderLink).toBeTruthy();
+        expect(utmTreeItem?.getAttribute('aria-expanded')).toBe('true');
+        expect(toggle?.getAttribute('aria-label')).toBe('Collapse UTM');
+        expect(utmTreeItem?.querySelector('ul.layout-sidebar-menu__list--nested')?.getAttribute('role')).toBe('group');
     });
 
     it('should hide create team actions in hosted cloud', () => {
@@ -215,30 +254,101 @@ describe('MainLayout', () => {
 
     it('should allow team switch without confirmation when settings drawer is closed', () => {
         const confirmSpy = vi.spyOn(window, 'confirm');
-        const access = component as unknown as MainLayoutTestAccess;
-        const result = access.beforeTeamSwitch();
+        const result = layoutContext.beforeTeamSwitch();
         expect(result).toBe(true);
         expect(confirmSpy).not.toHaveBeenCalled();
     });
 
     it('should block team switch when settings drawer is open and user cancels', () => {
         const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-        const access = component as unknown as MainLayoutTestAccess;
-        access.isSiteSettingsVisible.set(true);
-        const result = access.beforeTeamSwitch();
+        layoutContext.isSiteSettingsVisible.set(true);
+        const result = layoutContext.beforeTeamSwitch();
         expect(result).toBe(false);
         expect(confirmSpy).toHaveBeenCalled();
-        expect(access.isSiteSettingsVisible()).toBe(true);
+        expect(layoutContext.isSiteSettingsVisible()).toBe(true);
     });
 
     it('should close settings drawer when switch is confirmed', () => {
         const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-        const access = component as unknown as MainLayoutTestAccess;
-        access.isSiteSettingsVisible.set(true);
-        const result = access.beforeTeamSwitch();
+        layoutContext.isSiteSettingsVisible.set(true);
+        const result = layoutContext.beforeTeamSwitch();
         expect(result).toBe(true);
         expect(confirmSpy).toHaveBeenCalled();
-        expect(access.isSiteSettingsVisible()).toBe(false);
+        expect(layoutContext.isSiteSettingsVisible()).toBe(false);
+    });
+
+    it('should open site settings from keyboard shortcut when an active site exists', () => {
+        seedActiveSite();
+        const event = new KeyboardEvent('keydown', { key: 'k', metaKey: true });
+        const preventDefault = vi.spyOn(event, 'preventDefault');
+
+        component.handleKeyboard(event);
+
+        expect(preventDefault).toHaveBeenCalled();
+        expect(layoutContext.isSiteSettingsVisible()).toBe(true);
+        expect(layoutContext.siteSettingsTab()).toBe('0');
+    });
+
+    it('should handle the document keyboard shortcut binding and ctrl-key variant', () => {
+        seedActiveSite();
+        const event = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true });
+        const preventDefault = vi.spyOn(event, 'preventDefault');
+
+        document.dispatchEvent(event);
+
+        expect(preventDefault).toHaveBeenCalled();
+        expect(layoutContext.isSiteSettingsVisible()).toBe(true);
+    });
+
+    it('should ignore unrelated keyboard shortcuts', () => {
+        const event = new KeyboardEvent('keydown', { key: 'x', metaKey: true });
+        const preventDefault = vi.spyOn(event, 'preventDefault');
+
+        component.handleKeyboard(event);
+
+        expect(preventDefault).not.toHaveBeenCalled();
+        expect(layoutContext.isSiteSettingsVisible()).toBe(false);
+    });
+
+    it('should keep sidebar drawer actions inside the sidebar component', () => {
+        seedActiveSite();
+        const sidebar = fixture.debugElement.query(By.directive(LayoutSidebar)).componentInstance as LayoutSidebarTestAccess;
+        layoutContext.isMobileDrawerOpen.set(true);
+
+        sidebar.openSiteSettings();
+        sidebar.closeMobileDrawer();
+        const menuItems = sidebar.mobileMenuItems();
+        const firstItem = menuItems[0]?.items?.[0];
+        firstItem?.command?.({ originalEvent: new Event('click'), item: firstItem });
+
+        expect(layoutContext.isSiteSettingsVisible()).toBe(true);
+        expect(layoutContext.isMobileDrawerOpen()).toBe(false);
+        expect(menuItems.length).toBeGreaterThan(0);
+        expect(sidebar.canCreateTeams()).toBe(true);
+    });
+
+    it('should keep the mobile PrimeNG menu model stable between change detection passes', () => {
+        const sidebar = fixture.debugElement.query(By.directive(LayoutSidebar)).componentInstance as LayoutSidebarTestAccess;
+
+        const firstItems = sidebar.mobileMenuItems();
+        fixture.detectChanges();
+        const secondItems = sidebar.mobileMenuItems();
+
+        expect(secondItems).toBe(firstItems);
+    });
+
+    it('should derive page-bar team creation affordance from cloud mode', () => {
+        const pageBar = fixture.debugElement.query(By.directive(LayoutPageBar)).componentInstance as LayoutPageBarTestAccess;
+
+        expect(pageBar.canCreateTeams()).toBe(true);
+
+        bootstrap.status.set({
+            needs_setup: false,
+            version: 'v2.0.0',
+            cloud: { hosted: true, signup_enabled: false }
+        });
+
+        expect(pageBar.canCreateTeams()).toBe(false);
     });
 
     function seedLayoutState() {
@@ -279,5 +389,16 @@ describe('MainLayout', () => {
             instance_role: 'owner',
             permissions: {}
         });
+    }
+
+    function seedActiveSite() {
+        TestBed.inject(SiteService).applySites([
+            {
+                id: '00000000-0000-0000-0000-0000000000bb',
+                user_id: '00000000-0000-0000-0000-000000000001',
+                domain: 'active.example.com',
+                created_at: '2026-01-01T00:00:00Z'
+            }
+        ]);
     }
 });

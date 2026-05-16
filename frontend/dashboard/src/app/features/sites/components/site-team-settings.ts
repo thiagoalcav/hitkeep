@@ -4,13 +4,18 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { compatForm } from '@angular/forms/signals/compat';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
+import { CrudDialog } from '@components/crud-dialog/crud-dialog';
+import { dialogCancelButton, dialogDangerButton } from '@components/dialog-actions/dialog-actions';
 import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
+import { TableRowActionItem, TableRowActions } from '@components/table-row-actions/table-row-actions';
+import { SITE_CAPABILITIES } from '@core/access/capabilities';
 import { Site } from '@models/analytics.types';
+import { AccessService } from '@services/access.service';
 import { TeamService } from '@services/team.service';
 import { SiteService } from '@features/sites/services/site.service';
 import { ConfirmationService } from 'primeng/api';
 import { ButtonModule } from 'primeng/button';
-import { ConfirmPopupModule } from 'primeng/confirmpopup';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { MessageModule } from 'primeng/message';
 import { SelectModule } from 'primeng/select';
@@ -26,13 +31,51 @@ interface SiteMember {
 
 @Component({
     selector: 'app-site-team-settings',
-    imports: [ReactiveFormsModule, ConfirmPopupModule, TableModule, ButtonModule, SelectModule, InputTextModule, MessageModule, RelativeDateTime, TranslocoPipe],
+    imports: [ReactiveFormsModule, ConfirmDialogModule, TableModule, ButtonModule, SelectModule, InputTextModule, MessageModule, CrudDialog, RelativeDateTime, TableRowActions, TranslocoPipe],
     providers: [ConfirmationService],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
-        <p-confirmpopup key="site-member-remove" />
+        <p-confirmdialog />
+        <app-crud-dialog
+            [title]="'sites.team.addMemberDialogTitle' | transloco"
+            [visible]="isAddMemberDialogVisible()"
+            (visibleChange)="onAddMemberDialogVisibleChange($event)"
+            [submitLabel]="'sites.team.addMemberAction' | transloco"
+            [cancelLabel]="'common.actions.cancel' | transloco"
+            submitIcon="pi pi-user-plus"
+            [saving]="isAdding()"
+            (submitted)="addMember()"
+        >
+            <form class="site-settings-dialog-form" (ngSubmit)="addMember()">
+                <div class="site-settings-field-grid site-settings-member-grid">
+                    <div class="site-settings-field">
+                        <label for="member-email">{{ "common.emailAddress" | transloco }}</label>
+                        <input
+                            id="member-email"
+                            pInputText
+                            [formControl]="memberForm.email().control()"
+                            [placeholder]="'sites.team.emailPlaceholder' | transloco"
+                            [class.ng-invalid]="memberForm.email().touched() && memberForm.email().invalid()"
+                            [class.ng-dirty]="memberForm.email().dirty()"
+                            inputmode="email"
+                            autocapitalize="none"
+                            spellcheck="false"
+                            class="w-full"
+                        />
+                    </div>
+
+                    <div class="site-settings-field">
+                        <label for="member-role">{{ "common.columns.role" | transloco }}</label>
+                        <p-select inputId="member-role" [options]="roleOptions()" [formControl]="memberForm.role().control()" optionLabel="label" optionValue="value" appendTo="body" class="w-full" />
+                    </div>
+                </div>
+                @if (memberErrorKey(); as key) {
+                    <p-message severity="error" [text]="key | transloco" />
+                }
+            </form>
+        </app-crud-dialog>
         <div class="site-settings-stack">
-            @if (availableTransferTeams().length) {
+            @if (canManageTeam() && availableTransferTeams().length) {
                 <section class="site-settings-card">
                     <header class="site-settings-card__header">
                         <div class="site-settings-card__title-row">
@@ -72,34 +115,6 @@ interface SiteMember {
             <section class="site-settings-card">
                 <header class="site-settings-card__header">
                     <div class="site-settings-card__title-row">
-                        <span class="site-settings-card__icon"><i class="pi pi-user-plus" aria-hidden="true"></i></span>
-                        <div>
-                            <h3>{{ "sites.team.addMemberAction" | transloco }}</h3>
-                            <p>{{ "sites.team.emailPlaceholder" | transloco }}</p>
-                        </div>
-                    </div>
-                </header>
-                <div class="site-settings-card__body">
-                    <div class="site-settings-field-grid site-settings-member-grid">
-                        <div class="site-settings-field">
-                            <label for="member-email">{{ "common.emailAddress" | transloco }}</label>
-                            <input id="member-email" pInputText [formControl]="memberForm.email().control()" [placeholder]="'sites.team.emailPlaceholder' | transloco" class="w-full" />
-                        </div>
-
-                        <div class="site-settings-field">
-                            <label for="member-role">{{ "common.columns.role" | transloco }}</label>
-                            <p-select inputId="member-role" [options]="roleOptions()" [formControl]="memberForm.role().control()" optionLabel="label" optionValue="value" class="w-full" />
-                        </div>
-                    </div>
-                </div>
-                <footer class="site-settings-card__footer">
-                    <p-button styleClass="site-settings-action-btn" [label]="'sites.team.addMemberAction' | transloco" icon="pi pi-plus" (onClick)="addMember()" [loading]="isAdding()" [disabled]="isAdding() || memberForm().invalid()" />
-                </footer>
-            </section>
-
-            <section class="site-settings-card">
-                <header class="site-settings-card__header">
-                    <div class="site-settings-card__title-row">
                         <span class="site-settings-card__icon"><i class="pi pi-users" aria-hidden="true"></i></span>
                         <div>
                             <h3>{{ "sites.settings.tabs.team" | transloco }}</h3>
@@ -107,13 +122,24 @@ interface SiteMember {
                     </div>
                 </header>
                 <div class="site-settings-card__body">
+                    @if (memberSuccessKey(); as key) {
+                        <p-message severity="success" [text]="key | transloco" />
+                    }
+                    @if (memberErrorKey() && !isAddMemberDialogVisible()) {
+                        <p-message severity="error" [text]="memberErrorKey() | transloco" />
+                    }
                     <div class="site-settings-table-shell">
                         <div class="site-settings-table-toolbar">
                             <span class="site-settings-chip">{{ members().length }}</span>
-                            <span class="p-input-icon-left hk-crud-search">
-                                <i class="pi pi-search"></i>
-                                <input pInputText #memberSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="membersTable.filterGlobal($any($event.target).value, 'contains')" class="w-full" />
-                            </span>
+                            <div class="site-settings-table-actions">
+                                @if (canManageTeam()) {
+                                    <p-button styleClass="site-settings-action-btn" [label]="'sites.team.addMemberAction' | transloco" icon="pi pi-user-plus" [type]="'button'" (onClick)="openAddMemberDialog()" />
+                                }
+                                <span class="p-input-icon-left hk-crud-search">
+                                    <i class="pi pi-search"></i>
+                                    <input pInputText #memberSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="membersTable.filterGlobal($any($event.target).value, 'contains')" class="w-full" />
+                                </span>
+                            </div>
                         </div>
                         <div class="hk-crud-table-wrap">
                             <p-table #membersTable [value]="members()" [loading]="isLoading()" [globalFilterFields]="['email', 'role', 'added_at']" [sortField]="'added_at'" [sortOrder]="-1" styleClass="hk-crud-table p-datatable-sm">
@@ -131,7 +157,9 @@ interface SiteMember {
                                             {{ "common.columns.added" | transloco }}
                                             <p-sortIcon field="added_at" />
                                         </th>
+                                        @if (canManageTeam()) {
                                         <th>{{ "common.columns.actions" | transloco }}</th>
+                                        }
                                     </tr>
                                 </ng-template>
 
@@ -144,9 +172,11 @@ interface SiteMember {
                                             </span>
                                         </td>
                                         <td><app-relative-date-time [value]="member.added_at" /></td>
+                                        @if (canManageTeam()) {
                                         <td>
-                                            <p-button icon="pi pi-trash" severity="danger" [text]="true" [type]="'button'" (onClick)="confirmRemoveMember($event, member)" />
+                                            <app-table-row-actions [items]="memberActions(member)" />
                                         </td>
+                                        }
                                     </tr>
                                 </ng-template>
                             </p-table>
@@ -163,6 +193,7 @@ export class SiteTeamSettings {
     private transloco = inject(TranslocoService);
     private teamService = inject(TeamService);
     private siteService = inject(SiteService);
+    private access = inject(AccessService);
     private activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
     site = input.required<Site | null>();
@@ -170,7 +201,10 @@ export class SiteTeamSettings {
     protected members = signal<SiteMember[]>([]);
     protected isLoading = signal(false);
     protected isAdding = signal(false);
+    protected isAddMemberDialogVisible = signal(false);
     protected isTransferring = signal(false);
+    protected memberErrorKey = signal<string | null>(null);
+    protected memberSuccessKey = signal<string | null>(null);
     protected transferErrorKey = signal<string | null>(null);
     protected transferSuccessKey = signal<string | null>(null);
 
@@ -194,6 +228,7 @@ export class SiteTeamSettings {
         ];
     });
     protected readonly availableTransferTeams = computed(() => {
+        if (!this.canManageTeam()) return [];
         this.activeLanguage();
         const currentTeamId = this.teamService.activeTeamId();
         return this.teamService
@@ -203,6 +238,10 @@ export class SiteTeamSettings {
                 label: team.name,
                 value: team.id
             }));
+    });
+    protected readonly canManageTeam = computed(() => {
+        const currentSite = this.site();
+        return !!currentSite && this.access.canSite(currentSite.id, SITE_CAPABILITIES.manageTeam);
     });
 
     constructor() {
@@ -231,13 +270,33 @@ export class SiteTeamSettings {
         });
     }
 
+    openAddMemberDialog() {
+        if (!this.canManageTeam()) return;
+        this.memberErrorKey.set(null);
+        this.isAddMemberDialogVisible.set(true);
+    }
+
+    onAddMemberDialogVisibleChange(visible: boolean) {
+        this.isAddMemberDialogVisible.set(visible);
+        if (!visible) {
+            this.resetMemberForm();
+        }
+    }
+
     addMember() {
         const siteId = this.site()?.id;
         const email = this.memberForm.email().value().trim();
         const role = this.memberForm.role().value();
-        if (!siteId || !email) return;
+        if (!siteId || !this.canManageTeam()) return;
+        if (this.memberForm().invalid() || !email) {
+            this.memberForm.email().markAsTouched();
+            this.memberForm.role().markAsTouched();
+            return;
+        }
 
         this.isAdding.set(true);
+        this.memberErrorKey.set(null);
+        this.memberSuccessKey.set(null);
         this.http
             .post(`/api/sites/${siteId}/members`, {
                 email,
@@ -245,14 +304,15 @@ export class SiteTeamSettings {
             })
             .subscribe({
                 next: () => {
-                    this.memberForm.email().control().reset('');
+                    this.closeAddMemberDialog();
+                    this.memberSuccessKey.set('sites.team.addMemberSuccess');
                     this.isAdding.set(false);
                     this.loadMembers(siteId);
                 },
                 error: (err) => {
                     console.error('Failed to add member', err);
                     this.isAdding.set(false);
-                    alert(this.transloco.translate('sites.team.errors.addFailed'));
+                    this.memberErrorKey.set('sites.team.errors.addFailed');
                 }
             });
     }
@@ -260,7 +320,7 @@ export class SiteTeamSettings {
     transferSite() {
         const siteId = this.site()?.id;
         const teamId = this.transferForm.teamId().value().trim();
-        if (!siteId || !teamId) return;
+        if (!siteId || !teamId || !this.canManageTeam()) return;
 
         this.isTransferring.set(true);
         this.transferErrorKey.set(null);
@@ -292,33 +352,52 @@ export class SiteTeamSettings {
             });
     }
 
-    confirmRemoveMember(event: Event, member: SiteMember) {
+    memberActions(member: SiteMember): TableRowActionItem[] {
+        this.activeLanguage();
+        return [
+            {
+                label: this.transloco.translate('teams.management.removeAction'),
+                icon: 'pi pi-trash',
+                danger: true,
+                command: () => this.confirmRemoveMember(member)
+            }
+        ];
+    }
+
+    confirmRemoveMember(member: SiteMember) {
         const siteId = this.site()?.id;
-        if (!siteId) return;
+        if (!siteId || !this.canManageTeam()) return;
 
         this.confirmationService.confirm({
-            key: 'site-member-remove',
-            target: event.currentTarget as EventTarget,
             message: this.transloco.translate('sites.team.confirmRemove', { email: member.email }),
             icon: 'pi pi-exclamation-triangle',
-            rejectButtonProps: {
-                label: this.transloco.translate('common.actions.cancel'),
-                severity: 'secondary',
-                outlined: true
-            },
-            acceptButtonProps: {
-                label: this.transloco.translate('teams.management.removeAction'),
-                severity: 'danger'
-            },
+            rejectButtonProps: dialogCancelButton(this.transloco.translate('common.actions.cancel')),
+            acceptButtonProps: dialogDangerButton(this.transloco.translate('teams.management.removeAction')),
             accept: () => {
+                this.memberErrorKey.set(null);
+                this.memberSuccessKey.set(null);
                 this.http.delete(`/api/sites/${siteId}/members/${member.user_id}`).subscribe({
-                    next: () => this.loadMembers(siteId),
+                    next: () => {
+                        this.memberSuccessKey.set('sites.team.removeMemberSuccess');
+                        this.loadMembers(siteId);
+                    },
                     error: (err) => {
                         console.error('Failed to remove member', err);
+                        this.memberErrorKey.set('sites.team.errors.removeFailed');
                     }
                 });
             }
         });
+    }
+
+    private closeAddMemberDialog() {
+        this.isAddMemberDialogVisible.set(false);
+        this.resetMemberForm();
+    }
+
+    private resetMemberForm() {
+        this.memberForm.email().control().reset('');
+        this.memberForm.role().control().reset('viewer');
     }
 
     getRoleLabel(role: string): string {

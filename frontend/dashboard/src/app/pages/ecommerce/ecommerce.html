@@ -150,9 +150,7 @@
                         <td class="text-right">{{ formatNumber(product.orders) }}</td>
                         <td class="text-right">{{ formatMoney(product.revenue, resolveCurrency(summary()?.currency)) }}</td>
                         <td class="text-right">
-                            <button type="button" class="ecommerce-table-filter" [class.ecommerce-table-filter--active]="isProductFilterActive(product)" (click)="toggleProductFilter(product)">
-                                {{ isProductFilterActive(product) ? ("ecommerce.actions.clearProductFilter" | transloco) : ("ecommerce.actions.filterProduct" | transloco) }}
-                            </button>
+                            <app-table-row-actions [items]="productActions(product)" />
                         </td>
                     </tr>
                 </ng-template>

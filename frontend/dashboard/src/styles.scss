@@ -114,11 +114,126 @@
     white-space: nowrap;
 }
 
-.hk-crud-actions {
-    align-items: flex-start;
+.hk-crud-table .hk-actions-column,
+.hk-crud-table .hk-actions-cell {
+    width: 1%;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.hk-crud-table .hk-actions-cell app-table-row-actions {
+    display: inline-flex;
+    justify-content: flex-end;
+}
+
+.hk-feedback-message {
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    font-size: 0.875rem;
+    padding: 0.75rem 0.875rem;
+}
+
+.hk-feedback-message--error {
+    background: var(--p-red-50);
+    border-color: var(--p-red-200);
+    color: var(--p-red-700);
+}
+
+.hk-feedback-message--success {
+    background: var(--p-green-50);
+    border-color: var(--p-green-200);
+    color: var(--p-green-700);
+}
+
+.hk-feedback-message--token {
+    background: var(--p-primary-50);
+    border-color: var(--p-primary-200);
+    color: var(--p-primary-700);
+}
+
+.p-dark .hk-feedback-message--error {
+    background: color-mix(in srgb, var(--p-red-950) 34%, var(--p-content-background));
+    border-color: var(--p-red-700);
+    color: var(--p-red-200);
+}
+
+.p-dark .hk-feedback-message--success {
+    background: color-mix(in srgb, var(--p-green-950) 34%, var(--p-content-background));
+    border-color: var(--p-green-700);
+    color: var(--p-green-200);
+}
+
+.p-dark .hk-feedback-message--token {
+    background: color-mix(in srgb, var(--p-primary-950) 34%, var(--p-content-background));
+    border-color: var(--p-primary-700);
+    color: var(--p-primary-200);
+}
+
+.table-row-actions-menu {
+    min-width: 12rem;
+}
+
+.table-row-actions-menu .table-row-actions-menu__item--danger > .p-menu-item-content .p-menu-item-link,
+.table-row-actions-menu .table-row-actions-menu__item--danger > .p-menu-item-content .p-menu-item-icon,
+.table-row-actions-menu .table-row-actions-menu__item--danger > .p-menu-item-content .p-menu-item-label {
+    color: var(--p-red-600);
+}
+
+.table-row-actions-menu .table-row-actions-menu__item--danger > .p-menu-item-content:hover {
+    background: color-mix(in srgb, var(--p-red-500) 10%, transparent);
+}
+
+.p-dark .table-row-actions-menu .table-row-actions-menu__item--danger > .p-menu-item-content .p-menu-item-link,
+.p-dark .table-row-actions-menu .table-row-actions-menu__item--danger > .p-menu-item-content .p-menu-item-icon,
+.p-dark .table-row-actions-menu .table-row-actions-menu__item--danger > .p-menu-item-content .p-menu-item-label {
+    color: var(--p-red-300);
+}
+
+.api-client-site-grants-popover {
+    max-width: min(32rem, calc(100vw - 2rem));
+}
+
+.api-client-site-grants-popover-content {
+    min-width: min(28rem, calc(100vw - 3.5rem));
+}
+
+.api-client-site-grants-popover-title {
+    margin-bottom: 0.5rem;
+    color: var(--p-text-muted-color);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.api-client-site-grants-popover-list {
     display: flex;
+    max-height: 18rem;
     flex-direction: column;
-    gap: 0.2rem;
+    gap: 0.35rem;
+    overflow: auto;
+}
+
+.api-client-site-grants-popover-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    align-items: center;
+    padding: 0.4rem 0.45rem;
+    border-radius: 0.45rem;
+}
+
+.api-client-site-grants-popover-row:hover {
+    background: var(--p-content-hover-background);
+}
+
+.api-client-site-grants-popover-domain {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--p-text-color);
+    font-size: 0.83rem;
+    font-weight: 600;
+    line-height: 1.3;
 }
 
 .hk-owner-chip {
@@ -538,6 +653,18 @@
     align-items: end;
 }
 
+.site-settings-dialog-form {
+    display: grid;
+    gap: 0.875rem;
+}
+
+.hk-dialog-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
 .site-settings-member-grid {
     grid-template-columns: minmax(0, 1fr) minmax(10rem, 12rem);
 }
@@ -750,6 +877,19 @@
     background: var(--site-settings-footer-bg);
 }
 
+.site-settings-table-actions {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.site-settings-table-actions .hk-crud-search {
+    max-width: 18rem;
+}
+
 .site-settings-empty {
     display: grid;
     gap: 0.35rem;
@@ -894,7 +1034,8 @@
     .site-settings-card__header,
     .site-settings-meta-row,
     .site-settings-field-grid,
-    .site-settings-table-toolbar {
+    .site-settings-table-toolbar,
+    .site-settings-table-actions {
         align-items: stretch;
         flex-direction: column;
         grid-template-columns: 1fr;

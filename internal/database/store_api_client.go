@@ -18,7 +18,10 @@ import (
 	"hitkeep/internal/auth"
 )
 
-var ErrAPIClientNotFound = errors.New("api client not found")
+var (
+	ErrAPIClientNotFound = errors.New("api client not found")
+	ErrAPIClientInactive = errors.New("api client is revoked or expired")
+)
 
 const (
 	APIClientOwnerPersonal = "personal"
@@ -278,6 +281,121 @@ func (s *Store) UpdateTeamAPIClient(
 	return s.updateAPIClient(ctx, clientID, "tenant_id = ?", []any{tenantID}, name, description, auth.InstanceUser, siteRoles, expiresAt, revoked, true)
 }
 
+func (s *Store) RotateAPIClient(ctx context.Context, userID uuid.UUID, clientID uuid.UUID) (*api.APIClient, string, error) {
+	return s.rotateAPIClient(ctx, clientID, "user_id = ?", []any{userID}, false)
+}
+
+func (s *Store) RotateTeamAPIClient(ctx context.Context, tenantID, clientID uuid.UUID) (*api.APIClient, string, error) {
+	return s.rotateAPIClient(ctx, clientID, "tenant_id = ?", []any{tenantID}, true)
+}
+
+func (s *Store) rotateAPIClient(ctx context.Context, clientID uuid.UUID, ownerWhere string, ownerArgs []any, teamOwned bool) (*api.APIClient, string, error) {
+	token, tokenHash, err := generateAPIClientToken()
+	if err != nil {
+		return nil, "", err
+	}
+
+	now := time.Now().UTC()
+	if err := s.ensureAPIClientRotatable(ctx, clientID, ownerWhere, ownerArgs, now); err != nil {
+		return nil, "", err
+	}
+
+	if err := s.replaceAPIClientToken(ctx, clientID, ownerWhere, ownerArgs, tokenHash, now); err != nil {
+		return nil, "", err
+	}
+	s.invalidateAPIClientAuthCache(clientID)
+
+	if teamOwned {
+		tenantID := ownerArgs[0].(uuid.UUID)
+		client, err := s.GetTeamAPIClient(ctx, tenantID, clientID)
+		if err != nil {
+			return nil, "", err
+		}
+		return client, token, nil
+	}
+
+	userID := ownerArgs[0].(uuid.UUID)
+	client, err := s.GetAPIClient(ctx, userID, clientID)
+	if err != nil {
+		return nil, "", err
+	}
+	return client, token, nil
+}
+
+func (s *Store) ensureAPIClientRotatable(ctx context.Context, clientID uuid.UUID, ownerWhere string, ownerArgs []any, now time.Time) error {
+	queryArgs := append([]any{clientID}, ownerArgs...)
+	var revokedAt sql.NullTime
+	var expiresAt sql.NullTime
+	if err := s.db.QueryRowContext(ctx, fmt.Sprintf(`
+			SELECT revoked_at, expires_at
+			FROM api_clients
+			WHERE id = ? AND %s
+	`, ownerWhere), queryArgs...).Scan(&revokedAt, &expiresAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrAPIClientNotFound
+		}
+		return fmt.Errorf("failed to load api client for rotation: %w", err)
+	}
+	if revokedAt.Valid || (expiresAt.Valid && now.After(expiresAt.Time.UTC())) {
+		return ErrAPIClientInactive
+	}
+	return nil
+}
+
+func (s *Store) replaceAPIClientToken(ctx context.Context, clientID uuid.UUID, ownerWhere string, ownerArgs []any, tokenHash string, now time.Time) error {
+	return s.Transact(ctx, func(tx *sql.Tx) error {
+		queryArgs := append([]any{clientID}, ownerArgs...)
+		var revokedAt sql.NullTime
+		var expiresAt sql.NullTime
+		if err := tx.QueryRowContext(ctx, fmt.Sprintf(`
+				SELECT revoked_at, expires_at
+				FROM api_clients
+				WHERE id = ? AND %s
+		`, ownerWhere), queryArgs...).Scan(&revokedAt, &expiresAt); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrAPIClientNotFound
+			}
+			return fmt.Errorf("failed to load api client for rotation: %w", err)
+		}
+		if revokedAt.Valid || (expiresAt.Valid && now.After(expiresAt.Time.UTC())) {
+			return ErrAPIClientInactive
+		}
+
+		siteRoles, err := apiClientSiteRolesTx(ctx, tx, clientID)
+		if err != nil {
+			return err
+		}
+		if len(siteRoles) > 0 {
+			if _, err := tx.ExecContext(ctx, "DELETE FROM api_client_site_roles WHERE api_client_id = ?", clientID); err != nil {
+				return fmt.Errorf("failed to clear api client site roles before rotation: %w", err)
+			}
+		}
+
+		updateArgs := append([]any{tokenHash, now, clientID}, ownerArgs...)
+		res, err := tx.ExecContext(ctx, fmt.Sprintf(`
+				UPDATE api_clients
+				SET secret_hash = ?, updated_at = ?
+				WHERE id = ? AND %s
+		`, ownerWhere), updateArgs...)
+		if err != nil {
+			return fmt.Errorf("failed to rotate api client token: %w", err)
+		}
+		rows, err := res.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("failed to determine rows affected: %w", err)
+		}
+		if rows == 0 {
+			return ErrAPIClientNotFound
+		}
+		if len(siteRoles) > 0 {
+			if err := replaceAPIClientSiteRolesTx(ctx, tx, clientID, siteRoles, now); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 func (s *Store) updateAPIClient(
 	ctx context.Context,
 	clientID uuid.UUID,
@@ -294,19 +412,19 @@ func (s *Store) updateAPIClient(
 	now := time.Now().UTC()
 	exp := toUTCPtr(expiresAt)
 
-	var revokedAt any
-	if revoked {
-		revokedAt = now
-	}
-
 	err := s.Transact(ctx, func(tx *sql.Tx) error {
-		queryArgs := make([]any, 0, 7+len(ownerArgs))
-		queryArgs = append(queryArgs, name, description, instanceRole, exp, revokedAt, now, clientID)
+		queryArgs := make([]any, 0, 8+len(ownerArgs))
+		queryArgs = append(queryArgs, name, description, instanceRole, exp, revoked, now, now, clientID)
 		queryArgs = append(queryArgs, ownerArgs...)
 		res, err := tx.ExecContext(ctx, fmt.Sprintf(`
-			UPDATE api_clients
-			SET name = ?, description = ?, instance_role = ?, expires_at = ?, revoked_at = ?, updated_at = ?
-			WHERE id = ? AND %s
+				UPDATE api_clients
+				SET name = ?,
+					description = ?,
+					instance_role = ?,
+					expires_at = ?,
+					revoked_at = CASE WHEN ? THEN COALESCE(revoked_at, ?) ELSE NULL END,
+					updated_at = ?
+				WHERE id = ? AND %s
 		`, ownerWhere), queryArgs...)
 		if err != nil {
 			return fmt.Errorf("failed to update api client: %w", err)
@@ -351,21 +469,35 @@ func (s *Store) DeleteTeamAPIClient(ctx context.Context, tenantID, clientID uuid
 }
 
 func (s *Store) deleteAPIClient(ctx context.Context, clientID uuid.UUID, ownerWhere string, ownerArg any) error {
-	if _, err := s.db.ExecContext(ctx, "DELETE FROM api_client_site_roles WHERE api_client_id = CAST(? AS UUID)", clientID.String()); err != nil {
-		return fmt.Errorf("failed to delete api client site roles: %w", err)
-	}
+	if err := s.Transact(ctx, func(tx *sql.Tx) error {
+		scopedArgs := []any{clientID, ownerArg}
+		var scopedID uuid.UUID
+		if err := tx.QueryRowContext(ctx, fmt.Sprintf("SELECT id FROM api_clients WHERE id = ? AND %s", ownerWhere), scopedArgs...).Scan(&scopedID); err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return ErrAPIClientNotFound
+			}
+			return fmt.Errorf("failed to load api client for delete: %w", err)
+		}
 
-	res, err := s.db.ExecContext(ctx, fmt.Sprintf("DELETE FROM api_clients WHERE id = CAST(? AS UUID) AND %s", ownerWhere), append([]any{clientID.String()}, ownerArg)...)
-	if err != nil {
-		return fmt.Errorf("failed to delete api client: %w", err)
-	}
+		if _, err := tx.ExecContext(ctx, "DELETE FROM api_client_site_roles WHERE api_client_id = ?", scopedID); err != nil {
+			return fmt.Errorf("failed to delete api client site roles: %w", err)
+		}
 
-	rows, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to determine rows affected: %w", err)
-	}
-	if rows == 0 {
-		return ErrAPIClientNotFound
+		res, err := tx.ExecContext(ctx, fmt.Sprintf("DELETE FROM api_clients WHERE id = ? AND %s", ownerWhere), scopedArgs...)
+		if err != nil {
+			return fmt.Errorf("failed to delete api client: %w", err)
+		}
+
+		rows, err := res.RowsAffected()
+		if err != nil {
+			return fmt.Errorf("failed to determine rows affected: %w", err)
+		}
+		if rows == 0 {
+			return ErrAPIClientNotFound
+		}
+		return nil
+	}); err != nil {
+		return err
 	}
 	s.invalidateAPIClientAuthCache(clientID)
 	return nil
@@ -498,6 +630,47 @@ func replaceAPIClientSiteRolesTx(ctx context.Context, tx *sql.Tx, clientID uuid.
 	}
 
 	return nil
+}
+
+func apiClientSiteRolesTx(ctx context.Context, tx *sql.Tx, clientID uuid.UUID) (map[uuid.UUID]auth.SiteRole, error) {
+	rows, err := tx.QueryContext(ctx, `
+		SELECT site_id, role
+		FROM api_client_site_roles
+		WHERE api_client_id = ?
+	`, clientID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load api client site roles: %w", err)
+	}
+	defer rows.Close()
+
+	siteRoles, err := scanAPIClientSiteRoles(rows)
+	if err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed iterating api client site roles: %w", err)
+	}
+	return siteRoles, nil
+}
+
+func scanAPIClientSiteRoles(rows interface {
+	Next() bool
+	Scan(dest ...any) error
+	Err() error
+}) (map[uuid.UUID]auth.SiteRole, error) {
+	siteRoles := make(map[uuid.UUID]auth.SiteRole)
+	for rows.Next() {
+		var siteID uuid.UUID
+		var role string
+		if err := rows.Scan(&siteID, &role); err != nil {
+			return nil, fmt.Errorf("failed to scan api client site role: %w", err)
+		}
+		siteRoles[siteID] = auth.SiteRole(role)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed iterating api client site roles: %w", err)
+	}
+	return siteRoles, nil
 }
 
 func generateAPIClientToken() (string, string, error) {

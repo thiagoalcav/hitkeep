@@ -48,7 +48,7 @@
 .admin-exclusions__composer {
     display: grid;
     gap: 0.75rem;
-    grid-template-columns: minmax(12rem, 0.9fr) minmax(14rem, 1fr) auto;
+    grid-template-columns: minmax(12rem, 0.9fr) minmax(14rem, 1fr);
     align-items: end;
 }
 
@@ -74,9 +74,23 @@
     justify-content: flex-end;
 }
 
+.admin-exclusions__empty {
+    align-items: center;
+    border: 1px dashed var(--p-content-border-color);
+    border-radius: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    justify-content: center;
+    min-height: 8rem;
+    padding: 1rem;
+    text-align: center;
+}
+
 .admin-exclusions__state {
     color: var(--p-text-muted-color);
     font-size: 0.9rem;
+    margin: 0;
 }
 
 @media (max-width: 720px) {
@@ -88,5 +102,9 @@
     .admin-exclusions__actions {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .admin-exclusions__actions :where(p-button, .p-button) {
+        width: 100%;
     }
 }

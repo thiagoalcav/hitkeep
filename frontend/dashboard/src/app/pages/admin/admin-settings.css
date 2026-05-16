@@ -294,15 +294,6 @@
     width: 11rem;
 }
 
-.admin-row-actions {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 0.4rem;
-    align-items: center;
-    justify-content: flex-end;
-    min-width: 0;
-}
-
 .admin-link {
     color: var(--p-primary-color);
     font-weight: 650;

@@ -162,14 +162,14 @@ func openAPIV1AdminSitePaths() map[string]any {
 			}),
 		},
 		"/api/admin/exclusions": map[string]any{
-			"get": op([]string{"Admin"}, "List global exclusions", "Lists instance-level IP/CIDR exclusions used by ingest filtering.", secCookie(), nil, nil,
+			"get": op([]string{"Admin"}, "List global exclusions", "Lists instance-level IP/CIDR exclusions used by ingest filtering. Requires instance.manage_site_exclusions.", secCookie(), nil, nil,
 				map[string]any{"200": jsonSchemaResp("Global exclusions", map[string]any{"type": "array", "items": map[string]any{"$ref": "#/components/schemas/IPExclusion"}})}),
-			"post": op([]string{"Admin"}, "Create global exclusion", "Creates instance-level IP/CIDR exclusion for all sites.", secCookie(), nil,
+			"post": op([]string{"Admin"}, "Create global exclusion", "Creates instance-level IP/CIDR exclusion for all sites. Requires instance.manage_site_exclusions.", secCookie(), nil,
 				jsonBody(map[string]any{"$ref": "#/components/schemas/IPExclusionCreateRequest"}),
 				map[string]any{"201": jsonRefResp("Created exclusion", "#/components/schemas/IPExclusion"), "400": errResp("Invalid IP/CIDR")}),
 		},
 		"/api/admin/exclusions/{ruleID}": map[string]any{
-			"delete": op([]string{"Admin"}, "Delete global exclusion", "Deletes instance-level IP/CIDR exclusion rule.", secCookie(), []any{paramRef("#/components/parameters/ruleID")}, nil,
+			"delete": op([]string{"Admin"}, "Delete global exclusion", "Deletes instance-level IP/CIDR exclusion rule. Requires instance.manage_site_exclusions.", secCookie(), []any{paramRef("#/components/parameters/ruleID")}, nil,
 				map[string]any{"204": desc("Deleted"), "404": errResp("Not found")}),
 		},
 		"/api/sites/{id}/members": map[string]any{

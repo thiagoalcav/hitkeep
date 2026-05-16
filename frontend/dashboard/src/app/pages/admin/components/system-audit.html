@@ -8,7 +8,7 @@
     [outcomeOptions]="outcomeOptions()"
     [targetTypeOptions]="targetTypeOptions()"
     [query]="query()"
-    [exportEnabled]="true"
+    [exportEnabled]="canExportAudit()"
     [exportLoading]="isExporting()"
     [exportStatus]="exportStatus()"
     (queryChange)="onQueryChange($event)"

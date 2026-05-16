@@ -44,6 +44,8 @@ export class Signup {
     protected readonly currentYear = new Date().getFullYear();
     protected readonly currentJurisdiction = computed<Jurisdiction>(() => this.normalizeJurisdiction(this.cloudStatus()?.jurisdiction) ?? this.inferJurisdictionFromHost());
     protected readonly alternateJurisdiction = computed<Jurisdiction>(() => (this.currentJurisdiction() === 'EU' ? 'US' : 'EU'));
+    private trackedSignupPageView = false;
+    private trackedInitialSignupError = false;
 
     private readonly signupModel = signal({
         email: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email] }),
@@ -63,6 +65,8 @@ export class Signup {
                     this.cloudStatus.set(status.cloud ?? null);
                     if (status.cloud?.hosted && status.cloud.signup_enabled) {
                         this.signupTracking.install();
+                        this.trackSignupPageView();
+                        this.trackInitialSignupError();
                     }
                 },
                 error: (err) => {
@@ -93,11 +97,13 @@ export class Signup {
 
         this.isLoading.set(true);
         this.errorMessage.set(null);
+        this.trackSignupEvent('signup_started');
         this.cloud
             .signup(payload)
             .pipe(finalize(() => this.isLoading.set(false)))
             .subscribe({
                 next: (response) => {
+                    this.trackSignupEvent('signup_completed_candidate', { response_status: response.status });
                     if (response.status === 'verification_sent') {
                         this.submittedEmail.set(payload.email);
                         this.verificationSent.set(true);
@@ -110,9 +116,11 @@ export class Signup {
                     console.error('Cloud signup failed', err);
                     if (err.status === 409) {
                         this.errorMessage.set('signup.errors.emailExists');
+                        this.trackSignupEvent('signup_error_view', { error_status: 409, error_code: 'email_exists' });
                         return;
                     }
                     this.errorMessage.set('signup.errors.unexpected');
+                    this.trackSignupEvent('signup_error_view', { error_status: err.status ?? 0, error_code: 'unexpected' });
                 }
             });
     }
@@ -131,6 +139,10 @@ export class Signup {
         }
 
         return url.toString();
+    }
+
+    protected trackRegionSwitchClick(jurisdiction: Jurisdiction): void {
+        this.trackSignupEvent('cloud_region_switch_click', { target_jurisdiction: jurisdiction });
     }
 
     private hydrateFromQuery(): void {
@@ -152,6 +164,31 @@ export class Signup {
         } else if (errorParam === 'exists') {
             this.errorMessage.set('signup.errors.emailExists');
         }
+    }
+
+    private trackSignupPageView(): void {
+        if (this.trackedSignupPageView) {
+            return;
+        }
+        this.trackedSignupPageView = true;
+        this.trackSignupEvent('signup_page_view');
+    }
+
+    private trackInitialSignupError(): void {
+        if (this.trackedInitialSignupError || !this.errorMessage()) {
+            return;
+        }
+        this.trackedInitialSignupError = true;
+        this.trackSignupEvent('signup_error_view', { error_code: 'verification_redirect' });
+    }
+
+    private trackSignupEvent(name: string, properties: Record<string, unknown> = {}): void {
+        this.signupTracking.trackEvent(name, {
+            jurisdiction: this.currentJurisdiction(),
+            plan_code: 'free',
+            source_path: '/signup',
+            ...properties
+        });
     }
 
     private inferJurisdictionFromHost(hostname?: string): Jurisdiction {

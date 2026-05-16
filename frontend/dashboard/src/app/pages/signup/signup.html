@@ -116,7 +116,9 @@
             </p>
             <p class="hk-auth-footer-text">
                 <span>{{ "signup.otherJurisdictionPrompt" | transloco }}</span>
-                <a [href]="jurisdictionHref(alternateJurisdiction())" class="hk-auth-link"> {{ "signup.otherJurisdictionAction" | transloco : { jurisdiction: ("signup.jurisdictions." + alternateJurisdiction().toLowerCase()) | transloco } }} </a>
+                <a [href]="jurisdictionHref(alternateJurisdiction())" class="hk-auth-link" (click)="trackRegionSwitchClick(alternateJurisdiction())">
+                    {{ "signup.otherJurisdictionAction" | transloco : { jurisdiction: ("signup.jurisdictions." + alternateJurisdiction().toLowerCase()) | transloco } }}
+                </a>
             </p>
             <p class="hk-auth-footer-text">
                 <a href="https://hitkeep.com/guides/installation/binary/" class="hk-auth-link" target="_blank" rel="noopener">{{ "signup.selfHostLink" | transloco }}</a>

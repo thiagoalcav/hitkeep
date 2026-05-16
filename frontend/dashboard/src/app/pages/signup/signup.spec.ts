@@ -37,13 +37,15 @@ describe('Signup', () => {
         navigateByUrl: vi.fn(() => Promise.resolve(true))
     };
     const signupTrackingMock = {
-        install: vi.fn()
+        install: vi.fn(),
+        trackEvent: vi.fn()
     };
 
     beforeEach(async () => {
         vi.clearAllMocks();
         routerMock.navigateByUrl.mockClear();
         signupTrackingMock.install.mockClear();
+        signupTrackingMock.trackEvent.mockClear();
         queryParams = {};
 
         await TestBed.configureTestingModule({
@@ -96,6 +98,14 @@ describe('Signup', () => {
         expect(signupTrackingMock.install).toHaveBeenCalledTimes(1);
     });
 
+    it('tracks the signup page view when hosted signup is available', () => {
+        expect(signupTrackingMock.trackEvent).toHaveBeenCalledWith('signup_page_view', {
+            jurisdiction: 'EU',
+            plan_code: 'free',
+            source_path: '/signup'
+        });
+    });
+
     it('submits a cloud signup request with free plan', () => {
         cloudServiceMock.signup.mockReturnValue(of({ status: 'verification_sent', plan_code: 'free' } as CloudSignupResponse));
 
@@ -113,6 +123,17 @@ describe('Signup', () => {
         expect(payload?.['jurisdiction']).toBe('EU');
         expect(payload?.['locale']).toBe('en');
         expect(payload?.['accepted_tos']).toBe(true);
+        expect(signupTrackingMock.trackEvent).toHaveBeenCalledWith('signup_started', {
+            jurisdiction: 'EU',
+            plan_code: 'free',
+            source_path: '/signup'
+        });
+        expect(signupTrackingMock.trackEvent).toHaveBeenCalledWith('signup_completed_candidate', {
+            jurisdiction: 'EU',
+            plan_code: 'free',
+            source_path: '/signup',
+            response_status: 'verification_sent'
+        });
     });
 
     it('hydrates team name and email from query params', async () => {
@@ -137,5 +158,16 @@ describe('Signup', () => {
         expect(href).toContain('https://cloud.hitkeep.com/signup');
         expect(href).toContain('team_name=Cloud+Team');
         expect(href).toContain('email=user%40example.com');
+    });
+
+    it('tracks alternate region clicks without form values', () => {
+        component['trackRegionSwitchClick']('US');
+
+        expect(signupTrackingMock.trackEvent).toHaveBeenCalledWith('cloud_region_switch_click', {
+            jurisdiction: 'EU',
+            plan_code: 'free',
+            source_path: '/signup',
+            target_jurisdiction: 'US'
+        });
     });
 });

@@ -39,6 +39,8 @@ PASSWORD="${HITKEEP_E2E_PASSWORD:-demo1234}"
 DAYS="${HITKEEP_E2E_DAYS:-30}"
 LOG_LEVEL="${HITKEEP_E2E_LOG_LEVEL:-warn}"
 SHARE_TOKEN="${HITKEEP_E2E_SHARE_TOKEN:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}"
+SKIP_DASHBOARD_BUILD="${HITKEEP_E2E_SKIP_DASHBOARD_BUILD:-${HITKEEP_E2E_SKIP_BUILD:-0}}"
+SKIP_BINARY_BUILD="${HITKEEP_E2E_SKIP_BINARY_BUILD:-${HITKEEP_E2E_SKIP_BUILD:-0}}"
 
 RUN_DIR="${HITKEEP_E2E_RUN_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/hitkeep-e2e.XXXXXX")}"
 DATA_PATH="${HITKEEP_E2E_DATA_PATH:-${RUN_DIR}/data}"
@@ -64,11 +66,27 @@ mkdir -p "${DATA_PATH}"
 rm -f "${DB_PATH}" "${DB_PATH}.wal"
 
 echo "[e2e] run dir: ${RUN_DIR}"
-echo "[e2e] building dashboard assets"
-(cd "${REPO_DIR}/frontend/dashboard" && npm run build:prod)
+if [[ "${SKIP_DASHBOARD_BUILD}" == "1" ]]; then
+  if [[ ! -f "${REPO_DIR}/frontend/dashboard/dist/dashboard/browser/index.html" ]]; then
+    echo "[e2e] dashboard assets missing; unset HITKEEP_E2E_SKIP_DASHBOARD_BUILD or run npm run build:prod first" >&2
+    exit 1
+  fi
+  echo "[e2e] reusing dashboard assets"
+else
+  echo "[e2e] building dashboard assets"
+  (cd "${REPO_DIR}/frontend/dashboard" && npm run build:prod)
+fi
 
-echo "[e2e] building hitkeep binary"
-(cd "${REPO_DIR}" && go build -tags "$("${REPO_DIR}/scripts/go-build-tags.sh")" -o "${BIN_PATH}" ./cmd/hitkeep/)
+if [[ "${SKIP_BINARY_BUILD}" == "1" ]]; then
+  if [[ ! -x "${BIN_PATH}" ]]; then
+    echo "[e2e] hitkeep binary missing at ${BIN_PATH}; unset HITKEEP_E2E_SKIP_BINARY_BUILD or build it first" >&2
+    exit 1
+  fi
+  echo "[e2e] reusing hitkeep binary"
+else
+  echo "[e2e] building hitkeep binary"
+  (cd "${REPO_DIR}" && go build -tags "$("${REPO_DIR}/scripts/go-build-tags.sh")" -o "${BIN_PATH}" ./cmd/hitkeep/)
+fi
 
 echo "[e2e] seeding demo data"
 (cd "${REPO_DIR}" && go run ./cmd/seed \

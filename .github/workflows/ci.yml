@@ -36,7 +36,7 @@ jobs:
           go-version-file: go.mod
           cache-dependency-path: go.sum
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@db582008a42febd596419635a5abc9d9815daa9c # v9.2.1
+        uses: golangci/golangci-lint-action@82606bf257cbaff209d206a39f5134f0cfbfd2ee # v9.2.1
         with:
           version: v2.12
           args: ${{ steps.go-build-tags.outputs.golangci_args }}
@@ -159,9 +159,15 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Run seeded e2e suite
         working-directory: frontend/dashboard
+        env:
+          HITKEEP_E2E_BIN_PATH: ${{ runner.temp }}/hitkeep-e2e
         run: npm run e2e
       - name: Run subdirectory smoke e2e
         working-directory: frontend/dashboard
+        env:
+          HITKEEP_E2E_BIN_PATH: ${{ runner.temp }}/hitkeep-e2e
+          HITKEEP_E2E_DAYS: "1"
+          HITKEEP_E2E_SKIP_BUILD: "1"
         run: npm run test:e2e:smoke:subdirectory
       - name: Upload Playwright artifacts
         if: always()

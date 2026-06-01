@@ -6,6 +6,7 @@ const publicPath = normalizePublicPath(process.env.HITKEEP_E2E_PUBLIC_PATH || "/
 const rootBaseURL = process.env.HITKEEP_BASE_URL || `http://127.0.0.1:${port}`;
 const baseURL = trimTrailingSlash(joinPublicURL(rootBaseURL, publicPath));
 const repoRoot = path.resolve(__dirname, "../..");
+const workers = Number(process.env.HITKEEP_E2E_WORKERS || 1);
 
 module.exports = defineConfig({
     testDir: "./e2e",
@@ -14,7 +15,7 @@ module.exports = defineConfig({
         timeout: 10_000
     },
     fullyParallel: false,
-    workers: 1,
+    workers,
     retries: process.env.CI ? 1 : 0,
     reporter: [["list"], ["html", { open: "never" }]],
     use: {

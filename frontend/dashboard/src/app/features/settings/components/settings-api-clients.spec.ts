@@ -9,6 +9,8 @@ import { ConfirmationService } from 'primeng/api';
 import { SettingsAPIClients } from './settings-api-clients';
 import { APIClient, APIClientsService } from '@services/api-clients.service';
 import { PermissionService } from '@services/permission.service';
+import { Site } from '@models/analytics.types';
+import { SiteService } from '@features/sites/services/site.service';
 
 describe('SettingsAPIClients', () => {
     let fixture: ComponentFixture<SettingsAPIClients>;
@@ -27,11 +29,14 @@ describe('SettingsAPIClients', () => {
 
     const apiClientsServiceMock = {
         listClients: vi.fn(() => of([])),
-        listSites: vi.fn(() => of([])),
         createClient: vi.fn(() => of({ client: defaultClient, token: '' })),
         updateClient: vi.fn(() => of(defaultClient)),
         rotateClient: vi.fn(() => of({ client: defaultClient, token: '' })),
         deleteClient: vi.fn(() => of(void 0))
+    };
+
+    const siteServiceMock = {
+        sites: signal<Site[]>([])
     };
 
     const permissionServiceMock = {
@@ -41,8 +46,16 @@ describe('SettingsAPIClients', () => {
         })
     };
 
+    const site = (id: string, domain: string): Site => ({
+        id,
+        user_id: 'user-1',
+        domain,
+        created_at: '2026-01-01T00:00:00Z'
+    });
+
     beforeEach(async () => {
         vi.clearAllMocks();
+        siteServiceMock.sites.set([]);
 
         await TestBed.configureTestingModule({
             imports: [
@@ -174,6 +187,7 @@ describe('SettingsAPIClients', () => {
                     }
                 }),
                 { provide: APIClientsService, useValue: apiClientsServiceMock },
+                { provide: SiteService, useValue: siteServiceMock },
                 { provide: PermissionService, useValue: permissionServiceMock }
             ]
         }).compileComponents();
@@ -184,12 +198,20 @@ describe('SettingsAPIClients', () => {
     });
 
     afterEach(() => {
-        document.querySelectorAll('.table-row-actions-menu, .p-confirm-dialog, .p-dialog-mask').forEach((element) => element.remove());
+        document.querySelectorAll('.table-row-actions-menu, .p-confirm-dialog, .p-dialog-mask, .p-select-overlay').forEach((element) => element.remove());
     });
 
     it('loads personal API clients by default', () => {
         const calls = (apiClientsServiceMock.listClients as unknown as { mock: { calls: unknown[][] } }).mock.calls;
         expect(calls[0][0]).toBeNull();
+    });
+
+    it('uses the shared site service for alphabetized grant options', () => {
+        siteServiceMock.sites.set([site('site-alpha', 'alpha.example.com'), site('site-shop', 'shop.example.com'), site('site-zeta', 'zeta.example.com')]);
+        fixture.detectChanges();
+
+        expect(component['siteOptions']().map((entry) => entry.domain)).toEqual(['alpha.example.com', 'shop.example.com', 'zeta.example.com']);
+        expect(apiClientsServiceMock.listClients).toHaveBeenCalled();
     });
 
     it('uses team-scoped endpoints and hides instance role selection in team mode', async () => {
@@ -290,7 +312,7 @@ describe('SettingsAPIClients', () => {
     });
 
     it('renders site grants as PrimeNG tags', () => {
-        component['sites'].set([{ id: 'site-1', domain: 'shop.example.com' }]);
+        siteServiceMock.sites.set([site('site-1', 'shop.example.com')]);
         component['clients'].set([
             {
                 ...defaultClient,
@@ -306,11 +328,7 @@ describe('SettingsAPIClients', () => {
     });
 
     it('summarizes multiple site grants with a PrimeNG popover for the full scope', async () => {
-        component['sites'].set([
-            { id: 'site-1', domain: 'search-reconnect.example.com' },
-            { id: 'site-2', domain: 'search-pending.example.com' },
-            { id: 'site-3', domain: 'search-quota.example.com' }
-        ]);
+        siteServiceMock.sites.set([site('site-1', 'search-reconnect.example.com'), site('site-2', 'search-pending.example.com'), site('site-3', 'search-quota.example.com')]);
         component['clients'].set([
             {
                 ...defaultClient,
@@ -337,6 +355,19 @@ describe('SettingsAPIClients', () => {
         expect(popoverText).toContain('search-quota.example.com');
         expect(popoverText).toContain('Admin');
         expect(popoverText).toContain('Editor');
+    });
+
+    it('renders the API client grant picker with favicon-backed site options', async () => {
+        siteServiceMock.sites.set([site('site-alpha', 'alpha.example.com'), site('site-zeta', 'zeta.example.com')]);
+        component['openCreateDialog']();
+        component['siteRoleForm'].controls.siteID.setValue('site-alpha');
+        fixture.detectChanges();
+        await fixture.whenStable();
+
+        const dialog = document.body.querySelector('.p-dialog') as HTMLElement | null;
+
+        expect(dialog?.querySelector('app-site-select-option img[alt="alpha.example.com"]')).not.toBeNull();
+        expect(dialog?.textContent).toContain('alpha.example.com');
     });
 
     it('rotates active clients and shows the one-time token', () => {

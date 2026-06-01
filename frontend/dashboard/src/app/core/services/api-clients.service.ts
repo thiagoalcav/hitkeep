@@ -48,11 +48,6 @@ export interface CreateAPIClientResponse {
     token: string;
 }
 
-export interface SiteSummary {
-    id: string;
-    domain: string;
-}
-
 @Injectable({ providedIn: 'root' })
 export class APIClientsService {
     private http = inject(HttpClient);
@@ -75,10 +70,6 @@ export class APIClientsService {
 
     deleteClient(clientID: string, teamID?: string | null): Observable<void> {
         return this.http.delete<void>(`${this.basePath(teamID)}/${encodeURIComponent(clientID)}`);
-    }
-
-    listSites(): Observable<SiteSummary[]> {
-        return this.http.get<SiteSummary[]>('/api/sites');
     }
 
     private basePath(teamID?: string | null): string {

@@ -10,6 +10,7 @@ import { AccessService } from '@services/access.service';
 import { APIClientsService } from '@services/api-clients.service';
 import { PermissionService } from '@services/permission.service';
 import { TeamService } from '@services/team.service';
+import { SiteService } from '@features/sites/services/site.service';
 
 describe('APIClientsPage', () => {
     let fixture: ComponentFixture<APIClientsPage>;
@@ -19,11 +20,13 @@ describe('APIClientsPage', () => {
     };
     const apiClientsServiceMock = {
         listClients: vi.fn(() => of([])),
-        listSites: vi.fn(() => of([])),
         createClient: vi.fn(),
         updateClient: vi.fn(),
         rotateClient: vi.fn(),
         deleteClient: vi.fn()
+    };
+    const siteServiceMock = {
+        sites: signal([])
     };
     const permissions = signal({ instance_role: 'owner', permissions: {} });
 
@@ -53,6 +56,7 @@ describe('APIClientsPage', () => {
                 provideRouter([]),
                 { provide: AccessService, useValue: accessServiceMock },
                 { provide: APIClientsService, useValue: apiClientsServiceMock },
+                { provide: SiteService, useValue: siteServiceMock },
                 { provide: PermissionService, useValue: { permissions } },
                 { provide: TeamService, useValue: { activeTeam } }
             ]

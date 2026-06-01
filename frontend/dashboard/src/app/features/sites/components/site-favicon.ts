@@ -1,7 +1,11 @@
 import { Component, computed, input, ChangeDetectionStrategy, inject } from '@angular/core';
 import { DOCUMENT, NgOptimizedImage } from '@angular/common';
 import { browserAppUrl } from '@core/interceptors/base-path.interceptor';
-import { Site } from '@models/analytics.types';
+
+export interface SiteFaviconSource {
+    domain: string;
+}
+
 @Component({
     selector: 'app-site-favicon',
     standalone: true,
@@ -11,7 +15,7 @@ import { Site } from '@models/analytics.types';
 })
 export class SiteFavicon {
     private document = inject(DOCUMENT);
-    site = input.required<Site | null>();
+    site = input.required<SiteFaviconSource | null>();
     protected faviconUrl = computed(() => {
         const domain = this.site()?.domain;
         return domain ? browserAppUrl(this.document, `/api/favicon/${encodeURIComponent(domain)}`) : '';

@@ -30,17 +30,11 @@
                     [fluid]="true"
                     appendTo="body"
                 >
-                    <ng-template #selecteditem let-site>
-                        <div class="utm-builder-site-option">
-                            <app-site-favicon [site]="site" />
-                            <span>{{ site.domain }}</span>
-                        </div>
+                    <ng-template pTemplate="selectedItem" let-site>
+                        <app-site-select-option [site]="site" [selected]="true" />
                     </ng-template>
-                    <ng-template #item let-site>
-                        <div class="utm-builder-site-option">
-                            <app-site-favicon [site]="site" />
-                            <span>{{ site.domain }}</span>
-                        </div>
+                    <ng-template pTemplate="item" let-site>
+                        <app-site-select-option [site]="site" />
                     </ng-template>
                 </p-select>
                 <small>{{ "utmBuilder.form.siteSelectHint" | transloco }}</small>

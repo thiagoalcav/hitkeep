@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
-import { finalize, forkJoin } from 'rxjs';
+import { finalize } from 'rxjs';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 
 import { ConfirmationService } from 'primeng/api';
@@ -25,6 +25,8 @@ import { RelativeDateTime } from '@components/relative-date-time/relative-date-t
 import { TableRowActionItem, TableRowActions } from '@components/table-row-actions/table-row-actions';
 import { APIClient, APIClientSiteRole, APIClientsService, CreateAPIClientRequest, InstanceRole, SiteRole } from '@services/api-clients.service';
 import { PermissionService } from '@services/permission.service';
+import { SiteSelectOption } from '@features/sites/components/site-select-option';
+import { SiteService } from '@features/sites/services/site.service';
 
 interface SelectOption<TValue extends string> {
     label: string;
@@ -79,6 +81,7 @@ const expiresAtNotPastValidator = (): ValidatorFn => {
         CrudDialog,
         RelativeDateTime,
         TableRowActions,
+        SiteSelectOption,
         TranslocoPipe
     ],
     templateUrl: './settings-api-clients.html',
@@ -90,6 +93,7 @@ export class SettingsAPIClients {
     private readonly apiClientsService = inject(APIClientsService);
     private readonly confirmationService = inject(ConfirmationService);
     private readonly perms = inject(PermissionService);
+    private readonly siteService = inject(SiteService);
     private readonly transloco = inject(TranslocoService);
     private readonly activeLanguage = toSignal(this.transloco.langChanges$, { initialValue: this.transloco.getActiveLang() });
 
@@ -107,7 +111,6 @@ export class SettingsAPIClients {
     protected readonly editingClientID = signal<string | null>(null);
 
     protected readonly clients = signal<APIClient[]>([]);
-    protected readonly sites = signal<{ id: string; domain: string }[]>([]);
     protected readonly selectedSiteRoles = signal<APIClientSiteRole[]>([]);
 
     protected readonly form = new FormGroup({
@@ -158,11 +161,7 @@ export class SettingsAPIClients {
         ];
     });
 
-    protected readonly siteOptions = computed<SelectOption<string>[]>(() => {
-        return this.sites()
-            .map((site) => ({ label: site.domain, value: site.id }))
-            .sort((a, b) => a.label.localeCompare(b.label, 'en', { sensitivity: 'base' }));
-    });
+    protected readonly siteOptions = computed(() => this.siteService.sites());
 
     protected readonly isEditing = computed(() => this.editingClientID() !== null);
     protected readonly isTeamScope = computed(() => this.scope() === 'team');
@@ -188,15 +187,12 @@ export class SettingsAPIClients {
         this.isLoading.set(true);
         this.error.set(null);
 
-        forkJoin({
-            clients: this.apiClientsService.listClients(this.teamIdForRequests()),
-            sites: this.apiClientsService.listSites()
-        })
+        this.apiClientsService
+            .listClients(this.teamIdForRequests())
             .pipe(finalize(() => this.isLoading.set(false)))
             .subscribe({
-                next: ({ clients, sites }) => {
+                next: (clients) => {
                     this.clients.set(clients);
-                    this.sites.set(sites);
                 },
                 error: () => {
                     this.error.set('settings.apiClients.errors.loadFailed');
@@ -529,7 +525,7 @@ export class SettingsAPIClients {
     }
 
     protected siteDomain(siteID: string): string {
-        return this.sites().find((site) => site.id === siteID)?.domain ?? siteID;
+        return this.siteService.sites().find((site) => site.id === siteID)?.domain ?? siteID;
     }
 
     protected siteGrantLabel(scope: APIClientSiteRole): string {

@@ -95,13 +95,24 @@
                 <p-select
                     [options]="siteOptions()"
                     formControlName="siteID"
-                    optionLabel="label"
-                    optionValue="value"
+                    optionLabel="domain"
+                    optionValue="id"
+                    dataKey="id"
+                    [filter]="true"
+                    filterBy="domain"
+                    appendTo="body"
                     [placeholder]="'settings.apiClients.form.selectSitePlaceholder' | transloco"
                     [invalid]="siteRoleForm.controls.siteID.touched && siteRoleForm.controls.siteID.invalid"
                     class="w-full"
-                />
-                <p-select [options]="siteRoleOptions()" formControlName="role" optionLabel="label" optionValue="value" class="w-44" />
+                >
+                    <ng-template pTemplate="selectedItem" let-site>
+                        <app-site-select-option [site]="site" [selected]="true" />
+                    </ng-template>
+                    <ng-template pTemplate="item" let-site>
+                        <app-site-select-option [site]="site" />
+                    </ng-template>
+                </p-select>
+                <p-select [options]="siteRoleOptions()" formControlName="role" optionLabel="label" optionValue="value" appendTo="body" class="w-44" />
                 <p-button [label]="'settings.apiClients.actions.addScope' | transloco" icon="pi pi-plus" [outlined]="true" [type]="'button'" (onClick)="addSiteScope()" />
             </div>
             @if (siteRoleForm.controls.siteID.touched && siteRoleForm.controls.siteID.hasError("required")) {

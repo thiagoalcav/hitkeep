@@ -10,7 +10,7 @@ import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header'
 import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
 import { CopyControl } from '@components/copy-control/copy-control';
 import { SiteService } from '@features/sites/services/site.service';
-import { SiteFavicon } from '@features/sites/components/site-favicon';
+import { SiteSelectOption } from '@features/sites/components/site-select-option';
 import { Site } from '@models/analytics.types';
 
 function urlValidator(): ValidatorFn {
@@ -31,7 +31,7 @@ function urlValidator(): ValidatorFn {
     templateUrl: './utm-builder.html',
     styleUrl: './utm-builder.css',
     changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [FormsModule, ReactiveFormsModule, TranslocoPipe, ButtonModule, InputTextModule, SelectModule, SiteFavicon, PageHeader, PageHeaderLeft, PageBreadcrumb, CopyControl]
+    imports: [FormsModule, ReactiveFormsModule, TranslocoPipe, ButtonModule, InputTextModule, SelectModule, SiteSelectOption, PageHeader, PageHeaderLeft, PageBreadcrumb, CopyControl]
 })
 export class UtmBuilder {
     private transloco = inject(TranslocoService);

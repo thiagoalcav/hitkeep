@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { SiteService } from '@features/sites/services/site.service';
+import { Site } from '@models/analytics.types';
 
 describe('SiteService', () => {
     let service: SiteService;
@@ -13,6 +14,7 @@ describe('SiteService', () => {
         });
         service = TestBed.inject(SiteService);
         httpMock = TestBed.inject(HttpTestingController);
+        localStorage.clear();
     });
 
     afterEach(() => {
@@ -24,12 +26,7 @@ describe('SiteService', () => {
     });
 
     it('should clear active site when the active team has no sites', () => {
-        service.activeSite.set({
-            id: 'site-1',
-            user_id: 'user-1',
-            domain: 'example.com',
-            created_at: '2026-01-01T00:00:00Z'
-        });
+        service.activeSite.set(site('site-1', 'example.com'));
 
         service.loadSites();
 
@@ -40,4 +37,39 @@ describe('SiteService', () => {
         expect(service.activeSite()).toBeNull();
         expect(service.sites()).toEqual([]);
     });
+
+    it('exposes sites alphabetically by domain', () => {
+        service.applySites([site('site-zeta', 'zeta.example.com'), site('site-alpha', 'alpha.example.com'), site('site-2', 'site2.example.com'), site('site-10', 'site10.example.com')]);
+
+        expect(service.sites().map((entry) => entry.domain)).toEqual(['alpha.example.com', 'site2.example.com', 'site10.example.com', 'zeta.example.com']);
+    });
+
+    it('preserves API-order fallback active site while exposing an alphabetized list', () => {
+        service.applySites([site('site-zeta', 'zeta.example.com'), site('site-alpha', 'alpha.example.com')]);
+
+        expect(service.sites().map((entry) => entry.id)).toEqual(['site-alpha', 'site-zeta']);
+        expect(service.activeSite()?.id).toBe('site-zeta');
+    });
+
+    it('adds created sites into the alphabetized list and selects the new site', () => {
+        service.applySites([site('site-zeta', 'zeta.example.com'), site('site-alpha', 'alpha.example.com')]);
+
+        service.createSite('middle.example.com').subscribe();
+
+        const req = httpMock.expectOne('/api/sites');
+        expect(req.request.method).toBe('POST');
+        req.flush(site('site-middle', 'middle.example.com'));
+
+        expect(service.sites().map((entry) => entry.domain)).toEqual(['alpha.example.com', 'middle.example.com', 'zeta.example.com']);
+        expect(service.activeSite()?.id).toBe('site-middle');
+    });
 });
+
+function site(id: string, domain: string): Site {
+    return {
+        id,
+        user_id: 'user-1',
+        domain,
+        created_at: '2026-01-01T00:00:00Z'
+    };
+}

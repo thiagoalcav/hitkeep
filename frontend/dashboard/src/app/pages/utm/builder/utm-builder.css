@@ -84,19 +84,6 @@
     color: var(--p-red-500);
 }
 
-.utm-builder-site-option {
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.utm-builder-site-option span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
 .utm-builder-form-actions {
     display: flex;
     justify-content: flex-end;

@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs';
 import { Site } from '@models/analytics.types';
+import { sortSitesByDomain } from '@features/sites/utils/site-sort';
 
 const LAST_SITE_KEY = 'hk_last_site_id';
 
@@ -45,7 +46,7 @@ export class SiteService {
     }
 
     applySites(data: Site[]) {
-        this.sites.set(data);
+        this.sites.set(sortSitesByDomain(data));
 
         if (data.length === 0) {
             this.activeSite.set(null);
@@ -65,7 +66,7 @@ export class SiteService {
     createSite(domain: string) {
         return this.http.post<Site>('/api/sites', { domain }).pipe(
             tap((newSite) => {
-                this.sites.update((list) => [newSite, ...list]);
+                this.sites.update((list) => sortSitesByDomain([newSite, ...list]));
                 this.selectSite(newSite);
             })
         );

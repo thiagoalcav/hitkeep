@@ -7,14 +7,14 @@ import { SelectModule } from 'primeng/select';
 import { SkeletonModule } from 'primeng/skeleton';
 import { SITE_CAPABILITIES } from '@core/access/capabilities';
 import { Site } from '@models/analytics.types';
-import { SiteFavicon } from '@features/sites/components/site-favicon';
+import { SiteSelectOption } from '@features/sites/components/site-select-option';
 import { ShareDashboardLink } from '@features/share/components/share-dashboard-link';
 import { AccessService } from '@services/access.service';
 import { ShareService } from '@services/share.service';
 @Component({
     selector: 'app-site-selector',
     standalone: true,
-    imports: [ReactiveFormsModule, SelectModule, SkeletonModule, SiteFavicon, ShareDashboardLink, TranslocoPipe],
+    imports: [ReactiveFormsModule, SelectModule, SkeletonModule, SiteSelectOption, ShareDashboardLink, TranslocoPipe],
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <div class="flex flex-col gap-2 w-full" role="region" [attr.aria-label]="'sites.selector.regionAria' | transloco">
@@ -51,17 +51,11 @@ import { ShareService } from '@services/share.service';
                             [attr.aria-label]="'sites.selector.selectSiteAria' | transloco"
                         >
                             <ng-template pTemplate="selectedItem" let-selected>
-                                <div class="flex items-center shrink-0 grow-0 gap-2">
-                                    <app-site-favicon [site]="selected" />
-                                    <span class="text-sm font-medium truncate">{{ selected.domain }}</span>
-                                </div>
+                                <app-site-select-option [site]="selected" [selected]="true" />
                             </ng-template>
 
                             <ng-template pTemplate="item" let-site>
-                                <div class="flex items-center shrink-0 grow-0 gap-2">
-                                    <app-site-favicon [site]="site" />
-                                    <span>{{ site.domain }}</span>
-                                </div>
+                                <app-site-select-option [site]="site" />
                             </ng-template>
                         </p-select>
                     }

@@ -16,7 +16,7 @@ func TestProductionCommandDoesNotDependOnGenerators(t *testing.T) {
 	}
 
 	deps := map[string]bool{}
-	for _, dep := range strings.Fields(string(out)) {
+	for dep := range strings.FieldsSeq(string(out)) {
 		deps[dep] = true
 	}
 	for _, unwanted := range []string{

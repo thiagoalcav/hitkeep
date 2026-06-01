@@ -379,10 +379,7 @@ func writeStringLiteral(b *strings.Builder, name string, value string) {
 	}
 	fmt.Fprintf(b, "var %s = \"\" +\n", name)
 	for len(value) > 0 {
-		chunkLen := 160
-		if len(value) < chunkLen {
-			chunkLen = len(value)
-		}
+		chunkLen := min(len(value), 160)
 		fmt.Fprintf(b, "%q", value[:chunkLen])
 		value = value[chunkLen:]
 		if value != "" {

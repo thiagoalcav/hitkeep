@@ -502,6 +502,15 @@ func TestOpenAPISpecV1IncludesWebVitalsEndpointsAndSchemas(t *testing.T) {
 	if !hasParamRef(params, "#/components/parameters/webVitalMetric") {
 		t.Fatalf("expected web vital metric parameter on timeseries")
 	}
+
+	ingestPayload := requireMap(t, schemas, "WebVitalIngestPayload")
+	properties := requireMap(t, ingestPayload, "properties")
+	if _, ok := properties["mid"]; !ok {
+		t.Fatalf("expected WebVitalIngestPayload to document optional mid")
+	}
+	if _, ok := properties["rating"]; ok {
+		t.Fatalf("WebVitalIngestPayload must not document client-side rating")
+	}
 }
 
 func TestOpenAPISpecV1IncludesAIChatbotExportPath(t *testing.T) {

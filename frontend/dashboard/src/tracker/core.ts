@@ -41,6 +41,7 @@ export interface WebVitalsPayload {
     v: number;
     p: string;
     nt?: string;
+    mid?: string;
     sid: string;
     pid: string;
     tsrc: string;

@@ -5,6 +5,7 @@ interface WebVitalsPayload {
     v: number;
     p: string;
     nt?: string;
+    mid?: string;
     sid: string;
     pid: string;
     tsrc: string;
@@ -38,6 +39,7 @@ function emitMetric(context: WebVitalsTrackerContext, metric: Metric): void {
         v: metric.value,
         p: context.getPath(),
         nt: navigationType(metric),
+        mid: metric.id,
         sid: context.sessionId,
         pid: context.pageId(),
         tsrc: context.trackerSource,

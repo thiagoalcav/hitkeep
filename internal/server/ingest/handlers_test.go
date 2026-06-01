@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -325,14 +326,16 @@ func TestHandleIngestWebVitalsLeaderPublishesSanitizedCanonicalPayload(t *testin
 	sessionID := uuid.New()
 	pageID := uuid.New()
 	req := newIngestWebVitalsRequest(t, "https://www.example.com", "198.51.100.22:1234", map[string]any{
-		"n":    "LCP",
-		"v":    2600,
-		"p":    "/pricing?plan=pro#cta",
-		"nt":   "navigate",
-		"sid":  sessionID,
-		"pid":  pageID,
-		"tsrc": "browser",
-		"tv":   "dev",
+		"n":      "LCP",
+		"v":      2600,
+		"p":      "/pricing?plan=pro#cta",
+		"nt":     "navigate",
+		"mid":    "  v5-1234567890-1234567890123  ",
+		"rating": "poor",
+		"sid":    sessionID,
+		"pid":    pageID,
+		"tsrc":   "browser",
+		"tv":     "dev",
 	})
 
 	rec := httptest.NewRecorder()
@@ -355,6 +358,9 @@ func TestHandleIngestWebVitalsLeaderPublishesSanitizedCanonicalPayload(t *testin
 	}
 	if got.Rating != "" {
 		t.Fatalf("expected rating to be derived by storage, got %q", got.Rating)
+	}
+	if got.MetricID != "v5-1234567890-1234567890123" {
+		t.Fatalf("expected trimmed metric id, got %q", got.MetricID)
 	}
 	if got.Path != "/pricing" {
 		t.Fatalf("expected sanitized path /pricing, got %q", got.Path)
@@ -412,6 +418,16 @@ func TestHandleIngestWebVitalsLeaderRejectsInvalidMetricOrValue(t *testing.T) {
 	}
 	if got := h.ctx.SystemCounters.Rejections.Load(); got != 1 {
 		t.Fatalf("expected rejection counter 1, got %d", got)
+	}
+}
+
+func TestTrimWebVitalMetricIDCapsCompactPayloadField(t *testing.T) {
+	got := trimWebVitalMetricID("  " + strings.Repeat("a", 140) + "  ")
+	if len(got) != 128 {
+		t.Fatalf("expected metric id capped to 128 bytes, got %d", len(got))
+	}
+	if got != strings.Repeat("a", 128) {
+		t.Fatalf("expected trimmed and capped metric id, got %q", got)
 	}
 }
 

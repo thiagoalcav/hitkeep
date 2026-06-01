@@ -248,6 +248,7 @@ type WebVital struct {
 	SessionID      uuid.UUID      `json:"session_id"`
 	PageID         uuid.UUID      `json:"page_id"`
 	Metric         WebVitalMetric `json:"metric"`
+	MetricID       string         `json:"metric_id,omitempty"`
 	Value          float64        `json:"value"`
 	Rating         WebVitalRating `json:"rating"`
 	Path           string         `json:"path"`

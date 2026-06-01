@@ -445,7 +445,7 @@ func TestCreateWebVitalsBulkAndAggregates(t *testing.T) {
 	}
 
 	vitals := []*api.WebVital{
-		{SiteID: site.ID, SessionID: sessionID, PageID: pageID, Metric: api.WebVitalLCP, Value: 1200, Path: "/pricing?plan=pro#cta", NavigationType: &navigationType, Timestamp: now.Add(-3 * time.Hour), TrackerSource: "hk.js"},
+		{SiteID: site.ID, SessionID: sessionID, PageID: pageID, Metric: api.WebVitalLCP, MetricID: "v5-1234567890-1234567890123", Value: 1200, Rating: api.WebVitalRatingPoor, Path: "/pricing?plan=pro#cta", NavigationType: &navigationType, Timestamp: now.Add(-3 * time.Hour), TrackerSource: "hk.js"},
 		{SiteID: site.ID, SessionID: uuid.New(), PageID: uuid.New(), Metric: api.WebVitalLCP, Value: 2600, Path: "/pricing", Timestamp: now.Add(-2 * time.Hour)},
 		{SiteID: site.ID, SessionID: uuid.New(), PageID: uuid.New(), Metric: api.WebVitalLCP, Value: 5100, Path: "/checkout", Timestamp: now.Add(-1 * time.Hour)},
 		{SiteID: site.ID, SessionID: uuid.New(), PageID: uuid.New(), Metric: api.WebVitalCLS, Value: 0.31, Path: "/pricing", Timestamp: now.Add(-1 * time.Hour)},
@@ -458,13 +458,7 @@ func TestCreateWebVitalsBulkAndAggregates(t *testing.T) {
 		t.Fatalf("expected server-derived ratings, got %s/%s/%s", vitals[0].Rating, vitals[1].Rating, vitals[2].Rating)
 	}
 
-	var storedPath string
-	if err := store.DB().QueryRowContext(ctx, "SELECT path FROM web_vitals WHERE id = ?", vitals[0].ID).Scan(&storedPath); err != nil {
-		t.Fatalf("load web vital path: %v", err)
-	}
-	if storedPath != "/pricing?plan=pro#cta" {
-		t.Fatalf("store should persist the caller-provided sanitized path verbatim, got %q", storedPath)
-	}
+	assertStoredWebVitalMetadata(t, store, vitals[0].ID)
 
 	summary, err := store.GetWebVitalsSummary(ctx, api.WebVitalsParams{
 		SiteID: site.ID,
@@ -529,6 +523,25 @@ func TestCreateWebVitalsBulkAndAggregates(t *testing.T) {
 	}
 	if len(providerBreakdown) != 1 || providerBreakdown[0].Name != "Deutsche Telekom AG" || providerBreakdown[0].Samples != 1 {
 		t.Fatalf("expected provider breakdown, got %+v", providerBreakdown)
+	}
+}
+
+func assertStoredWebVitalMetadata(t *testing.T, store *Store, vitalID uuid.UUID) {
+	t.Helper()
+	var storedPath string
+	var storedMetricID string
+	var storedRating string
+	if err := store.DB().QueryRowContext(context.Background(), "SELECT path, metric_id, rating FROM web_vitals WHERE id = ?", vitalID).Scan(&storedPath, &storedMetricID, &storedRating); err != nil {
+		t.Fatalf("load web vital metadata: %v", err)
+	}
+	if storedPath != "/pricing?plan=pro#cta" {
+		t.Fatalf("store should persist the caller-provided sanitized path verbatim, got %q", storedPath)
+	}
+	if storedMetricID != "v5-1234567890-1234567890123" {
+		t.Fatalf("expected stored metric id, got %q", storedMetricID)
+	}
+	if storedRating != string(api.WebVitalRatingGood) {
+		t.Fatalf("expected stored rating to be server-derived, got %q", storedRating)
 	}
 }
 

@@ -77,6 +77,7 @@ func openAPIV1WebVitalSchemas() map[string]any {
 				"v":    map[string]any{"type": "number", "minimum": 0, "description": "Metric value. LCP, INP, FCP, and TTFB use milliseconds. CLS is unitless."},
 				"p":    map[string]any{"type": "string", "description": "Browser path. Query strings and hashes are stripped server-side."},
 				"nt":   map[string]any{"type": "string", "description": "Navigation type."},
+				"mid":  map[string]any{"type": "string", "description": "Optional web-vitals metric instance ID used for future dedupe and bfcache analysis."},
 				"sid":  map[string]any{"type": "string", "format": "uuid"},
 				"pid":  map[string]any{"type": "string", "format": "uuid"},
 				"tsrc": map[string]any{"type": "string"},

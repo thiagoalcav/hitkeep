@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS web_vitals (
     session_id      UUID        NOT NULL,
     page_id         UUID        NOT NULL,
     metric          VARCHAR     NOT NULL CHECK (metric IN ('LCP', 'INP', 'CLS', 'FCP', 'TTFB')),
+    metric_id       VARCHAR,
     value           DOUBLE      NOT NULL,
     rating          VARCHAR     NOT NULL CHECK (rating IN ('good', 'needs_improvement', 'poor')),
     path            VARCHAR     NOT NULL,

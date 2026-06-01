@@ -106,6 +106,7 @@ type webVitalPayload struct {
 	Value          float64   `json:"v"`
 	Path           string    `json:"p"`
 	NavigationType string    `json:"nt"`
+	MetricID       string    `json:"mid"`
 	SessionID      uuid.UUID `json:"sid"`
 	PageID         uuid.UUID `json:"pid"`
 	TrackerSource  string    `json:"tsrc"`
@@ -709,6 +710,7 @@ func webVitalFromPayload(siteID uuid.UUID, payload webVitalPayload, timestamp ti
 		SessionID:      payload.SessionID,
 		PageID:         payload.PageID,
 		Metric:         metric,
+		MetricID:       trimWebVitalMetricID(payload.MetricID),
 		Value:          payload.Value,
 		Path:           path,
 		NavigationType: normalizeWebVitalNavigationType(payload.NavigationType),
@@ -716,6 +718,14 @@ func webVitalFromPayload(siteID uuid.UUID, payload webVitalPayload, timestamp ti
 		TrackerSource:  trimTrackerField(payload.TrackerSource),
 		TrackerVersion: trimTrackerField(payload.TrackerVersion),
 	}, "", true
+}
+
+func trimWebVitalMetricID(value string) string {
+	value = strings.TrimSpace(value)
+	if len(value) > 128 {
+		return value[:128]
+	}
+	return value
 }
 
 func normalizeWebVitalNavigationType(value string) *string {

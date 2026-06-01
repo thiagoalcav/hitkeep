@@ -200,6 +200,8 @@ func TestRunDefaultsToCompactReleaseRefresh(t *testing.T) {
 }
 
 func TestRunRequiresTokenForTokenBasedDownloads(t *testing.T) {
+	t.Setenv("IP2LOCATION_DOWNLOAD_TOKEN", "")
+
 	dir := t.TempDir()
 	err := run([]string{"-ip2location-lite", "-out", filepath.Join(dir, "data_lite.go")}, io.Discard)
 	if err == nil {

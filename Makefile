@@ -18,6 +18,7 @@ frontend-dashboard-build:
 	@cp -r frontend/dashboard/dist/dashboard/browser/* public/
 
 DEV_ARGS ?=
+DEV_COMPOSE ?= docker compose -f compose.dev.yaml
 
 dev:
 	@bash ./scripts/dev.sh $(DEV_ARGS)
@@ -40,7 +41,7 @@ dev-backend:
 		HITKEEP_MAIL_PORT=$${HITKEEP_MAIL_PORT:-1025} \
 		HITKEEP_MAIL_ENCRYPTION=$${HITKEEP_MAIL_ENCRYPTION:-none} \
 		HITKEEP_MCP_ENABLED=$${HITKEEP_MCP_ENABLED:-true} \
-		air
+		go tool air -c .air.toml
 
 dev-frontend:
 	@echo "Starting Angular with Hot Reload..."
@@ -83,10 +84,26 @@ dev-cloud-backend:
 		HITKEEP_CLOUD_SUPPORT_URL=$${HITKEEP_CLOUD_SUPPORT_URL:-https://hitkeep.com/support/help/} \
 		HITKEEP_CLOUD_CHECKOUT_SUCCESS_URL=$${HITKEEP_CLOUD_CHECKOUT_SUCCESS_URL:-http://localhost:4200/admin/team?checkout=success} \
 		HITKEEP_CLOUD_CHECKOUT_CANCEL_URL=$${HITKEEP_CLOUD_CHECKOUT_CANCEL_URL:-http://localhost:4200/admin/team?checkout=cancelled} \
-		air
+		go tool air -c .air.toml
+
+dev-docker:
+	@echo "Starting Docker development environment..."
+	@$(DEV_COMPOSE) up --build backend frontend mailpit
+
+dev-docker-seed:
+	@echo "Seeding Docker development data..."
+	@$(DEV_COMPOSE) run --rm seed
+	@echo "Starting Docker development environment..."
+	@$(DEV_COMPOSE) up --build backend frontend mailpit
+
+dev-docker-down:
+	@$(DEV_COMPOSE) down
+
+dev-docker-clean:
+	@$(DEV_COMPOSE) down --volumes --remove-orphans
 
 staticcheck:
 	@echo "Running Staticcheck..."
 	go run honnef.co/go/tools/cmd/staticcheck@$(STATICCHECK_VERSION) -tags "$(GO_BUILD_TAGS)" ./...
 
-.PHONY: all build go-build frontend-build frontend-dashboard-build run clean update-default-spam-filter dev dev-seed dev-backend dev-frontend dev-cloud dev-cloud-seed dev-cloud-backend staticcheck
+.PHONY: all build go-build frontend-build frontend-dashboard-build run clean update-default-spam-filter dev dev-seed dev-backend dev-frontend dev-cloud dev-cloud-seed dev-cloud-backend dev-docker dev-docker-seed dev-docker-down dev-docker-clean staticcheck

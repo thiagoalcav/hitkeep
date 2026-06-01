@@ -81,6 +81,18 @@ For production setup, reverse proxies, SMTP, systemd, Kubernetes, S3 archiving, 
 - [Configuration reference](https://hitkeep.com/reference/configuration/)
 - [Cloud documentation](https://hitkeep.com/cloud)
 
+## Local Development
+
+Contributors can run the full hot-reload development stack with Docker:
+
+```bash
+make dev-docker-seed
+```
+
+This starts the Go backend, Angular dashboard, Mailpit, and seeded demo data.
+Open `http://localhost:4200` and sign in with `demo@example.com` / `demo1234`.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for Docker-only and native workflows.
+
 ## Track Your Site
 
 Once your instance is running and a site is created, add:

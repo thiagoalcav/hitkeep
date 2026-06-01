@@ -109,9 +109,9 @@ cd "$REPO_DIR"
 
 ensure_backend_port_available
 
-if ! command -v air >/dev/null 2>&1; then
-  echo "Air is not installed. Installing..."
-  go install github.com/air-verse/air@latest
+if ! command -v go >/dev/null 2>&1; then
+  echo "Go is required for native dev. Install Go 1.26+ or use: make dev-docker-seed" >&2
+  exit 1
 fi
 
 if (( RUN_SEED )); then

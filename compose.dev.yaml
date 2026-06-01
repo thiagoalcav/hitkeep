@@ -1,0 +1,81 @@
+name: hitkeep-dev
+
+services:
+  backend:
+    image: golang:1.26.3
+    working_dir: /workspace
+    command: go tool air -c .air.toml
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/workspace
+      - hitkeep-dev-go-mod:/go/pkg/mod
+      - hitkeep-dev-go-build:/root/.cache/go-build
+      - hitkeep-dev-data:/var/lib/hitkeep/data
+    environment:
+      HITKEEP_DB_PATH: /var/lib/hitkeep/data/hitkeep.db
+      HITKEEP_DATA_PATH: /var/lib/hitkeep/data
+      HITKEEP_JWT_SECRET: ${HITKEEP_JWT_SECRET:-hitkeep-dev-jwt-secret}
+      HITKEEP_PUBLIC_URL: ${HITKEEP_PUBLIC_URL:-http://localhost:4200}
+      HITKEEP_MAIL_DRIVER: smtp
+      HITKEEP_MAIL_HOST: mailpit
+      HITKEEP_MAIL_PORT: "1025"
+      HITKEEP_MAIL_ENCRYPTION: none
+      HITKEEP_MCP_ENABLED: "true"
+    depends_on:
+      - mailpit
+
+  frontend:
+    image: node:24
+    working_dir: /workspace/frontend/dashboard
+    command: sh -c "npm ci --no-fund --no-audit && npm start -- --host 0.0.0.0 --poll 1000 --proxy-config proxy.conf.docker.json"
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./frontend/dashboard:/workspace/frontend/dashboard
+      - hitkeep-dev-node-modules:/workspace/frontend/dashboard/node_modules
+      - hitkeep-dev-npm-cache:/root/.npm
+    environment:
+      NG_CLI_ANALYTICS: "false"
+    depends_on:
+      - backend
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  seed:
+    image: golang:1.26.3
+    profiles:
+      - seed
+    working_dir: /workspace
+    command:
+      - go
+      - run
+      - ./cmd/seed
+      - -db
+      - /var/lib/hitkeep/data/hitkeep.db
+      - -data-path
+      - /var/lib/hitkeep/data
+      - -email
+      - ${HITKEEP_SEED_EMAIL:-demo@example.com}
+      - -password
+      - ${HITKEEP_SEED_PASSWORD:-demo1234}
+      - -domain
+      - ${HITKEEP_SEED_DOMAIN:-acme-analytics.io}
+      - -days
+      - ${HITKEEP_SEED_DAYS:-90}
+    volumes:
+      - .:/workspace
+      - hitkeep-dev-go-mod:/go/pkg/mod
+      - hitkeep-dev-go-build:/root/.cache/go-build
+      - hitkeep-dev-data:/var/lib/hitkeep/data
+
+volumes:
+  hitkeep-dev-go-mod: {}
+  hitkeep-dev-go-build: {}
+  hitkeep-dev-node-modules: {}
+  hitkeep-dev-npm-cache: {}
+  hitkeep-dev-data: {}

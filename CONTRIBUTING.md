@@ -16,14 +16,26 @@ HitKeep is an open-source project and contributions are welcome. This guide cove
 
 ## Prerequisites
 
-| Tool                  | Version                  | Purpose                                |
-|:----------------------|:-------------------------|:---------------------------------------|
-| **Go**                | 1.26+                    | Backend compilation                    |
-| **CGo / C toolchain** | system default           | Required by DuckDB's Go bindings       |
-| **Air**               | latest                   | Go live-reload for backend development |
-| **Node.js + npm **    | 24+ (LTS)                | Angular dashboard (includes tracker snippet build) |
+The easiest local setup only needs Docker with Docker Compose support. The
+Docker dev stack runs Go, Air, Angular, and Mailpit in containers.
 
-### macOS
+| Tool       | Version | Purpose                                  |
+|:-----------|:--------|:-----------------------------------------|
+| **Docker** | current | Full local development stack with Compose |
+
+If you prefer native development on your host, also install:
+
+| Tool                  | Version        | Purpose                                           |
+|:----------------------|:---------------|:--------------------------------------------------|
+| **Go**                | 1.26+          | Backend compilation and pinned Go tools           |
+| **CGo / C toolchain** | system default | Required by DuckDB's Go bindings                  |
+| **Node.js + npm**     | 24+ (LTS)      | Angular dashboard and tracker snippet build       |
+| **Mailpit**           | latest         | Local SMTP inbox for mail flows                   |
+
+Air is pinned in `go.mod` and runs through `go tool air`; do not install a
+separate global Air binary for normal HitKeep development.
+
+### Native macOS
 
 ```bash
 # Go (via Homebrew or https://go.dev/dl/)
@@ -32,16 +44,16 @@ brew install go
 # C toolchain (required for CGo / DuckDB)
 xcode-select --install
 
-# Air — live-reload for Go
-go install github.com/air-verse/air@latest
-
 # Node.js (via fnm, nvm, or Homebrew)
 brew install fnm
 fnm install 24
 fnm use 24
+
+# Local SMTP inbox
+brew install mailpit
 ```
 
-### Linux (Ubuntu / Debian)
+### Native Linux (Ubuntu / Debian)
 
 ```bash
 # Go — download from https://go.dev/dl/ and follow official instructions
@@ -51,12 +63,12 @@ sudo snap install go --classic
 # C toolchain
 sudo apt-get install -y gcc g++ make
 
-# Air
-go install github.com/air-verse/air@latest
-
 # Node.js (via fnm or nvm)
 curl -fsSL https://fnm.vercel.app/install | bash
 fnm install 24 && fnm use 24
+
+# Local SMTP inbox
+# See https://mailpit.axllent.org/docs/install/
 ```
 
 ---
@@ -70,31 +82,71 @@ git clone https://github.com/pascalebeier/hitkeep.git
 cd hitkeep
 ```
 
-**2. Start the full development stack:**
+**2. Start the full Docker development stack:**
 
 ```bash
-make dev
+make dev-docker-seed
 ```
 
-This runs two processes in parallel:
-- **Backend:** Air watches `internal/`, `cmd/`, and `*.go` files. On any change, it recompiles and restarts the Go server.
-- **Frontend:** `ng serve` starts the Angular dev server with hot module replacement on `http://localhost:4200`.
+This starts:
 
-The backend serves the API on `:8080`. The Angular dev server proxies `/api/*` and `/ingest` to `:8080` automatically.
+- **Backend:** Go 1.26.3 with Air live reload on `http://localhost:8080`
+- **Frontend:** Angular dev server with hot reload on `http://localhost:4200`
+- **Mailpit:** local mail UI on `http://localhost:8025`
+- **Seed data:** demo user, site, analytics, ecommerce, AI visibility, and chatbot data
 
-Open `http://localhost:4200` in your browser.
+Open `http://localhost:4200` and sign in with:
 
-If you want a local instance with realistic demo content, use:
+```text
+demo@example.com
+demo1234
+```
+
+If you do not have `make`, use Docker Compose directly:
+
+```bash
+docker compose -f compose.dev.yaml run --rm seed
+docker compose -f compose.dev.yaml up --build backend frontend mailpit
+```
+
+Use `make dev-docker` when you want the same Docker stack without reseeding data.
+
+---
+
+## Development Workflow
+
+### Docker Development
+
+```bash
+# Full hot-reload stack
+make dev-docker
+
+# Seed demo data, then start the stack
+make dev-docker-seed
+
+# Stop containers
+make dev-docker-down
+
+# Stop containers and remove dev volumes
+make dev-docker-clean
+```
+
+The Docker stack keeps Go modules, Go build cache, npm cache, `node_modules`,
+and development data in named Docker volumes. Your source tree is bind-mounted,
+so changing Go or Angular files triggers the matching live-reload process.
+
+### Native Development
+
+Use native dev if you already have Go, Node.js, npm, a C toolchain, and Mailpit
+installed on your host.
 
 ```bash
 make dev-seed
 ```
 
-That starts the same development stack and seeds a fresh local database so analytics, ecommerce, AI visibility, and auth flows have usable data immediately.
-
----
-
-## Development Workflow
+This runs the backend and frontend in parallel on your host. The backend serves
+the API on `:8080`, and the Angular dev server proxies `/api/*` and `/ingest`
+to the backend.
 
 ### Backend Only
 
@@ -104,7 +156,7 @@ make dev-backend
 
 The `.air.toml` configures Air to watch `*.go`, `*.sql`, `*.html`, `*.tpl`, and `*.tmpl` files. It excludes `frontend/`, `public/`, and `node_modules/`.
 
-When you change a Go file, Air recompiles and restarts in ~1–2 seconds.
+When you change a Go file, `go tool air` recompiles and restarts in ~1-2 seconds.
 
 ### Frontend Only
 

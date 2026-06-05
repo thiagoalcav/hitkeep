@@ -33,4 +33,13 @@ describe('KpiCard', () => {
         expect(badge.textContent.trim()).toBe('+10.0%');
         expect(badge.className).toContain('bg-green-100');
     });
+
+    it('highlights the body for live value changes without showing a skeleton', () => {
+        fixture.componentRef.setInput('highlight', true);
+        fixture.detectChanges();
+
+        const body = fixture.nativeElement.querySelector('.hk-kpi-card__body');
+        expect(body.className).toContain('hk-kpi-card__body--highlight');
+        expect(fixture.nativeElement.querySelector('p-skeleton')).toBeFalsy();
+    });
 });

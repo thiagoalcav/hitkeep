@@ -22,7 +22,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { MenuItem } from 'primeng/api';
 // Features
 import { SiteService } from '@features/sites/services/site.service';
-import { injectStatsQuery } from '@features/analytics/services/stats-query';
+import { injectStatsQuery, type StatsQueryMode } from '@features/analytics/services/stats-query';
 import { HitService } from '@features/hits/services/hit.service';
 import { RealtimeRefreshCoordinator } from '@services/realtime-refresh-coordinator.service';
 import { REALTIME_ALL_ANALYTICS_KINDS } from '@services/realtime.service';
@@ -33,8 +33,7 @@ import { FunnelList } from '@features/analytics/components/funnel-list';
 import { SearchConsoleDrilldown } from '@features/analytics/components/search-console-drilldown';
 import { FunnelManager } from '@features/funnels/components/funnel-manager';
 import { FunnelViewer } from '@features/funnels/components/funnel-viewer';
-import { Funnel } from '@models/analytics.types';
-import { MetricStat } from '@models/analytics.types';
+import type { Funnel, MetricStat, SiteStats } from '@models/analytics.types';
 import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
 import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
 import { WorkflowProgress, type WorkflowProgressStep } from '@components/workflow-progress/workflow-progress';
@@ -55,11 +54,14 @@ interface MetricFilter {
     type: MetricFilterType;
     value: string;
 }
+type KpiMetricID = 'live_visitors' | 'total_pageviews' | 'unique_sessions' | 'bounce_rate' | 'avg_session_duration' | 'pages_per_session';
 interface KpiCardData {
+    id: KpiMetricID;
     label: string;
     value: number | string;
     loading: boolean;
     valueClass: string;
+    highlight?: boolean;
     delta?: number | null;
     invertDelta?: boolean;
 }
@@ -129,6 +131,7 @@ export class Dashboard {
     protected stats = this.statsQuery.stats;
     protected isStatsLoading = this.statsQuery.isLoading;
     protected currentComparisonRange = this.statsQuery.comparisonRange;
+    protected highlightedKpis = signal<Set<KpiMetricID>>(new Set());
     protected showFunnelManager = signal(false);
     protected showFunnelViewer = signal(false);
     protected selectedFunnelId = signal<string | null>(null);
@@ -369,6 +372,7 @@ export class Dashboard {
         this.activeLanguage();
         const stats = this.stats();
         const loading = this.isStatsLoading();
+        const highlighted = this.highlightedKpis();
         const cmp = stats?.comparison;
         const baseClass = 'text-2xl xl:text-3xl font-bold';
         const liveVisitors = stats?.live_visitors ?? 0;
@@ -383,45 +387,57 @@ export class Dashboard {
 
         return [
             {
+                id: 'live_visitors',
                 label: this.transloco.translate('dashboard.kpis.liveVisitors'),
                 value: liveVisitors,
                 loading,
+                highlight: highlighted.has('live_visitors'),
                 valueClass: liveVisitors > 0 ? `${baseClass} text-green-600 dark:text-green-400 animate-pulse` : baseClass,
                 delta: null
             },
             {
+                id: 'total_pageviews',
                 label: this.transloco.translate('dashboard.kpis.pageviews'),
                 value: stats?.total_pageviews ?? 0,
                 loading,
+                highlight: highlighted.has('total_pageviews'),
                 valueClass: baseClass,
                 delta: cmp ? this.calcDelta(stats?.total_pageviews ?? 0, cmp.total_pageviews) : null
             },
             {
+                id: 'unique_sessions',
                 label: this.transloco.translate('dashboard.kpis.uniqueSessions'),
                 value: stats?.unique_sessions ?? 0,
                 loading,
+                highlight: highlighted.has('unique_sessions'),
                 valueClass: baseClass,
                 delta: cmp ? this.calcDelta(stats?.unique_sessions ?? 0, cmp.unique_sessions) : null
             },
             {
+                id: 'bounce_rate',
                 label: this.transloco.translate('dashboard.kpis.bounceRate'),
                 value: `${bounceValue}%`,
                 loading,
+                highlight: highlighted.has('bounce_rate'),
                 valueClass: baseClass,
                 delta: cmp ? this.calcDelta(stats?.bounce_rate ?? 0, cmp.bounce_rate) : null,
                 invertDelta: true
             },
             {
+                id: 'avg_session_duration',
                 label: this.transloco.translate('dashboard.kpis.avgDuration'),
                 value: this.formatDuration(stats?.avg_session_duration || 0),
                 loading,
+                highlight: highlighted.has('avg_session_duration'),
                 valueClass: baseClass,
                 delta: cmp ? this.calcDelta(stats?.avg_session_duration ?? 0, cmp.avg_session_duration) : null
             },
             {
+                id: 'pages_per_session',
                 label: this.transloco.translate('dashboard.kpis.pagesPerSession'),
                 value: pagesValue,
                 loading,
+                highlight: highlighted.has('pages_per_session'),
                 valueClass: baseClass,
                 delta: cmp ? this.calcDelta(stats?.pages_per_session ?? 0, cmp.pages_per_session) : null
             }
@@ -446,6 +462,9 @@ export class Dashboard {
     private searchSubject = new Subject<string>();
     protected searchQuery = signal('');
     private lastTableEvent: TableLazyLoadEvent | null = null;
+    private previousKpiSnapshot: Record<KpiMetricID, number> | null = null;
+    private lastHandledStatsResultSequence = 0;
+    private kpiHighlightTimer: ReturnType<typeof setTimeout> | null = null;
     protected isShortRange = computed(() => {
         if (this.selectedRange().value === '24h') return true;
         const customRangeDates = this.customRangeDates();
@@ -489,6 +508,29 @@ export class Dashboard {
             if (site && dates) {
                 this.loadStatsForCurrentRange();
                 this.refreshHits();
+            }
+        });
+
+        effect(() => {
+            const result = this.statsQuery.lastResult();
+            if (!result || result.sequence === this.lastHandledStatsResultSequence) return;
+
+            this.lastHandledStatsResultSequence = result.sequence;
+            const stats = this.stats();
+            if (!stats) {
+                this.previousKpiSnapshot = null;
+                this.clearKpiHighlights();
+                return;
+            }
+
+            const previous = this.previousKpiSnapshot;
+            const next = this.kpiSnapshot(stats);
+            this.previousKpiSnapshot = next;
+            if (result.mode !== 'background' || !previous) return;
+
+            const changed = this.changedKpis(previous, next);
+            if (changed.size > 0) {
+                this.flashKpis(changed);
             }
         });
 
@@ -590,12 +632,12 @@ export class Dashboard {
         }
     }
 
-    private refreshStatsOnly() {
-        this.loadStatsForCurrentRange();
+    private refreshStatsOnly(mode: StatsQueryMode = 'blocking') {
+        this.loadStatsForCurrentRange(mode);
     }
 
     private refreshRealtimeData() {
-        this.refreshStatsOnly();
+        this.refreshStatsOnly('background');
         this.refreshHits();
     }
 
@@ -609,12 +651,53 @@ export class Dashboard {
         return `${fmt(r.from)} – ${fmt(r.to)}`;
     });
 
-    private loadStatsForCurrentRange() {
+    private loadStatsForCurrentRange(mode: StatsQueryMode = 'blocking') {
         const site = this.siteService.activeSite();
         const dates = this.getCurrentDateRange();
         const filters = this.activeFilters();
         if (!site || !dates) return;
-        this.statsQuery.load({ siteId: site.id, from: dates.from, to: dates.to, filters });
+        const effectiveMode = mode === 'background' && this.stats() && !this.isStatsLoading() ? 'background' : 'blocking';
+        this.statsQuery.load({ siteId: site.id, from: dates.from, to: dates.to, filters, mode: effectiveMode });
+    }
+
+    private kpiSnapshot(stats: SiteStats): Record<KpiMetricID, number> {
+        return {
+            live_visitors: stats.live_visitors ?? 0,
+            total_pageviews: stats.total_pageviews ?? 0,
+            unique_sessions: stats.unique_sessions ?? 0,
+            bounce_rate: stats.bounce_rate ?? 0,
+            avg_session_duration: stats.avg_session_duration ?? 0,
+            pages_per_session: stats.pages_per_session ?? 0
+        };
+    }
+
+    private changedKpis(previous: Record<KpiMetricID, number>, next: Record<KpiMetricID, number>): Set<KpiMetricID> {
+        const changed = new Set<KpiMetricID>();
+        for (const id of Object.keys(next) as KpiMetricID[]) {
+            if (previous[id] !== next[id]) {
+                changed.add(id);
+            }
+        }
+        return changed;
+    }
+
+    private flashKpis(ids: Set<KpiMetricID>): void {
+        if (this.kpiHighlightTimer) {
+            clearTimeout(this.kpiHighlightTimer);
+        }
+        this.highlightedKpis.set(new Set(ids));
+        this.kpiHighlightTimer = setTimeout(() => {
+            this.highlightedKpis.set(new Set());
+            this.kpiHighlightTimer = null;
+        }, 1200);
+    }
+
+    private clearKpiHighlights(): void {
+        if (this.kpiHighlightTimer) {
+            clearTimeout(this.kpiHighlightTimer);
+            this.kpiHighlightTimer = null;
+        }
+        this.highlightedKpis.set(new Set());
     }
 
     protected calcDelta(current: number, previous: number): number | null {

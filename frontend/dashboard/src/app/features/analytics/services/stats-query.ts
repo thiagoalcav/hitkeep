@@ -1,7 +1,7 @@
 import { DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { finalize, Subscription } from 'rxjs';
-import { SiteStats } from '@models/analytics.types';
+import type { SiteStats } from '@models/analytics.types';
 import { StatsService } from '@features/analytics/services/stats.service';
 
 export interface StatsQueryRequest {
@@ -11,14 +11,25 @@ export interface StatsQueryRequest {
     filters?: { type: string; value: string }[];
     goalIds?: string[];
     funnelIds?: string[];
+    mode?: StatsQueryMode;
+}
+
+export type StatsQueryMode = 'blocking' | 'background';
+
+export interface StatsQueryResult {
+    mode: StatsQueryMode;
+    sequence: number;
 }
 
 export class StatsQuery {
     readonly stats = signal<SiteStats | null>(null);
     readonly isLoading = signal(false);
+    readonly isBackgroundRefreshing = signal(false);
     readonly comparisonRange = signal<{ from: string; to: string } | null>(null);
+    readonly lastResult = signal<StatsQueryResult | null>(null);
 
     private request: Subscription | null = null;
+    private resultSequence = 0;
 
     constructor(
         private readonly statsService: StatsService,
@@ -28,17 +39,31 @@ export class StatsQuery {
     }
 
     load(request: StatsQueryRequest): void {
+        const mode = request.mode ?? 'blocking';
         this.comparisonRange.set(this.statsService.comparisonRange(request.from, request.to));
         this.request?.unsubscribe();
-        this.isLoading.set(true);
+        if (mode === 'background') {
+            this.isBackgroundRefreshing.set(true);
+        } else {
+            this.isLoading.set(true);
+        }
         this.request = this.statsService
             .fetchStats(request.siteId, request.from, request.to, request.filters ?? [], request.goalIds ?? [], request.funnelIds ?? [])
             .pipe(
                 takeUntilDestroyed(this.destroyRef),
-                finalize(() => this.isLoading.set(false))
+                finalize(() => {
+                    if (mode === 'background') {
+                        this.isBackgroundRefreshing.set(false);
+                    } else {
+                        this.isLoading.set(false);
+                    }
+                })
             )
             .subscribe({
-                next: (stats) => this.stats.set(stats),
+                next: (stats) => {
+                    this.stats.set(stats);
+                    this.lastResult.set({ mode, sequence: ++this.resultSequence });
+                },
                 error: (e) => console.error(e)
             });
     }

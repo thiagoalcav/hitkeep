@@ -9,9 +9,9 @@ import { SkeletonModule } from 'primeng/skeleton';
     changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <p-card class="shadow-sm h-full border border-surface-200 dark:border-surface-700 surface-card">
-            <div class="flex flex-col gap-2">
+            <div class="hk-kpi-card__body flex flex-col gap-2" [class.hk-kpi-card__body--highlight]="highlight() && !loading()">
                 <span class="text-sm font-medium text-muted-color">{{ label() }}</span>
-                <div [class]="displayClass()">
+                <div [class]="displayClass()" [attr.aria-live]="highlight() && !loading() ? 'polite' : null">
                     @if (loading()) {
                         <p-skeleton width="60%" height="2rem" />
                     } @else {
@@ -25,12 +25,48 @@ import { SkeletonModule } from 'primeng/skeleton';
                 }
             </div>
         </p-card>
-    `
+    `,
+    styles: [
+        `
+            .hk-kpi-card__body {
+                border-radius: 0.5rem;
+                margin: -0.25rem;
+                padding: 0.25rem;
+                transition:
+                    background-color 160ms ease,
+                    box-shadow 160ms ease;
+            }
+
+            .hk-kpi-card__body--highlight {
+                animation: hk-kpi-live-update 900ms ease-out;
+            }
+
+            @keyframes hk-kpi-live-update {
+                0% {
+                    background: color-mix(in srgb, var(--p-primary-color) 16%, transparent);
+                    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--p-primary-color) 32%, transparent);
+                }
+                100% {
+                    background: transparent;
+                    box-shadow: inset 0 0 0 1px transparent;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                .hk-kpi-card__body--highlight {
+                    animation: none;
+                    background: color-mix(in srgb, var(--p-primary-color) 10%, transparent);
+                    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--p-primary-color) 24%, transparent);
+                }
+            }
+        `
+    ]
 })
 export class KpiCard {
     label = input.required<string>();
     value = input.required<string | number>();
     loading = input<boolean>(false);
+    highlight = input<boolean>(false);
     valueClass = input<string>('');
     delta = input<number | null>(null);
     invertDelta = input<boolean>(false);

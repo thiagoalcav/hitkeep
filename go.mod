@@ -1,6 +1,6 @@
 module hitkeep
 
-go 1.26.3
+go 1.26.4
 
 exclude (
 	github.com/armon/go-metrics v0.4.2
@@ -34,7 +34,7 @@ require (
 	golang.org/x/sys v0.45.0
 	golang.org/x/text v0.37.0
 	golang.org/x/time v0.15.0
-	google.golang.org/api v0.282.0
+	google.golang.org/api v0.283.0
 )
 
 require (
@@ -112,7 +112,7 @@ require (
 	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
-	golang.org/x/exp v0.0.0-20260529124908-c761662dc8c9 // indirect
+	golang.org/x/exp v0.0.0-20260603202125-055de637280b // indirect
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/tools v0.45.0 // indirect

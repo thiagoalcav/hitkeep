@@ -113,6 +113,9 @@ export class GoogleSearchConsolePage {
     });
 
     protected readonly syncStatus = computed(() => this.mapping()?.sync_status ?? null);
+    protected readonly syncLastSuccessAt = computed(() => this.syncStatus()?.last_success_at ?? null);
+    protected readonly syncLastAttemptAt = computed(() => this.syncStatus()?.last_attempt_at ?? null);
+    protected readonly syncNextRetryAt = computed(() => this.syncStatus()?.next_retry_at ?? null);
 
     protected readonly syncStatusKey = computed(() => `integration.googleSearchConsole.sync.${this.syncStatus()?.state ?? 'idle'}`);
 

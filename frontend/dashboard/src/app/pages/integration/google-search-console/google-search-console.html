@@ -204,11 +204,11 @@
                 <dl class="google-search-console-meta">
                     <div>
                         <dt>{{ "integration.googleSearchConsole.labels.lastSuccess" | transloco }}</dt>
-                        <dd><app-relative-date-time [value]="syncStatus()?.last_success_at" /></dd>
+                        <dd><app-relative-date-time [value]="syncLastSuccessAt()" /></dd>
                     </div>
                     <div>
                         <dt>{{ "integration.googleSearchConsole.labels.lastAttempt" | transloco }}</dt>
-                        <dd><app-relative-date-time [value]="syncStatus()?.last_attempt_at" /></dd>
+                        <dd><app-relative-date-time [value]="syncLastAttemptAt()" /></dd>
                     </div>
                     <div>
                         <dt>{{ "integration.googleSearchConsole.labels.importedRange" | transloco }}</dt>
@@ -217,7 +217,7 @@
                     @if (syncStatus()?.next_retry_at) {
                     <div>
                         <dt>{{ "integration.googleSearchConsole.labels.nextRetry" | transloco }}</dt>
-                        <dd><app-relative-date-time [value]="syncStatus()?.next_retry_at" /></dd>
+                        <dd><app-relative-date-time [value]="syncNextRetryAt()" /></dd>
                     </div>
                     }
                 </dl>

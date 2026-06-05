@@ -97,6 +97,7 @@ export class EcommercePage {
     protected readonly activeFilters = signal<MetricFilter[]>([]);
     protected readonly selectedProduct = signal<ProductFilter | null>(null);
     protected readonly hasFilters = computed(() => this.activeFilters().length > 0 || this.selectedProduct() !== null);
+    protected readonly summaryCurrency = computed(() => this.resolveCurrency(this.summary()?.currency));
     protected readonly breadcrumbItems = computed<PageBreadcrumbItem[]>(() => {
         this.activeLanguage();
         const site = this.siteService.activeSite();

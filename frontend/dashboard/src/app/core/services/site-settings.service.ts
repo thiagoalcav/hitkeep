@@ -1,6 +1,6 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Service, computed, signal } from '@angular/core';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class SiteSettingsService {
     private readonly requestedTab = signal<string | null>(null);
     readonly request = computed(() => this.requestedTab());

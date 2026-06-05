@@ -4,7 +4,7 @@ import { providePrimeNG } from 'primeng/config';
 import Aura from '@primeuix/themes/aura';
 
 import { routes } from './app.routes';
-import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { authInterceptor } from '@core/interceptors/auth.interceptor';
 import { basePathInterceptor } from '@core/interceptors/base-path.interceptor';
 import { shareInterceptor } from '@core/interceptors/share.interceptor';
@@ -18,7 +18,7 @@ export const appConfig: ApplicationConfig = {
     providers: [
         provideBrowserGlobalErrorListeners(),
         provideZonelessChangeDetection(),
-        provideHttpClient(withFetch(), withInterceptors([shareInterceptor, authInterceptor, basePathInterceptor])),
+        provideHttpClient(withInterceptors([shareInterceptor, authInterceptor, basePathInterceptor])),
         provideRouter(routes, withViewTransitions()),
         providePrimeNG({
             theme: {

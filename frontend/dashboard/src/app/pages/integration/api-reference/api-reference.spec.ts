@@ -2,7 +2,6 @@ import { SecurityContext } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { DOCUMENT } from '@angular/common';
 import { DomSanitizer } from '@angular/platform-browser';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { APIReferencePage } from './api-reference';
@@ -11,12 +10,15 @@ import { PreferencesService } from '@services/preferences.service';
 describe('APIReferencePage', () => {
     let fixture: ComponentFixture<APIReferencePage>;
     let sanitizer: DomSanitizer;
+    let base: HTMLBaseElement;
+    let previousBases: HTMLBaseElement[];
 
     beforeEach(async () => {
-        const document = window.document.implementation.createHTMLDocument('hitkeep api reference test');
-        const base = document.createElement('base');
+        previousBases = Array.from(window.document.head.querySelectorAll('base'));
+        previousBases.forEach((entry) => entry.remove());
+        base = window.document.createElement('base');
         base.href = '/hitkeep/';
-        document.head.append(base);
+        window.document.head.append(base);
 
         await TestBed.configureTestingModule({
             imports: [
@@ -51,14 +53,17 @@ describe('APIReferencePage', () => {
                     useValue: {
                         isDarkMode: () => false
                     }
-                },
-                { provide: DOCUMENT, useValue: document }
+                }
             ]
         }).compileComponents();
 
         sanitizer = TestBed.inject(DomSanitizer);
         fixture = TestBed.createComponent(APIReferencePage);
         fixture.detectChanges();
+    });
+    afterEach(() => {
+        base.remove();
+        previousBases.forEach((entry) => window.document.head.append(entry));
     });
 
     it('uses the supported Scalar query parameters', () => {

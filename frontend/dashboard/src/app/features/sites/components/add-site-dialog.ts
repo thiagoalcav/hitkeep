@@ -1,4 +1,4 @@
-import { Component, inject, model, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, model, signal } from '@angular/core';
 
 import { ReactiveFormsModule, FormControl, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { compatForm } from '@angular/forms/signals/compat';
@@ -11,6 +11,7 @@ import { SiteService } from '@features/sites/services/site.service';
     selector: 'app-add-site-dialog',
     standalone: true,
     imports: [ReactiveFormsModule, DialogShell, InputTextModule, MessageModule, TranslocoPipe],
+    changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <app-dialog-shell
             [title]="'sites.addDialog.title' | transloco"

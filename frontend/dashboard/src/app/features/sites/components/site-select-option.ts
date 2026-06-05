@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 import { SiteFavicon, SiteFaviconSource } from '@features/sites/components/site-favicon';
 
@@ -9,7 +9,7 @@ import { SiteFavicon, SiteFaviconSource } from '@features/sites/components/site-
     template: `
         <div class="site-select-option" [class.site-select-option--selected]="selected()">
             <app-site-favicon [site]="site()" />
-            <span class="site-select-option__domain" [title]="site()?.domain">{{ site()?.domain }}</span>
+            <span class="site-select-option__domain" [title]="domain()">{{ domain() }}</span>
         </div>
     `,
     styles: [
@@ -38,4 +38,5 @@ import { SiteFavicon, SiteFaviconSource } from '@features/sites/components/site-
 export class SiteSelectOption {
     readonly site = input.required<SiteFaviconSource | null>();
     readonly selected = input(false);
+    protected readonly domain = computed(() => this.site()?.domain ?? '');
 }

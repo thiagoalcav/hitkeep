@@ -1,6 +1,6 @@
-import { Injectable, effect, signal } from '@angular/core';
+import { Service, effect, signal } from '@angular/core';
 
-@Injectable({ providedIn: 'root' })
+@Service()
 export class PreferencesService {
     readonly isDarkMode = signal<boolean>(false);
 

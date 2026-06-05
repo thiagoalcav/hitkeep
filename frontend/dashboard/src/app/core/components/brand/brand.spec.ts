@@ -5,9 +5,11 @@ import { Brand } from './brand';
 describe('Brand', () => {
     let fixture: ComponentFixture<Brand>;
     let base: HTMLBaseElement;
+    let previousBaseHref: string | null;
 
     beforeEach(async () => {
         base = document.querySelector('base') ?? document.createElement('base');
+        previousBaseHref = base.parentNode ? base.getAttribute('href') : null;
         base.href = '/hitkeep/';
         if (!base.parentNode) {
             document.head.append(base);
@@ -22,7 +24,11 @@ describe('Brand', () => {
     });
 
     afterEach(() => {
-        base.href = '/';
+        if (previousBaseHref === null) {
+            base.remove();
+        } else {
+            base.setAttribute('href', previousBaseHref);
+        }
     });
 
     it('loads the logo from the configured browser base path', () => {

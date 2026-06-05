@@ -153,7 +153,7 @@
                                     </td>
                                     <td class="text-right">{{ formatNumber(product.quantity) }}</td>
                                     <td class="text-right">{{ formatNumber(product.orders) }}</td>
-                                    <td class="text-right">{{ formatMoney(product.revenue, resolveCurrency(summary()?.currency)) }}</td>
+                                    <td class="text-right">{{ formatMoney(product.revenue, summaryCurrency()) }}</td>
                                 </tr>
                             </ng-template>
                             <ng-template pTemplate="emptymessage">
@@ -247,7 +247,7 @@
                                         }
                                     </td>
                                     <td class="text-right">{{ formatNumber(source.orders) }}</td>
-                                    <td class="text-right">{{ formatMoney(source.revenue, resolveCurrency(summary()?.currency)) }}</td>
+                                    <td class="text-right">{{ formatMoney(source.revenue, summaryCurrency()) }}</td>
                                 </tr>
                             </ng-template>
                             <ng-template pTemplate="emptymessage">

@@ -28,7 +28,7 @@ import { InputTextModule } from 'primeng/inputtext';
                     </header>
                     <div class="site-settings-card__body">
                         <div class="site-settings-field">
-                            <label for="delete-site-confirm">{{ 'sites.danger.confirmLabel' | transloco: { domain: site()?.domain } }}</label>
+                            <label for="delete-site-confirm">{{ 'sites.danger.confirmLabel' | transloco: { domain: deleteConfirmDomain() } }}</label>
                             <input id="delete-site-confirm" pInputText class="w-full" [value]="confirmValue()" #confirmInput (input)="confirmValue.set(confirmInput.value)" [placeholder]="'sites.danger.confirmPlaceholder' | transloco" />
                         </div>
                     </div>
@@ -59,6 +59,7 @@ export class SiteDangerZone {
         if (!site) return false;
         return this.confirmValue().trim().toLowerCase() === site.domain.toLowerCase();
     });
+    protected deleteConfirmDomain = computed(() => this.site()?.domain ?? '');
 
     constructor() {
         effect(() => {

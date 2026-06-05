@@ -1,11 +1,12 @@
 import { DOCUMENT, NgOptimizedImage } from '@angular/common';
-import { Component, computed, inject, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { browserAppUrl } from '@core/interceptors/base-path.interceptor';
 
 @Component({
     selector: 'app-brand',
     standalone: true,
     imports: [NgOptimizedImage],
+    changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <div class="flex items-center gap-3 select-none">
             <img [ngSrc]="iconUrl()" alt="HitKeep Logo" class="object-cover" [class]="imgClass()" [width]="imgSize()" [height]="imgSize()" priority />

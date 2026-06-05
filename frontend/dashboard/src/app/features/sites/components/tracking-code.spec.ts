@@ -1,16 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { DOCUMENT } from '@angular/common';
 import { TranslocoTestingModule } from '@jsverse/transloco';
 import { SiteTrackingSettings } from './site-tracking-settings';
 
 describe('SiteTrackingSettings', () => {
     let component: SiteTrackingSettings;
     let fixture: ComponentFixture<SiteTrackingSettings>;
+    let base: HTMLBaseElement;
+    let previousBases: HTMLBaseElement[];
     beforeEach(async () => {
-        const document = window.document.implementation.createHTMLDocument('hitkeep tracking test');
-        const base = document.createElement('base');
+        previousBases = Array.from(window.document.head.querySelectorAll('base'));
+        previousBases.forEach((entry) => entry.remove());
+        base = window.document.createElement('base');
         base.href = '/hitkeep/';
-        document.head.append(base);
+        window.document.head.append(base);
 
         await TestBed.configureTestingModule({
             imports: [
@@ -23,14 +25,17 @@ describe('SiteTrackingSettings', () => {
                     },
                     preloadLangs: true
                 })
-            ],
-            providers: [{ provide: DOCUMENT, useValue: document }]
+            ]
         }).compileComponents();
 
         fixture = TestBed.createComponent(SiteTrackingSettings);
         fixture.componentRef.setInput('site', null);
         component = fixture.componentInstance;
         fixture.detectChanges();
+    });
+    afterEach(() => {
+        base.remove();
+        previousBases.forEach((entry) => window.document.head.append(entry));
     });
     it('should create', () => {
         expect(component).toBeTruthy();

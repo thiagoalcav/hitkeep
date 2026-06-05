@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnChanges, input, model, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnChanges, inject, input, model, output, signal } from '@angular/core';
 
 import { TranslocoPipe } from '@jsverse/transloco';
 import { TranslocoDecimalPipe } from '@jsverse/transloco-locale';
@@ -11,6 +11,7 @@ import { FunnelStats } from '@models/analytics.types';
     selector: 'app-funnel-viewer',
     standalone: true,
     imports: [DialogShell, SkeletonModule, TranslocoPipe, TranslocoDecimalPipe],
+    changeDetection: ChangeDetectionStrategy.OnPush,
     template: `
         <app-dialog-shell
             [title]="stats()?.name || ('funnels.viewer.dialogTitle' | transloco)"

@@ -1407,6 +1407,8 @@
                     "title": "Cloud-abonnement",
                     "managed": "Beheerde wolk",
                     "description": "Dit team draait op de gehoste HitKeep cloud footprint. Behoud het gratis abonnement voor validatie of upgrade wanneer je meer retentie, leden of volume nodig heeft.",
+                    "operatorPlan": "Operator",
+                    "operatorDescription": "Dit team van een operator is intern voor HitKeep Cloud en wordt niet beperkt door klantabonnementen.",
                     "jurisdiction": "Jurisdictie",
                     "region": "Regio",
                     "retention": "Behoud",

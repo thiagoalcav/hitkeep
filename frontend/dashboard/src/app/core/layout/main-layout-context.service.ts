@@ -25,7 +25,7 @@ export class MainLayoutContextService {
 
     readonly cloudHosted = this.bootstrap.cloudHosted;
     readonly cloudSupportUrl = this.bootstrap.cloudSupportUrl;
-    readonly canCreateTeams = computed(() => !this.cloudHosted());
+    readonly canCreateTeams = computed(() => !this.cloudHosted() || this.perms.isInstanceOwner());
     readonly isTeamAdmin = computed(() => this.access.canActiveTeam(TEAM_CAPABILITIES.manageSettings));
 
     readonly isMobileDrawerOpen = signal(false);

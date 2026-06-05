@@ -30,7 +30,7 @@ describe('TeamOverviewPage', () => {
         };
     };
 
-    const activeTeam = signal<Team | null>({
+    const createActiveTeam = (): Team => ({
         id: '00000000-0000-0000-0000-000000000001',
         name: 'Acme Analytics',
         logo_url: '',
@@ -55,8 +55,10 @@ describe('TeamOverviewPage', () => {
             support_url: 'https://hitkeep.com/cloud/support'
         }
     });
+    const activeTeam = signal<Team | null>(createActiveTeam());
 
     beforeEach(async () => {
+        activeTeam.set(createActiveTeam());
         systemStatusResponse = {
             needs_setup: false,
             version: 'v2.0.0',
@@ -102,6 +104,8 @@ describe('TeamOverviewPage', () => {
                                             title: 'Cloud plan',
                                             managed: 'Managed cloud',
                                             description: 'Run this team in the hosted EU or US cell with hard limits, backups, and upgrade paths.',
+                                            operatorPlan: 'Operator',
+                                            operatorDescription: 'This operator-owned team is internal to HitKeep Cloud and is not limited by customer plan entitlements.',
                                             manageBillingAction: 'Manage billing',
                                             jurisdiction: 'Jurisdiction',
                                             region: 'Region',
@@ -196,6 +200,8 @@ describe('TeamOverviewPage', () => {
 
         fixture = TestBed.createComponent(TeamOverviewPage);
         fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
     });
 
     it('renders usage cards for the active team', () => {
@@ -227,6 +233,41 @@ describe('TeamOverviewPage', () => {
         expect(text).toContain('Upgrade to Business');
     });
 
+    it('renders operator-owned cloud teams as internal and unlimited', () => {
+        activeTeam.set({
+            id: '00000000-0000-0000-0000-000000000003',
+            name: 'Operator Team',
+            logo_url: '',
+            role: 'owner',
+            created_at: '2026-03-01T00:00:00Z',
+            usage: {
+                current_sites: 12,
+                current_members: 8,
+                current_pending_invites: 0
+            },
+            entitlements: {
+                max_sites_per_team: 0,
+                max_team_members: 0,
+                max_retention_days: 0,
+                allow_sso: true,
+                allow_custom_branding: true
+            },
+            plan: {
+                code: 'operator',
+                name: 'Operator'
+            }
+        });
+        fixture.detectChanges();
+
+        const text = fixture.nativeElement.textContent;
+        expect(text).toContain('Operator');
+        expect(text).toContain('internal to HitKeep Cloud');
+        expect(text).toContain('Unlimited retention');
+        expect(text).toContain('Unlimited on the current plan');
+        expect(text).not.toContain('Manage billing');
+        expect(text).not.toContain('Upgrade to Pro');
+    });
+
     it('creates a billing portal session from the cloud card', () => {
         const component = fixture.componentInstance as TeamOverviewTestAccess;
         const cloudService = TestBed.inject(CloudService);
@@ -249,7 +290,7 @@ describe('TeamOverviewPage', () => {
         expect(redirectSpy).toHaveBeenCalledWith('https://checkout.stripe.test/session');
     });
 
-    it('hides usage limits and cloud plan details for OSS instances', () => {
+    it('hides usage limits and cloud plan details for OSS instances', async () => {
         fixture.destroy();
         systemStatusResponse = {
             needs_setup: false,
@@ -257,6 +298,8 @@ describe('TeamOverviewPage', () => {
         };
 
         fixture = TestBed.createComponent(TeamOverviewPage);
+        fixture.detectChanges();
+        await fixture.whenStable();
         fixture.detectChanges();
 
         const text = fixture.nativeElement.textContent;

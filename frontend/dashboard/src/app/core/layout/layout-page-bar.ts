@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { TeamSwitcher } from '@components/team-switcher/team-switcher';
 import { UserControls } from '@components/user-controls/user-controls';
@@ -16,5 +16,5 @@ export class LayoutPageBar {
     protected readonly teamService = this.context.teamService;
     protected readonly isCreateTeamVisible = this.context.isCreateTeamVisible;
     protected readonly beforeTeamSwitch = this.context.beforeTeamSwitch;
-    protected readonly canCreateTeams = computed(() => !this.context.cloudHosted());
+    protected readonly canCreateTeams = this.context.canCreateTeams;
 }

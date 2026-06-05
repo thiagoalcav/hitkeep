@@ -206,7 +206,11 @@ describe('MainLayout', () => {
         expect(utmTreeItem?.querySelector('ul.layout-sidebar-menu__list--nested')?.getAttribute('role')).toBe('group');
     });
 
-    it('should hide create team actions in hosted cloud', () => {
+    it('should hide create team actions in hosted cloud for non-owners', () => {
+        TestBed.inject(PermissionService).applyPermissions({
+            instance_role: 'user',
+            permissions: {}
+        });
         bootstrap.status.set({
             needs_setup: false,
             version: 'v2.0.0',
@@ -218,6 +222,21 @@ describe('MainLayout', () => {
         expect(switchers.length).toBeGreaterThan(0);
         for (const switcher of switchers) {
             expect(switcher.componentInstance.showAdd()).toBe(false);
+        }
+    });
+
+    it('should show create team actions in hosted cloud for instance owners', () => {
+        bootstrap.status.set({
+            needs_setup: false,
+            version: 'v2.0.0',
+            cloud: { hosted: true, signup_enabled: false }
+        });
+        fixture.detectChanges();
+
+        const switchers = fixture.debugElement.queryAll(By.css('app-team-switcher'));
+        expect(switchers.length).toBeGreaterThan(0);
+        for (const switcher of switchers) {
+            expect(switcher.componentInstance.showAdd()).toBe(true);
         }
     });
 
@@ -337,7 +356,7 @@ describe('MainLayout', () => {
         expect(secondItems).toBe(firstItems);
     });
 
-    it('should derive page-bar team creation affordance from cloud mode', () => {
+    it('should derive page-bar team creation affordance from cloud mode and instance owner role', () => {
         const pageBar = fixture.debugElement.query(By.directive(LayoutPageBar)).componentInstance as LayoutPageBarTestAccess;
 
         expect(pageBar.canCreateTeams()).toBe(true);
@@ -346,6 +365,13 @@ describe('MainLayout', () => {
             needs_setup: false,
             version: 'v2.0.0',
             cloud: { hosted: true, signup_enabled: false }
+        });
+
+        expect(pageBar.canCreateTeams()).toBe(true);
+
+        TestBed.inject(PermissionService).applyPermissions({
+            instance_role: 'user',
+            permissions: {}
         });
 
         expect(pageBar.canCreateTeams()).toBe(false);

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { TranslocoPipe } from '@jsverse/transloco';
 import { Brand } from '@components/brand/brand';
 import { TeamSwitcher } from '@components/team-switcher/team-switcher';
@@ -18,5 +18,5 @@ export class LayoutMobileHeader {
     protected readonly isMobileDrawerOpen = this.context.isMobileDrawerOpen;
     protected readonly isCreateTeamVisible = this.context.isCreateTeamVisible;
     protected readonly beforeTeamSwitch = this.context.beforeTeamSwitch;
-    protected readonly canCreateTeams = computed(() => !this.context.cloudHosted());
+    protected readonly canCreateTeams = this.context.canCreateTeams;
 }

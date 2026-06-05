@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"hitkeep/internal/api"
+	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/config"
 	"hitkeep/internal/database"
 	"hitkeep/internal/entitlements"
@@ -29,6 +30,9 @@ func TestHandleGetTeamsIncludesPlanMetadata(t *testing.T) {
 	userID, err := store.CreateUser(context.Background(), "plan@test.dev", "hash")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
+	}
+	if err := store.UpdateInstanceRole(context.Background(), userID, authcore.InstanceUser, userID); err != nil {
+		t.Fatalf("demote user: %v", err)
 	}
 	teams, _, err := store.ListUserTeams(context.Background(), userID)
 	if err != nil {
@@ -109,6 +113,9 @@ func TestHandleGetTeamsTreatsPendingCheckoutAsFreePlan(t *testing.T) {
 	userID, err := store.CreateUser(context.Background(), "pending@test.dev", "hash")
 	if err != nil {
 		t.Fatalf("create user: %v", err)
+	}
+	if err := store.UpdateInstanceRole(context.Background(), userID, authcore.InstanceUser, userID); err != nil {
+		t.Fatalf("demote user: %v", err)
 	}
 	teams, _, err := store.ListUserTeams(context.Background(), userID)
 	if err != nil {

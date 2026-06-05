@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, resource, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { ButtonModule } from 'primeng/button';
@@ -10,7 +10,9 @@ import { TeamService } from '@services/team.service';
 import { injectActiveLang } from '@core/i18n/active-lang';
 import { AnalyticsService } from '@services/analytics.service';
 import { CloudService } from '@services/cloud.service';
-import { CloudPlanTier, SystemStatus, TeamRole } from '@models/analytics.types';
+import { firstValueFrom } from 'rxjs';
+
+import { CloudPlanTier, TeamPlan, TeamRole } from '@models/analytics.types';
 
 @Component({
     selector: 'app-team-overview',
@@ -28,7 +30,10 @@ export class TeamOverviewPage {
     protected readonly teamService = inject(TeamService);
 
     protected readonly team = this.teamService.activeTeam;
-    protected readonly systemStatus = signal<SystemStatus | null>(null);
+    protected readonly systemStatusResource = resource({
+        loader: () => firstValueFrom(this.analyticsService.getSystemStatus())
+    });
+    protected readonly systemStatus = computed(() => this.systemStatusResource.value() ?? null);
     protected readonly planTiers = signal<CloudPlanTier[]>([]);
     protected readonly portalPending = signal(false);
     protected readonly checkoutPending = signal(false);
@@ -55,7 +60,10 @@ export class TeamOverviewPage {
         };
     });
     protected readonly showUsageSection = computed(() => this.usageCards().length > 0);
-    protected readonly canManageBilling = computed(() => this.cloudPlan()?.plan.code !== 'free' && !this.portalPending());
+    protected readonly canManageBilling = computed(() => {
+        const plan = this.cloudPlan()?.plan;
+        return Boolean(plan && plan.code !== 'free' && !this.isOperatorPlan(plan) && !this.portalPending());
+    });
     protected readonly canStartUpgrade = computed(() => this.cloudPlan()?.plan.code === 'free' && !this.checkoutPending());
     protected readonly showPlanComparison = computed(() => this.canStartUpgrade() && this.planTiers().length > 1);
     protected readonly currentTier = computed(() => {
@@ -63,20 +71,19 @@ export class TeamOverviewPage {
         return this.planTiers().find((t) => t.code === code) ?? null;
     });
     protected readonly upgradeTiers = computed(() => this.planTiers().filter((t) => t.code !== 'free'));
+    private planTiersLoaded = false;
 
     constructor() {
-        this.analyticsService
-            .getSystemStatus()
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe((status) => {
-                this.systemStatus.set(status);
-                if (status.cloud?.hosted) {
-                    this.cloudService
-                        .getPlans()
-                        .pipe(takeUntilDestroyed(this.destroyRef))
-                        .subscribe((tiers) => this.planTiers.set(tiers));
-                }
-            });
+        effect(() => {
+            if (this.planTiersLoaded || !this.systemStatus()?.cloud?.hosted) {
+                return;
+            }
+            this.planTiersLoaded = true;
+            this.cloudService
+                .getPlans()
+                .pipe(takeUntilDestroyed(this.destroyRef))
+                .subscribe((tiers) => this.planTiers.set(tiers));
+        });
     }
 
     protected roleSeverity(role: TeamRole): 'danger' | 'info' | 'secondary' {
@@ -131,6 +138,22 @@ export class TeamOverviewPage {
             return this.transloco.translate('admin.team.overview.cloud.unlimitedRetention');
         }
         return this.transloco.translate('admin.team.overview.cloud.retentionDays', { count: days });
+    }
+
+    protected planName(plan: TeamPlan): string {
+        this.activeLanguage();
+        if (this.isOperatorPlan(plan)) {
+            return this.transloco.translate('admin.team.overview.cloud.operatorPlan');
+        }
+        return plan.name;
+    }
+
+    protected cloudPlanDescription(plan: TeamPlan): string {
+        this.activeLanguage();
+        if (this.isOperatorPlan(plan)) {
+            return this.transloco.translate('admin.team.overview.cloud.operatorDescription');
+        }
+        return this.transloco.translate('admin.team.overview.cloud.description');
     }
 
     protected openBillingPortal(): void {
@@ -191,6 +214,10 @@ export class TeamOverviewPage {
                     this.checkoutPending.set(false);
                 }
             });
+    }
+
+    private isOperatorPlan(plan: TeamPlan): boolean {
+        return plan.code === 'operator';
     }
 
     private buildUsageCard(key: string, current: number, limit: number) {

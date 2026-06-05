@@ -17,10 +17,16 @@ import (
 
 	"hitkeep/internal/api"
 	"hitkeep/internal/appurl"
+	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/database"
 	"hitkeep/internal/entitlements"
 	"hitkeep/internal/mailables"
 	"hitkeep/internal/server/shared"
+)
+
+const (
+	operatorCloudPlanCode = "operator"
+	operatorCloudPlanName = "Operator"
 )
 
 func canManageTeam(role string) bool {
@@ -76,6 +82,41 @@ func writeTeamActionError(w http.ResponseWriter, statusCode int, code string, me
 		"message": message,
 	}); err != nil {
 		slog.Error("Failed to encode team action error", "error", err, "code", code)
+	}
+}
+
+func (h *handler) isCloudOperator(r *http.Request, actorID uuid.UUID) bool {
+	if h == nil || h.ctx == nil || h.ctx.Config == nil || h.ctx.Store == nil {
+		return false
+	}
+	if !h.ctx.Config.CloudHosted || actorID == uuid.Nil {
+		return false
+	}
+
+	role, err := h.ctx.Store.GetInstanceRole(r.Context(), actorID)
+	return err == nil && role == authcore.InstanceOwner
+}
+
+func (h *handler) isCloudOperatorTeamOwner(r *http.Request, actorID, teamID uuid.UUID) bool {
+	if !h.isCloudOperator(r, actorID) || teamID == uuid.Nil {
+		return false
+	}
+
+	role, err := h.ctx.Store.GetTenantRole(r.Context(), teamID, actorID)
+	return err == nil && role == database.TenantRoleOwner
+}
+
+func operatorTeamEntitlements() *api.TeamEntitlements {
+	return &api.TeamEntitlements{
+		AllowSSO:            true,
+		AllowCustomBranding: true,
+	}
+}
+
+func operatorTeamPlan() *api.TeamPlan {
+	return &api.TeamPlan{
+		Code: operatorCloudPlanCode,
+		Name: operatorCloudPlanName,
 	}
 }
 
@@ -138,9 +179,16 @@ func (h *handler) hydrateTeamSummaries(r *http.Request, teams []api.Team) []api.
 
 	enriched := make([]api.Team, len(teams))
 	copy(enriched, teams)
+	actorID := shared.GetUserIDFromContext(r)
+	isOperator := h.isCloudOperator(r, actorID)
 	for idx, team := range enriched {
-		enriched[idx].Entitlements = resolveTeamEntitlements(r.Context(), h.ctx.Store, h.ctx.Entitlements, team.ID)
-		enriched[idx].Plan = resolveTeamPlan(r.Context(), h.ctx.Store, h.ctx.Entitlements, team.ID)
+		if isOperator && team.Role == database.TenantRoleOwner {
+			enriched[idx].Entitlements = operatorTeamEntitlements()
+			enriched[idx].Plan = operatorTeamPlan()
+		} else {
+			enriched[idx].Entitlements = resolveTeamEntitlements(r.Context(), h.ctx.Store, h.ctx.Entitlements, team.ID)
+			enriched[idx].Plan = resolveTeamPlan(r.Context(), h.ctx.Store, h.ctx.Entitlements, team.ID)
+		}
 
 		analyticsStore := h.ctx.Store
 		if h.ctx.TenantStores != nil {
@@ -246,12 +294,12 @@ func (h *handler) handleCreateTeam() http.HandlerFunc {
 			}
 		}
 
-		if h.ctx.Config.CloudHosted {
+		if h.ctx.Config.CloudHosted && !h.isCloudOperator(r, actorID) {
 			http.Error(w, "Managed cloud accounts are limited to one team", http.StatusForbidden)
 			return
 		}
 
-		if h.ctx.Entitlements != nil {
+		if h.ctx.Entitlements != nil && !h.isCloudOperator(r, actorID) {
 			activeTenantID, entErr := h.ctx.Store.GetActiveTenantID(r.Context(), actorID)
 			if entErr == nil {
 				ent, entErr := h.ctx.Entitlements.ForTenant(r.Context(), activeTenantID)

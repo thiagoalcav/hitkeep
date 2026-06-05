@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,12 +20,14 @@ import (
 	"hitkeep/internal/server/shared"
 )
 
-func (h *handler) handleAddTeamMember() http.HandlerFunc {
-	type request struct {
-		Email string `json:"email"`
-		Role  string `json:"role"`
-	}
+var errCloudTeamMemberLimitReached = errors.New("cloud team member limit reached")
 
+type addTeamMemberRequest struct {
+	Email string `json:"email"`
+	Role  string `json:"role"`
+}
+
+func (h *handler) handleAddTeamMember() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		actorID := shared.GetUserIDFromContext(r)
 		if actorID == uuid.Nil {
@@ -44,41 +47,12 @@ func (h *handler) handleAddTeamMember() http.HandlerFunc {
 			return
 		}
 
-		var req request
-		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
-		decoder.DisallowUnknownFields()
-		if err := decoder.Decode(&req); err != nil {
-			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
-			return
-		}
-		if err := decoder.Decode(&struct{}{}); err != io.EOF {
-			http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+		email, role, ok := parseAddTeamMemberRequest(w, r, actorRole)
+		if !ok {
 			return
 		}
 
-		email := strings.ToLower(strings.TrimSpace(req.Email))
-		parsedEmail, err := mail.ParseAddress(email)
-		if err != nil || parsedEmail.Address != email {
-			http.Error(w, "Invalid email", http.StatusBadRequest)
-			return
-		}
-
-		role := strings.TrimSpace(strings.ToLower(req.Role))
-		if role == "" {
-			role = database.TenantRoleMember
-		}
-		if !database.IsValidTenantRole(role) {
-			http.Error(w, "Invalid role", http.StatusBadRequest)
-			return
-		}
-		if !database.CanAssignTenantRole(actorRole, role) {
-			http.Error(w, "Forbidden role assignment", http.StatusForbidden)
-			return
-		}
-		if role == database.TenantRoleOwner {
-			writeTeamActionError(w, http.StatusConflict, "ownership_transfer_required", "Use the ownership transfer action to assign the owner role")
-			return
-		}
+		operatorOwnedTeam := h.isCloudOperatorTeamOwner(r, actorID, teamID)
 
 		user, err := h.ctx.Store.GetUserByEmail(r.Context(), email)
 		if err != nil {
@@ -112,19 +86,14 @@ func (h *handler) handleAddTeamMember() http.HandlerFunc {
 				}
 			}
 		} else {
-			tempPassword := uuid.New().String()
-			hashedPassword, err := serverauth.HashPassword(tempPassword)
-			if err != nil {
-				slog.Error("Failed to hash invitee password", "error", err, "email", email, "team_id", teamID)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
+			if h.ctx.Config.CloudHosted && !operatorOwnedTeam {
+				if err := h.requireTeamMemberCapacity(r.Context(), teamID); err != nil {
+					h.writeCloudTeamMemberPreflightError(w, err, email, teamID, actorID)
+					return
+				}
 			}
 
-			if h.ctx.Config.CloudHosted {
-				targetUserID, err = h.ctx.Store.CreateUserWithoutDefaultTenant(r.Context(), email, hashedPassword)
-			} else {
-				targetUserID, err = h.ctx.Store.CreateUser(r.Context(), email, hashedPassword)
-			}
+			targetUserID, err = h.createInviteeUser(r.Context(), email)
 			if err != nil {
 				slog.Error("Failed to create invitee user", "error", err, "email", email, "team_id", teamID)
 				http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -133,81 +102,206 @@ func (h *handler) handleAddTeamMember() http.HandlerFunc {
 		}
 
 		if h.ctx.Config.CloudHosted && !wasMember {
-			teamCount, err := h.ctx.Store.CountUserNonDefaultTeams(r.Context(), targetUserID)
+			err := h.validateHostedCloudInvitee(r.Context(), teamID, targetUserID, email, user != nil && !operatorOwnedTeam)
 			if err != nil {
-				slog.Error("Failed to count cloud invitee teams", "error", err, "email", email, "team_id", teamID)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				h.writeCloudTeamMemberPreflightError(w, err, email, teamID, actorID)
 				return
-			}
-			if teamCount > 0 {
-				http.Error(w, "Managed cloud accounts are limited to one team", http.StatusConflict)
-				return
-			}
-
-			pendingInvites, err := h.ctx.Store.ListPendingTeamInvitesByEmail(r.Context(), email)
-			if err != nil {
-				slog.Error("Failed to load pending cloud invites", "error", err, "email", email, "team_id", teamID)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
-			for _, pendingInvite := range pendingInvites {
-				if pendingInvite.TeamID != teamID {
-					http.Error(w, "Managed cloud accounts are limited to one team", http.StatusConflict)
-					return
-				}
 			}
 		}
 
 		if wasMember {
-			if err := h.ctx.Store.AddTeamMember(r.Context(), teamID, targetUserID, role, actorID); err != nil {
-				slog.Error("Failed to update team member", "error", err, "team_id", teamID, "target_user_id", targetUserID, "actor_id", actorID)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
-			details := fmt.Sprintf("Member %s set to role %s", email, role)
-			if previousRole != "" {
-				details = fmt.Sprintf("Member %s role changed from %s to %s", email, previousRole, role)
-			}
-			targetID := targetUserID
-			h.appendTeamAudit(r, teamID, actorID, "member.role_updated", details, &targetID)
-
-			w.Header().Set("Content-Type", "application/json")
-			if err := json.NewEncoder(w).Encode(map[string]any{
-				"status":    "ok",
-				"is_invite": false,
-			}); err != nil {
-				slog.Error("Failed to encode add team member response", "error", err, "team_id", teamID, "actor_id", actorID)
-			}
+			h.updateExistingTeamMember(w, r, teamID, actorID, targetUserID, email, role, previousRole)
 			return
 		}
 
-		invite, err := h.ctx.Store.CreateTeamInvite(r.Context(), teamID, email, role, &targetUserID, actorID)
-		if err != nil {
-			switch {
-			case errors.Is(err, database.ErrTeamInviteAlreadyPending):
-				http.Error(w, "Invite already pending", http.StatusConflict)
-				return
-			default:
-				slog.Error("Failed to create team invite", "error", err, "team_id", teamID, "target_user_id", targetUserID, "actor_id", actorID)
-				http.Error(w, "Internal server error", http.StatusInternalServerError)
-				return
-			}
+		h.createPendingTeamInvite(w, r, teamID, actorID, targetUserID, email, role)
+	}
+}
+
+func (h *handler) updateExistingTeamMember(w http.ResponseWriter, r *http.Request, teamID, actorID, targetUserID uuid.UUID, email, role, previousRole string) {
+	if err := h.ctx.Store.AddTeamMember(r.Context(), teamID, targetUserID, role, actorID); err != nil {
+		slog.Error("Failed to update team member", "error", err, "team_id", teamID, "target_user_id", targetUserID, "actor_id", actorID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	details := fmt.Sprintf("Member %s set to role %s", email, role)
+	if previousRole != "" {
+		details = fmt.Sprintf("Member %s role changed from %s to %s", email, previousRole, role)
+	}
+	targetID := targetUserID
+	h.appendTeamAudit(r, teamID, actorID, "member.role_updated", details, &targetID)
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]any{"status": "ok", "is_invite": false}); err != nil {
+		slog.Error("Failed to encode add team member response", "error", err, "team_id", teamID, "actor_id", actorID)
+	}
+}
+
+func (h *handler) createPendingTeamInvite(w http.ResponseWriter, r *http.Request, teamID, actorID, targetUserID uuid.UUID, email, role string) {
+	invite, err := h.ctx.Store.CreateTeamInvite(r.Context(), teamID, email, role, &targetUserID, actorID)
+	if err != nil {
+		if errors.Is(err, database.ErrTeamInviteAlreadyPending) {
+			http.Error(w, "Invite already pending", http.StatusConflict)
+			return
 		}
+		slog.Error("Failed to create team invite", "error", err, "team_id", teamID, "target_user_id", targetUserID, "actor_id", actorID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
 
-		details := fmt.Sprintf("Invitation sent to %s with role %s", email, role)
-		targetID := targetUserID
-		h.appendTeamAudit(r, teamID, actorID, "member.invited", details, &targetID)
-		h.sendTeamInviteEmail(r, teamID, actorID, invite)
+	details := fmt.Sprintf("Invitation sent to %s with role %s", email, role)
+	targetID := targetUserID
+	h.appendTeamAudit(r, teamID, actorID, "member.invited", details, &targetID)
+	h.sendTeamInviteEmail(r, teamID, actorID, invite)
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(map[string]any{
-			"status":    "ok",
-			"is_invite": true,
-			"invite":    invite,
-		}); err != nil {
-			slog.Error("Failed to encode add team member response", "error", err, "team_id", teamID, "actor_id", actorID)
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]any{"status": "ok", "is_invite": true, "invite": invite}); err != nil {
+		slog.Error("Failed to encode add team member response", "error", err, "team_id", teamID, "actor_id", actorID)
+	}
+}
+
+func parseAddTeamMemberRequest(w http.ResponseWriter, r *http.Request, actorRole string) (string, string, bool) {
+	req, ok := decodeAddTeamMemberRequest(w, r)
+	if !ok {
+		return "", "", false
+	}
+
+	email, ok := normalizeAddTeamMemberEmail(w, req.Email)
+	if !ok {
+		return "", "", false
+	}
+
+	role, ok := normalizeAssignableTeamRole(w, req.Role, actorRole)
+	if !ok {
+		return "", "", false
+	}
+	return email, role, true
+}
+
+func decodeAddTeamMemberRequest(w http.ResponseWriter, r *http.Request) (addTeamMemberRequest, bool) {
+	var req addTeamMemberRequest
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+		return addTeamMemberRequest{}, false
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+		return addTeamMemberRequest{}, false
+	}
+	return req, true
+}
+
+func normalizeAddTeamMemberEmail(w http.ResponseWriter, value string) (string, bool) {
+	email := strings.ToLower(strings.TrimSpace(value))
+	parsedEmail, err := mail.ParseAddress(email)
+	if err != nil || parsedEmail.Address != email {
+		http.Error(w, "Invalid email", http.StatusBadRequest)
+		return "", false
+	}
+	return email, true
+}
+
+func normalizeAssignableTeamRole(w http.ResponseWriter, value, actorRole string) (string, bool) {
+	role := strings.TrimSpace(strings.ToLower(value))
+	if role == "" {
+		role = database.TenantRoleMember
+	}
+	if !database.IsValidTenantRole(role) {
+		http.Error(w, "Invalid role", http.StatusBadRequest)
+		return "", false
+	}
+	if !database.CanAssignTenantRole(actorRole, role) {
+		http.Error(w, "Forbidden role assignment", http.StatusForbidden)
+		return "", false
+	}
+	if role == database.TenantRoleOwner {
+		writeTeamActionError(w, http.StatusConflict, "ownership_transfer_required", "Use the ownership transfer action to assign the owner role")
+		return "", false
+	}
+	return role, true
+}
+
+func (h *handler) createInviteeUser(ctx context.Context, email string) (uuid.UUID, error) {
+	tempPassword := uuid.New().String()
+	hashedPassword, err := serverauth.HashPassword(tempPassword)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("hash invitee password: %w", err)
+	}
+	if h.ctx.Config.CloudHosted {
+		return h.ctx.Store.CreateUserWithoutDefaultTenant(ctx, email, hashedPassword)
+	}
+	return h.ctx.Store.CreateUser(ctx, email, hashedPassword)
+}
+
+func (h *handler) validateHostedCloudInvitee(ctx context.Context, teamID, targetUserID uuid.UUID, email string, requireCapacity bool) error {
+	if requireCapacity {
+		if err := h.requireTeamMemberCapacity(ctx, teamID); err != nil {
+			return err
 		}
 	}
+	if err := h.requireSingleHostedCloudTeam(ctx, targetUserID); err != nil {
+		return err
+	}
+	return h.requireNoPendingHostedCloudInviteOutsideTeam(ctx, teamID, email)
+}
+
+func (h *handler) requireSingleHostedCloudTeam(ctx context.Context, targetUserID uuid.UUID) error {
+	teamCount, err := h.ctx.Store.CountUserNonDefaultTeams(ctx, targetUserID)
+	if err != nil {
+		return fmt.Errorf("count cloud invitee teams: %w", err)
+	}
+	if teamCount > 0 {
+		return database.ErrManagedCloudSingleTeamLimit
+	}
+	return nil
+}
+
+func (h *handler) requireNoPendingHostedCloudInviteOutsideTeam(ctx context.Context, teamID uuid.UUID, email string) error {
+	pendingInvites, err := h.ctx.Store.ListPendingTeamInvitesByEmail(ctx, email)
+	if err != nil {
+		return fmt.Errorf("load pending cloud invites: %w", err)
+	}
+	for _, pendingInvite := range pendingInvites {
+		if pendingInvite.TeamID != teamID {
+			return database.ErrManagedCloudSingleTeamLimit
+		}
+	}
+	return nil
+}
+
+func (h *handler) writeCloudTeamMemberPreflightError(w http.ResponseWriter, err error, email string, teamID, actorID uuid.UUID) {
+	switch {
+	case errors.Is(err, errCloudTeamMemberLimitReached):
+		slog.Warn("Cloud team member limit reached", "error", err, "email", email, "team_id", teamID, "actor_id", actorID)
+		http.Error(w, "Team member limit reached", http.StatusForbidden)
+	case errors.Is(err, database.ErrManagedCloudSingleTeamLimit):
+		http.Error(w, "Managed cloud accounts are limited to one team", http.StatusConflict)
+	default:
+		slog.Error("Failed to validate hosted cloud team member", "error", err, "email", email, "team_id", teamID, "actor_id", actorID)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+	}
+}
+
+func (h *handler) requireTeamMemberCapacity(ctx context.Context, teamID uuid.UUID) error {
+	ent := resolveTeamEntitlements(ctx, h.ctx.Store, h.ctx.Entitlements, teamID)
+	if ent == nil || ent.MaxTeamMembers <= 0 {
+		return nil
+	}
+
+	memberCount, err := h.ctx.Store.CountTeamMembers(ctx, teamID)
+	if err != nil {
+		return err
+	}
+	pendingInviteCount, err := h.ctx.Store.CountPendingTeamInvites(ctx, teamID)
+	if err != nil {
+		return err
+	}
+	if memberCount+pendingInviteCount >= ent.MaxTeamMembers {
+		return errCloudTeamMemberLimitReached
+	}
+	return nil
 }
 
 func (h *handler) handleResendTeamInvite() http.HandlerFunc {

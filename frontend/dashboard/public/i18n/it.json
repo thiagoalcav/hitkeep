@@ -1425,6 +1425,8 @@
                     "title": "Piano cloud",
                     "managed": "Cloud gestito",
                     "description": "Questo team è eseguito sull'infrastruttura gestita di HitKeep Cloud. Mantieni il piano gratuito per validare oppure passa a un piano superiore quando ti servono più retention, membri o volume.",
+                    "operatorPlan": "Operatore",
+                    "operatorDescription": "Questo team di proprietà di un operatore è interno a HitKeep Cloud e non è limitato dai diritti dei piani cliente.",
                     "jurisdiction": "Giurisdizione",
                     "region": "Regione",
                     "retention": "Retention",

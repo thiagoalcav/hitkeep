@@ -1425,6 +1425,8 @@
                     "title": "Cloud-Tarif",
                     "managed": "Managed Cloud",
                     "description": "Dieses Team läuft auf der gehosteten HitKeep-Cloud. Du kannst beim Free-Tarif zum Validieren bleiben oder upgraden, wenn du mehr Aufbewahrung, Mitglieder oder Volumen brauchst.",
+                    "operatorPlan": "Operator",
+                    "operatorDescription": "Dieses operatorgeführte Team ist intern für HitKeep Cloud und wird nicht durch Kunden-Tariflimits begrenzt.",
                     "jurisdiction": "Jurisdiktion",
                     "region": "Region",
                     "retention": "Aufbewahrung",

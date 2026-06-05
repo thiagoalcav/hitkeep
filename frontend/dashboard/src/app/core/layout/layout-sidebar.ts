@@ -24,7 +24,7 @@ export class LayoutSidebar {
     protected readonly siteService = this.context.siteService;
     protected readonly shareService = this.context.shareService;
     protected readonly teamService = this.context.teamService;
-    protected readonly canCreateTeams = computed(() => !this.context.cloudHosted());
+    protected readonly canCreateTeams = this.context.canCreateTeams;
     protected readonly isMobileDrawerOpen = this.context.isMobileDrawerOpen;
     protected readonly isAddSiteVisible = this.context.isAddSiteVisible;
     protected readonly isCreateTeamVisible = this.context.isCreateTeamVisible;

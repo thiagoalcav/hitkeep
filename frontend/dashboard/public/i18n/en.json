@@ -1425,6 +1425,8 @@
                     "title": "Cloud plan",
                     "managed": "Managed cloud",
                     "description": "This team is running on the hosted HitKeep cloud footprint. Keep the free plan for validation or upgrade when you need more retention, members, or volume.",
+                    "operatorPlan": "Operator",
+                    "operatorDescription": "This operator-owned team is internal to HitKeep Cloud and is not limited by customer plan entitlements.",
                     "jurisdiction": "Jurisdiction",
                     "region": "Region",
                     "retention": "Retention",

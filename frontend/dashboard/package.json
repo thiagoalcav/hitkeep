@@ -66,6 +66,7 @@
         "jasmine-core": "~6.2.0",
         "jsdom": "^29.1.1",
         "oxfmt": "^0.52.0",
+        "playwright": "^1.60.0",
         "postcss": "^8.5.15",
         "typescript": "~6.0.3",
         "typescript-eslint": "8.59.4",

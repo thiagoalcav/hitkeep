@@ -163,6 +163,35 @@ func TestFetchMetadataMiddleware_AllowsServerIngestWithoutBrowserHeaders(t *test
 	}
 }
 
+func TestFetchMetadataMiddleware_AllowsAIFetchIngestWithoutBrowserHeaders(t *testing.T) {
+	handler := FetchMetadataMiddleware("https://hitkeep.example", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/sites/34787c4f-c11e-4ee7-860b-e15464147f49/ingest/ai-fetch", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("expected status %d, got %d", http.StatusNoContent, rec.Code)
+	}
+}
+
+func TestFetchMetadataMiddleware_BlocksCrossSiteAIFetchIngestWithBrowserHeaders(t *testing.T) {
+	handler := FetchMetadataMiddleware("https://hitkeep.example", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	req := httptest.NewRequest(http.MethodPost, "/api/sites/34787c4f-c11e-4ee7-860b-e15464147f49/ingest/ai-fetch", nil)
+	req.Header.Set("Sec-Fetch-Site", "cross-site")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected status %d, got %d", http.StatusNotFound, rec.Code)
+	}
+}
+
 func TestFetchMetadataMiddleware_AllowsStateChangingAPIWithMatchingRefererFallback(t *testing.T) {
 	handler := FetchMetadataMiddleware("https://hitkeep.example", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusNoContent)

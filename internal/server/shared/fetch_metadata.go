@@ -15,6 +15,7 @@ func FetchMetadataMiddleware(publicURL string, next http.Handler) http.Handler {
 		path := r.URL.Path
 		isStripeWebhook := path == "/api/cloud/webhooks/stripe"
 		isServerIngest := path == "/api/ingest/server/pageview" || path == "/api/ingest/server/event"
+		isAIFetchIngest := strings.HasPrefix(path, "/api/sites/") && strings.HasSuffix(path, "/ingest/ai-fetch")
 		isSignupVerify := path == "/api/cloud/signup/verify"
 		isMFAEmailLinkVerify := path == "/api/auth/mfa/email-link/verify"
 		isGoogleSearchConsoleOAuthCallback := path == "/api/integrations/google-search-console/oauth/callback"
@@ -22,7 +23,7 @@ func FetchMetadataMiddleware(publicURL string, next http.Handler) http.Handler {
 		if secFetchSite == "" {
 			// Older/limited browsers fallback: for state-changing API requests, enforce
 			// same-origin via Origin or Referer validation.
-			if strings.HasPrefix(path, "/api/") && isStateChangingMethod(r.Method) && !isStripeWebhook && !isServerIngest {
+			if strings.HasPrefix(path, "/api/") && isStateChangingMethod(r.Method) && !isStripeWebhook && !isServerIngest && !isAIFetchIngest {
 				expectedOrigin := configuredOrigin
 				if expectedOrigin == "" {
 					expectedOrigin = requestOrigin(r)

@@ -28,6 +28,11 @@ func cloudOp(summary string, description string, security []any, parameters []an
 	return out
 }
 
+func internalOp(out map[string]any) map[string]any {
+	out["x-internal"] = true
+	return out
+}
+
 func paramRef(ref string) map[string]any {
 	return map[string]any{"$ref": ref}
 }

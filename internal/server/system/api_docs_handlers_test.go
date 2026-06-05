@@ -380,7 +380,9 @@ func TestOpenAPISpecV1IncludesOpportunityPaths(t *testing.T) {
 		"/api/sites/{id}/opportunities/digest-preview":  "get",
 		"/api/sites/{id}/opportunities/generate":        "post",
 		"/api/sites/{id}/opportunities/{opportunityID}": "patch",
+		"/api/sites/{id}/realtime":                      "get",
 		"/api/share/{token}/sites/{id}/opportunities":   "get",
+		"/api/share/{token}/sites/{id}/realtime":        "get",
 	}
 	for path, method := range expected {
 		pathItem := requireMap(t, paths, path)
@@ -393,6 +395,23 @@ func TestOpenAPISpecV1IncludesOpportunityPaths(t *testing.T) {
 	postOp := requireMap(t, generatePath, "post")
 	if !strings.Contains(postOp["description"].(string), "deterministic opportunity detectors") {
 		t.Fatalf("expected generate description to mention deterministic detectors, got %q", postOp["description"])
+	}
+}
+
+func TestOpenAPISpecV1MarksDashboardInternalPaths(t *testing.T) {
+	spec := openAPISpecV1("http://localhost:8080")
+	paths := requireMap(t, spec, "paths")
+
+	for _, path := range []string{
+		"/api/sites/{id}/realtime",
+		"/api/share/{token}/sites/{id}/realtime",
+		"/api/user/bootstrap",
+	} {
+		pathItem := requireMap(t, paths, path)
+		getOp := requireMap(t, pathItem, "get")
+		if internal, ok := getOp["x-internal"].(bool); !ok || !internal {
+			t.Fatalf("expected GET %s to be marked x-internal=true, got %#v", path, getOp["x-internal"])
+		}
 	}
 }
 

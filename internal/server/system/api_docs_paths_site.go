@@ -205,6 +205,10 @@ func openAPIV1AdminSitePaths() map[string]any {
 				paramRef("#/components/parameters/goalIDQuery"), paramRef("#/components/parameters/funnelIDQuery"),
 			}, nil, map[string]any{"200": jsonRefResp("Site stats", "#/components/schemas/SiteStats")}),
 		},
+		"/api/sites/{id}/realtime": map[string]any{
+			"get": internalOp(op([]string{"Sites"}, "Stream site realtime changes", "Streams privacy-safe site-scoped analytics invalidation events using server-sent events. Requires site.view.", secCookie(), []any{paramRef("#/components/parameters/siteID")}, nil,
+				map[string]any{"200": desc("Server-sent event stream with analytics.changed and analytics.resync events")})),
+		},
 		"/api/sites/{id}/opportunities": map[string]any{
 			"get": op([]string{"Opportunities"}, "List opportunities", "Lists saved opportunity recommendations for a site. Requires site.view and returns only validated customer-visible outputs with cited evidence.", secAnyAuth(), []any{paramRef("#/components/parameters/siteID")}, nil,
 				map[string]any{"200": jsonRefResp("Opportunity list", "#/components/schemas/OpportunityListResponse")}),
@@ -519,6 +523,10 @@ func openAPIV1AdminSitePaths() map[string]any {
 		},
 		"/api/share/{token}/sites/{id}/hits/export": map[string]any{
 			"get": op([]string{"Share"}, "Export shared hits", "Exports hits through share token in csv/xlsx/parquet/json/ndjson.", nil, []any{paramRef("#/components/parameters/token"), paramRef("#/components/parameters/siteID"), paramRef("#/components/parameters/from"), paramRef("#/components/parameters/to"), paramRef("#/components/parameters/query"), paramRef("#/components/parameters/filter"), paramRef("#/components/parameters/filterType"), paramRef("#/components/parameters/filterValue"), paramRef("#/components/parameters/format")}, nil, map[string]any{"200": desc("Export file stream")}),
+		},
+		"/api/share/{token}/sites/{id}/realtime": map[string]any{
+			"get": internalOp(op([]string{"Share"}, "Stream shared realtime changes", "Streams privacy-safe site-scoped analytics invalidation events through a read-only share token using server-sent events.", nil, []any{paramRef("#/components/parameters/token"), paramRef("#/components/parameters/siteID")}, nil,
+				map[string]any{"200": desc("Server-sent event stream with analytics.changed and analytics.resync events")})),
 		},
 		"/api/share/{token}/sites/{id}/events/names": map[string]any{
 			"get": op([]string{"Share"}, "Shared event names", "Lists event names through share token.", nil, eventRangeParams(paramRef("#/components/parameters/token"), paramRef("#/components/parameters/siteID")), nil,

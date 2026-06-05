@@ -14,6 +14,7 @@ import (
 	"hitkeep/internal/api"
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/database"
+	"hitkeep/internal/realtime"
 	"hitkeep/internal/server/shared"
 )
 
@@ -110,6 +111,7 @@ func (h *handler) handleDeleteDefinition(
 	deleteDefinition func(context.Context, *database.Store, uuid.UUID, uuid.UUID) error,
 	deleteLogMessage string,
 	deleteLegacyLogMessage string,
+	realtimeKind string,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		siteID, ok := parseSiteID(w, r)
@@ -143,6 +145,7 @@ func (h *handler) handleDeleteDefinition(
 			}
 		}
 
+		h.publishDefinitionChange(siteID, realtimeKind)
 		w.WriteHeader(http.StatusOK)
 	}
 }
@@ -205,6 +208,7 @@ func (h *handler) handleCreateGoal() http.HandlerFunc {
 				return
 			}
 		}
+		h.publishDefinitionChange(siteID, realtime.KindGoals)
 
 		w.WriteHeader(http.StatusCreated)
 	}
@@ -219,6 +223,7 @@ func (h *handler) handleDeleteGoal() http.HandlerFunc {
 		},
 		"Failed to delete goal",
 		"Failed to delete legacy shared goal",
+		realtime.KindGoals,
 	)
 }
 
@@ -363,6 +368,7 @@ func (h *handler) handleCreateFunnel() http.HandlerFunc {
 				return
 			}
 		}
+		h.publishDefinitionChange(siteID, realtime.KindFunnels)
 
 		w.WriteHeader(http.StatusCreated)
 	}
@@ -377,7 +383,22 @@ func (h *handler) handleDeleteFunnel() http.HandlerFunc {
 		},
 		"Failed to delete funnel",
 		"Failed to delete legacy shared funnel",
+		realtime.KindFunnels,
 	)
+}
+
+func (h *handler) publishDefinitionChange(siteID uuid.UUID, kind string) {
+	if h.ctx == nil || h.ctx.Realtime == nil || kind == "" {
+		return
+	}
+	now := time.Now().UTC()
+	h.ctx.Realtime.Publish(realtime.Event{
+		SiteID:      siteID,
+		Kinds:       []string{kind},
+		ChangedAt:   now,
+		BucketStart: now.Truncate(time.Minute),
+		Counts:      map[string]int{kind: 1},
+	})
 }
 
 func (h *handler) handleGetFunnelStats() http.HandlerFunc {

@@ -22,6 +22,7 @@ import (
 	"hitkeep/internal/entitlements"
 	"hitkeep/internal/mailer"
 	"hitkeep/internal/mcpserver"
+	"hitkeep/internal/realtime"
 	"hitkeep/internal/searchconsole"
 	"hitkeep/internal/server/admin"
 	"hitkeep/internal/server/aifetch"
@@ -64,6 +65,7 @@ type Server struct {
 	spamFilter     *blocking.SpamFilter
 	spamFilterStop context.CancelFunc
 	takeout        *takeout.TakeoutService
+	realtime       *realtime.Broker
 	ctx            *shared.Context
 
 	indexHTML   []byte
@@ -72,7 +74,7 @@ type Server struct {
 	publicBasePath string
 }
 
-func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStores *database.TenantStoreManager, ent entitlements.Provider, cluster *cluster.Manager, producer *nsq.Producer, mailService *mailer.Mailer) *Server {
+func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStores *database.TenantStoreManager, ent entitlements.Provider, cluster *cluster.Manager, producer *nsq.Producer, mailService *mailer.Mailer, realtimeBroker *realtime.Broker) *Server {
 	config.NormalizeMCPConfig(conf)
 
 	ingestLim := shared.NewIPRateLimiter(rate.Limit(conf.IngestRateLimit), conf.IngestBurst)
@@ -85,6 +87,9 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStore
 	}
 
 	takeoutService := takeout.NewTakeoutServiceWithTenantStores(store, tenantStores, "archive/takeout")
+	if realtimeBroker == nil {
+		realtimeBroker = realtime.NewBroker()
+	}
 
 	var ipFilter *blocking.IPFilter
 	var ipFilterStop context.CancelFunc
@@ -128,6 +133,7 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStore
 		spamFilter:     spamFilter,
 		spamFilterStop: spamFilterStop,
 		takeout:        takeoutService,
+		realtime:       realtimeBroker,
 		publicBasePath: normalizePublicBasePath(conf.PublicURL),
 	}
 
@@ -186,6 +192,7 @@ func New(conf *config.Config, publicFS fs.FS, store *database.Store, tenantStore
 			ClientSecret: conf.GoogleSearchConsoleClientSecret,
 		}),
 		AI:                       aiService,
+		Realtime:                 realtimeBroker,
 		IPFilter:                 ipFilter,
 		SpamFilter:               spamFilter,
 		StartedAt:                time.Now().UTC(),

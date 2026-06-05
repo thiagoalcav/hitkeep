@@ -39,6 +39,10 @@ export class StatsService {
         return this.http.get<SiteStats>(`/api/sites/${siteId}/stats`, { params });
     }
 
+    comparisonRange(from: string, to: string): { from: string; to: string } {
+        return this.computePreviousPeriod(from, to);
+    }
+
     private computePreviousPeriod(from: string, to: string): { from: string; to: string } {
         const start = new Date(from);
         const end = new Date(to);

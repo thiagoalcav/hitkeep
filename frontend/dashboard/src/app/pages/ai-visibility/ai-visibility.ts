@@ -22,6 +22,8 @@ import { injectActiveLang } from '@core/i18n/active-lang';
 import { buildTakeoutExportMenuItems, DEFAULT_HITS_EXPORT_FORMAT, TakeoutExportFormat } from '@core/export/export-formats';
 import { TakeoutDownloadService } from '@services/takeout-download.service';
 import { AIFilterChip, formatBytes, formatResponseMs, mapAIFetchSeries } from '@pages/ai-visibility/ai-visibility.utils';
+import { RealtimeRefreshCoordinator } from '@services/realtime-refresh-coordinator.service';
+import { REALTIME_KINDS } from '@services/realtime.service';
 
 type FilterKey = 'assistantName' | 'assistantFamily' | 'resourceType' | 'path';
 
@@ -46,6 +48,7 @@ export class AIVisibility {
     private readonly localeService = inject(TranslocoLocaleService);
     private readonly takeoutDownloadService = inject(TakeoutDownloadService);
     private readonly destroyRef = inject(DestroyRef);
+    private readonly realtimeRefresh = inject(RealtimeRefreshCoordinator);
     private readonly activeLanguage = injectActiveLang();
 
     protected readonly timeRanges = signal<RangeOption[]>(DEFAULT_RANGE_OPTIONS);
@@ -67,6 +70,7 @@ export class AIVisibility {
     protected readonly isLoadingOverview = signal(false);
     protected readonly isLoadingSeries = signal(false);
     protected readonly isLoadingCorrelation = signal(false);
+    private readonly realtimeRefreshKey = signal(0);
     protected readonly isLoading = computed(() => this.isLoadingOverview() || this.isLoadingSeries() || this.isLoadingCorrelation());
     protected readonly isExporting = signal(false);
     protected readonly exportState = signal<'idle' | 'success' | 'error'>('idle');
@@ -303,6 +307,7 @@ export class AIVisibility {
             const site = this.activeSite();
             this.selectedRange();
             const filters = this.filters();
+            this.realtimeRefreshKey();
 
             if (!site) {
                 this.overview.set(null);
@@ -314,6 +319,13 @@ export class AIVisibility {
             const dates = this.getCurrentDateRange();
             if (!dates) return;
             this.loadData(site.id, dates.from, dates.to, filters);
+        });
+        this.realtimeRefresh.registerSignalUntilDestroyed(this.destroyRef, {
+            siteId: () => this.activeSite()?.id ?? null,
+            kinds: [REALTIME_KINDS.aiFetch],
+            enabled: () => !!this.activeSite() && !!this.getCurrentDateRange(),
+            signal: this.realtimeRefreshKey,
+            debounceMs: 700
         });
     }
 

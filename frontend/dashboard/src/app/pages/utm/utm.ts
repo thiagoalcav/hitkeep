@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, linkedSignal, signal } from '@angular/core';
 import { injectActiveLang } from '@core/i18n/active-lang';
 import { ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -7,7 +7,7 @@ import { TranslocoLocaleService } from '@jsverse/transloco-locale';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { SiteService } from '@features/sites/services/site.service';
-import { StatsService } from '@features/analytics/services/stats.service';
+import { injectStatsQuery } from '@features/analytics/services/stats-query';
 import { PageHeader, PageHeaderLeft } from '@components/page-header/page-header';
 import { PageBreadcrumb, PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
 import { PageState } from '@components/page-state/page-state';
@@ -15,6 +15,8 @@ import { KpiCard } from '@features/analytics/components/kpi-card';
 import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from '@components/range-toolbar/range-toolbar';
 import { MetricCardGroup, MetricCardGroupRowClick, MetricCardGroupTab } from '@features/analytics/components/metric-card-group';
 import { SeriesChart, SeriesChartPoint, SeriesDefinition } from '@features/analytics/components/series-chart';
+import { RealtimeRefreshCoordinator } from '@services/realtime-refresh-coordinator.service';
+import { REALTIME_TRAFFIC_KINDS } from '@services/realtime.service';
 
 type MetricFilterType = 'utm_campaign' | 'utm_content' | 'utm_medium' | 'utm_source' | 'utm_term';
 interface MetricFilter {
@@ -32,10 +34,12 @@ interface MetricFilter {
 })
 export class UtmDashboard {
     protected siteService = inject(SiteService);
-    protected statsService = inject(StatsService);
     private localeService = inject(TranslocoLocaleService);
     private transloco = inject(TranslocoService);
+    private destroyRef = inject(DestroyRef);
+    private realtimeRefresh = inject(RealtimeRefreshCoordinator);
     private readonly activeLanguage = injectActiveLang();
+    private statsQuery = injectStatsQuery();
 
     protected timeRanges = signal<RangeOption[]>(DEFAULT_RANGE_OPTIONS);
     protected selectedRange = linkedSignal<RangeOption[], RangeOption>({
@@ -46,7 +50,10 @@ export class UtmDashboard {
         }
     });
     protected readonly customRangeDates = signal<Date[] | null>(null);
-    protected isRefreshing = computed(() => this.statsService.isLoading());
+    protected stats = this.statsQuery.stats;
+    protected isStatsLoading = this.statsQuery.isLoading;
+    protected currentComparisonRange = this.statsQuery.comparisonRange;
+    protected isRefreshing = computed(() => this.isStatsLoading());
     protected isShortRange = computed(() => {
         if (this.selectedRange().value === '24h') return true;
         const customRangeDates = this.customRangeDates();
@@ -81,7 +88,7 @@ export class UtmDashboard {
 
     protected comparisonLabel = computed(() => {
         this.activeLanguage();
-        const r = this.statsService.currentComparisonRange();
+        const r = this.currentComparisonRange();
         if (!r) return '';
         const showYear = new Date(r.from).getFullYear() !== new Date().getFullYear();
         const opts = showYear ? ({ month: 'short', day: 'numeric', year: 'numeric' } as const) : ({ month: 'short', day: 'numeric' } as const);
@@ -90,7 +97,7 @@ export class UtmDashboard {
     });
 
     protected readonly utmSeriesData = computed<SeriesChartPoint[]>(() => {
-        const chartData = this.statsService.stats()?.chart_data ?? [];
+        const chartData = this.stats()?.chart_data ?? [];
         return chartData.map((point) => ({
             time: point.time,
             pageviews: point.pageviews,
@@ -98,7 +105,7 @@ export class UtmDashboard {
         }));
     });
     protected readonly utmComparisonSeriesData = computed<SeriesChartPoint[]>(() => {
-        const chartData = this.statsService.stats()?.comparison?.chart_data ?? [];
+        const chartData = this.stats()?.comparison?.chart_data ?? [];
         return chartData.map((point) => ({
             time: point.time,
             pageviews: point.pageviews,
@@ -126,9 +133,9 @@ export class UtmDashboard {
     });
     protected readonly utmKpis = computed(() => {
         this.activeLanguage();
-        const stats = this.statsService.stats();
+        const stats = this.stats();
         const cmp = stats?.comparison;
-        const loading = this.statsService.isLoading();
+        const loading = this.isStatsLoading();
 
         return [
             {
@@ -170,8 +177,8 @@ export class UtmDashboard {
     });
     protected readonly metricCardTabs = computed<MetricCardGroupTab<MetricFilterType>[]>(() => {
         this.activeLanguage();
-        const stats = this.statsService.stats();
-        const loading = this.statsService.isLoading();
+        const stats = this.stats();
+        const loading = this.isStatsLoading();
         return [
             {
                 id: 'acquisition',
@@ -241,7 +248,14 @@ export class UtmDashboard {
             if (!site || !dates) {
                 return;
             }
-            this.statsService.loadStats(site.id, dates.from, dates.to, filters);
+            this.loadStats(site.id, dates.from, dates.to, filters);
+        });
+        this.realtimeRefresh.registerUntilDestroyed(this.destroyRef, {
+            siteId: () => this.siteService.activeSite()?.id ?? null,
+            kinds: REALTIME_TRAFFIC_KINDS,
+            enabled: () => !!this.siteService.activeSite() && !!this.getCurrentDateRange(),
+            refresh: () => this.refreshStats(),
+            debounceMs: 700
         });
     }
 
@@ -251,7 +265,11 @@ export class UtmDashboard {
         if (!site || !dates) {
             return;
         }
-        this.statsService.loadStats(site.id, dates.from, dates.to, this.activeFilters());
+        this.loadStats(site.id, dates.from, dates.to, this.activeFilters());
+    }
+
+    private loadStats(siteId: string, from: string, to: string, filters: MetricFilter[]) {
+        this.statsQuery.load({ siteId, from, to, filters });
     }
 
     protected calcDelta(current: number, previous: number): number | null {

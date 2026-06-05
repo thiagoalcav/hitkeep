@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal, effect, computed, linkedSignal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
 import { injectActiveLang } from '@core/i18n/active-lang';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { compatForm } from '@angular/forms/signals/compat';
@@ -9,7 +9,7 @@ import { CardModule } from 'primeng/card';
 import { SelectModule } from 'primeng/select';
 import { SiteService } from '@features/sites/services/site.service';
 import { AnalyticsService } from '@services/analytics.service';
-import { StatsService } from '@features/analytics/services/stats.service';
+import { injectStatsQuery } from '@features/analytics/services/stats-query';
 import { FunnelList } from '@features/analytics/components/funnel-list';
 import { MetricCardGroup, MetricCardGroupRowClick, MetricCardGroupTab } from '@features/analytics/components/metric-card-group';
 import { FunnelManager } from '@features/funnels/components/funnel-manager';
@@ -22,6 +22,8 @@ import { FunnelSeriesPoint } from '@models/analytics.types';
 import { KpiCard } from '@features/analytics/components/kpi-card';
 import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from '@components/range-toolbar/range-toolbar';
 import { finalize } from 'rxjs';
+import { RealtimeRefreshCoordinator } from '@services/realtime-refresh-coordinator.service';
+import { REALTIME_FUNNEL_KINDS } from '@services/realtime.service';
 
 type MetricFilterType = 'path' | 'referrer' | 'device' | 'country' | 'city' | 'provider' | 'asn';
 interface MetricFilter {
@@ -40,10 +42,12 @@ interface MetricFilter {
 export class Funnels {
     protected siteService = inject(SiteService);
     protected analyticsService = inject(AnalyticsService);
-    protected statsService = inject(StatsService);
     private localeService = inject(TranslocoLocaleService);
     private transloco = inject(TranslocoService);
+    private destroyRef = inject(DestroyRef);
+    private realtimeRefresh = inject(RealtimeRefreshCoordinator);
     private readonly activeLanguage = injectActiveLang();
+    private statsQuery = injectStatsQuery();
 
     protected timeRanges = signal<RangeOption[]>(DEFAULT_RANGE_OPTIONS);
     protected selectedRange = linkedSignal<RangeOption[], RangeOption>({
@@ -78,7 +82,10 @@ export class Funnels {
     protected funnels = signal<Funnel[]>([]);
     protected loading = signal(false);
     protected funnelsLoaded = signal(false);
-    protected isRefreshing = computed(() => this.statsService.isLoading() || this.isFunnelSeriesLoading() || this.loading());
+    protected stats = this.statsQuery.stats;
+    protected isStatsLoading = this.statsQuery.isLoading;
+    protected currentComparisonRange = this.statsQuery.comparisonRange;
+    protected isRefreshing = computed(() => this.isStatsLoading() || this.isFunnelSeriesLoading() || this.loading());
     protected funnelSeries = signal<FunnelSeriesPoint[]>([]);
     protected funnelSeriesChart = computed<SeriesChartPoint[]>(() =>
         this.funnelSeries().map((point) => ({
@@ -109,7 +116,7 @@ export class Funnels {
 
     protected comparisonLabel = computed(() => {
         this.activeLanguage();
-        const r = this.statsService.currentComparisonRange();
+        const r = this.currentComparisonRange();
         if (!r) return '';
         const showYear = new Date(r.from).getFullYear() !== new Date().getFullYear();
         const opts = showYear ? ({ month: 'short', day: 'numeric', year: 'numeric' } as const) : ({ month: 'short', day: 'numeric' } as const);
@@ -180,8 +187,8 @@ export class Funnels {
     });
     protected readonly metricCardTabs = computed<MetricCardGroupTab<MetricFilterType>[]>(() => {
         this.activeLanguage();
-        const stats = this.statsService.stats();
-        const loading = this.statsService.isLoading();
+        const stats = this.stats();
+        const loading = this.isStatsLoading();
         const siteDomain = this.siteService.activeSite()?.domain ?? null;
         return [
             {
@@ -319,16 +326,23 @@ export class Funnels {
             if (site && dates && this.funnelsLoaded()) {
                 const funnelIds = this.getFunnelIdsForFilters();
                 if (funnelIds.length === 0 && filters.length === 0) {
-                    this.statsService.stats.set(null);
+                    this.stats.set(null);
                     return;
                 }
                 this.loadFunnelSeries(site.id, dates.from, dates.to, funnelIds);
-                this.statsService.loadStats(site.id, dates.from, dates.to, metricFilters, [], funnelIds);
-                const cmpRange = untracked(() => this.statsService.currentComparisonRange());
+                this.loadStats(site.id, dates.from, dates.to, metricFilters, funnelIds);
+                const cmpRange = untracked(() => this.currentComparisonRange());
                 if (cmpRange) {
                     this.loadComparisonFunnelSeries(site.id, cmpRange.from, cmpRange.to, funnelIds);
                 }
             }
+        });
+        this.realtimeRefresh.registerUntilDestroyed(this.destroyRef, {
+            siteId: () => this.siteService.activeSite()?.id ?? null,
+            kinds: REALTIME_FUNNEL_KINDS,
+            enabled: () => !!this.siteService.activeSite() && !!this.getCurrentDateRange(),
+            refresh: () => this.refreshStats(),
+            debounceMs: 700
         });
     }
 
@@ -476,16 +490,20 @@ export class Funnels {
         const funnelIds = this.getFunnelIdsForFilters();
 
         if (funnelIds.length === 0 && filters.length === 0) {
-            this.statsService.stats.set(null);
+            this.stats.set(null);
             return;
         }
 
         this.loadFunnelSeries(site.id, dates.from, dates.to, funnelIds);
-        this.statsService.loadStats(site.id, dates.from, dates.to, metricFilters, [], funnelIds);
-        const cmpRange = this.statsService.currentComparisonRange();
+        this.loadStats(site.id, dates.from, dates.to, metricFilters, funnelIds);
+        const cmpRange = this.currentComparisonRange();
         if (cmpRange) {
             this.loadComparisonFunnelSeries(site.id, cmpRange.from, cmpRange.to, funnelIds);
         }
+    }
+
+    private loadStats(siteId: string, from: string, to: string, filters: MetricFilter[], funnelIds: string[]) {
+        this.statsQuery.load({ siteId, from, to, filters, funnelIds });
     }
 
     protected getCurrentDateRange() {

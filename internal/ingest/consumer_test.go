@@ -16,6 +16,7 @@ import (
 
 	"hitkeep/internal/api"
 	"hitkeep/internal/database"
+	"hitkeep/internal/realtime"
 )
 
 func testBatchLogger() *slog.Logger {
@@ -127,7 +128,7 @@ func TestConsumerPersistsHitCanonicalTimestampFromMessage(t *testing.T) {
 		t.Fatalf("marshal hit: %v", err)
 	}
 
-	consumer := NewConsumer(mgr, testBatchLogger(), slog.LevelWarn)
+	consumer := NewConsumer(mgr, testBatchLogger(), slog.LevelWarn, nil)
 	t.Cleanup(consumer.Stop)
 	if err := consumer.handleHit(newConsumerTestMessage(body)); err != nil {
 		t.Fatalf("handleHit: %v", err)
@@ -178,7 +179,7 @@ func TestConsumerPersistsEventCanonicalTimestampFromMessage(t *testing.T) {
 		t.Fatalf("marshal event: %v", err)
 	}
 
-	consumer := NewConsumer(mgr, testBatchLogger(), slog.LevelWarn)
+	consumer := NewConsumer(mgr, testBatchLogger(), slog.LevelWarn, nil)
 	t.Cleanup(consumer.Stop)
 	if err := consumer.handleEvent(newConsumerTestMessage(body)); err != nil {
 		t.Fatalf("handleEvent: %v", err)
@@ -199,6 +200,57 @@ func TestConsumerPersistsEventCanonicalTimestampFromMessage(t *testing.T) {
 	}
 	if total != 1 {
 		t.Fatalf("expected 1 persisted event in canonical range, got %d points=%+v", total, series)
+	}
+}
+
+func TestConsumerPublishesRealtimeAfterPersistingEvents(t *testing.T) {
+	ctx := context.Background()
+	store := setupConsumerStore(t)
+	mgr := database.NewTenantStoreManager(store, t.TempDir())
+	t.Cleanup(func() { _ = mgr.Close() })
+
+	userID, err := store.CreateUser(ctx, "consumer-realtime@example.com", "hash")
+	if err != nil {
+		t.Fatalf("CreateUser: %v", err)
+	}
+	site, err := store.CreateSite(ctx, userID, "consumer-realtime.example.com")
+	if err != nil {
+		t.Fatalf("CreateSite: %v", err)
+	}
+
+	broker := realtime.NewBroker()
+	sub, _, _ := broker.Subscribe(site.ID, "")
+	defer sub.Close()
+
+	canonical := time.Date(2026, 4, 4, 8, 15, 0, 0, time.UTC)
+	event := api.Event{
+		SiteID:     site.ID,
+		SessionID:  uuid.New(),
+		Name:       "purchase",
+		Properties: map[string]any{"value": 42},
+		Timestamp:  canonical,
+	}
+	body, err := json.Marshal(event)
+	if err != nil {
+		t.Fatalf("marshal event: %v", err)
+	}
+
+	consumer := NewConsumer(mgr, testBatchLogger(), slog.LevelWarn, broker)
+	t.Cleanup(consumer.Stop)
+	if err := consumer.handleEvent(newConsumerTestMessage(body)); err != nil {
+		t.Fatalf("handleEvent: %v", err)
+	}
+
+	select {
+	case changed := <-sub.Events():
+		if changed.Name != realtime.EventAnalyticsChanged {
+			t.Fatalf("expected changed event, got %q", changed.Name)
+		}
+		if changed.Counts[realtime.KindEvents] != 1 || changed.Counts[realtime.KindEcommerce] != 1 {
+			t.Fatalf("expected event and ecommerce counts, got %+v", changed.Counts)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for realtime event")
 	}
 }
 
@@ -236,7 +288,7 @@ func TestConsumerPersistsWebVitalCanonicalTimestampFromMessage(t *testing.T) {
 		t.Fatalf("marshal web vital: %v", err)
 	}
 
-	consumer := NewConsumer(mgr, testBatchLogger(), slog.LevelWarn)
+	consumer := NewConsumer(mgr, testBatchLogger(), slog.LevelWarn, nil)
 	t.Cleanup(consumer.Stop)
 	if err := consumer.handleWebVital(newConsumerTestMessage(body)); err != nil {
 		t.Fatalf("handleWebVital: %v", err)

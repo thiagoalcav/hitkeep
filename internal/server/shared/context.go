@@ -17,6 +17,7 @@ import (
 	"hitkeep/internal/database"
 	"hitkeep/internal/entitlements"
 	"hitkeep/internal/mailer"
+	"hitkeep/internal/realtime"
 	"hitkeep/internal/searchconsole"
 	"hitkeep/internal/takeout"
 )
@@ -75,6 +76,7 @@ type Context struct {
 	AuthState      *AuthStateStore
 	SearchConsole  searchconsole.Client
 	AI             hitai.Client
+	Realtime       *realtime.Broker
 	IPFilter       *blocking.IPFilter
 	SpamFilter     *blocking.SpamFilter
 

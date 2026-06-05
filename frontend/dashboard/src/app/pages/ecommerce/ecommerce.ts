@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, linkedSignal, signal } from '@angular/core';
 import { DOCUMENT, NgOptimizedImage } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { finalize, forkJoin } from 'rxjs';
@@ -22,6 +22,8 @@ import { MetricCardGroup, MetricCardGroupRowClick, MetricCardGroupTab } from '@f
 import { SeriesChart, SeriesChartPoint, SeriesDefinition } from '@features/analytics/components/series-chart';
 import { EcommerceProductStat, EcommerceSeriesPoint, EcommerceSourceStat, EcommerceSummary, MetricStat, SiteStats } from '@models/analytics.types';
 import { browserAppUrl } from '@core/interceptors/base-path.interceptor';
+import { RealtimeRefreshCoordinator } from '@services/realtime-refresh-coordinator.service';
+import { REALTIME_EVENT_KINDS } from '@services/realtime.service';
 
 type MetricFilterType = 'referrer' | 'device' | 'country' | 'city' | 'provider' | 'asn' | 'utm_source';
 
@@ -67,6 +69,8 @@ export class EcommercePage {
     private localeService = inject(TranslocoLocaleService);
     private transloco = inject(TranslocoService);
     private document = inject(DOCUMENT);
+    private destroyRef = inject(DestroyRef);
+    private realtimeRefresh = inject(RealtimeRefreshCoordinator);
     private readonly activeLanguage = injectActiveLang();
 
     protected readonly summary = signal<EcommerceSummary | null>(null);
@@ -75,6 +79,7 @@ export class EcommercePage {
     protected readonly sources = signal<EcommerceSourceStat[]>([]);
     protected readonly filterStats = signal<SiteStats | null>(null);
     protected readonly isLoading = signal(false);
+    private readonly realtimeRefreshKey = signal(0);
 
     protected readonly timeRanges = signal<RangeOption[]>(DEFAULT_RANGE_OPTIONS);
     protected readonly selectedRange = linkedSignal<RangeOption[], RangeOption>({
@@ -293,6 +298,7 @@ export class EcommercePage {
             const dates = this.getCurrentDateRange();
             const filters = this.activeFilters();
             const product = this.selectedProduct();
+            this.realtimeRefreshKey();
             if (!site || !dates) {
                 this.summary.set(null);
                 this.series.set([]);
@@ -302,6 +308,13 @@ export class EcommercePage {
                 return;
             }
             this.loadData(site.id, dates.from, dates.to, filters, product);
+        });
+        this.realtimeRefresh.registerSignalUntilDestroyed(this.destroyRef, {
+            siteId: () => this.siteService.activeSite()?.id ?? null,
+            kinds: REALTIME_EVENT_KINDS,
+            enabled: () => !!this.siteService.activeSite() && !!this.getCurrentDateRange(),
+            signal: this.realtimeRefreshKey,
+            debounceMs: 700
         });
     }
 

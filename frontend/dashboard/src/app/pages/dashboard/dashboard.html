@@ -12,7 +12,7 @@
         [timeRanges]="timeRanges()"
         [selectedRange]="selectedRange()"
         [customRangeDates]="customRangeDates()"
-        [loading]="statsService.isLoading()"
+        [loading]="isStatsLoading()"
         (selectedRangeChange)="selectedRange.set($event)"
         (customRangeDatesChange)="customRangeDates.set($event)"
         (refresh)="refreshAll()"
@@ -76,9 +76,9 @@
                 </div>
             </div>
             <app-traffic-chart
-                [data]="statsService.stats()?.chart_data || []"
-                [comparisonData]="statsService.stats()?.comparison?.chart_data || []"
-                [isLoading]="statsService.isLoading()"
+                [data]="stats()?.chart_data || []"
+                [comparisonData]="stats()?.comparison?.chart_data || []"
+                [isLoading]="isStatsLoading()"
                 [isShortRange]="isShortRange()"
                 [comparisonLabel]="comparisonLabel()"
                 (snippetClicked)="openTrackingSettings()"
@@ -122,9 +122,9 @@
     <app-metric-card-group class="mb-6" [tabs]="metricCardTabs()" (rowClicked)="onMetricCardClick($event)" />
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <app-goal-list [data]="statsService.stats()?.goals || []" [siteId]="siteService.activeSite()?.id || null" [readOnly]="isShareMode()" [isLoading]="statsService.isLoading()" (refresh)="refreshAll()" />
+        <app-goal-list [data]="stats()?.goals || []" [siteId]="siteService.activeSite()?.id || null" [readOnly]="isShareMode()" [isLoading]="isStatsLoading()" (refresh)="refreshAll()" />
 
-        <app-funnel-list [funnels]="statsService.stats()?.funnels || []" [isLoading]="statsService.isLoading()" [readOnly]="isShareMode()" (manageClicked)="openFunnelManager()" (funnelClicked)="openFunnelViewer($event)" />
+        <app-funnel-list [funnels]="stats()?.funnels || []" [isLoading]="isStatsLoading()" [readOnly]="isShareMode()" (manageClicked)="openFunnelManager()" (funnelClicked)="openFunnelViewer($event)" />
     </div>
 
     @if (!isShareMode()) {

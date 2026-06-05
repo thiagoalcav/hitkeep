@@ -24,6 +24,7 @@ import (
 	"hitkeep/internal/hklog"
 	"hitkeep/internal/ingest"
 	"hitkeep/internal/mailer"
+	"hitkeep/internal/realtime"
 	"hitkeep/internal/searchconsole"
 	"hitkeep/internal/server"
 	"hitkeep/internal/worker"
@@ -95,11 +96,12 @@ func Run() {
 	var tenantMgr *database.TenantStoreManager
 	var producer *nsq.Producer
 	ent := entitlements.NewProvider(conf)
+	realtimeBroker := realtime.NewBroker()
 
 	if clusterManager.IsLeader() {
 		var leaderShutdown func()
 
-		store, tenantMgr, producer, leaderShutdown, err = startLeaderServices(gCtx, conf, logger, logLevel)
+		store, tenantMgr, producer, leaderShutdown, err = startLeaderServices(gCtx, conf, logger, logLevel, realtimeBroker)
 		check(err)
 
 		// Start Retention Worker
@@ -146,7 +148,7 @@ func Run() {
 		}
 	}
 
-	httpServer := server.New(conf, publicFS, store, tenantMgr, ent, clusterManager, producer, mailSvc)
+	httpServer := server.New(conf, publicFS, store, tenantMgr, ent, clusterManager, producer, mailSvc, realtimeBroker)
 	if store != nil {
 		importCleanupWorker := worker.NewImportStageCleanupWorker(store, conf.DataPath, conf.ImportStageRetentionDays, httpServer.ImportStageCleanupStatus())
 		go importCleanupWorker.Start(gCtx)
@@ -201,7 +203,7 @@ func startSearchConsoleSyncWorker(ctx context.Context, conf *config.Config, tena
 	go searchConsoleWorker.Start(ctx)
 }
 
-func startLeaderServices(ctx context.Context, conf *config.Config, logger *slog.Logger, logLevel slog.Level) (*database.Store, *database.TenantStoreManager, *nsq.Producer, func(), error) {
+func startLeaderServices(ctx context.Context, conf *config.Config, logger *slog.Logger, logLevel slog.Level, realtimeBroker *realtime.Broker) (*database.Store, *database.TenantStoreManager, *nsq.Producer, func(), error) {
 	slog.Debug("(Leader) Starting stateful services...")
 
 	store := database.NewStore(conf.DBPath)
@@ -258,7 +260,7 @@ func startLeaderServices(ctx context.Context, conf *config.Config, logger *slog.
 	// Wire up Producer logger to slog
 	producer.SetLogger(hklog.GoNSQLogger{Logger: logger}, hklog.NSQGoLevel(logLevel))
 
-	consumer := ingest.NewConsumer(tenantMgr, logger, logLevel)
+	consumer := ingest.NewConsumer(tenantMgr, logger, logLevel, realtimeBroker)
 	if err := consumer.Connect(conf.NSQTCPAddress); err != nil {
 		producer.Stop()
 		store.Close()

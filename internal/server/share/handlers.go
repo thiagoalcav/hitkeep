@@ -63,6 +63,10 @@ func Register(mux *http.ServeMux, ctx *shared.Context) {
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleExportShareHits()))
 
+	mux.HandleFunc("GET /api/share/{token}/sites/{id}/realtime", ctx.Handler(shared.HandlerConfig{
+		RateLimiter: ctx.ApiLimiter,
+	}, h.handleGetShareRealtime()))
+
 	mux.HandleFunc("GET /api/share/{token}/sites/{id}/goals", ctx.Handler(shared.HandlerConfig{
 		RateLimiter: ctx.ApiLimiter,
 	}, h.handleGetShareGoals()))

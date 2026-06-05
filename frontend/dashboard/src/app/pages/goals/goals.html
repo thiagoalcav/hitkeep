@@ -97,7 +97,7 @@
     <app-metric-card-group class="mb-6" [tabs]="metricCardTabs()" (rowClicked)="onMetricCardClick($event)" />
 
     <div class="grid grid-cols-1 gap-4">
-        <app-goal-list [data]="statsService.stats()?.goals || []" [siteId]="siteService.activeSite()?.id || null" [isLoading]="statsService.isLoading()" (refresh)="refreshStats()" />
+        <app-goal-list [data]="stats()?.goals || []" [siteId]="siteService.activeSite()?.id || null" [isLoading]="isStatsLoading()" (refresh)="refreshStats()" />
     </div>
     } @else {
     <app-page-state titleKey="common.noSiteSelected" messageKey="goals.noSiteDescription" icon="pi pi-globe" />

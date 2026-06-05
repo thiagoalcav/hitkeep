@@ -18,6 +18,53 @@ describe('Dashboard', () => {
     let component: Dashboard;
     let fixture: ComponentFixture<Dashboard>;
 
+    const emptyStats = () => ({
+        live_visitors: 0,
+        total_pageviews: 0,
+        unique_sessions: 0,
+        bounce_rate: 0,
+        avg_session_duration: 0,
+        pages_per_session: 0,
+        chart_data: [],
+        top_pages: [],
+        top_landing_pages: [],
+        top_exit_pages: [],
+        top_referrers: [],
+        top_devices: [],
+        top_countries: [],
+        top_browsers: [],
+        top_ai_bots: [],
+        top_ai_sources: [],
+        top_languages: [],
+        top_cities: [],
+        top_providers: [],
+        top_asns: [],
+        top_utm_campaigns: [],
+        top_utm_contents: [],
+        top_utm_mediums: [],
+        top_utm_sources: [],
+        top_utm_terms: [],
+        ai_bot_hits: 0,
+        ai_source_visits: 0,
+        utm_campaign_hits: 0,
+        utm_content_hits: 0,
+        utm_medium_hits: 0,
+        utm_source_hits: 0,
+        utm_term_hits: 0,
+        goals: [],
+        funnels: []
+    });
+
+    const setDashboardStats = (value: unknown): void => {
+        const dashboard = component as unknown as {
+            stats: { set: (value: unknown) => void };
+            isStatsLoading: { set: (value: boolean) => void };
+        };
+
+        dashboard.stats.set(value);
+        dashboard.isStatsLoading.set(false);
+    };
+
     const clickTab = (label: string): void => {
         const tab = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('p-tab')).find((element) => element.textContent?.includes(label));
         expect(tab).toBeTruthy();
@@ -64,6 +111,7 @@ describe('Dashboard', () => {
 
         fixture = TestBed.createComponent(Dashboard);
         component = fixture.componentInstance;
+        vi.spyOn(TestBed.inject(StatsService), 'fetchStats').mockReturnValue(of(emptyStats()));
         fixture.detectChanges();
     });
 
@@ -131,8 +179,9 @@ describe('Dashboard', () => {
             domain: 'example.com',
             created_at: '2026-01-01T00:00:00Z'
         });
+        fixture.detectChanges();
 
-        statsService.stats.set({
+        setDashboardStats({
             live_visitors: 0,
             total_pageviews: 10,
             unique_sessions: 5,
@@ -192,8 +241,9 @@ describe('Dashboard', () => {
             domain: 'example.com',
             created_at: '2026-01-01T00:00:00Z'
         });
+        fixture.detectChanges();
 
-        statsService.stats.set({
+        setDashboardStats({
             live_visitors: 0,
             total_pageviews: 10,
             unique_sessions: 5,
@@ -251,7 +301,7 @@ describe('Dashboard', () => {
             created_at: '2026-01-01T00:00:00Z'
         });
 
-        statsService.stats.set({
+        setDashboardStats({
             live_visitors: 0,
             total_pageviews: 10,
             unique_sessions: 5,
@@ -288,8 +338,9 @@ describe('Dashboard', () => {
             funnels: []
         });
 
-        expect(statsService.stats()?.top_countries).toEqual([{ name: 'DE', value: 4 }]);
-        expect(statsService.stats()?.top_languages).toEqual([{ name: 'de', value: 3 }]);
+        const dashboardStats = (component as unknown as { stats: () => { top_countries: unknown[]; top_languages: unknown[] } | null }).stats();
+        expect(dashboardStats?.top_countries).toEqual([{ name: 'DE', value: 4 }]);
+        expect(dashboardStats?.top_languages).toEqual([{ name: 'de', value: 3 }]);
     });
 
     it('should render configured funnels from dashboard stats', () => {
@@ -306,8 +357,9 @@ describe('Dashboard', () => {
             domain: 'example.com',
             created_at: '2026-01-01T00:00:00Z'
         });
+        fixture.detectChanges();
 
-        statsService.stats.set({
+        setDashboardStats({
             live_visitors: 0,
             total_pageviews: 10,
             unique_sessions: 5,
@@ -426,7 +478,7 @@ describe('Dashboard', () => {
 
         vi.spyOn(statsService, 'loadStats').mockImplementation(() => undefined);
         vi.spyOn(hitService, 'loadHits').mockImplementation(() => undefined);
-        statsService.stats.set({
+        setDashboardStats({
             live_visitors: 0,
             total_pageviews: 0,
             unique_sessions: 0,

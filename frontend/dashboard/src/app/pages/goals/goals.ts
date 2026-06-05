@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal, effect, computed, linkedSignal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
 import { injectActiveLang } from '@core/i18n/active-lang';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { compatForm } from '@angular/forms/signals/compat';
@@ -9,6 +9,7 @@ import { CardModule } from 'primeng/card';
 import { SelectModule } from 'primeng/select';
 import { SiteService } from '@features/sites/services/site.service';
 import { StatsService } from '@features/analytics/services/stats.service';
+import { injectStatsQuery } from '@features/analytics/services/stats-query';
 import { AnalyticsService } from '@services/analytics.service';
 import { GoalList } from '@features/analytics/components/goal-list';
 import { MetricCardGroup, MetricCardGroupRowClick, MetricCardGroupTab } from '@features/analytics/components/metric-card-group';
@@ -21,6 +22,8 @@ import { Goal, GoalSeriesPoint, SiteStats } from '@models/analytics.types';
 import { KpiCard } from '@features/analytics/components/kpi-card';
 import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from '@components/range-toolbar/range-toolbar';
 import { finalize } from 'rxjs';
+import { RealtimeRefreshCoordinator } from '@services/realtime-refresh-coordinator.service';
+import { REALTIME_GOAL_KINDS } from '@services/realtime.service';
 
 type MetricFilterType = 'path' | 'referrer' | 'device' | 'country' | 'city' | 'provider' | 'asn';
 interface MetricFilter {
@@ -42,7 +45,10 @@ export class Goals {
     private analyticsService = inject(AnalyticsService);
     private localeService = inject(TranslocoLocaleService);
     private transloco = inject(TranslocoService);
+    private destroyRef = inject(DestroyRef);
+    private realtimeRefresh = inject(RealtimeRefreshCoordinator);
     private readonly activeLanguage = injectActiveLang();
+    private statsQuery = injectStatsQuery();
 
     protected timeRanges = signal<RangeOption[]>(DEFAULT_RANGE_OPTIONS);
     protected selectedRange = linkedSignal<RangeOption[], RangeOption>({
@@ -72,9 +78,12 @@ export class Goals {
     protected isGoalManagerVisible = signal(false);
     protected goals = signal<Goal[]>([]);
     protected goalsLoading = signal(false);
+    protected stats = this.statsQuery.stats;
+    protected isStatsLoading = this.statsQuery.isLoading;
+    protected currentComparisonRange = this.statsQuery.comparisonRange;
     protected baselineStats = signal<SiteStats | null>(null);
     protected baselineLoading = signal(false);
-    protected isRefreshing = computed(() => this.statsService.isLoading() || this.isGoalSeriesLoading() || this.baselineLoading());
+    protected isRefreshing = computed(() => this.isStatsLoading() || this.isGoalSeriesLoading() || this.baselineLoading());
     protected goalSeries = signal<GoalSeriesPoint[]>([]);
     protected goalSeriesChart = computed<SeriesChartPoint[]>(() =>
         this.goalSeries().map((point) => ({
@@ -103,7 +112,7 @@ export class Goals {
 
     protected comparisonLabel = computed(() => {
         this.activeLanguage();
-        const r = this.statsService.currentComparisonRange();
+        const r = this.currentComparisonRange();
         if (!r) return '';
         const showYear = new Date(r.from).getFullYear() !== new Date().getFullYear();
         const opts = showYear ? ({ month: 'short', day: 'numeric', year: 'numeric' } as const) : ({ month: 'short', day: 'numeric' } as const);
@@ -118,12 +127,12 @@ export class Goals {
         const totalGoals = activeIds.size > 0 ? goals.filter((goal) => activeIds.has(goal.id)).length : goals.length;
         const totalConversions = this.goalSeries().reduce((sum, point) => sum + point.conversions, 0);
         const cmpTotalConversions = this.comparisonGoalSeries().reduce((sum, point) => sum + point.conversions, 0);
-        const sessionsWithGoals = this.statsService.stats()?.unique_sessions ?? 0;
+        const sessionsWithGoals = this.stats()?.unique_sessions ?? 0;
         const totalSessions = this.baselineStats()?.unique_sessions ?? 0;
         const conversionRate = totalSessions > 0 ? (sessionsWithGoals / totalSessions) * 100 : 0;
         const cmpTotalSessions = this.baselineStats()?.comparison?.unique_sessions ?? 0;
         const cmpConversionRate = cmpTotalSessions > 0 ? (cmpTotalConversions / cmpTotalSessions) * 100 : 0;
-        const isLoading = this.statsService.isLoading() || this.baselineLoading();
+        const isLoading = this.isStatsLoading() || this.baselineLoading();
 
         return [
             {
@@ -170,8 +179,8 @@ export class Goals {
     });
     protected readonly metricCardTabs = computed<MetricCardGroupTab<MetricFilterType>[]>(() => {
         this.activeLanguage();
-        const stats = this.statsService.stats();
-        const loading = this.statsService.isLoading();
+        const stats = this.stats();
+        const loading = this.isStatsLoading();
         const siteDomain = this.siteService.activeSite()?.domain ?? null;
         return [
             {
@@ -305,14 +314,21 @@ export class Goals {
             const dates = this.getCurrentDateRange();
             if (site && dates) {
                 const goalIds = this.getGoalIdsForFilters();
-                this.statsService.loadStats(site.id, dates.from, dates.to, metricFilters, goalIds, []);
+                this.loadStats(site.id, dates.from, dates.to, metricFilters, goalIds);
                 this.loadBaselineStats(site.id, dates.from, dates.to, metricFilters);
                 this.loadGoalSeries(site.id, dates.from, dates.to, goalIds);
-                const cmpRange = untracked(() => this.statsService.currentComparisonRange());
+                const cmpRange = untracked(() => this.currentComparisonRange());
                 if (cmpRange) {
                     this.loadComparisonGoalSeries(site.id, cmpRange.from, cmpRange.to, goalIds);
                 }
             }
+        });
+        this.realtimeRefresh.registerUntilDestroyed(this.destroyRef, {
+            siteId: () => this.siteService.activeSite()?.id ?? null,
+            kinds: REALTIME_GOAL_KINDS,
+            enabled: () => !!this.siteService.activeSite() && !!this.getCurrentDateRange(),
+            refresh: () => this.refreshStats(),
+            debounceMs: 700
         });
     }
 
@@ -325,14 +341,18 @@ export class Goals {
         const dates = this.getCurrentDateRange();
         if (site && dates) {
             const goalIds = this.getGoalIdsForFilters();
-            this.statsService.loadStats(site.id, dates.from, dates.to, this.activeFilters(), goalIds, []);
+            this.loadStats(site.id, dates.from, dates.to, this.activeFilters(), goalIds);
             this.loadBaselineStats(site.id, dates.from, dates.to, this.activeFilters());
             this.loadGoalSeries(site.id, dates.from, dates.to, goalIds);
-            const cmpRange = this.statsService.currentComparisonRange();
+            const cmpRange = this.currentComparisonRange();
             if (cmpRange) {
                 this.loadComparisonGoalSeries(site.id, cmpRange.from, cmpRange.to, goalIds);
             }
         }
+    }
+
+    private loadStats(siteId: string, from: string, to: string, filters: MetricFilter[], goalIds: string[]) {
+        this.statsQuery.load({ siteId, from, to, filters, goalIds });
     }
 
     protected availableGoalFilters = computed(() => {

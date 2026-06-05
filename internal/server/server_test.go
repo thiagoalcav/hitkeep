@@ -20,7 +20,7 @@ func TestServerMountsMCPRouteWhenEnabled(t *testing.T) {
 	store := testServerStore(t)
 	defer store.Close()
 
-	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil, nil)
 	defer func() {
 		_ = srv.Shutdown(context.Background())
 	}()
@@ -46,7 +46,7 @@ func TestServerNormalizesRootMCPPath(t *testing.T) {
 	store := testServerStore(t)
 	defer store.Close()
 
-	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil, nil)
 	defer func() {
 		_ = srv.Shutdown(context.Background())
 	}()
@@ -73,7 +73,7 @@ func TestServerDoesNotMountMCPRouteWhenDisabled(t *testing.T) {
 	store := testServerStore(t)
 	defer store.Close()
 
-	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil, nil)
 	defer func() {
 		_ = srv.Shutdown(context.Background())
 	}()
@@ -118,7 +118,7 @@ func TestServerInjectsPublicBasePathIntoDashboardIndex(t *testing.T) {
 	store := testServerStore(t)
 	defer store.Close()
 
-	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil, nil)
 	defer func() {
 		_ = srv.Shutdown(context.Background())
 	}()
@@ -142,7 +142,7 @@ func TestServerPreservesRootBasePathInDashboardIndex(t *testing.T) {
 	store := testServerStore(t)
 	defer store.Close()
 
-	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil, nil)
 	defer func() {
 		_ = srv.Shutdown(context.Background())
 	}()
@@ -166,7 +166,7 @@ func TestServerRoutesPrefixedAPIRequests(t *testing.T) {
 	store := testServerStore(t)
 	defer store.Close()
 
-	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil, nil)
 	defer func() {
 		_ = srv.Shutdown(context.Background())
 	}()
@@ -195,7 +195,7 @@ func TestServerRejectsUnprefixedAPIRequestsWhenPublicURLHasPath(t *testing.T) {
 	store := testServerStore(t)
 	defer store.Close()
 
-	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil, nil)
 	defer func() {
 		_ = srv.Shutdown(context.Background())
 	}()
@@ -217,7 +217,7 @@ func TestServerPreservesRootHealthEndpointsForLocalChecksWhenPublicURLHasPath(t 
 	store := testServerStore(t)
 	defer store.Close()
 
-	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil, nil)
 	defer func() {
 		_ = srv.Shutdown(context.Background())
 	}()
@@ -242,7 +242,7 @@ func TestServerServesPrefixedStaticAssets(t *testing.T) {
 	store := testServerStore(t)
 	defer store.Close()
 
-	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil, nil)
 	defer func() {
 		_ = srv.Shutdown(context.Background())
 	}()
@@ -270,7 +270,7 @@ func TestServerRoutesPrefixedIngestPreflight(t *testing.T) {
 	store := testServerStore(t)
 	defer store.Close()
 
-	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil, nil)
 	defer func() {
 		_ = srv.Shutdown(context.Background())
 	}()
@@ -298,7 +298,7 @@ func TestServerAppliesFetchMetadataAfterPrefixStripping(t *testing.T) {
 	store := testServerStore(t)
 	defer store.Close()
 
-	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil, nil)
 	defer func() {
 		_ = srv.Shutdown(context.Background())
 	}()
@@ -323,7 +323,7 @@ func TestServerBackupStatusReflectsConfig(t *testing.T) {
 	store := testServerStore(t)
 	defer store.Close()
 
-	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil)
+	srv := New(conf, testPublicFS(), store, nil, entitlements.NewProvider(conf), nil, nil, nil, nil)
 	defer func() {
 		_ = srv.Shutdown(context.Background())
 	}()

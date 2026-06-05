@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, linkedSignal, signal, untracked } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { TranslocoLocaleService } from '@jsverse/transloco-locale';
@@ -17,6 +17,8 @@ import { SeriesChart, SeriesDefinition, SeriesChartPoint } from '@features/analy
 import { MetricStat, EventSeriesPoint, EventAudience } from '@models/analytics.types';
 import { finalize } from 'rxjs';
 import { injectActiveLang } from '@core/i18n/active-lang';
+import { RealtimeRefreshCoordinator } from '@services/realtime-refresh-coordinator.service';
+import { REALTIME_EVENT_KINDS } from '@services/realtime.service';
 
 interface EventFilterChip {
     key: string;
@@ -54,6 +56,8 @@ export class Events {
     private analyticsService = inject(AnalyticsService);
     private localeService = inject(TranslocoLocaleService);
     private transloco = inject(TranslocoService);
+    private destroyRef = inject(DestroyRef);
+    private realtimeRefresh = inject(RealtimeRefreshCoordinator);
     private readonly activeLanguage = injectActiveLang();
 
     protected timeRanges = signal<RangeOption[]>(DEFAULT_RANGE_OPTIONS);
@@ -75,6 +79,7 @@ export class Events {
     });
 
     protected eventNames = signal<string[]>([]);
+    private realtimeRefreshKey = signal(0);
     protected selectedEvent = signal<string | null>(null);
     protected propertyKeys = signal<string[]>([]);
     protected selectedPropertyKey = signal<string | null>(null);
@@ -322,6 +327,7 @@ export class Events {
         effect(() => {
             const site = this.activeSite();
             this.selectedRange();
+            this.realtimeRefreshKey();
             if (!site) return;
             const dates = this.getCurrentDateRange();
             if (!dates) return;
@@ -333,6 +339,7 @@ export class Events {
             const site = this.activeSite();
             const eventName = this.selectedEvent();
             this.selectedRange();
+            this.realtimeRefreshKey();
             if (!site || !eventName) {
                 this.propertyKeys.set([]);
                 untracked(() => {
@@ -366,6 +373,7 @@ export class Events {
             const propValue = this.selectedPropertyValue();
             const dimFilters = this.audienceDimFilters();
             this.selectedRange();
+            this.realtimeRefreshKey();
 
             if (!site || !eventName) {
                 this.eventSeries.set([]);
@@ -391,6 +399,7 @@ export class Events {
             const eventName = this.selectedEvent();
             const propertyKey = this.selectedPropertyKey();
             this.selectedRange();
+            this.realtimeRefreshKey();
             if (!site || !eventName || !propertyKey) {
                 this.breakdown.set([]);
                 return;
@@ -408,6 +417,7 @@ export class Events {
             const propValue = this.selectedPropertyValue();
             const dimFilters = this.audienceDimFilters();
             this.selectedRange();
+            this.realtimeRefreshKey();
 
             if (!site || !eventName) {
                 this.audience.set(null);
@@ -419,6 +429,13 @@ export class Events {
             const filterKey = propKey && propValue ? propKey : undefined;
             const filterVal = propKey && propValue ? propValue : undefined;
             this.loadAudience(site.id, dates.from, dates.to, eventName, filterKey, filterVal, dimFilters);
+        });
+        this.realtimeRefresh.registerSignalUntilDestroyed(this.destroyRef, {
+            siteId: () => this.activeSite()?.id ?? null,
+            kinds: REALTIME_EVENT_KINDS,
+            enabled: () => !!this.activeSite() && !!this.getCurrentDateRange(),
+            signal: this.realtimeRefreshKey,
+            debounceMs: 700
         });
     }
 

@@ -47,11 +47,14 @@ describe('UtmDashboard', () => {
         stats,
         isLoading: signal(false),
         currentComparisonRange: signal(null),
+        comparisonRange: vi.fn(() => ({ from: '2026-04-01T00:00:00Z', to: '2026-04-30T00:00:00Z' })),
+        fetchStats: vi.fn(() => of(stats())),
         loadStats: vi.fn()
     };
 
     beforeEach(async () => {
         statsServiceStub.loadStats.mockClear();
+        statsServiceStub.fetchStats.mockClear();
 
         await TestBed.configureTestingModule({
             imports: [

@@ -22,8 +22,10 @@ import { TooltipModule } from 'primeng/tooltip';
 import { MenuItem } from 'primeng/api';
 // Features
 import { SiteService } from '@features/sites/services/site.service';
-import { StatsService } from '@features/analytics/services/stats.service';
+import { injectStatsQuery } from '@features/analytics/services/stats-query';
 import { HitService } from '@features/hits/services/hit.service';
+import { RealtimeRefreshCoordinator } from '@services/realtime-refresh-coordinator.service';
+import { REALTIME_ALL_ANALYTICS_KINDS } from '@services/realtime.service';
 import { TrafficChart } from '@features/analytics/components/traffic-chart';
 import { MetricCardGroup, MetricCardGroupRowClick, MetricCardGroupTab } from '@features/analytics/components/metric-card-group';
 import { GoalList } from '@features/analytics/components/goal-list';
@@ -100,7 +102,6 @@ interface KpiCardData {
 })
 export class Dashboard {
     protected siteService = inject(SiteService);
-    protected statsService = inject(StatsService);
     protected hitService = inject(HitService);
     private shareService = inject(ShareService);
     private teamService = inject(TeamService);
@@ -112,7 +113,9 @@ export class Dashboard {
     private router = inject(Router);
     private onboarding = inject(OnboardingService);
     private document = inject(DOCUMENT);
+    private realtimeRefresh = inject(RealtimeRefreshCoordinator);
     private readonly activeLanguage = injectActiveLang();
+    private statsQuery = injectStatsQuery();
     protected timeRanges = signal<RangeOption[]>(DEFAULT_RANGE_OPTIONS);
     protected selectedRange = linkedSignal<RangeOption[], RangeOption>({
         source: this.timeRanges,
@@ -122,8 +125,10 @@ export class Dashboard {
         }
     });
     protected readonly customRangeDates = signal<Date[] | null>(null);
-    private readonly autoRefreshIntervalMs = 30000;
     protected isShareMode = computed(() => this.shareService.isShareMode());
+    protected stats = this.statsQuery.stats;
+    protected isStatsLoading = this.statsQuery.isLoading;
+    protected currentComparisonRange = this.statsQuery.comparisonRange;
     protected showFunnelManager = signal(false);
     protected showFunnelViewer = signal(false);
     protected selectedFunnelId = signal<string | null>(null);
@@ -159,8 +164,8 @@ export class Dashboard {
     );
     protected readonly metricCardTabs = computed<MetricCardGroupTab<MetricFilterType>[]>(() => {
         this.activeLanguage();
-        const stats = this.statsService.stats();
-        const loading = this.statsService.isLoading();
+        const stats = this.stats();
+        const loading = this.isStatsLoading();
         const siteDomain = this.siteDomain();
         return [
             {
@@ -362,8 +367,8 @@ export class Dashboard {
     });
     protected readonly kpiCards = computed<KpiCardData[]>(() => {
         this.activeLanguage();
-        const stats = this.statsService.stats();
-        const loading = this.statsService.isLoading();
+        const stats = this.stats();
+        const loading = this.isStatsLoading();
         const cmp = stats?.comparison;
         const baseClass = 'text-2xl xl:text-3xl font-bold';
         const liveVisitors = stats?.live_visitors ?? 0;
@@ -487,12 +492,12 @@ export class Dashboard {
             }
         });
 
-        effect((onCleanup) => {
-            const site = this.siteService.activeSite();
-            const dates = this.getCurrentDateRange();
-            if (!site || !dates) return;
-            const timerId = setInterval(() => this.refreshStatsOnly(), this.autoRefreshIntervalMs);
-            onCleanup(() => clearInterval(timerId));
+        this.realtimeRefresh.registerUntilDestroyed(this.destroyRef, {
+            siteId: () => this.siteService.activeSite()?.id ?? null,
+            kinds: REALTIME_ALL_ANALYTICS_KINDS,
+            enabled: () => !!this.siteService.activeSite() && !!this.getCurrentDateRange(),
+            refresh: () => this.refreshRealtimeData(),
+            debounceMs: 600
         });
     }
 
@@ -586,13 +591,17 @@ export class Dashboard {
     }
 
     private refreshStatsOnly() {
-        if (this.statsService.isLoading()) return;
         this.loadStatsForCurrentRange();
+    }
+
+    private refreshRealtimeData() {
+        this.refreshStatsOnly();
+        this.refreshHits();
     }
 
     protected comparisonLabel = computed(() => {
         this.activeLanguage();
-        const r = this.statsService.currentComparisonRange();
+        const r = this.currentComparisonRange();
         if (!r) return '';
         const showYear = new Date(r.from).getFullYear() !== new Date().getFullYear();
         const opts = showYear ? ({ month: 'short', day: 'numeric', year: 'numeric' } as const) : ({ month: 'short', day: 'numeric' } as const);
@@ -605,7 +614,7 @@ export class Dashboard {
         const dates = this.getCurrentDateRange();
         const filters = this.activeFilters();
         if (!site || !dates) return;
-        this.statsService.loadStats(site.id, dates.from, dates.to, filters, [], []);
+        this.statsQuery.load({ siteId: site.id, from: dates.from, to: dates.to, filters });
     }
 
     protected calcDelta(current: number, previous: number): number | null {

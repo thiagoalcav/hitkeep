@@ -22,6 +22,8 @@ import { injectActiveLang } from '@core/i18n/active-lang';
 import { buildTakeoutExportMenuItems, DEFAULT_HITS_EXPORT_FORMAT, TakeoutExportFormat } from '@core/export/export-formats';
 import { TakeoutDownloadService } from '@services/takeout-download.service';
 import { calcDelta, ChatbotMetricKey, ChatbotSeriesState, computeComparisonPeriod, createEmptySeries, safeRate, totalFor } from '@pages/ai-chatbots/ai-chatbots.utils';
+import { RealtimeRefreshCoordinator } from '@services/realtime-refresh-coordinator.service';
+import { REALTIME_KINDS } from '@services/realtime.service';
 
 type ScopeKey = 'provider' | 'bot_id' | 'surface' | 'model';
 interface ScopeFilter {
@@ -61,6 +63,7 @@ export class AIChatbots {
     private readonly transloco = inject(TranslocoService);
     private readonly takeoutDownloadService = inject(TakeoutDownloadService);
     private readonly destroyRef = inject(DestroyRef);
+    private readonly realtimeRefresh = inject(RealtimeRefreshCoordinator);
     private readonly activeLanguage = injectActiveLang();
 
     protected readonly timeRanges = signal<RangeOption[]>(DEFAULT_RANGE_OPTIONS);
@@ -73,6 +76,7 @@ export class AIChatbots {
     });
     protected readonly customRangeDates = signal<Date[] | null>(null);
     protected readonly comparisonRange = signal<{ from: string; to: string } | null>(null);
+    private readonly realtimeRefreshKey = signal(0);
 
     protected readonly selectedScopeKey = signal<ScopeKey>('provider');
     protected readonly selectedScopeValue = signal<string | null>(null);
@@ -398,6 +402,7 @@ export class AIChatbots {
             const site = this.activeSite();
             this.selectedRange();
             this.selectedScopeKey();
+            this.realtimeRefreshKey();
             if (!site) {
                 this.scopeValues.set([]);
                 return;
@@ -412,6 +417,7 @@ export class AIChatbots {
             this.selectedRange();
             const scopeFilter = this.activeScopeFilter();
             const dimFilters = this.audienceDimFilters();
+            this.realtimeRefreshKey();
             if (!site) {
                 this.series.set(createEmptySeries());
                 this.comparisonSeries.set(createEmptySeries());
@@ -430,6 +436,13 @@ export class AIChatbots {
 
             this.loadPrimaryData(site.id, dates.from, dates.to, scopeFilter, dimFilters, () => this.loadComparisonData(site.id, comparison.from, comparison.to, scopeFilter, dimFilters));
             this.loadAudience(site.id, dates.from, dates.to, scopeFilter, dimFilters);
+        });
+        this.realtimeRefresh.registerSignalUntilDestroyed(this.destroyRef, {
+            siteId: () => this.activeSite()?.id ?? null,
+            kinds: [REALTIME_KINDS.events],
+            enabled: () => !!this.activeSite() && !!this.getCurrentDateRange(),
+            signal: this.realtimeRefreshKey,
+            debounceMs: 700
         });
     }
 

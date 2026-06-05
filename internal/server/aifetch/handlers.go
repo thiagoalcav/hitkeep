@@ -18,6 +18,7 @@ import (
 	"hitkeep/internal/api"
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/exportfmt"
+	"hitkeep/internal/realtime"
 	"hitkeep/internal/server/shared"
 )
 
@@ -231,6 +232,15 @@ func (h *handler) handleCreateAIFetch() http.HandlerFunc {
 		if err := analyticsStore.CreateAIFetch(r.Context(), record); err != nil {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
+		}
+		if h.ctx.Realtime != nil {
+			h.ctx.Realtime.Publish(realtime.Event{
+				SiteID:      siteID,
+				Kinds:       []string{realtime.KindAIFetch},
+				ChangedAt:   record.Timestamp,
+				BucketStart: record.Timestamp.Truncate(time.Minute),
+				Counts:      map[string]int{realtime.KindAIFetch: 1},
+			})
 		}
 
 		w.WriteHeader(http.StatusAccepted)

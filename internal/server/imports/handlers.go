@@ -23,6 +23,7 @@ import (
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/database"
 	"hitkeep/internal/importables"
+	"hitkeep/internal/realtime"
 	"hitkeep/internal/server/shared"
 )
 
@@ -563,6 +564,9 @@ func (h *handler) handleDeleteImport() http.HandlerFunc {
 			return
 		}
 		h.appendImportAudit(r.Context(), r, siteID, importID, actorID, job.Provider, "import.deleted", "success", fmt.Sprintf("%s import deleted", job.Provider))
+		if deletedRows > 0 {
+			h.publishImportChange(siteID, deletedRows)
+		}
 		h.cleanupStagedFiles(importID)
 		writeJSON(w, map[string]string{"status": "deleted"})
 	}
@@ -668,7 +672,27 @@ func (h *handler) runImport(siteID, importID uuid.UUID) {
 		h.appendImportAudit(ctx, nil, siteID, importID, actorID, job.Provider, "import.data_written", "success", fmt.Sprintf("Wrote %d imported row(s)", sink.Rows()))
 	}
 	h.appendImportAudit(ctx, nil, siteID, importID, actorID, job.Provider, "import.completed", "success", fmt.Sprintf("%s import completed with %d imported row(s)", job.Provider, sink.Rows()))
+	h.publishImportChange(siteID, sink.Rows())
 	h.cleanupStagedFiles(importID)
+}
+
+func (h *handler) publishImportChange(siteID uuid.UUID, rows int64) {
+	if h == nil || h.ctx == nil || h.ctx.Realtime == nil {
+		return
+	}
+	now := time.Now().UTC()
+	h.ctx.Realtime.Publish(realtime.Event{
+		Name:        realtime.EventAnalyticsChanged,
+		SiteID:      siteID,
+		Kinds:       []string{realtime.KindImports, realtime.KindHits, realtime.KindEvents},
+		ChangedAt:   now,
+		BucketStart: now.Truncate(time.Minute),
+		Counts: map[string]int{
+			realtime.KindImports: 1,
+			realtime.KindHits:    int(rows),
+			realtime.KindEvents:  int(rows),
+		},
+	})
 }
 
 func (h *handler) sourceSet(ctx context.Context, siteID, importID uuid.UUID, hashFiles bool) (importables.SourceSet, error) {

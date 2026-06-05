@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, linkedSignal, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, DestroyRef, effect, inject, linkedSignal, signal } from '@angular/core';
 import { DOCUMENT, NgOptimizedImage } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { finalize, forkJoin } from 'rxjs';
@@ -22,6 +22,8 @@ import { DEFAULT_RANGE_OPTIONS, RangeOption, RangeToolbar } from '@components/ra
 import { SeriesChart, SeriesChartPoint, SeriesDefinition } from '@features/analytics/components/series-chart';
 import { browserAppUrl } from '@core/interceptors/base-path.interceptor';
 import { WebVitalDimension, WebVitalDimensionRow, WebVitalMetric, WebVitalMetricBreakdown, WebVitalPageRow, WebVitalRating, WebVitalSeriesPoint, WebVitalSummaryMetric } from '@models/analytics.types';
+import { RealtimeRefreshCoordinator } from '@services/realtime-refresh-coordinator.service';
+import { REALTIME_KINDS } from '@services/realtime.service';
 
 interface SelectOption<T> {
     label: string;
@@ -98,6 +100,8 @@ export class WebVitalsPage {
     private readonly transloco = inject(TranslocoService);
     private readonly activeLanguage = injectActiveLang();
     private readonly document = inject(DOCUMENT);
+    private readonly destroyRef = inject(DestroyRef);
+    private readonly realtimeRefresh = inject(RealtimeRefreshCoordinator);
 
     protected readonly summary = signal<WebVitalSummaryMetric[]>([]);
     protected readonly series = signal<WebVitalSeriesPoint[]>([]);
@@ -289,6 +293,7 @@ export class WebVitalsPage {
         return chips;
     });
     protected readonly hasCustomFilters = computed(() => this.selectedRating() !== null || this.pathFilter() !== DEFAULT_WEB_VITAL_PATH);
+    private readonly realtimeRefreshKey = signal(0);
 
     constructor() {
         effect(() => {
@@ -298,6 +303,7 @@ export class WebVitalsPage {
             const rating = this.selectedRating();
             const path = this.pathFilter();
             this.activeBreakdownTab();
+            this.realtimeRefreshKey();
             if (!site || !dates) {
                 this.summary.set([]);
                 this.series.set([]);
@@ -306,6 +312,13 @@ export class WebVitalsPage {
                 return;
             }
             this.loadData(site.id, dates.from, dates.to, metric, path, rating);
+        });
+        this.realtimeRefresh.registerSignalUntilDestroyed(this.destroyRef, {
+            siteId: () => this.siteService.activeSite()?.id ?? null,
+            kinds: [REALTIME_KINDS.webVitals],
+            enabled: () => !!this.siteService.activeSite() && !!this.getCurrentDateRange(),
+            signal: this.realtimeRefreshKey,
+            debounceMs: 700
         });
     }
 

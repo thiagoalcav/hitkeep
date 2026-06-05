@@ -14,6 +14,7 @@ import (
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/database"
 	opportunitysvc "hitkeep/internal/opportunities"
+	"hitkeep/internal/realtime"
 	"hitkeep/internal/server/shared"
 )
 
@@ -164,6 +165,7 @@ func (h *handler) handleGenerate() http.HandlerFunc {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+		h.publishOpportunityChange(siteID, len(opps))
 		writeJSON(w, http.StatusOK, api.OpportunityGenerateResponse{Opportunities: opps, AIRunID: runID, AIStatus: aiStatus})
 	}
 }
@@ -223,8 +225,23 @@ func (h *handler) handleUpdateStatus() http.HandlerFunc {
 			http.Error(w, "Opportunity not found", http.StatusNotFound)
 			return
 		}
+		h.publishOpportunityChange(siteID, 1)
 		writeJSON(w, http.StatusOK, opportunity)
 	}
+}
+
+func (h *handler) publishOpportunityChange(siteID uuid.UUID, count int) {
+	if h.ctx == nil || h.ctx.Realtime == nil {
+		return
+	}
+	now := time.Now().UTC()
+	h.ctx.Realtime.Publish(realtime.Event{
+		SiteID:      siteID,
+		Kinds:       []string{realtime.KindOpportunities},
+		ChangedAt:   now,
+		BucketStart: now.Truncate(time.Minute),
+		Counts:      map[string]int{realtime.KindOpportunities: count},
+	})
 }
 
 func parseDigestPreviewFrequency(w http.ResponseWriter, r *http.Request) (api.ReportFrequency, bool) {

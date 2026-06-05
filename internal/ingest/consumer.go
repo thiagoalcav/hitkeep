@@ -13,6 +13,7 @@ import (
 	"hitkeep/internal/api"
 	"hitkeep/internal/database"
 	"hitkeep/internal/hklog"
+	"hitkeep/internal/realtime"
 )
 
 type Consumer struct {
@@ -23,15 +24,17 @@ type Consumer struct {
 	hitBatcher    *storeBatcher[*api.Hit]
 	eventBatcher  *storeBatcher[*api.Event]
 	vitalBatcher  *storeBatcher[*api.WebVital]
+	realtime      *realtime.Broker
 	logger        *slog.Logger
 	logLevel      slog.Level
 }
 
-func NewConsumer(tenantMgr *database.TenantStoreManager, logger *slog.Logger, level slog.Level) *Consumer {
+func NewConsumer(tenantMgr *database.TenantStoreManager, logger *slog.Logger, level slog.Level, realtimeBroker *realtime.Broker) *Consumer {
 	consumer := &Consumer{
 		tenantMgr: tenantMgr,
 		logger:    logger,
 		logLevel:  level,
+		realtime:  realtimeBroker,
 	}
 	consumer.hitBatcher = newStoreBatcher("hit", logger, ingestBatchSize, ingestBatchFlushInterval, ingestPersistTimeout, func(store *database.Store, ctx context.Context, hits []*api.Hit) error {
 		if err := store.CreateHitsBulk(ctx, hits); err != nil {
@@ -40,6 +43,7 @@ func NewConsumer(tenantMgr *database.TenantStoreManager, logger *slog.Logger, le
 		if err := tenantMgr.Shared().RecordHitActivity(ctx, hits); err != nil {
 			logger.Warn("Failed to record hit activity summary after tenant persistence", "count", len(hits), "error", err)
 		}
+		consumer.publishHitsChanged(hits)
 		return nil
 	})
 	consumer.eventBatcher = newStoreBatcher("event", logger, ingestBatchSize, ingestBatchFlushInterval, ingestPersistTimeout, func(store *database.Store, ctx context.Context, events []*api.Event) error {
@@ -49,10 +53,15 @@ func NewConsumer(tenantMgr *database.TenantStoreManager, logger *slog.Logger, le
 		if err := tenantMgr.Shared().RecordEventActivity(ctx, events); err != nil {
 			logger.Warn("Failed to record event activity summary after tenant persistence", "count", len(events), "error", err)
 		}
+		consumer.publishEventsChanged(events)
 		return nil
 	})
 	consumer.vitalBatcher = newStoreBatcher("web_vital", logger, ingestBatchSize, ingestBatchFlushInterval, ingestPersistTimeout, func(store *database.Store, ctx context.Context, vitals []*api.WebVital) error {
-		return store.CreateWebVitalsBulk(ctx, vitals)
+		if err := store.CreateWebVitalsBulk(ctx, vitals); err != nil {
+			return err
+		}
+		consumer.publishWebVitalsChanged(vitals)
+		return nil
 	})
 	return consumer
 }
@@ -206,4 +215,123 @@ func (c *Consumer) resolveStore(ctx context.Context, siteID uuid.UUID) (*databas
 		return nil, fmt.Errorf("resolve analytics store for site %s: %w", siteID, err)
 	}
 	return store, nil
+}
+
+func (c *Consumer) publishHitsChanged(hits []*api.Hit) {
+	if c.realtime == nil {
+		return
+	}
+	bySite := map[uuid.UUID]siteChange{}
+	for _, hit := range hits {
+		if hit == nil {
+			continue
+		}
+		change := bySite[hit.SiteID]
+		change.count++
+		change.noteTimestamp(hit.Timestamp)
+		bySite[hit.SiteID] = change
+	}
+	for siteID, change := range bySite {
+		c.realtime.Publish(realtime.Event{
+			SiteID:      siteID,
+			Kinds:       []string{realtime.KindHits},
+			ChangedAt:   time.Now().UTC(),
+			BucketStart: change.bucketStart(),
+			Counts:      map[string]int{realtime.KindHits: change.count},
+		})
+	}
+}
+
+func (c *Consumer) publishEventsChanged(events []*api.Event) {
+	if c.realtime == nil {
+		return
+	}
+	bySite := map[uuid.UUID]siteEventChange{}
+	for _, event := range events {
+		if event == nil {
+			continue
+		}
+		change := bySite[event.SiteID]
+		change.count++
+		change.noteTimestamp(event.Timestamp)
+		if isEcommerceEvent(event.Name) {
+			change.ecommerceCount++
+		}
+		bySite[event.SiteID] = change
+	}
+	for siteID, change := range bySite {
+		kinds := []string{realtime.KindEvents}
+		counts := map[string]int{realtime.KindEvents: change.count}
+		if change.ecommerceCount > 0 {
+			kinds = append(kinds, realtime.KindEcommerce)
+			counts[realtime.KindEcommerce] = change.ecommerceCount
+		}
+		c.realtime.Publish(realtime.Event{
+			SiteID:      siteID,
+			Kinds:       kinds,
+			ChangedAt:   time.Now().UTC(),
+			BucketStart: change.bucketStart(),
+			Counts:      counts,
+		})
+	}
+}
+
+func (c *Consumer) publishWebVitalsChanged(vitals []*api.WebVital) {
+	if c.realtime == nil {
+		return
+	}
+	bySite := map[uuid.UUID]siteChange{}
+	for _, vital := range vitals {
+		if vital == nil {
+			continue
+		}
+		change := bySite[vital.SiteID]
+		change.count++
+		change.noteTimestamp(vital.Timestamp)
+		bySite[vital.SiteID] = change
+	}
+	for siteID, change := range bySite {
+		c.realtime.Publish(realtime.Event{
+			SiteID:      siteID,
+			Kinds:       []string{realtime.KindWebVitals},
+			ChangedAt:   time.Now().UTC(),
+			BucketStart: change.bucketStart(),
+			Counts:      map[string]int{realtime.KindWebVitals: change.count},
+		})
+	}
+}
+
+type siteChange struct {
+	count     int
+	firstTime time.Time
+}
+
+type siteEventChange struct {
+	siteChange
+	ecommerceCount int
+}
+
+func (c *siteChange) noteTimestamp(ts time.Time) {
+	if ts.IsZero() {
+		return
+	}
+	if c.firstTime.IsZero() || ts.Before(c.firstTime) {
+		c.firstTime = ts
+	}
+}
+
+func (c siteChange) bucketStart() time.Time {
+	if c.firstTime.IsZero() {
+		return time.Now().UTC().Truncate(time.Minute)
+	}
+	return c.firstTime.UTC().Truncate(time.Minute)
+}
+
+func isEcommerceEvent(name string) bool {
+	switch name {
+	case "purchase", "begin_checkout", "view_item", "add_to_cart", "product_viewed", "checkout_started", "order_completed":
+		return true
+	default:
+		return false
+	}
 }

@@ -15,6 +15,8 @@ import { injectActiveLang } from '@core/i18n/active-lang';
 import { AdminSystemService, SystemAIStatus } from '@services/admin-system.service';
 import { Opportunity, OpportunityStatus, OpportunitiesService } from '@services/opportunities.service';
 import { AccessService } from '@services/access.service';
+import { RealtimeRefreshCoordinator } from '@services/realtime-refresh-coordinator.service';
+import { REALTIME_OPPORTUNITY_KINDS } from '@services/realtime.service';
 import { OpportunityCard } from './opportunity-card';
 import { OpportunityDetailDrawer } from './opportunity-detail-drawer';
 import { OpportunityFilterRail } from './opportunity-filter-rail';
@@ -34,6 +36,7 @@ export class OpportunitiesPage {
     private readonly access = inject(AccessService);
     private readonly transloco = inject(TranslocoService);
     private readonly destroyRef = inject(DestroyRef);
+    private readonly realtimeRefresh = inject(RealtimeRefreshCoordinator);
     private readonly activeLanguage = injectActiveLang();
 
     protected readonly timeRanges = signal<RangeOption[]>(DEFAULT_RANGE_OPTIONS);
@@ -58,6 +61,7 @@ export class OpportunitiesPage {
     protected readonly typeFilters = ['all', 'conversion', 'traffic', 'performance', 'ai', 'search', 'setup'] as const;
     protected readonly statusFilters = ['all', 'new', 'saved', 'done'] as const;
     protected readonly opportunities = signal<Opportunity[]>([]);
+    private readonly realtimeRefreshKey = signal(0);
 
     protected readonly canManageActiveSite = computed(() => this.access.canActiveSite(SITE_CAPABILITIES.manageData));
 
@@ -196,11 +200,19 @@ export class OpportunitiesPage {
     constructor() {
         effect(() => {
             const site = this.siteService.activeSite();
+            this.realtimeRefreshKey();
             if (!site) {
                 this.opportunities.set([]);
                 return;
             }
             this.loadOpportunities(site.id);
+        });
+        this.realtimeRefresh.registerSignalUntilDestroyed(this.destroyRef, {
+            siteId: () => this.siteService.activeSite()?.id ?? null,
+            kinds: REALTIME_OPPORTUNITY_KINDS,
+            enabled: () => !!this.siteService.activeSite(),
+            signal: this.realtimeRefreshKey,
+            debounceMs: 1000
         });
 
         effect(() => {

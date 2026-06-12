@@ -13,7 +13,7 @@ exclude (
 
 require (
 	github.com/Boostport/mjml-go v0.16.0
-	github.com/duckdb/duckdb-go/v2 v2.10503.0 // v2.10503.1 trips Go checkptr under -race when scanning DuckDB strings
+	github.com/duckdb/duckdb-go/v2 v2.10503.1 // v2.10503.1 trips Go checkptr under -race when scanning DuckDB strings
 	github.com/go-webauthn/webauthn v0.17.4
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
@@ -27,14 +27,14 @@ require (
 	github.com/rs/cors v1.11.1
 	github.com/stripe/stripe-go/v84 v84.4.1
 	github.com/wneessen/go-mail v0.7.3
-	github.com/zendev-sh/goai v0.7.11
-	golang.org/x/crypto v0.52.0
+	github.com/zendev-sh/goai v0.8.4
+	golang.org/x/crypto v0.53.0
 	golang.org/x/oauth2 v0.36.0
-	golang.org/x/sync v0.20.0
-	golang.org/x/sys v0.45.0
-	golang.org/x/text v0.37.0
+	golang.org/x/sync v0.21.0
+	golang.org/x/sys v0.46.0
+	golang.org/x/text v0.38.0
 	golang.org/x/time v0.15.0
-	google.golang.org/api v0.283.0
+	google.golang.org/api v0.284.0
 )
 
 require (
@@ -59,7 +59,7 @@ require (
 	github.com/duckdb/duckdb-go-bindings/lib/linux-arm64 v0.10503.0 // indirect
 	github.com/duckdb/duckdb-go-bindings/lib/windows-amd64 v0.10503.0 // indirect
 	github.com/fatih/color v1.18.0 // indirect
-	github.com/felixge/httpsnoop v1.0.4 // indirect
+	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -112,11 +112,11 @@ require (
 	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
-	golang.org/x/exp v0.0.0-20260603202125-055de637280b // indirect
-	golang.org/x/mod v0.36.0 // indirect
-	golang.org/x/net v0.55.0 // indirect
-	golang.org/x/tools v0.45.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
+	golang.org/x/exp v0.0.0-20260611194520-c48552f49976 // indirect
+	golang.org/x/mod v0.37.0 // indirect
+	golang.org/x/net v0.56.0 // indirect
+	golang.org/x/tools v0.46.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260610212136-7ab31c22f7ad // indirect
 	google.golang.org/grpc v1.81.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )

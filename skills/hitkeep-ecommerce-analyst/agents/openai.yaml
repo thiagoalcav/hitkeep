@@ -1,0 +1,4 @@
+interface:
+  display_name: "HitKeep Ecommerce Analyst"
+  short_description: "Analyze HitKeep ecommerce data"
+  default_prompt: "Use $hitkeep-ecommerce-analyst to analyze HitKeep revenue, orders, products, and conversion quality."

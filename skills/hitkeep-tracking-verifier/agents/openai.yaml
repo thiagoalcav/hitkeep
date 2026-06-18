@@ -1,0 +1,4 @@
+interface:
+  display_name: "HitKeep Tracking Verifier"
+  short_description: "Verify HitKeep tracker setup"
+  default_prompt: "Use $hitkeep-tracking-verifier to verify whether HitKeep tracking and automatic events are working."

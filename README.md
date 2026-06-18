@@ -156,6 +156,7 @@ The maintained reference lives on `hitkeep.com`.
 - [REST API reference](https://hitkeep.com/api/)
 - [Compliance](https://hitkeep.com/compliance/overview/)
 - [Comparison pages](https://hitkeep.com/vs/)
+- [Agent Skills](./skills/)
 
 ## Cloud
 

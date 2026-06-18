@@ -1,0 +1,4 @@
+interface:
+  display_name: "HitKeep Analytics"
+  short_description: "Analyze HitKeep data through MCP"
+  default_prompt: "Use $hitkeep-analytics to answer a HitKeep analytics question with aggregate MCP data and clear caveats."

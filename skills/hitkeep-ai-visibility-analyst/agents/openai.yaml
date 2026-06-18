@@ -1,0 +1,4 @@
+interface:
+  display_name: "HitKeep AI Visibility Analyst"
+  short_description: "Analyze AI visibility in HitKeep"
+  default_prompt: "Use $hitkeep-ai-visibility-analyst to analyze AI crawler fetches, AI referrals, and citation yield in HitKeep."

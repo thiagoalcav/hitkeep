@@ -1,6 +1,7 @@
 ---
 name: hitkeep-tracking-verifier
-description: Verify HitKeep tracking setup and automatic event collection. Use when the user asks whether HitKeep is installed, whether tracking is live, why pageviews or events are missing, how to validate WordPress or script installs, how automatic outbound click, file download, or form submit events should appear, or how to distinguish tracker setup problems from analytics interpretation problems.
+description: 'Verify HitKeep tracking setup and automatic event collection. Use when the user asks whether HitKeep is installed, whether tracking is live, why pageviews or events are missing, how to validate WordPress or script installs, how automatic outbound click, file download, or form submit events should appear, or how to distinguish tracker setup problems from analytics interpretation problems.'
+license: MIT
 ---
 
 # HitKeep Tracking Verifier

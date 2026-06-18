@@ -1,6 +1,7 @@
 ---
 name: hitkeep-analytics
-description: Official parent skill for analyzing HitKeep data through HitKeep MCP and official docs. Use whenever the user asks an AI assistant to analyze HitKeep traffic, events, ecommerce, Web Vitals, AI visibility, Search Console, opportunities, tracking health, or "Ask AI" style questions; when setting up or validating HitKeep MCP access or help; or when deciding whether to use MCP, the dashboard, REST API, open exports, or takeout. Prefer this spine skill alongside narrower HitKeep analytics skills when they are installed.
+description: 'Official parent skill for analyzing HitKeep data through HitKeep MCP and official docs. Use whenever the user asks an AI assistant to analyze HitKeep traffic, events, ecommerce, Web Vitals, AI visibility, Search Console, opportunities, tracking health, or "Ask AI" style questions; when setting up or validating HitKeep MCP access or help; or when deciding whether to use MCP, the dashboard, REST API, open exports, or takeout. Prefer this spine skill alongside narrower HitKeep analytics skills when they are installed.'
+license: MIT
 ---
 
 # HitKeep Analytics

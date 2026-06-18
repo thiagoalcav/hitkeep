@@ -1,6 +1,7 @@
 ---
 name: hitkeep-traffic-diagnosis
-description: Diagnose HitKeep traffic drops, spikes, source shifts, and suspicious changes. Use when the user asks why traffic changed, whether a deploy hurt traffic, whether organic/search/referral/direct traffic moved, whether a spike is real or bot-like, or what happened to sessions, visitors, pageviews, events, or conversions in HitKeep. Use with HitKeep MCP when available and follow the parent hitkeep-analytics skill when it is also loaded.
+description: 'Diagnose HitKeep traffic drops, spikes, source shifts, and suspicious changes. Use when the user asks why traffic changed, whether a deploy hurt traffic, whether organic/search/referral/direct traffic moved, whether a spike is real or bot-like, or what happened to sessions, visitors, pageviews, events, or conversions in HitKeep. Use with HitKeep MCP when available and follow the parent hitkeep-analytics skill when it is also loaded.'
+license: MIT
 ---
 
 # HitKeep Traffic Diagnosis

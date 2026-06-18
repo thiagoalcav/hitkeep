@@ -1,6 +1,7 @@
 ---
 name: hitkeep-ai-visibility-analyst
-description: Analyze HitKeep AI visibility data: AI crawler fetches, AI-referred visits, assistant names and families, citation yield, resource types, top paths, fetch failures, and Search Console correlation. Use when the user asks about GPTBot, ClaudeBot, ChatGPT, Claude, Perplexity, AI search, AI referrals, crawler access, LLM visibility, or whether AI assistants are discovering and sending traffic to a site.
+description: 'Analyze HitKeep AI visibility data: AI crawler fetches, AI-referred visits, assistant names and families, citation yield, resource types, top paths, fetch failures, and Search Console correlation. Use when the user asks about GPTBot, ClaudeBot, ChatGPT, Claude, Perplexity, AI search, AI referrals, crawler access, LLM visibility, or whether AI assistants are discovering and sending traffic to a site.'
+license: MIT
 ---
 
 # HitKeep AI Visibility Analyst

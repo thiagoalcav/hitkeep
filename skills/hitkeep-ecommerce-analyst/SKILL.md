@@ -1,6 +1,7 @@
 ---
 name: hitkeep-ecommerce-analyst
-description: Analyze HitKeep ecommerce and conversion data through aggregate reports. Use when the user asks about revenue, orders, average order value, products, sources, ecommerce funnels, conversion changes, city/provider/ASN aggregates, UTM performance, or whether traffic quality changed in revenue terms. Use with HitKeep MCP when available and keep analysis aggregate-only.
+description: 'Analyze HitKeep ecommerce and conversion data through aggregate reports. Use when the user asks about revenue, orders, average order value, products, sources, ecommerce funnels, conversion changes, city/provider/ASN aggregates, UTM performance, or whether traffic quality changed in revenue terms. Use with HitKeep MCP when available and keep analysis aggregate-only.'
+license: MIT
 ---
 
 # HitKeep Ecommerce Analyst

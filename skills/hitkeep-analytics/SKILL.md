@@ -19,6 +19,8 @@ This parent skill has logical child skills:
 
 The child skills are sibling skill directories in the official pack. Do not assume nested child `SKILL.md` files are discoverable by every client.
 
+The pack also includes `hitkeep-i18n` for dashboard translation and locale-formatting changes. Use it for product UI copy work, not for analytics interpretation.
+
 ## Operating Principles
 
 HitKeep is privacy-first web analytics with optional read-only MCP access for approved assistants.

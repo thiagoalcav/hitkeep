@@ -7,6 +7,7 @@ HitKeep is an open-source project and contributions are welcome. This guide cove
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
 - [Development Workflow](#development-workflow)
+- [AI-Assisted Contributions](#ai-assisted-contributions)
 - [Project Structure](#project-structure)
 - [Commit Conventions](#commit-conventions)
 - [Submitting a Pull Request](#submitting-a-pull-request)
@@ -234,6 +235,94 @@ cd frontend/dashboard && npm run e2e
 make clean
 # Removes: ./hitkeep binary, public/, frontend/*/dist/, frontend/*/node_modules/
 ```
+
+---
+
+## AI-Assisted Contributions
+
+AI-assisted PRs are welcome when they follow the same privacy, testing, and review bar as any other contribution. Start with the public [HitKeep Agent Guide](./AGENTS.md) before making repo changes.
+
+Do not paste secrets, customer analytics, private deployment notes, local machine paths, or dashboard screenshots with private data into prompts, commits, docs, skills, or issue comments.
+
+### MCP Changes
+
+HitKeep's MCP server is intentionally read-only and aggregate-only.
+
+When changing `internal/mcpserver/`, check that:
+
+- every tool is read-only and sets `ReadOnlyHint`
+- analytics tools stay closed-world, while docs lookup tools are the only open-world tools
+- API client bearer tokens and explicit site grants remain the auth model
+- no tool exposes raw hit exports, write workflows, billing, site administration, token management, takeout, or dashboard sessions
+- `internal/mcpserver/audit_test.go`, `tests/scripts/mcp-audit.sh`, public docs, and Agent Skills stay aligned with any tool changes
+
+Run the focused audit:
+
+```bash
+GOFLAGS="$(./scripts/go-build-tags.sh goflags)" go test ./internal/mcpserver -run 'TestMCP.*Audit'
+tests/scripts/mcp-audit.sh --schema-only
+```
+
+### Agent Skills Changes
+
+The `skills/` directory contains public instructions for end-user assistants.
+
+When adding or changing skills:
+
+- keep skill folders as direct children of `skills/`
+- do not include credentials, customer data, private URLs, or private screenshots
+- update `skills/README.md`
+- keep MCP tool names, filters, caveats, and output expectations synchronized with the live server and docs
+
+### Dashboard i18n Changes
+
+Use the public `hitkeep-i18n` skill when changing dashboard UI copy, translation keys, locale JSON files, language switching, PrimeNG locale behavior, or localized formatting.
+
+When changing dashboard text:
+
+- keep user-visible copy in Transloco keys instead of hardcoded component strings
+- update all seven locale files: `en`, `de`, `es`, `fr`, `it`, `nl`, and `pt`
+- preserve interpolation variables and placeholder syntax
+- use existing locale helpers for dates, numbers, percentages, and durations
+- keep short labels short enough for buttons, tabs, table columns, and mobile layouts
+
+Run:
+
+```bash
+cd frontend/dashboard && npm run i18n:check
+cd frontend/dashboard && npm run fmt:check
+```
+
+### AI Structured Output Changes
+
+Optional AI features must save validated product data, not raw model traffic.
+
+When changing AI provider or Opportunities behavior, check that:
+
+- raw prompts, raw provider payloads, external error bodies, provider headers, and secrets are not persisted
+- final output passes structured validation before storage
+- cited evidence IDs refer to evidence supplied to the run
+- GoAI-backed Opportunity proposal changes keep the key/param contract deterministic and add validator coverage for new saved fields, message keys, params, action types, or evidence shapes
+- deterministic permission checks and analytics queries stay outside the model
+- saved copy remains localization-key based where the dashboard expects localized output
+
+Useful focused checks:
+
+```bash
+GOFLAGS="$(./scripts/go-build-tags.sh goflags)" go test ./internal/ai ./internal/opportunities ./internal/database ./internal/mcpserver
+```
+
+### Docs, OpenAPI, And Privacy Review
+
+Public behavior changes should update docs in the separate `hitkeep-docs` repository. API contract changes should update both the runtime OpenAPI source and the docs OpenAPI file.
+
+Before opening an AI-assisted PR, review:
+
+- which public docs changed, or why docs were not needed
+- whether `server.json` changed because MCP Registry metadata changed
+- whether `public/openapi.yml` in the docs repo changed because public API shape changed
+- whether the PR description lists the commands run
+- whether the diff avoids secrets, local-only paths, private deployment details, and customer data
 
 ---
 

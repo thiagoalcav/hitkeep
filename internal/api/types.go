@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"strconv"
 	"time"
 
@@ -47,34 +48,35 @@ func dateOnlyTime(value time.Time) time.Time {
 }
 
 type Hit struct {
-	ID             uuid.UUID `json:"id"`
-	SiteID         uuid.UUID `json:"site_id"`
-	SessionID      uuid.UUID `json:"session_id"`
-	PageID         uuid.UUID `json:"page_id"`
-	Timestamp      time.Time `json:"timestamp"`
-	Path           string    `json:"path"`
-	Hostname       *string   `json:"hostname"`
-	Referrer       *string   `json:"referrer"`
-	UserAgent      *string   `json:"user_agent"`
-	ViewportWidth  *int      `json:"viewport_width"`
-	ViewportHeight *int      `json:"viewport_height"`
-	ScreenWidth    *int      `json:"screen_width"`
-	ScreenHeight   *int      `json:"screen_height"`
-	Language       *string   `json:"language"`
-	CountryCode    *string   `json:"country_code"`
-	Region         *string   `json:"region"`
-	City           *string   `json:"city"`
-	Provider       *string   `json:"provider"`
-	ASN            *int      `json:"asn"`
-	ASNOrg         *string   `json:"asn_org"`
-	UTMSource      *string   `json:"utm_source"`
-	UTMMedium      *string   `json:"utm_medium"`
-	UTMCampaign    *string   `json:"utm_campaign"`
-	UTMTerm        *string   `json:"utm_term"`
-	UTMContent     *string   `json:"utm_content"`
-	IsUnique       *bool     `json:"is_unique"`
-	TrackerSource  string    `json:"-"`
-	TrackerVersion string    `json:"-"`
+	ID             uuid.UUID  `json:"id"`
+	SiteID         uuid.UUID  `json:"site_id"`
+	SessionID      uuid.UUID  `json:"session_id"`
+	PageID         uuid.UUID  `json:"page_id"`
+	Timestamp      time.Time  `json:"timestamp"`
+	Path           string     `json:"path"`
+	Hostname       *string    `json:"hostname"`
+	Referrer       *string    `json:"referrer"`
+	UserAgent      *string    `json:"user_agent"`
+	ViewportWidth  *int       `json:"viewport_width"`
+	ViewportHeight *int       `json:"viewport_height"`
+	ScreenWidth    *int       `json:"screen_width"`
+	ScreenHeight   *int       `json:"screen_height"`
+	Language       *string    `json:"language"`
+	CountryCode    *string    `json:"country_code"`
+	Region         *string    `json:"region"`
+	City           *string    `json:"city"`
+	Provider       *string    `json:"provider"`
+	ASN            *int       `json:"asn"`
+	ASNOrg         *string    `json:"asn_org"`
+	UTMSource      *string    `json:"utm_source"`
+	UTMMedium      *string    `json:"utm_medium"`
+	UTMCampaign    *string    `json:"utm_campaign"`
+	UTMTerm        *string    `json:"utm_term"`
+	UTMContent     *string    `json:"utm_content"`
+	QRCodeID       *uuid.UUID `json:"qr_code_id"`
+	IsUnique       *bool      `json:"is_unique"`
+	TrackerSource  string     `json:"-"`
+	TrackerVersion string     `json:"-"`
 }
 
 type Site struct {
@@ -91,6 +93,102 @@ type ShareLink struct {
 	SiteID    uuid.UUID `json:"site_id"`
 	TokenHint string    `json:"token_hint"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type QRCode struct {
+	ID             uuid.UUID         `json:"id"`
+	SiteID         uuid.UUID         `json:"site_id"`
+	CreatedBy      uuid.UUID         `json:"created_by,omitempty"`
+	Name           string            `json:"name"`
+	DestinationURL string            `json:"destination_url"`
+	UTMSource      string            `json:"utm_source,omitempty"`
+	UTMMedium      string            `json:"utm_medium,omitempty"`
+	UTMCampaign    string            `json:"utm_campaign,omitempty"`
+	UTMTerm        string            `json:"utm_term,omitempty"`
+	UTMContent     string            `json:"utm_content,omitempty"`
+	CustomParams   map[string]string `json:"custom_params,omitempty"`
+	Style          map[string]any    `json:"style,omitempty"`
+	RedirectToken  string            `json:"-"`
+	RedirectURL    string            `json:"redirect_url,omitempty"`
+	TokenHint      string            `json:"token_hint,omitempty"`
+	HasAsset       bool              `json:"has_asset"`
+	CreatedAt      time.Time         `json:"created_at"`
+	UpdatedAt      time.Time         `json:"updated_at"`
+	ArchivedAt     *time.Time        `json:"archived_at,omitempty"`
+}
+
+type QRCodeCreateRequest struct {
+	Name           string            `json:"name"`
+	DestinationURL string            `json:"destination_url"`
+	UTMSource      string            `json:"utm_source"`
+	UTMMedium      string            `json:"utm_medium"`
+	UTMCampaign    string            `json:"utm_campaign"`
+	UTMTerm        string            `json:"utm_term"`
+	UTMContent     string            `json:"utm_content"`
+	CustomParams   map[string]string `json:"custom_params"`
+	Style          map[string]any    `json:"style"`
+}
+
+type QRCodeUpdateRequest = QRCodeCreateRequest
+
+type QRCodeAsset struct {
+	QRCodeID    uuid.UUID `json:"qr_code_id"`
+	SiteID      uuid.UUID `json:"site_id"`
+	Filename    string    `json:"filename"`
+	ContentType string    `json:"content_type"`
+	ByteSize    int64     `json:"byte_size"`
+	Width       int       `json:"width,omitempty"`
+	Height      int       `json:"height,omitempty"`
+	Checksum    string    `json:"checksum"`
+	StorageKey  string    `json:"-"`
+	Data        []byte    `json:"-"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+type QRCodeOpen struct {
+	ID          uuid.UUID `json:"id"`
+	SiteID      uuid.UUID `json:"site_id"`
+	QRCodeID    uuid.UUID `json:"qr_code_id"`
+	Timestamp   time.Time `json:"timestamp"`
+	Referrer    *string   `json:"referrer"`
+	UserAgent   *string   `json:"user_agent"`
+	CountryCode *string   `json:"country_code"`
+	Region      *string   `json:"region"`
+	City        *string   `json:"city"`
+	Provider    *string   `json:"provider"`
+	ASN         *int      `json:"asn"`
+	ASNOrg      *string   `json:"asn_org"`
+}
+
+type QRCodeSummary struct {
+	QRCode       QRCode       `json:"qr_code"`
+	OpenCount    int          `json:"open_count"`
+	Pageviews    int          `json:"pageviews"`
+	Visitors     int          `json:"visitors"`
+	TopPages     []MetricStat `json:"top_pages"`
+	TopReferrers []MetricStat `json:"top_referrers"`
+	TopDevices   []MetricStat `json:"top_devices"`
+	TopCountries []MetricStat `json:"top_countries"`
+}
+
+type QRCodeOpenSeriesPoint struct {
+	Time  time.Time `json:"time"`
+	Opens int       `json:"opens"`
+}
+
+type QRCodeShareLink struct {
+	ID        uuid.UUID `json:"id"`
+	SiteID    uuid.UUID `json:"site_id"`
+	QRCodeID  uuid.UUID `json:"qr_code_id"`
+	TokenHint string    `json:"token_hint"`
+	URL       string    `json:"url,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type QRCodeStoredJSON struct {
+	CustomParams json.RawMessage
+	Style        json.RawMessage
 }
 
 type APIClient struct {

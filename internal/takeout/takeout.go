@@ -101,6 +101,57 @@ func (s *TakeoutService) ExportSiteData(ctx context.Context, siteID uuid.UUID, f
 	})
 }
 
+func (s *TakeoutService) ExportQRCodeData(ctx context.Context, siteID, qrCodeID uuid.UUID, format string) (string, error) {
+	if err := os.MkdirAll(s.path, 0755); err != nil {
+		return "", fmt.Errorf("failed to create export directory: %w", err)
+	}
+
+	normalizedFormat := exportfmt.Normalize(format, exportfmt.FormatXLSX)
+	filename := filepath.Join(s.path, fmt.Sprintf("qr_takeout_%s_%d.%s", qrCodeID, time.Now().Unix(), normalizedFormat))
+
+	analyticsStore := s.store
+	if s.tenantStores != nil {
+		resolved, _, err := s.tenantStores.ResolveSiteStore(ctx, siteID)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve qr analytics store: %w", err)
+		}
+		analyticsStore = resolved
+	}
+
+	if analyticsStore == s.store {
+		return s.exportQRCodeTakeoutFromStore(ctx, s.store, filename, normalizedFormat, exportfmt.DuckDBCopyOptions(normalizedFormat), siteID, qrCodeID, true, true)
+	}
+
+	tempFiles := []string{
+		filepath.Join(s.path, fmt.Sprintf("qr_takeout_control_%d.parquet", time.Now().UnixNano())),
+		filepath.Join(s.path, fmt.Sprintf("qr_takeout_analytics_%d.parquet", time.Now().UnixNano())),
+	}
+	defer func() {
+		for _, tempFile := range tempFiles {
+			_ = os.Remove(tempFile)
+		}
+	}()
+
+	if _, err := s.exportQRCodeTakeoutFromStore(ctx, s.store, tempFiles[0], exportfmt.FormatParquet, exportfmt.DuckDBCopyOptions(exportfmt.FormatParquet), siteID, qrCodeID, true, false); err != nil {
+		return "", err
+	}
+	if _, err := s.exportQRCodeTakeoutFromStore(ctx, analyticsStore, tempFiles[1], exportfmt.FormatParquet, exportfmt.DuckDBCopyOptions(exportfmt.FormatParquet), siteID, qrCodeID, false, true); err != nil {
+		return "", err
+	}
+
+	query := buildTakeoutMergeQuery(tempFiles, filename, exportfmt.DuckDBCopyOptions(normalizedFormat))
+	err := s.store.WithDuckDBSession(ctx, database.DuckDBSessionOptions{
+		Excel: normalizedFormat == exportfmt.FormatXLSX,
+	}, func(conn *sql.Conn) error {
+		_, err := conn.ExecContext(ctx, query)
+		return err
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to export qr data: %w", err)
+	}
+	return filename, nil
+}
+
 type takeoutQuerySource struct {
 	WhereClause      string
 	IncludeAnalytics bool
@@ -255,7 +306,7 @@ func (s *TakeoutService) OpenExportFile(filename string) (*ExportFile, error) {
 func (s *TakeoutService) cleanExportPath(filename string) (string, bool) {
 	cleanedFile := filepath.Clean(filename)
 	base := filepath.Base(cleanedFile)
-	if !strings.HasPrefix(base, "user_takeout_") && !strings.HasPrefix(base, "site_takeout_") {
+	if !strings.HasPrefix(base, "user_takeout_") && !strings.HasPrefix(base, "site_takeout_") && !strings.HasPrefix(base, "qr_takeout_") {
 		return "", false
 	}
 
@@ -291,6 +342,7 @@ func buildTakeoutQuery(sources []takeoutQuerySource, filename, format string) st
 				fmt.Sprintf("SELECT 'event' as record_type, * FROM events WHERE %s", whereClause),
 				fmt.Sprintf("SELECT 'web_vital' as record_type, * FROM web_vitals WHERE %s", whereClause),
 				fmt.Sprintf("SELECT 'ai_fetch' as record_type, * FROM ai_fetches WHERE %s", whereClause),
+				fmt.Sprintf("SELECT 'qr_code_open' as record_type, * FROM qr_code_opens WHERE %s", whereClause),
 				fmt.Sprintf("SELECT 'goal' as record_type, * FROM goals WHERE %s", whereClause),
 				fmt.Sprintf("SELECT 'funnel' as record_type, * FROM funnels WHERE %s", whereClause),
 				fmt.Sprintf("SELECT 'imported_traffic' as record_type, * FROM imported_traffic_daily WHERE %s", whereClause),
@@ -302,6 +354,9 @@ func buildTakeoutQuery(sources []takeoutQuerySource, filename, format string) st
 		}
 		if includeControl {
 			selects = append(selects,
+				fmt.Sprintf("SELECT 'qr_code' AS record_type, * FROM qr_codes WHERE %s", whereClause),
+				qrAssetTakeoutSelect(whereClause),
+				fmt.Sprintf("SELECT 'qr_code_share_link' AS record_type, * FROM qr_code_share_links WHERE %s", whereClause),
 				opportunityTakeoutSelect(whereClause),
 				aiRunTakeoutSelect(whereClause),
 			)
@@ -311,6 +366,50 @@ func buildTakeoutQuery(sources []takeoutQuerySource, filename, format string) st
 		selects = append(selects, "SELECT 'empty' as record_type WHERE FALSE")
 	}
 
+	return fmt.Sprintf(`
+	COPY (
+		%s
+	) TO '%s' (FORMAT %s);
+`, strings.Join(selects, "\n\t\tUNION BY NAME\n\t\t"), escapeTakeoutSQLString(filename), format)
+}
+
+func (s *TakeoutService) exportQRCodeTakeoutFromStore(ctx context.Context, store *database.Store, filename, normalizedFormat, duckFormat string, siteID, qrCodeID uuid.UUID, includeControl, includeAnalytics bool) (string, error) {
+	query := buildQRCodeTakeoutQuery(filename, duckFormat, siteID, qrCodeID, includeControl, includeAnalytics)
+	err := store.WithDuckDBSession(ctx, database.DuckDBSessionOptions{
+		Excel: normalizedFormat == exportfmt.FormatXLSX,
+	}, func(conn *sql.Conn) error {
+		_, err := conn.ExecContext(ctx, query)
+		return err
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to export qr data: %w", err)
+	}
+	return filename, nil
+}
+
+func buildQRCodeTakeoutQuery(filename, format string, siteID, qrCodeID uuid.UUID, includeControl, includeAnalytics bool) string {
+	site := escapeTakeoutSQLString(siteID.String())
+	qr := escapeTakeoutSQLString(qrCodeID.String())
+	selects := []string{}
+	if includeControl {
+		selects = append(selects,
+			fmt.Sprintf("SELECT 'qr_code' AS record_type, * FROM qr_codes WHERE site_id = '%s' AND id = '%s'", site, qr),
+			qrAssetTakeoutSelect(fmt.Sprintf("site_id = '%s' AND qr_code_id = '%s'", site, qr)),
+			fmt.Sprintf("SELECT 'qr_code_share_link' AS record_type, * FROM qr_code_share_links WHERE site_id = '%s' AND qr_code_id = '%s'", site, qr),
+		)
+	}
+	if includeAnalytics {
+		sessionScope := fmt.Sprintf("SELECT DISTINCT session_id FROM hits WHERE site_id = '%s' AND qr_code_id = '%s'", site, qr)
+		selects = append(selects,
+			fmt.Sprintf("SELECT 'hit' AS record_type, * FROM hits WHERE site_id = '%s' AND qr_code_id = '%s'", site, qr),
+			fmt.Sprintf("SELECT 'qr_code_open' AS record_type, * FROM qr_code_opens WHERE site_id = '%s' AND qr_code_id = '%s'", site, qr),
+			fmt.Sprintf("SELECT 'event' AS record_type, * FROM events WHERE site_id = '%s' AND session_id IN (%s)", site, sessionScope),
+			fmt.Sprintf("SELECT 'web_vital' AS record_type, * FROM web_vitals WHERE site_id = '%s' AND session_id IN (%s)", site, sessionScope),
+		)
+	}
+	if len(selects) == 0 {
+		selects = append(selects, "SELECT 'empty' AS record_type WHERE FALSE")
+	}
 	return fmt.Sprintf(`
 	COPY (
 		%s
@@ -349,6 +448,25 @@ func opportunityTakeoutSelect(whereClause string) string {
 			created_at,
 			updated_at
 		FROM opportunities
+		WHERE %s
+	`, whereClause)
+}
+
+func qrAssetTakeoutSelect(whereClause string) string {
+	return fmt.Sprintf(`
+		SELECT
+			'qr_code_asset' AS record_type,
+			qr_code_id,
+			site_id,
+			filename,
+			content_type,
+			byte_size,
+			width,
+			height,
+			checksum,
+			created_at,
+			updated_at
+		FROM qr_code_assets
 		WHERE %s
 	`, whereClause)
 }

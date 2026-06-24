@@ -6,6 +6,7 @@ func openAPIV1Paths() map[string]any {
 		openAPIV1AdminSitePaths(),
 		openAPIV1WebVitalPaths(),
 		openAPIV1IntegrationPaths(),
+		openAPIV1QRPaths(),
 		openAPIV1SearchConsoleReportPaths(),
 	)
 }
@@ -39,11 +40,12 @@ func openAPIV1CorePaths() map[string]any {
 
 		"/ingest": map[string]any{
 			"options": op([]string{"Ingest"}, "Preflight ingest", "CORS preflight for pageview ingest.", nil, nil, nil, map[string]any{"200": desc("Preflight response")}),
-			"post": op([]string{"Ingest"}, "Ingest pageview", "Ingests a pageview hit from the browser tracker. This public endpoint expects the compact hk.js payload and browser Origin request context. HitKeep uses the resolved request IP transiently for exclusions, spam filtering, and country, region, city, provider, and ASN lookup, stores derived country, region, city, provider, and ASN context, and does not store the raw visitor IP. Trusted server-side pageviews should use POST /api/ingest/server/pageview instead.", nil, nil,
+			"post": op([]string{"Ingest"}, "Ingest pageview", "Ingests a pageview hit from the browser tracker. This public endpoint expects the compact hk.js payload and browser Origin request context. The tracker sends initial hk_qr attribution as qr when a visitor arrives through a dynamic QR redirect. HitKeep uses the resolved request IP transiently for exclusions, spam filtering, and country, region, city, provider, and ASN lookup, stores derived country, region, city, provider, and ASN context, and does not store the raw visitor IP. Trusted server-side pageviews should use POST /api/ingest/server/pageview instead.", nil, nil,
 				map[string]any{"required": true, "content": map[string]any{"application/json": map[string]any{"schema": map[string]any{"type": "object", "properties": map[string]any{
 					"path": map[string]any{"type": "string"}, "referrer": map[string]any{"type": "string"}, "ua": map[string]any{"type": "string"},
 					"vp_w": map[string]any{"type": "integer"}, "vp_h": map[string]any{"type": "integer"}, "sc_w": map[string]any{"type": "integer"}, "sc_h": map[string]any{"type": "integer"},
 					"lang": map[string]any{"type": "string"}, "u_src": map[string]any{"type": "string"}, "u_med": map[string]any{"type": "string"}, "u_cmp": map[string]any{"type": "string"}, "u_trm": map[string]any{"type": "string"}, "u_cnt": map[string]any{"type": "string"},
+					"qr":     map[string]any{"type": "string", "format": "uuid", "description": "Initial hk_qr attribution captured by the browser tracker."},
 					"unique": map[string]any{"type": "boolean"}, "session_id": map[string]any{"type": "string", "format": "uuid"}, "page_id": map[string]any{"type": "string", "format": "uuid"},
 				}, "required": []string{"path", "session_id", "page_id"}}}}},
 				map[string]any{"202": desc("Accepted"), "400": errResp("Invalid request")}),
@@ -63,7 +65,7 @@ func openAPIV1CorePaths() map[string]any {
 				map[string]any{"202": desc("Accepted"), "400": errResp("Invalid request")}),
 		},
 		"/api/ingest/server/pageview": map[string]any{
-			"post": op([]string{"Ingest"}, "Ingest server-side pageview", "Accepts one trusted server-side pageview from an API client. Use this endpoint for backend forwarding, CMS plugins, reverse proxy forwarding, edge workers, and historical pageview replay. It does not require browser Origin or Referer headers. HitKeep resolves the site from the submitted URL hostname, requires site.manage_data for that resolved site, and uses visitor_ip for ingest-time exclusions, spam filtering, and country, region, city, provider, and ASN lookup. UTM values are read from the query string in url, for example utm_source and utm_campaign on the visitor-facing URL, not from top-level JSON fields. Stored analytics records contain derived country, region, city, provider, and ASN context. HitKeep does not store the raw visitor IP. This endpoint uses the ingest rate limiter.", secAPIClient(), nil,
+			"post": op([]string{"Ingest"}, "Ingest server-side pageview", "Accepts one trusted server-side pageview from an API client. Use this endpoint for backend forwarding, CMS plugins, reverse proxy forwarding, edge workers, and historical pageview replay. It does not require browser Origin or Referer headers. HitKeep resolves the site from the submitted URL hostname, requires site.manage_data for that resolved site, and uses visitor_ip for ingest-time exclusions, spam filtering, and country, region, city, provider, and ASN lookup. UTM values and hk_qr QR attribution are read from the query string in url, for example utm_source, utm_campaign, and hk_qr on the visitor-facing URL, not from top-level JSON fields. Stored analytics records contain derived country, region, city, provider, and ASN context. HitKeep does not store the raw visitor IP. This endpoint uses the ingest rate limiter.", secAPIClient(), nil,
 				jsonBody(serverPageviewIngestSchema()),
 				map[string]any{
 					"202": desc("Accepted. Empty response body."),
@@ -645,7 +647,7 @@ func serverPageviewIngestSchema() map[string]any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"url":             map[string]any{"type": "string", "format": "uri", "description": "Absolute page URL. The hostname resolves the configured HitKeep site."},
+			"url":             map[string]any{"type": "string", "format": "uri", "description": "Absolute page URL. The hostname resolves the configured HitKeep site. UTM values and hk_qr QR attribution are read from this URL query string."},
 			"timestamp":       map[string]any{"type": "string", "format": "date-time", "description": "Canonical analytics time in RFC3339 format."},
 			"visitor_ip":      map[string]any{"type": "string", "format": "ip", "description": "Trusted transient visitor IP context. Used to derive country, region, city, provider, and ASN metadata. HitKeep does not store the raw visitor IP."},
 			"user_agent":      map[string]any{"type": "string", "description": "User agent from the original visitor request context."},

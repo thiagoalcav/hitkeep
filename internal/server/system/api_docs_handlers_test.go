@@ -717,13 +717,94 @@ func TestOpenAPISpecV1IncludesServerSideIngestPaths(t *testing.T) {
 	}
 }
 
+func TestOpenAPISpecV1IncludesQRCampaignEndpointsAndAttribution(t *testing.T) {
+	spec := OpenAPISpecV1("https://hitkeep.test")
+	tags, ok := spec["tags"].([]map[string]string)
+	if !ok {
+		t.Fatalf("expected tags to be []map[string]string, got %T", spec["tags"])
+	}
+	if !hasTag(tags, "QR Campaigns") {
+		t.Fatalf("expected top-level QR Campaigns tag to exist")
+	}
+
+	paths := requireMap(t, spec, "paths")
+	components := requireMap(t, spec, "components")
+	parameters := requireMap(t, components, "parameters")
+	schemas := requireMap(t, components, "schemas")
+
+	for _, schemaName := range []string{"QRCode", "QRCodeRequest", "QRCodeAsset", "QRCodeSummary", "QRCodeOpenSeriesPoint", "QRCodeShareLink"} {
+		if _, ok := schemas[schemaName]; !ok {
+			t.Fatalf("expected %s schema to exist", schemaName)
+		}
+	}
+	hitProperties := requireMap(t, requireMap(t, schemas, "Hit"), "properties")
+	if _, ok := hitProperties["qr_code_id"]; !ok {
+		t.Fatalf("expected Hit schema to include qr_code_id")
+	}
+	filterParam := requireMap(t, parameters, "filter")
+	filterDescription, ok := filterParam["description"].(string)
+	if !ok || !strings.Contains(filterDescription, "qr_code_id") {
+		t.Fatalf("expected filter parameter to document qr_code_id, got %q", filterDescription)
+	}
+
+	for _, path := range []string{
+		"/q/{token}",
+		"/api/sites/{id}/qr-codes",
+		"/api/sites/{id}/qr-codes/{qrID}",
+		"/api/sites/{id}/qr-codes/{qrID}/asset",
+		"/api/sites/{id}/qr-codes/{qrID}/summary",
+		"/api/sites/{id}/qr-codes/{qrID}/opens/timeseries",
+		"/api/sites/{id}/qr-codes/{qrID}/takeout",
+		"/api/sites/{id}/qr-codes/{qrID}/share",
+		"/api/sites/{id}/qr-codes/{qrID}/share/{shareID}",
+		"/api/share/{token}/sites/{id}/qr-codes",
+		"/api/share/{token}/sites/{id}/qr-codes/{qrID}",
+		"/api/share/{token}/sites/{id}/qr-codes/{qrID}/asset",
+		"/api/share/{token}/sites/{id}/qr-codes/{qrID}/summary",
+		"/api/share/{token}/sites/{id}/qr-codes/{qrID}/opens/timeseries",
+		"/api/share/{token}/sites/{id}/qr-codes/{qrID}/takeout",
+		"/api/qr-share/{token}/qr-code",
+		"/api/qr-share/{token}/qr-code/asset",
+		"/api/qr-share/{token}/qr-code/summary",
+		"/api/qr-share/{token}/qr-code/opens/timeseries",
+		"/api/qr-share/{token}/qr-code/takeout",
+	} {
+		if _, ok := paths[path]; !ok {
+			t.Fatalf("expected QR path %s to exist", path)
+		}
+	}
+
+	browserIngestPost := requireMap(t, requireMap(t, paths, "/ingest"), "post")
+	browserDescription, ok := browserIngestPost["description"].(string)
+	if !ok || !strings.Contains(browserDescription, "hk_qr") {
+		t.Fatalf("expected browser ingest description to document hk_qr, got %q", browserDescription)
+	}
+	browserSchema := requestJSONSchema(t, browserIngestPost)
+	browserProperties := requireMap(t, browserSchema, "properties")
+	if _, ok := browserProperties["qr"]; !ok {
+		t.Fatalf("expected browser ingest schema to include compact qr field")
+	}
+
+	serverIngestPost := requireMap(t, requireMap(t, paths, "/api/ingest/server/pageview"), "post")
+	serverDescription, ok := serverIngestPost["description"].(string)
+	if !ok || !strings.Contains(serverDescription, "hk_qr QR attribution") {
+		t.Fatalf("expected server-side ingest description to document hk_qr, got %q", serverDescription)
+	}
+	serverSchema := requestJSONSchema(t, serverIngestPost)
+	serverURL := requireMap(t, requireMap(t, serverSchema, "properties"), "url")
+	serverURLDescription, ok := serverURL["description"].(string)
+	if !ok || !strings.Contains(serverURLDescription, "hk_qr") {
+		t.Fatalf("expected server-side url schema to document hk_qr, got %q", serverURLDescription)
+	}
+}
+
 func assertServerSideIngestDescription(t *testing.T, path string, postOp map[string]any) {
 	t.Helper()
 	description, ok := postOp["description"].(string)
 	if !ok || !strings.Contains(description, "trusted server-side") || !strings.Contains(description, "API client") {
 		t.Fatalf("expected trusted API client description, got %q", description)
 	}
-	if path == "/api/ingest/server/pageview" && (!strings.Contains(description, "UTM values are read from the query string in url") || !strings.Contains(description, "not from top-level JSON fields")) {
+	if path == "/api/ingest/server/pageview" && (!strings.Contains(description, "UTM values and hk_qr QR attribution are read from the query string in url") || !strings.Contains(description, "not from top-level JSON fields")) {
 		t.Fatalf("expected server-side pageview description to document URL-based UTM extraction, got %q", description)
 	}
 	if !strings.Contains(description, "derived country, region, city, provider, and ASN") || !strings.Contains(description, "does not store the raw visitor IP") {

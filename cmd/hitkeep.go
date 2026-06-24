@@ -122,7 +122,7 @@ func Run() {
 				slog.Info("S3 archive enabled", "mode", "credential chain", "region", s3Conf.Region)
 			}
 		}
-		retentionWorker := worker.NewRetentionWorker(tenantMgr, conf.ArchivePath, conf.DataRetentionDays, s3Conf)
+		retentionWorker := worker.NewRetentionWorker(tenantMgr, conf.ArchivePath, conf.DataRetentionDays, s3Conf, conf.DataPath)
 		go retentionWorker.Start(gCtx)
 
 		// Start Rollup Backfill Worker

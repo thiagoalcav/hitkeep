@@ -81,24 +81,25 @@ type serverIngestContext struct {
 }
 
 type browserIngestPayload struct {
-	Path           string    `json:"path"`
-	Referrer       *string   `json:"referrer"`
-	UserAgent      *string   `json:"ua"`
-	VPWidth        *int      `json:"vp_w"`
-	VPHeight       *int      `json:"vp_h"`
-	SCWidth        *int      `json:"sc_w"`
-	SCHeight       *int      `json:"sc_h"`
-	Language       *string   `json:"lang"`
-	UTMSource      *string   `json:"u_src"`
-	UTMMedium      *string   `json:"u_med"`
-	UTMCamp        *string   `json:"u_cmp"`
-	UTMTerm        *string   `json:"u_trm"`
-	UTMCont        *string   `json:"u_cnt"`
-	TrackerSource  string    `json:"tsrc"`
-	TrackerVersion string    `json:"tv"`
-	IsUnique       bool      `json:"unique"`
-	SessionID      uuid.UUID `json:"session_id"`
-	PageID         uuid.UUID `json:"page_id"`
+	Path           string     `json:"path"`
+	Referrer       *string    `json:"referrer"`
+	UserAgent      *string    `json:"ua"`
+	VPWidth        *int       `json:"vp_w"`
+	VPHeight       *int       `json:"vp_h"`
+	SCWidth        *int       `json:"sc_w"`
+	SCHeight       *int       `json:"sc_h"`
+	Language       *string    `json:"lang"`
+	UTMSource      *string    `json:"u_src"`
+	UTMMedium      *string    `json:"u_med"`
+	UTMCamp        *string    `json:"u_cmp"`
+	UTMTerm        *string    `json:"u_trm"`
+	UTMCont        *string    `json:"u_cnt"`
+	QRCodeID       *uuid.UUID `json:"qr"`
+	TrackerSource  string     `json:"tsrc"`
+	TrackerVersion string     `json:"tv"`
+	IsUnique       bool       `json:"unique"`
+	SessionID      uuid.UUID  `json:"session_id"`
+	PageID         uuid.UUID  `json:"page_id"`
 }
 
 type webVitalPayload struct {
@@ -195,6 +196,7 @@ func (h *handler) handleServerPageviewIngestLeader() http.HandlerFunc {
 			UTMCampaign:    queryValuePtr(ingestCtx.utm, "utm_campaign"),
 			UTMTerm:        queryValuePtr(ingestCtx.utm, "utm_term"),
 			UTMContent:     queryValuePtr(ingestCtx.utm, "utm_content"),
+			QRCodeID:       queryUUIDPtr(ingestCtx.utm, "hk_qr"),
 		}
 		if err := h.publishJSON("hits", hit); err != nil {
 			slog.Error("Failed to publish server-side hit to NSQ", "error", err, "site_id", ingestCtx.site.ID)
@@ -398,6 +400,18 @@ func queryValuePtr(values url.Values, key string) *string {
 	return &value
 }
 
+func queryUUIDPtr(values url.Values, key string) *uuid.UUID {
+	value := strings.TrimSpace(values.Get(key))
+	if value == "" {
+		return nil
+	}
+	id, err := uuid.Parse(value)
+	if err != nil {
+		return nil
+	}
+	return &id
+}
+
 func (h *handler) publishJSON(topic string, value any) error {
 	body, err := json.Marshal(value)
 	if err != nil {
@@ -561,6 +575,7 @@ func (h *handler) handleIngestLeader(w http.ResponseWriter, r *http.Request) {
 		UTMCampaign:    payload.UTMCamp,
 		UTMTerm:        payload.UTMTerm,
 		UTMContent:     payload.UTMCont,
+		QRCodeID:       payload.QRCodeID,
 		IsUnique:       &payload.IsUnique,
 		TrackerSource:  payload.TrackerSource,
 		TrackerVersion: payload.TrackerVersion,

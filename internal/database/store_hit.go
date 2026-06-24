@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -43,6 +44,90 @@ var hitAppenderColumns = []string{
 	"utm_campaign",
 	"utm_term",
 	"utm_content",
+	"qr_code_id",
+}
+
+type hitAppenderValueFunc func(*api.Hit) driver.Value
+
+var hitAppenderValueFns = map[string]hitAppenderValueFunc{
+	"id":              func(hit *api.Hit) driver.Value { return duckdb.UUID(hit.ID) },
+	"site_id":         func(hit *api.Hit) driver.Value { return duckdb.UUID(hit.SiteID) },
+	"session_id":      func(hit *api.Hit) driver.Value { return duckdb.UUID(hit.SessionID) },
+	"page_id":         func(hit *api.Hit) driver.Value { return duckdb.UUID(hit.PageID) },
+	"timestamp":       func(hit *api.Hit) driver.Value { return hit.Timestamp },
+	"path":            func(hit *api.Hit) driver.Value { return hit.Path },
+	"hostname":        func(hit *api.Hit) driver.Value { return nullableStringPtr(hit.Hostname) },
+	"referrer":        func(hit *api.Hit) driver.Value { return nullableStringPtr(hit.Referrer) },
+	"user_agent":      func(hit *api.Hit) driver.Value { return nullableStringPtr(hit.UserAgent) },
+	"viewport_width":  func(hit *api.Hit) driver.Value { return nullableIntPtr(hit.ViewportWidth) },
+	"viewport_height": func(hit *api.Hit) driver.Value { return nullableIntPtr(hit.ViewportHeight) },
+	"screen_width":    func(hit *api.Hit) driver.Value { return nullableIntPtr(hit.ScreenWidth) },
+	"screen_height":   func(hit *api.Hit) driver.Value { return nullableIntPtr(hit.ScreenHeight) },
+	"language":        func(hit *api.Hit) driver.Value { return nullableStringPtr(hit.Language) },
+	"is_unique":       func(hit *api.Hit) driver.Value { return nullableBoolPtr(hit.IsUnique) },
+	"country_code":    func(hit *api.Hit) driver.Value { return nullableStringPtr(hit.CountryCode) },
+	"region":          func(hit *api.Hit) driver.Value { return nullableStringPtr(hit.Region) },
+	"city":            func(hit *api.Hit) driver.Value { return nullableStringPtr(hit.City) },
+	"provider":        func(hit *api.Hit) driver.Value { return nullableStringPtr(hit.Provider) },
+	"asn":             func(hit *api.Hit) driver.Value { return nullableIntPtr(hit.ASN) },
+	"asn_org":         func(hit *api.Hit) driver.Value { return nullableStringPtr(hit.ASNOrg) },
+	"utm_source":      func(hit *api.Hit) driver.Value { return nullableStringPtr(hit.UTMSource) },
+	"utm_medium":      func(hit *api.Hit) driver.Value { return nullableStringPtr(hit.UTMMedium) },
+	"utm_campaign":    func(hit *api.Hit) driver.Value { return nullableStringPtr(hit.UTMCampaign) },
+	"utm_term":        func(hit *api.Hit) driver.Value { return nullableStringPtr(hit.UTMTerm) },
+	"utm_content":     func(hit *api.Hit) driver.Value { return nullableStringPtr(hit.UTMContent) },
+	"qr_code_id":      func(hit *api.Hit) driver.Value { return nullableDuckDBUUIDPtr(hit.QRCodeID) },
+}
+
+func (s *Store) availableHitAppenderColumns(ctx context.Context) ([]string, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT column_name
+		FROM information_schema.columns
+		WHERE table_name = 'hits'
+			AND table_schema NOT IN ('information_schema', 'pg_catalog')
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("list hit columns: %w", err)
+	}
+	defer rows.Close()
+
+	existing := map[string]struct{}{}
+	for rows.Next() {
+		var column string
+		if err := rows.Scan(&column); err != nil {
+			return nil, fmt.Errorf("scan hit column: %w", err)
+		}
+		existing[column] = struct{}{}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("read hit columns: %w", err)
+	}
+
+	columns := make([]string, 0, len(hitAppenderColumns))
+	for _, column := range hitAppenderColumns {
+		if _, ok := existing[column]; ok {
+			columns = append(columns, column)
+		}
+	}
+	if len(columns) == 0 {
+		return nil, fmt.Errorf("hits table has no compatible columns")
+	}
+	return columns, nil
+}
+
+func hitAppenderValue(hit *api.Hit, column string) (driver.Value, error) {
+	valueFn, ok := hitAppenderValueFns[column]
+	if !ok {
+		return nil, fmt.Errorf("unsupported hit appender column %q", column)
+	}
+	return valueFn(hit), nil
+}
+
+func nullableDuckDBUUIDPtr(value *uuid.UUID) any {
+	if value == nil || *value == uuid.Nil {
+		return nil
+	}
+	return duckdb.UUID(*value)
 }
 
 func (s *Store) CreateHit(ctx context.Context, hit *api.Hit) error {
@@ -98,40 +183,27 @@ func (s *Store) createHitsBulk(ctx context.Context, hits []*api.Hit, skipDirtyBu
 		}
 	}
 
-	if err := s.withAppenderColumns(ctx, "hits", hitAppenderColumns, func(appender rowAppender) error {
+	appenderColumns, err := s.availableHitAppenderColumns(ctx)
+	if err != nil {
+		return err
+	}
+
+	if err := s.withAppenderColumns(ctx, "hits", appenderColumns, func(appender rowAppender) error {
 		for _, hit := range hits {
 			if hit == nil {
 				continue
 			}
 
-			if err := appender.AppendRow(
-				duckdb.UUID(hit.ID),
-				duckdb.UUID(hit.SiteID),
-				duckdb.UUID(hit.SessionID),
-				duckdb.UUID(hit.PageID),
-				hit.Timestamp,
-				hit.Path,
-				nullableStringPtr(hit.Hostname),
-				nullableStringPtr(hit.Referrer),
-				nullableStringPtr(hit.UserAgent),
-				nullableIntPtr(hit.ViewportWidth),
-				nullableIntPtr(hit.ViewportHeight),
-				nullableIntPtr(hit.ScreenWidth),
-				nullableIntPtr(hit.ScreenHeight),
-				nullableStringPtr(hit.Language),
-				nullableBoolPtr(hit.IsUnique),
-				nullableStringPtr(hit.CountryCode),
-				nullableStringPtr(hit.Region),
-				nullableStringPtr(hit.City),
-				nullableStringPtr(hit.Provider),
-				nullableIntPtr(hit.ASN),
-				nullableStringPtr(hit.ASNOrg),
-				nullableStringPtr(hit.UTMSource),
-				nullableStringPtr(hit.UTMMedium),
-				nullableStringPtr(hit.UTMCampaign),
-				nullableStringPtr(hit.UTMTerm),
-				nullableStringPtr(hit.UTMContent),
-			); err != nil {
+			values := make([]driver.Value, 0, len(appenderColumns))
+			for _, column := range appenderColumns {
+				value, err := hitAppenderValue(hit, column)
+				if err != nil {
+					return err
+				}
+				values = append(values, value)
+			}
+
+			if err := appender.AppendRow(values...); err != nil {
 				return fmt.Errorf("append hit row: %w", err)
 			}
 		}
@@ -171,9 +243,10 @@ func (s *Store) GetHits(ctx context.Context, params api.HitQueryParams) (*api.Pa
 			OR h.utm_campaign ILIKE ?
 			OR h.utm_term ILIKE ?
 			OR h.utm_content ILIKE ?
+			OR CAST(h.qr_code_id AS VARCHAR) ILIKE ?
 		)`
 		wildcard := "%" + params.Query + "%"
-		args = append(args, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard)
+		args = append(args, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard)
 	}
 
 	var total int
@@ -183,22 +256,7 @@ func (s *Store) GetHits(ctx context.Context, params api.HitQueryParams) (*api.Pa
 	}
 
 	// Whitelist
-	orderBy := "h.timestamp" // default
-	switch params.SortField {
-	case "path":
-		orderBy = "h.path"
-	case "referrer":
-		orderBy = "h.referrer"
-	case "timestamp":
-		orderBy = "h.timestamp"
-	}
-
-	orderDir := "DESC"
-	if strings.ToLower(params.SortOrder) == "asc" {
-		orderDir = "ASC"
-	}
-
-	baseQuery += fmt.Sprintf(" ORDER BY %s %s", orderBy, orderDir)
+	baseQuery += fmt.Sprintf(" ORDER BY %s %s", hitSortColumn(params.SortField), hitSortDirection(params.SortOrder))
 
 	baseQuery += " LIMIT ? OFFSET ?"
 	args = append(args, params.Limit, params.Offset)
@@ -209,7 +267,7 @@ func (s *Store) GetHits(ctx context.Context, params api.HitQueryParams) (*api.Pa
             h.id, h.site_id, h.session_id, h.page_id, h.timestamp, h.path, h.hostname, h.referrer, h.user_agent,
             h.viewport_width, h.viewport_height, h.screen_width, h.screen_height, h.language, h.country_code,
             h.region, h.city, h.provider, h.asn, h.asn_org,
-            h.utm_source, h.utm_medium, h.utm_campaign, h.utm_term, h.utm_content, h.is_unique
+            h.utm_source, h.utm_medium, h.utm_campaign, h.utm_term, h.utm_content, h.qr_code_id, h.is_unique
 	` + baseQuery // whitelisted
 
 	rows, err := s.db.QueryContext(ctx, selectQuery, args...)
@@ -224,7 +282,7 @@ func (s *Store) GetHits(ctx context.Context, params api.HitQueryParams) (*api.Pa
 		if err := rows.Scan(
 			&hit.ID, &hit.SiteID, &hit.SessionID, &hit.PageID, &hit.Timestamp, &hit.Path, &hit.Hostname, &hit.Referrer,
 			&hit.UserAgent, &hit.ViewportWidth, &hit.ViewportHeight, &hit.ScreenWidth,
-			&hit.ScreenHeight, &hit.Language, &hit.CountryCode, &hit.Region, &hit.City, &hit.Provider, &hit.ASN, &hit.ASNOrg, &hit.UTMSource, &hit.UTMMedium, &hit.UTMCampaign, &hit.UTMTerm, &hit.UTMContent, &hit.IsUnique,
+			&hit.ScreenHeight, &hit.Language, &hit.CountryCode, &hit.Region, &hit.City, &hit.Provider, &hit.ASN, &hit.ASNOrg, &hit.UTMSource, &hit.UTMMedium, &hit.UTMCampaign, &hit.UTMTerm, &hit.UTMContent, &hit.QRCodeID, &hit.IsUnique,
 		); err != nil {
 			return nil, err
 		}
@@ -238,6 +296,24 @@ func (s *Store) GetHits(ctx context.Context, params api.HitQueryParams) (*api.Pa
 		Data:  hits,
 		Total: total,
 	}, nil
+}
+
+func hitSortColumn(field string) string {
+	switch field {
+	case "path":
+		return "h.path"
+	case "referrer":
+		return "h.referrer"
+	default:
+		return "h.timestamp"
+	}
+}
+
+func hitSortDirection(order string) string {
+	if strings.ToLower(order) == "asc" {
+		return "ASC"
+	}
+	return "DESC"
 }
 
 func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w io.Writer) error {
@@ -276,6 +352,7 @@ func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w 
 		"utm_campaign",
 		"utm_term",
 		"utm_content",
+		"qr_code_id",
 		"is_unique",
 	}); err != nil {
 		return fmt.Errorf("failed to write csv header: %w", err)
@@ -290,6 +367,7 @@ func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w 
 			region, city, provider, asnOrg                       sql.NullString
 			utmSource, utmMedium, utmCampaign                    sql.NullString
 			utmTerm, utmContent                                  sql.NullString
+			qrCodeID                                             uuid.NullUUID
 			viewportWidth, viewportHeight                        sql.NullInt32
 			screenWidth, screenHeight                            sql.NullInt32
 			asn                                                  sql.NullInt32
@@ -321,6 +399,7 @@ func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w 
 			&utmCampaign,
 			&utmTerm,
 			&utmContent,
+			&qrCodeID,
 			&isUnique,
 		); err != nil {
 			return fmt.Errorf("failed to scan export row: %w", err)
@@ -352,6 +431,7 @@ func (s *Store) ExportHitsCSV(ctx context.Context, params api.HitQueryParams, w 
 			nullString(utmCampaign),
 			nullString(utmTerm),
 			nullString(utmContent),
+			nullUUID(qrCodeID),
 			nullBool(isUnique),
 		}
 		if err := writer.Write(record); err != nil {
@@ -403,6 +483,13 @@ func nullBool(value sql.NullBool) string {
 	return ""
 }
 
+func nullUUID(value uuid.NullUUID) string {
+	if value.Valid {
+		return value.UUID.String()
+	}
+	return ""
+}
+
 func buildHitExportQuery(params api.HitQueryParams) (string, []any) {
 	// Authorization is handled by the handler middleware (SitePerm/RequirePermission).
 	// This query runs against the tenant-specific analytics DB which has no sites table.
@@ -429,9 +516,10 @@ func buildHitExportQuery(params api.HitQueryParams) (string, []any) {
 			OR h.utm_campaign ILIKE ?
 			OR h.utm_term ILIKE ?
 			OR h.utm_content ILIKE ?
+			OR CAST(h.qr_code_id AS VARCHAR) ILIKE ?
 		)`
 		wildcard := "%" + params.Query + "%"
-		args = append(args, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard)
+		args = append(args, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard, wildcard)
 	}
 
 	baseQuery += " ORDER BY h.timestamp DESC"
@@ -442,7 +530,7 @@ func buildHitExportQuery(params api.HitQueryParams) (string, []any) {
             h.id, h.site_id, h.session_id, h.page_id, h.timestamp, h.path, h.hostname, h.referrer, h.user_agent,
             h.viewport_width, h.viewport_height, h.screen_width, h.screen_height, h.language, h.country_code,
             h.region, h.city, h.provider, h.asn, h.asn_org,
-            h.utm_source, h.utm_medium, h.utm_campaign, h.utm_term, h.utm_content, h.is_unique
+            h.utm_source, h.utm_medium, h.utm_campaign, h.utm_term, h.utm_content, h.qr_code_id, h.is_unique
 	` + baseQuery
 
 	return selectQuery, args

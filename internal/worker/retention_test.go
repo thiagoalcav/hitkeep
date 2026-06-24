@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/assetstore"
 	"hitkeep/internal/database"
 	"hitkeep/internal/importables"
 )
@@ -198,6 +199,74 @@ func TestRetentionArchivesAndPrunesUTMHits(t *testing.T) {
 	}
 	if remaining != 0 {
 		t.Fatalf("expected 0 events in hot storage after retention, got %d", remaining)
+	}
+}
+
+func TestRetentionPrunesQROpensAndArchivedAssets(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	archiveDir := filepath.Join(t.TempDir(), "archive")
+	dataPath := t.TempDir()
+	siteID := seedSite(t, ctx, store, 1)
+	userID, err := store.CreateUser(ctx, fmt.Sprintf("qr-%s@example.com", uuid.New()), "hash")
+	if err != nil {
+		t.Fatalf("create qr user: %v", err)
+	}
+	qr, _, err := store.CreateQRCode(ctx, siteID, userID, api.QRCodeCreateRequest{
+		Name:           "Window poster",
+		DestinationURL: "https://example.com/signup",
+		UTMSource:      "print",
+		UTMMedium:      "qr",
+		UTMCampaign:    "retention",
+	})
+	if err != nil {
+		t.Fatalf("create qr code: %v", err)
+	}
+	old := time.Now().UTC().Add(-72 * time.Hour)
+	if _, err := store.DB().ExecContext(ctx, "UPDATE qr_codes SET archived_at = ? WHERE id = ?", old, qr.ID); err != nil {
+		t.Fatalf("age archived qr code: %v", err)
+	}
+	body := []byte{0x89, 'P', 'N', 'G'}
+	storageKey, err := assetstore.New(dataPath).PutQRCodeAsset(siteID, qr.ID, "retentionchecksum", "logo.png", "image/png", body)
+	if err != nil {
+		t.Fatalf("store qr asset file: %v", err)
+	}
+	if _, err := store.UpsertQRCodeAsset(ctx, api.QRCodeAsset{
+		QRCodeID:    qr.ID,
+		SiteID:      siteID,
+		Filename:    "logo.png",
+		ContentType: "image/png",
+		ByteSize:    int64(len(body)),
+		Checksum:    "retentionchecksum",
+		StorageKey:  storageKey,
+	}); err != nil {
+		t.Fatalf("upsert qr asset: %v", err)
+	}
+	if err := store.CreateQRCodeOpen(ctx, &api.QRCodeOpen{SiteID: siteID, QRCodeID: qr.ID, Timestamp: old}); err != nil {
+		t.Fatalf("create qr open: %v", err)
+	}
+
+	w := NewRetentionWorker(newTestTenantMgr(t, store), archiveDir, 365, nil, dataPath)
+	if err := w.Run(ctx); err != nil {
+		t.Fatalf("run retention: %v", err)
+	}
+
+	if file, err := assetstore.New(dataPath).Open(storageKey); err == nil {
+		_ = file.Close()
+		t.Fatal("expected archived QR asset file to be deleted")
+	}
+	var remaining int
+	if err := store.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM qr_code_assets WHERE site_id = ?", siteID).Scan(&remaining); err != nil {
+		t.Fatalf("count remaining qr assets: %v", err)
+	}
+	if remaining != 0 {
+		t.Fatalf("expected QR asset metadata to be pruned, got %d", remaining)
+	}
+	if err := store.DB().QueryRowContext(ctx, "SELECT COUNT(*) FROM qr_code_opens WHERE site_id = ?", siteID).Scan(&remaining); err != nil {
+		t.Fatalf("count remaining qr opens: %v", err)
+	}
+	if remaining != 0 {
+		t.Fatalf("expected QR opens to be pruned, got %d", remaining)
 	}
 }
 

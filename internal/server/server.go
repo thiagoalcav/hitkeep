@@ -34,6 +34,7 @@ import (
 	"hitkeep/internal/server/ingest"
 	opportunityhandlers "hitkeep/internal/server/opportunities"
 	"hitkeep/internal/server/permissions"
+	qrcodehandlers "hitkeep/internal/server/qrcodes"
 	searchconsolereports "hitkeep/internal/server/searchconsolereports"
 	sharehandlers "hitkeep/internal/server/share"
 	"hitkeep/internal/server/shared"
@@ -355,6 +356,7 @@ func (s *Server) setupRoutes(mux *http.ServeMux, publicFS fs.FS) {
 	opportunityhandlers.Register(mux, ctx)
 	aifetch.Register(mux, ctx)
 	searchconsolereports.Register(mux, ctx)
+	qrcodehandlers.Register(mux, ctx)
 	takeouthandlers.Register(mux, ctx)
 	sharehandlers.Register(mux, ctx)
 	if s.conf.MCPEnabled && s.store != nil && (s.cluster == nil || s.cluster.IsLeader()) {

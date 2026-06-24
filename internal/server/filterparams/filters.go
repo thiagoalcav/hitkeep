@@ -33,6 +33,7 @@ var hitFilterTypes = map[string]struct{}{
 	"utm_medium":    {},
 	"utm_source":    {},
 	"utm_term":      {},
+	"qr_code_id":    {},
 }
 
 // ParseHitFilters parses repeatable filter=type:value params and an optional

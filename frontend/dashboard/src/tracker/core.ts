@@ -334,7 +334,8 @@ export function bootstrapTracker(win: HitKeepWindow = window): void {
         u_med: readUtmValue(initialSearchParams, 'utm_medium'),
         u_cmp: readUtmValue(initialSearchParams, 'utm_campaign'),
         u_trm: readUtmValue(initialSearchParams, 'utm_term'),
-        u_cnt: readUtmValue(initialSearchParams, 'utm_content')
+        u_cnt: readUtmValue(initialSearchParams, 'utm_content'),
+        qr: readUtmValue(initialSearchParams, 'hk_qr')
     };
     const pendingRequests: PendingRequest[] = [];
     let retryTimer: ReturnType<typeof setTimeout> | null = null;

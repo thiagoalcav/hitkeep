@@ -57,6 +57,7 @@ var siteAnalyticsTransferTables = []string{
 	"hits",
 	"web_vitals",
 	"ai_fetches",
+	"qr_code_opens",
 }
 
 // NewTenantStoreManager creates a TenantStoreManager that wraps the shared store.

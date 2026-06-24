@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"hitkeep/internal/api"
 )
 
@@ -102,6 +104,12 @@ func buildHitFilter(filterType, filterValue, alias string) (string, []any) {
 	case "utm_term":
 		expr := fmt.Sprintf("COALESCE(NULLIF(TRIM(%sutm_term), ''), '(Unspecified)')", prefix)
 		return " AND " + expr + " = ?", []any{normalizeUnspecified(filterValue)}
+	case "qr_code_id":
+		id, err := uuid.Parse(strings.TrimSpace(filterValue))
+		if err != nil {
+			return " AND 1=0", nil
+		}
+		return fmt.Sprintf(" AND %sqr_code_id = ?", prefix), []any{id}
 	default:
 		return "", nil
 	}

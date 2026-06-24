@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/assetstore"
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/database"
 	"hitkeep/internal/server/shared"
@@ -307,6 +308,11 @@ func (h *handler) handleDeleteSite() http.HandlerFunc {
 			slog.Error("Failed to delete site", "error", err, "site_id", siteID)
 			http.Error(w, "Failed to delete site", http.StatusInternalServerError)
 			return
+		}
+		if h.ctx.Config != nil {
+			if err := assetstore.New(h.ctx.Config.DataPath).DeleteQRCodeAssetsForSite(siteID); err != nil {
+				slog.Warn("Failed to delete QR asset files for deleted site", "error", err, "site_id", siteID)
+			}
 		}
 
 		if teamErr == nil {

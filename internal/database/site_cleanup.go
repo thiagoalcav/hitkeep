@@ -54,6 +54,10 @@ var siteDeleteSteps = []siteDeleteStep{
 	{table: "hits", query: "DELETE FROM hits WHERE site_id = ?"},
 	{table: "web_vitals", query: "DELETE FROM web_vitals WHERE site_id = ?"},
 	{table: "ai_fetches", query: "DELETE FROM ai_fetches WHERE site_id = ?"},
+	{table: "qr_code_opens", query: "DELETE FROM qr_code_opens WHERE site_id = ?"},
+	{table: "qr_code_assets", query: "DELETE FROM qr_code_assets WHERE site_id = ?"},
+	{table: "qr_code_share_links", query: "DELETE FROM qr_code_share_links WHERE site_id = ?"},
+	{table: "qr_codes", query: "DELETE FROM qr_codes WHERE site_id = ?"},
 	{table: "site_report_subscriptions", query: "DELETE FROM site_report_subscriptions WHERE site_id = ?"},
 }
 
@@ -91,6 +95,7 @@ var siteAnalyticsDeleteSteps = []siteDeleteStep{
 	{table: "hits", query: "DELETE FROM hits WHERE site_id = ?"},
 	{table: "web_vitals", query: "DELETE FROM web_vitals WHERE site_id = ?"},
 	{table: "ai_fetches", query: "DELETE FROM ai_fetches WHERE site_id = ?"},
+	{table: "qr_code_opens", query: "DELETE FROM qr_code_opens WHERE site_id = ?"},
 }
 
 type queryer interface {

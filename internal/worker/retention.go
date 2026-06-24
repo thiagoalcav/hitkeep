@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"hitkeep/internal/assetstore"
 	"hitkeep/internal/database"
 )
 
@@ -22,6 +23,7 @@ type RetentionWorker struct {
 	path        string
 	defaultDays int
 	s3Config    *S3Config
+	assets      *assetstore.Store
 }
 
 type retentionSitePolicy struct {
@@ -35,6 +37,7 @@ type retentionCounts struct {
 	Events                  int64
 	WebVitals               int64
 	AIFetches               int64
+	QROpens                 int64
 	ImportedTraffic         int64
 	ImportedDimensions      int64
 	ImportedEvents          int64
@@ -54,16 +57,21 @@ type retentionDeleteQuery struct {
 	query string
 }
 
-func NewRetentionWorker(tenantMgr *database.TenantStoreManager, archivePath string, defaultDays int, s3Config *S3Config) *RetentionWorker {
+func NewRetentionWorker(tenantMgr *database.TenantStoreManager, archivePath string, defaultDays int, s3Config *S3Config, dataPath ...string) *RetentionWorker {
 	path := strings.TrimSpace(archivePath)
 	if path == "" {
 		path = "archive"
+	}
+	assetDataPath := ""
+	if len(dataPath) > 0 {
+		assetDataPath = dataPath[0]
 	}
 	return &RetentionWorker{
 		tenantMgr:   tenantMgr,
 		path:        path,
 		defaultDays: defaultDays,
 		s3Config:    s3Config,
+		assets:      assetstore.New(assetDataPath),
 	}
 }
 
@@ -172,6 +180,10 @@ func (w *RetentionWorker) processSitePolicy(ctx context.Context, policy retentio
 		slog.Error("Failed to count rows for retention", "error", err, "site_id", policy.ID)
 		return
 	}
+	if err := w.pruneArchivedQRAssets(ctx, policy.ID, cutoff); err != nil {
+		slog.Error("Failed to prune archived QR assets", "error", err, "site_id", policy.ID)
+		return
+	}
 	if !counts.hasColdData() {
 		return
 	}
@@ -197,6 +209,35 @@ func (w *RetentionWorker) processSitePolicy(ctx context.Context, policy retentio
 	slog.Info("Retention process completed", "site_id", policy.ID, "tenant_id", policy.TenantID, "archive", filename)
 }
 
+func (w *RetentionWorker) pruneArchivedQRAssets(ctx context.Context, siteID uuid.UUID, cutoff time.Time) error {
+	if w.tenantMgr == nil || w.tenantMgr.Shared() == nil {
+		return nil
+	}
+	assets, err := w.tenantMgr.Shared().ListArchivedQRCodeAssetsForRetention(ctx, siteID, cutoff)
+	if err != nil {
+		if isMissingRelationError(err, "qr_code_assets") || isMissingRelationError(err, "qr_codes") || isBinderError(err) {
+			return nil
+		}
+		return err
+	}
+	for _, asset := range assets {
+		if asset.StorageKey != "" && w.assets != nil {
+			if err := w.assets.Delete(asset.StorageKey); err != nil {
+				slog.Warn("Failed to delete retained QR asset file", "error", err, "site_id", asset.SiteID, "qr_code_id", asset.QRCodeID, "storage_key", asset.StorageKey)
+			}
+		}
+		if w.assets != nil {
+			if err := w.assets.DeleteQRCodeAssetDir(asset.SiteID, asset.QRCodeID); err != nil {
+				slog.Warn("Failed to delete retained QR asset directory", "error", err, "site_id", asset.SiteID, "qr_code_id", asset.QRCodeID)
+			}
+		}
+		if _, err := w.tenantMgr.Shared().DeleteQRCodeAsset(ctx, asset.SiteID, asset.QRCodeID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func countRetainedRows(ctx context.Context, db *sql.DB, siteID uuid.UUID, cutoff time.Time) (retentionCounts, error) {
 	var counts retentionCounts
 	queries := []retentionCountQuery{
@@ -204,6 +245,7 @@ func countRetainedRows(ctx context.Context, db *sql.DB, siteID uuid.UUID, cutoff
 		{name: "events", query: "SELECT COUNT(*) FROM events WHERE site_id = ? AND timestamp < ?", assign: func(v int64) { counts.Events = v }},
 		{name: "web vitals", query: "SELECT COUNT(*) FROM web_vitals WHERE site_id = ? AND timestamp < ?", assign: func(v int64) { counts.WebVitals = v }},
 		{name: "ai fetches", query: "SELECT COUNT(*) FROM ai_fetches WHERE site_id = ? AND timestamp < ?", assign: func(v int64) { counts.AIFetches = v }},
+		{name: "qr code opens", query: "SELECT COUNT(*) FROM qr_code_opens WHERE site_id = ? AND timestamp < ?", assign: func(v int64) { counts.QROpens = v }},
 		{name: "imported traffic", query: "SELECT COUNT(*) FROM imported_traffic_daily WHERE site_id = ? AND date < ?", assign: func(v int64) { counts.ImportedTraffic = v }},
 		{name: "imported dimensions", query: "SELECT COUNT(*) FROM imported_dimension_daily WHERE site_id = ? AND date < ?", assign: func(v int64) { counts.ImportedDimensions = v }},
 		{name: "imported events", query: "SELECT COUNT(*) FROM imported_event_daily WHERE site_id = ? AND date < ?", assign: func(v int64) { counts.ImportedEvents = v }},
@@ -225,6 +267,7 @@ func (c retentionCounts) hasColdData() bool {
 		c.Events > 0 ||
 		c.WebVitals > 0 ||
 		c.AIFetches > 0 ||
+		c.QROpens > 0 ||
 		c.ImportedTraffic > 0 ||
 		c.ImportedDimensions > 0 ||
 		c.ImportedEvents > 0 ||
@@ -239,6 +282,7 @@ func (c retentionCounts) logAttrs(siteID uuid.UUID, cutoff time.Time) []any {
 		"events", c.Events,
 		"web_vitals", c.WebVitals,
 		"ai_fetches", c.AIFetches,
+		"qr_code_opens", c.QROpens,
 		"imported_traffic", c.ImportedTraffic,
 		"imported_dimensions", c.ImportedDimensions,
 		"imported_events", c.ImportedEvents,
@@ -279,9 +323,11 @@ func buildRetentionExportQuery(siteID uuid.UUID, cutoff time.Time, filename stri
 					UNION BY NAME
 					SELECT 'web_vitals' AS _source, * FROM web_vitals WHERE site_id = '%s' AND timestamp < '%s'
 					UNION BY NAME
-					SELECT 'ai_fetches' AS _source, * FROM ai_fetches WHERE site_id = '%s' AND timestamp < '%s'
-					UNION BY NAME
-					SELECT 'imported_traffic_daily' AS _source, * FROM imported_traffic_daily WHERE site_id = '%s' AND date < '%s'
+						SELECT 'ai_fetches' AS _source, * FROM ai_fetches WHERE site_id = '%s' AND timestamp < '%s'
+						UNION BY NAME
+						SELECT 'qr_code_opens' AS _source, * FROM qr_code_opens WHERE site_id = '%s' AND timestamp < '%s'
+						UNION BY NAME
+						SELECT 'imported_traffic_daily' AS _source, * FROM imported_traffic_daily WHERE site_id = '%s' AND date < '%s'
 					UNION BY NAME
 					SELECT 'imported_dimension_daily' AS _source, * FROM imported_dimension_daily WHERE site_id = '%s' AND date < '%s'
 					UNION BY NAME
@@ -291,7 +337,7 @@ func buildRetentionExportQuery(siteID uuid.UUID, cutoff time.Time, filename stri
 					UNION BY NAME
 					SELECT 'imported_event_properties_daily' AS _source, * FROM imported_event_properties_daily WHERE site_id = '%s' AND date < '%s'
 				) TO '%s' (FORMAT PARQUET, COMPRESSION 'SNAPPY');
-			`, siteID, timestampCutoff, siteID, timestampCutoff, siteID, timestampCutoff, siteID, timestampCutoff, siteID, dateCutoff, siteID, dateCutoff, siteID, dateCutoff, siteID, dateCutoff, siteID, dateCutoff, safeFilename)
+				`, siteID, timestampCutoff, siteID, timestampCutoff, siteID, timestampCutoff, siteID, timestampCutoff, siteID, timestampCutoff, siteID, dateCutoff, siteID, dateCutoff, siteID, dateCutoff, siteID, dateCutoff, siteID, dateCutoff, safeFilename)
 }
 
 func pruneRetainedRows(ctx context.Context, db *sql.DB, siteID uuid.UUID, cutoff time.Time, counts retentionCounts) error {
@@ -327,6 +373,7 @@ func retentionDeleteQueries(counts retentionCounts) []retentionDeleteQuery {
 		{count: counts.Events, label: "events", query: "DELETE FROM events WHERE site_id = ? AND timestamp < ?"},
 		{count: counts.WebVitals, label: "web vitals", query: "DELETE FROM web_vitals WHERE site_id = ? AND timestamp < ?"},
 		{count: counts.AIFetches, label: "ai fetches", query: "DELETE FROM ai_fetches WHERE site_id = ? AND timestamp < ?"},
+		{count: counts.QROpens, label: "qr code opens", query: "DELETE FROM qr_code_opens WHERE site_id = ? AND timestamp < ?"},
 		{count: counts.ImportedTraffic, label: "imported traffic", query: "DELETE FROM imported_traffic_daily WHERE site_id = ? AND date < ?"},
 		{count: counts.ImportedDimensions, label: "imported dimensions", query: "DELETE FROM imported_dimension_daily WHERE site_id = ? AND date < ?"},
 		{count: counts.ImportedEvents, label: "imported events", query: "DELETE FROM imported_event_daily WHERE site_id = ? AND date < ?"},

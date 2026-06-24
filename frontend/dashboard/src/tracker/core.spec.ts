@@ -438,7 +438,7 @@ describe('tracker core', () => {
     });
 
     it('keeps attribution in memory and limits sessionStorage to the session tuple', () => {
-        const harness = trackerHarness('/signup?utm_source=launch&utm_medium=email');
+        const harness = trackerHarness('/signup?utm_source=launch&utm_medium=email&hk_qr=qr-123');
 
         bootstrapTracker(harness.win);
         harness.history.pushState({}, '', '/dashboard?utm_source=changed&utm_medium=social');
@@ -451,6 +451,7 @@ describe('tracker core', () => {
             const payload = JSON.parse(body) as Record<string, unknown>;
             expect(payload['u_src']).toBe('launch');
             expect(payload['u_med']).toBe('email');
+            expect(payload['qr']).toBe('qr-123');
         });
     });
 });

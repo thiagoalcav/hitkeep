@@ -1,0 +1,1 @@
+ALTER TABLE qr_code_assets ADD COLUMN IF NOT EXISTS storage_key VARCHAR DEFAULT '';

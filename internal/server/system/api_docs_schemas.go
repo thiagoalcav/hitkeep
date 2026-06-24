@@ -58,6 +58,7 @@ func openAPIV1Schemas() map[string]any {
 	return mergeOpenAPIMapGroups(
 		openAPIV1AnalyticsSchemas(),
 		openAPIV1WebVitalSchemas(),
+		openAPIV1QRSchemas(),
 		openAPIV1AccountSchemas(),
 	)
 }
@@ -206,6 +207,7 @@ func openAPIV1AnalyticsSchemas() map[string]any {
 				"utm_campaign":    map[string]any{"type": "string"},
 				"utm_term":        map[string]any{"type": "string"},
 				"utm_content":     map[string]any{"type": "string"},
+				"qr_code_id":      map[string]any{"type": "string", "format": "uuid"},
 				"is_unique":       map[string]any{"type": "boolean"},
 			},
 		},

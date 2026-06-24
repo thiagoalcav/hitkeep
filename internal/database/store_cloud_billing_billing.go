@@ -248,7 +248,7 @@ func (s *Store) CreateCloudBillingEvent(ctx context.Context, event CloudBillingE
 		ON CONFLICT (stripe_event_id) DO NOTHING
 	`,
 		strings.TrimSpace(event.StripeEventID),
-		nullUUID(event.TenantID),
+		nullCloudBillingUUID(event.TenantID),
 		strings.TrimSpace(event.EventType),
 		event.Livemode,
 		nullIfBlank(event.Payload),
@@ -285,7 +285,7 @@ func (s *Store) UpdateCloudBillingEventStatus(ctx context.Context, event CloudBi
 			updated_at = ?
 		WHERE stripe_event_id = ?
 	`,
-		nullUUID(event.TenantID),
+		nullCloudBillingUUID(event.TenantID),
 		strings.TrimSpace(event.ProcessingStatus),
 		nullIfBlank(event.ProcessingError),
 		event.ProcessedAt,
@@ -358,7 +358,7 @@ func nullIfBlank(value string) any {
 	return trimmed
 }
 
-func nullUUID(value uuid.UUID) any {
+func nullCloudBillingUUID(value uuid.UUID) any {
 	if value == uuid.Nil {
 		return nil
 	}

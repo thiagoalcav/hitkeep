@@ -24,6 +24,7 @@ import (
 	"hitkeep/internal/appurl"
 	authcore "hitkeep/internal/auth"
 	"hitkeep/internal/database"
+	"hitkeep/internal/localization"
 	"hitkeep/internal/mailer"
 	"hitkeep/internal/security"
 	"hitkeep/internal/server/shared"
@@ -220,8 +221,8 @@ func (h *handler) handleCreateInitialUser() http.HandlerFunc {
 		}
 
 		locale := fallbackMailLocale(r.Header.Get("Accept-Language"))
-		ctx := context.WithValue(r.Context(), database.LocaleContextKey, locale)
-		userID, err := h.ctx.Store.CreateUserWithNames(ctx, req.Email, hashedPassword, req.GivenName, req.LastName)
+		defaultTeamName := localization.DefaultTeamName(locale, req.GivenName)
+		userID, err := h.ctx.Store.CreateUserWithNamesAndDefaultTenantName(r.Context(), req.Email, hashedPassword, req.GivenName, req.LastName, defaultTeamName)
 		if err != nil {
 			slog.Error("Failed to create initial user", "error", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)

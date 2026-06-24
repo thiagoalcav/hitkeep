@@ -129,9 +129,18 @@ func (s *Store) CreateUserWithoutDefaultTenant(ctx context.Context, email string
 
 // CreateUserWithNames creates a new user and optionally persists profile names.
 func (s *Store) CreateUserWithNames(ctx context.Context, email string, hashedPassword string, givenName string, lastName string) (uuid.UUID, error) {
+	return s.CreateUserWithNamesAndDefaultTenantName(ctx, email, hashedPassword, givenName, lastName, defaultTenantNameForSetup(givenName))
+}
+
+// CreateUserWithNamesAndDefaultTenantName creates a user and uses defaultTenantName when the first-user setup creates the default team.
+func (s *Store) CreateUserWithNamesAndDefaultTenantName(ctx context.Context, email string, hashedPassword string, givenName string, lastName string, defaultTenantName string) (uuid.UUID, error) {
 	id := uuid.New()
 	givenName = strings.TrimSpace(givenName)
 	lastName = strings.TrimSpace(lastName)
+	defaultTenantName = strings.TrimSpace(defaultTenantName)
+	if defaultTenantName == "" {
+		defaultTenantName = defaultTenantNameForSetup(givenName)
+	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -154,7 +163,7 @@ func (s *Store) CreateUserWithNames(ctx context.Context, email string, hashedPas
 		return uuid.Nil, fmt.Errorf("could not count users: %w", err)
 	}
 
-	if err := ensureDefaultTenantTx(ctx, tx, defaultTenantNameForSetup(ctx, givenName), count == 1); err != nil {
+	if err := ensureDefaultTenantTx(ctx, tx, defaultTenantName, count == 1); err != nil {
 		return uuid.Nil, err
 	}
 

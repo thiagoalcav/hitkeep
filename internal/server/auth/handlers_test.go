@@ -160,6 +160,45 @@ func TestHandleCreateInitialUser(t *testing.T) {
 	}
 }
 
+func TestHandleCreateInitialUserUsesAcceptLanguageForDefaultTeamName(t *testing.T) {
+	h, store := setupAuthTestEnv(t)
+	defer store.Close()
+
+	body, err := json.Marshal(map[string]string{
+		"email":      "ana@example.com",
+		"password":   "password123",
+		"given_name": "Ana",
+		"last_name":  "García",
+	})
+	if err != nil {
+		t.Fatalf("failed to marshal request: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/initial-user", bytes.NewReader(body))
+	req.Header.Set("Accept-Language", "es-ES,es;q=0.9,en;q=0.4")
+	w := httptest.NewRecorder()
+	h.handleCreateInitialUser().ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
+	}
+
+	defaultTenantID, err := store.GetDefaultTenantID(context.Background())
+	if err != nil {
+		t.Fatalf("failed to get default tenant: %v", err)
+	}
+	defaultTenant, err := store.GetTenant(context.Background(), defaultTenantID)
+	if err != nil {
+		t.Fatalf("failed to fetch default tenant: %v", err)
+	}
+	if defaultTenant == nil {
+		t.Fatalf("expected default tenant to exist")
+	}
+	if defaultTenant.Name != "Equipo de Ana" {
+		t.Fatalf("expected default tenant name %q, got %q", "Equipo de Ana", defaultTenant.Name)
+	}
+}
+
 func TestHandleCreateInitialUserRejectsManagedCloudBootstrap(t *testing.T) {
 	h, store := setupAuthTestEnv(t)
 	defer store.Close()

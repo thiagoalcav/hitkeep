@@ -18,6 +18,7 @@ import (
 	"hitkeep/internal/api"
 	"hitkeep/internal/appurl"
 	"hitkeep/internal/database"
+	"hitkeep/internal/localization"
 	"hitkeep/internal/mailables"
 	serverauth "hitkeep/internal/server/auth"
 	"hitkeep/internal/server/shared"
@@ -189,13 +190,12 @@ func (h *handler) handleSignup() http.HandlerFunc {
 		req.PlanCode = database.CloudPlanFree // signup always starts on free
 		req.Jurisdiction = strings.TrimSpace(strings.ToUpper(req.Jurisdiction))
 		req.Locale = normalizeStripeLocale(req.Locale)
+		if req.TeamName == "" {
+			req.TeamName = localization.DefaultTeamName(req.Locale, req.GivenName)
+		}
 
 		if req.Email == "" || len(req.Password) < 8 {
 			http.Error(w, "Email required; Password must be at least 8 characters", http.StatusBadRequest)
-			return
-		}
-		if req.TeamName == "" {
-			http.Error(w, "Team name is required", http.StatusBadRequest)
 			return
 		}
 		if !req.AcceptedTos {
@@ -284,12 +284,18 @@ func (h *handler) handleVerifySignup() http.HandlerFunc {
 			return
 		}
 
+		teamName := strings.TrimSpace(entry.TeamName)
+		if teamName == "" {
+			teamName = localization.DefaultTeamName(entry.Locale, entry.GivenName)
+		}
+
 		account, err := h.ctx.Store.CreateManagedCloudAccount(r.Context(), database.CreateManagedCloudAccountInput{
 			Email:          entry.Email,
 			HashedPassword: entry.HashedPassword,
 			GivenName:      entry.GivenName,
 			LastName:       entry.LastName,
-			TeamName:       entry.TeamName,
+			TeamName:       teamName,
+			Locale:         entry.Locale,
 		})
 		if errors.Is(err, database.ErrUserEmailAlreadyExists) {
 			http.Redirect(w, r, signupURL("exists"), http.StatusFound)

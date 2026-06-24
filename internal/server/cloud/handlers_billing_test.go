@@ -74,6 +74,21 @@ type noopMailDriver struct{}
 func (noopMailDriver) Send(_ []string, _ string, _ string, _ string) error { return nil }
 func (noopMailDriver) Close() error                                        { return nil }
 
+type captureMailDriver struct {
+	subject  string
+	htmlBody string
+	textBody string
+}
+
+func (d *captureMailDriver) Send(_ []string, subject, htmlBody, textBody string) error {
+	d.subject = subject
+	d.htmlBody = htmlBody
+	d.textBody = textBody
+	return nil
+}
+
+func (d *captureMailDriver) Close() error { return nil }
+
 type fakeWebhookVerifier struct {
 	event stripe.Event
 	err   error
@@ -295,6 +310,89 @@ func TestHandleSignupSendsVerificationEmail(t *testing.T) {
 	if user != nil {
 		t.Fatal("expected user NOT to exist before email verification")
 	}
+}
+
+func TestHandleSignupDefaultsLocalizedTeamNameWhenBlank(t *testing.T) {
+	h, store := setupCloudTestHandler(t)
+	defer store.Close()
+	mailDriver := &captureMailDriver{}
+	h.ctx.Mailer = mailer.NewWithDriver(mailDriver, h.ctx.Config)
+
+	body, err := json.Marshal(signupRequest{
+		Email:        "maria@example.com",
+		Password:     "password123",
+		GivenName:    "María",
+		LastName:     "García",
+		TeamName:     "   ",
+		Jurisdiction: "EU",
+		Locale:       "es-ES",
+		AcceptedTos:  true,
+	})
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/api/cloud/signup", bytes.NewReader(body))
+	w := httptest.NewRecorder()
+	h.handleSignup().ServeHTTP(w, req)
+
+	if w.Code != http.StatusCreated {
+		t.Fatalf("expected status %d, got %d: %s", http.StatusCreated, w.Code, w.Body.String())
+	}
+	if !strings.Contains(mailDriver.htmlBody+mailDriver.textBody, "Equipo de María") {
+		t.Fatalf("expected verification email to use localized team name, got html:\n%s\ntext:\n%s", mailDriver.htmlBody, mailDriver.textBody)
+	}
+
+	token := extractCloudSignupToken(t, mailDriver.htmlBody+"\n"+mailDriver.textBody)
+	verifySignupToken(t, h, token)
+	userID := requireCloudSignupUser(t, store, "maria@example.com")
+
+	teams, activeTenantID, err := store.ListUserTeams(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("list user teams: %v", err)
+	}
+	if len(teams) != 1 {
+		t.Fatalf("expected one team, got %d", len(teams))
+	}
+	if teams[0].Name != "Equipo de María" {
+		t.Fatalf("expected localized team name %q, got %q", "Equipo de María", teams[0].Name)
+	}
+	if activeTenantID != teams[0].ID {
+		t.Fatalf("expected active team %s, got %s", teams[0].ID, activeTenantID)
+	}
+
+	prefs, err := store.GetUserPreferences(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("get user preferences: %v", err)
+	}
+	if prefs == nil || prefs.DefaultLocale != "es" {
+		t.Fatalf("expected default locale es, got %+v", prefs)
+	}
+}
+
+func extractCloudSignupToken(t *testing.T, body string) string {
+	t.Helper()
+
+	const prefix = "/api/cloud/signup/verify?token="
+	idx := strings.Index(body, prefix)
+	if idx == -1 {
+		t.Fatalf("expected cloud signup verification link in body, got:\n%s", body)
+	}
+
+	start := idx + len(prefix)
+	end := start
+	for end < len(body) {
+		c := body[end]
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')) {
+			break
+		}
+		end++
+	}
+	token := body[start:end]
+	if len(token) != 64 {
+		t.Fatalf("expected 64-character verification token, got %q", token)
+	}
+	return token
 }
 
 func TestHandleSignupRejectsWithoutTos(t *testing.T) {

@@ -52,10 +52,31 @@ describe('RangeToolbar', () => {
                                 timeRangeSelectorAria: 'Zeitraum auswählen',
                                 refreshDataTooltip: 'Aktualisieren'
                             }
+                        },
+                        pt: {
+                            common: {
+                                timeRanges: {
+                                    last24Hours: 'Últimas 24 horas',
+                                    last24HoursShort: '24h',
+                                    last7Days: 'Últimos 7 dias',
+                                    last7DaysShort: '7d',
+                                    last30Days: 'Últimos 30 dias',
+                                    last30DaysShort: '30d',
+                                    lastYear: 'Último ano',
+                                    lastYearShort: '1a',
+                                    customRange: 'Intervalo personalizado',
+                                    customShort: 'Personalizado'
+                                },
+                                actions: {
+                                    refresh: 'Atualizar'
+                                },
+                                timeRangeSelectorAria: 'Selecionar intervalo',
+                                refreshDataTooltip: 'Atualizar'
+                            }
                         }
                     },
                     translocoConfig: {
-                        availableLangs: ['en', 'de'],
+                        availableLangs: ['en', 'de', 'pt'],
                         defaultLang: 'en'
                     },
                     preloadLangs: true
@@ -67,7 +88,8 @@ describe('RangeToolbar', () => {
                     defaultLocale: 'en-US',
                     langToLocaleMapping: {
                         en: 'en-US',
-                        de: 'de-DE'
+                        de: 'de-DE',
+                        pt: 'pt-BR'
                     }
                 })
             ]
@@ -84,17 +106,30 @@ describe('RangeToolbar', () => {
     });
 
     const translatedLabels = (toolbar: RangeToolbar) => {
-        const { translatedTimeRanges } = toolbar as unknown as { translatedTimeRanges: Signal<RangeOption[]> };
+        const { translatedTimeRanges } = toolbar as unknown as {
+            translatedTimeRanges: Signal<RangeOption[]>;
+        };
         return translatedTimeRanges().map((option) => option.label);
     };
 
+    const translatedShortLabels = (toolbar: RangeToolbar) => {
+        const { translatedTimeRanges } = toolbar as unknown as {
+            translatedTimeRanges: Signal<(RangeOption & { shortLabel: string })[]>;
+        };
+        return translatedTimeRanges().map((option) => option.shortLabel);
+    };
+
     const datePickerFormat = (toolbar: RangeToolbar) => {
-        const { datePickerDateFormat } = toolbar as unknown as { datePickerDateFormat: Signal<string> };
+        const { datePickerDateFormat } = toolbar as unknown as {
+            datePickerDateFormat: Signal<string>;
+        };
         return datePickerDateFormat();
     };
 
     const datePickerHourFormat = (toolbar: RangeToolbar) => {
-        const { datePickerHourFormat } = toolbar as unknown as { datePickerHourFormat: Signal<'12' | '24'> };
+        const { datePickerHourFormat } = toolbar as unknown as {
+            datePickerHourFormat: Signal<'12' | '24'>;
+        };
         return datePickerHourFormat();
     };
 
@@ -108,6 +143,14 @@ describe('RangeToolbar', () => {
         await fixture.whenStable();
 
         expect(translatedLabels(component)).toEqual(['Letzte 24 Stunden', 'Letzte 7 Tage', 'Letzte 30 Tage', 'Letztes Jahr', 'Benutzerdefiniert']);
+    });
+
+    it('uses localized compact labels when available', async () => {
+        transloco.setActiveLang('pt');
+        fixture.detectChanges();
+        await fixture.whenStable();
+
+        expect(translatedShortLabels(component)).toEqual(['24h', '7d', '30d', '1a', 'Personalizado']);
     });
 
     it('uses the active locale for the custom date picker format', async () => {

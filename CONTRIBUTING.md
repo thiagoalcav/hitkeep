@@ -188,7 +188,7 @@ GOFLAGS="$(./scripts/go-build-tags.sh goflags)" go test ./...
 GOFLAGS="$(./scripts/go-build-tags.sh goflags)" go test -race ./...
 golangci-lint run "$(./scripts/go-build-tags.sh golangci)"
 # Angular checks
-cd frontend/dashboard && npm run fmt:check
+cd frontend/dashboard && npm run fmt && npm run fmt:check
 cd frontend/dashboard && npm run lint
 cd frontend/dashboard && npm run test -- --watch=false --no-progress
 
@@ -220,7 +220,7 @@ cd frontend/dashboard && npm run e2e -- e2e/auth.seeded.spec.js --workers=1
 GOFLAGS="$(./scripts/go-build-tags.sh goflags)" go test ./...
 
 # Frontend
-cd frontend/dashboard && npm run fmt:check
+cd frontend/dashboard && npm run fmt && npm run fmt:check
 cd frontend/dashboard && npm run lint
 cd frontend/dashboard && npm run test -- --watch=false --no-progress
 
@@ -313,7 +313,7 @@ BREAKING CHANGE: The /api/login endpoint now requires 2FA if enabled.
 3. **Test your changes:**
    ```bash
    GOFLAGS="$(./scripts/go-build-tags.sh goflags)" go test ./...
-   cd frontend/dashboard && npm run fmt:check
+   cd frontend/dashboard && npm run fmt && npm run fmt:check
    cd frontend/dashboard && npm run lint
    cd frontend/dashboard && npm run test -- --watch=false --no-progress
    cd frontend/dashboard && npm run e2e

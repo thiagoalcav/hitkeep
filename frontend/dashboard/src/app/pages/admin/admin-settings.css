@@ -131,6 +131,86 @@
     font-size: 0.8rem !important;
 }
 
+.admin-copy-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.admin-copy-row__value {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-mcp-summary {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.8rem;
+    align-items: center;
+    min-width: 0;
+    margin-bottom: 0.95rem;
+    padding-bottom: 0.95rem;
+    border-bottom: 1px solid var(--p-content-border-color);
+}
+
+.admin-mcp-summary__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid color-mix(in srgb, var(--p-primary-color) 24%, var(--p-content-border-color));
+    border-radius: 8px;
+    color: var(--p-primary-color);
+    background: color-mix(in srgb, var(--p-primary-color) 8%, transparent);
+}
+
+.admin-mcp-summary__body {
+    display: grid;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.admin-mcp-summary__body span {
+    color: var(--p-text-muted-color);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.admin-mcp-summary__body strong {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--p-text-color);
+    font-size: 0.95rem;
+    font-weight: 750;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-mcp-summary__body small {
+    color: var(--p-text-muted-color);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.admin-mcp-summary__chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.45rem;
+}
+
+.admin-mcp-details {
+    gap: 0.65rem;
+}
+
 .admin-feature-list {
     display: grid;
     gap: 0.55rem;
@@ -266,6 +346,20 @@
 
     .admin-definition-list div,
     .admin-mail-test {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-mcp-summary {
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: start;
+    }
+
+    .admin-mcp-summary__chips {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+    }
+
+    .admin-copy-row {
         grid-template-columns: 1fr;
     }
 

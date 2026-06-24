@@ -533,6 +533,71 @@
                         </app-system-status-card>
 
                         <app-system-status-card
+                            titleId="runtime-mcp-title"
+                            [title]="'admin.system.mcp.title' | transloco"
+                            [loading]="isLoadingSystem()"
+                            [refreshLabel]="'admin.system.console.refreshCard' | transloco"
+                            (refreshClicked)="loadSystemInfo()"
+                        >
+                            @if (mcpServerFeature(); as mcp) {
+                            <p-tag system-status-card-status [value]="mcp.enabled ? ('common.enabled' | transloco) : ('common.disabled' | transloco)" [severity]="mcp.enabled ? 'success' : 'secondary'" />
+                            } @if (systemInfo()) {
+                            <div class="admin-mcp-summary">
+                                <span class="admin-mcp-summary__icon"><i class="pi pi-code" aria-hidden="true"></i></span>
+                                <div class="admin-mcp-summary__body">
+                                    <span>{{ "admin.system.mcp.connection" | transloco }}</span>
+                                    <strong>{{ mcpEndpoint() || "-" }}</strong>
+                                    <small>{{ mcpSummaryKey() | transloco }}</small>
+                                </div>
+                                <div class="admin-mcp-summary__chips" [attr.aria-label]="'admin.system.mcp.readiness' | transloco">
+                                    @if (mcpServerFeature(); as mcp) {
+                                    <p-tag [value]="'admin.system.mcp.server' | transloco" [severity]="mcp.enabled ? 'success' : 'secondary'" />
+                                    } @if (mcpDocsFeature(); as docs) {
+                                    <p-tag [value]="'admin.system.mcp.docsTools' | transloco" [severity]="docs.enabled ? 'success' : 'secondary'" />
+                                    }
+                                </div>
+                            </div>
+
+                            <dl class="admin-definition-list admin-definition-list--compact admin-mcp-details">
+                                <div>
+                                    <dt>{{ "admin.system.mcp.endpoint" | transloco }}</dt>
+                                    <dd>
+                                        <span class="admin-copy-row">
+                                            <span class="admin-mono admin-copy-row__value" [pTooltip]="mcpEndpoint()" tooltipPosition="top">{{ mcpEndpoint() || "-" }}</span>
+                                            <app-copy-control [value]="mcpEndpoint()" [labelKey]="'admin.system.mcp.copyEndpoint'" [ariaLabelKey]="'admin.system.mcp.copyEndpoint'" size="small" [text]="true" [disabled]="!mcpEndpoint()" />
+                                        </span>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.mcp.docsUrl" | transloco }}</dt>
+                                    <dd>
+                                        <span class="admin-copy-row">
+                                            <span class="admin-mono admin-copy-row__value" [pTooltip]="mcpDocsURL()" tooltipPosition="top">{{ mcpDocsURL() || "-" }}</span>
+                                            <app-copy-control [value]="mcpDocsURL()" [labelKey]="'admin.system.mcp.copyDocsUrl'" [ariaLabelKey]="'admin.system.mcp.copyDocsUrl'" size="small" [text]="true" [disabled]="!mcpDocsURL()" />
+                                        </span>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.mcp.server" | transloco }}</dt>
+                                    <dd>
+                                        <p-tag [value]="mcpServerFeature()?.enabled ? ('common.enabled' | transloco) : ('common.disabled' | transloco)" [severity]="mcpServerFeature()?.enabled ? 'success' : 'secondary'" />
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>{{ "admin.system.mcp.docsTools" | transloco }}</dt>
+                                    <dd>
+                                        <p-tag [value]="mcpDocsFeature()?.enabled ? ('common.enabled' | transloco) : ('common.disabled' | transloco)" [severity]="mcpDocsFeature()?.enabled ? 'success' : 'secondary'" />
+                                    </dd>
+                                </div>
+                            </dl>
+                            } @else if (isLoadingSystem()) {
+                            <div class="admin-loading"><i class="pi pi-spin pi-spinner" aria-hidden="true"></i>{{ "common.loading" | transloco }}</div>
+                            } @else {
+                            <p-message severity="error" [text]="'admin.system.console.loadFailed' | transloco" styleClass="w-full" />
+                            }
+                        </app-system-status-card>
+
+                        <app-system-status-card
                             titleId="runtime-storage-title"
                             [title]="'admin.system.storage.title' | transloco"
                             [wide]="true"

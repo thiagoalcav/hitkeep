@@ -21,6 +21,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoPipe, TranslocoService } from '@jsverse/transloco';
 import { dialogCancelButton, dialogDangerButton, dialogWarnButton } from '@components/dialog-actions/dialog-actions';
 import { PageBreadcrumbItem } from '@components/page-breadcrumb/page-breadcrumb';
+import { CopyControl } from '@components/copy-control/copy-control';
 import { RelativeDateTime } from '@components/relative-date-time/relative-date-time';
 import { TableRowActionItem, TableRowActions } from '@components/table-row-actions/table-row-actions';
 import { INSTANCE_CAPABILITIES } from '@core/access/capabilities';
@@ -131,6 +132,7 @@ interface StatusState {
         AdminGlobalExclusionSettings,
         SystemStatusCard,
         SystemAudit,
+        CopyControl,
         RelativeDateTime,
         TableRowActions,
         TranslocoPipe
@@ -238,12 +240,24 @@ export class AdminSettings implements OnInit {
         const info = this.systemInfo();
         if (!info) return [];
 
-        return (info.enabled_features ?? []).map((feature) => ({
-            label: this.featureLabel(feature),
-            detail: this.featureDetail(feature),
-            value: this.transloco.translate(feature.enabled ? 'common.enabled' : 'common.disabled'),
-            enabled: feature.enabled
-        }));
+        return (info.enabled_features ?? [])
+            .filter((feature) => feature.key !== 'mcp' && feature.key !== 'mcp_docs')
+            .map((feature) => ({
+                label: this.featureLabel(feature),
+                detail: this.featureDetail(feature),
+                value: this.transloco.translate(feature.enabled ? 'common.enabled' : 'common.disabled'),
+                enabled: feature.enabled
+            }));
+    });
+    protected readonly mcpServerFeature = computed(() => this.findFeature('mcp'));
+    protected readonly mcpDocsFeature = computed(() => this.findFeature('mcp_docs'));
+    protected readonly mcpEndpoint = computed(() => this.resolvePublicURL(this.mcpServerFeature()?.detail ?? ''));
+    protected readonly mcpDocsURL = computed(() => this.mcpDocsFeature()?.detail?.trim() ?? '');
+    protected readonly mcpSummaryKey = computed(() => {
+        const server = this.mcpServerFeature();
+        if (!server) return 'admin.system.mcp.summary.unknown';
+        if (!server.enabled) return 'admin.system.mcp.summary.disabled';
+        return this.mcpDocsFeature()?.enabled ? 'admin.system.mcp.summary.readyWithDocs' : 'admin.system.mcp.summary.ready';
     });
     protected readonly isManagedCloud = computed(() => {
         const features = this.systemInfo()?.enabled_features ?? [];
@@ -978,6 +992,29 @@ export class AdminSettings implements OnInit {
     private cachePressure(size: number, maxSize: number): number {
         if (maxSize <= 0) return 0;
         return Math.round((size / maxSize) * 100);
+    }
+
+    private findFeature(key: string): SystemFeatureStatus | null {
+        return this.systemInfo()?.enabled_features?.find((feature) => feature.key === key) ?? null;
+    }
+
+    private resolvePublicURL(value: string): string {
+        const detail = value.trim();
+        if (!detail) {
+            return '';
+        }
+        if (/^https?:\/\//i.test(detail)) {
+            return detail;
+        }
+
+        const publicURL = this.systemInfo()?.public_url?.trim();
+        if (!publicURL) {
+            return detail;
+        }
+
+        const base = publicURL.replace(/\/+$/, '');
+        const path = detail.startsWith('/') ? detail : `/${detail}`;
+        return `${base}${path}`;
     }
 
     private featureLabel(feature: SystemFeatureStatus): string {

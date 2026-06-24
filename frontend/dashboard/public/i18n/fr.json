@@ -2958,5 +2958,14 @@
             "archiveTitle": "Archiver la campagne QR",
             "archiveMessage": "Archiver {{name}} ? Les codes imprimés continueront de rediriger, mais l’équipe marketing ne verra plus cette campagne dans la liste active."
         }
+    },
+    "cloud": {
+        "retentionNotice": {
+            "message": "Les données du forfait gratuit sont conservées pendant {{count}} jours.",
+            "upgradeAction": "Passer à Pro",
+            "compareAction": "Comparer les offres",
+            "dismissAction": "Fermer l’avis",
+            "checkoutError": "Impossible de lancer le paiement. Réessayez depuis la facturation."
+        }
     }
 }

@@ -2958,5 +2958,14 @@
             "archiveTitle": "Archive QR campaign",
             "archiveMessage": "Archive {{name}}? Printed codes will still redirect, but marketers will no longer see this campaign in the active list."
         }
+    },
+    "cloud": {
+        "retentionNotice": {
+            "message": "Free plan data is retained for {{count}} days.",
+            "upgradeAction": "Upgrade to Pro",
+            "compareAction": "Compare plans",
+            "dismissAction": "Dismiss retention notice",
+            "checkoutError": "Could not start checkout. Try again from billing."
+        }
     }
 }

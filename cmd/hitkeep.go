@@ -133,6 +133,10 @@ func Run() {
 		reportWorker := worker.NewReportWorker(tenantMgr, mailSvc, conf.PublicURL)
 		go reportWorker.Start(gCtx)
 
+		// Start cloud lifecycle email worker. The worker is a no-op in non-billing builds.
+		cloudLifecycleWorker := worker.NewCloudLifecycleWorker(tenantMgr, mailSvc, conf)
+		go cloudLifecycleWorker.Start(gCtx)
+
 		startSearchConsoleSyncWorker(gCtx, conf, tenantMgr)
 
 		g.Go(func() error {

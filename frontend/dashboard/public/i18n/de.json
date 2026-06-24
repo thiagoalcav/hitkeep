@@ -2958,5 +2958,14 @@
             "archiveTitle": "QR-Kampagne archivieren",
             "archiveMessage": "{{name}} archivieren? Gedruckte Codes leiten weiter, aber Marketer sehen diese Kampagne nicht mehr in der aktiven Liste."
         }
+    },
+    "cloud": {
+        "retentionNotice": {
+            "message": "Daten im Free-Plan werden {{count}} Tage lang aufbewahrt.",
+            "upgradeAction": "Auf Pro upgraden",
+            "compareAction": "Pläne vergleichen",
+            "dismissAction": "Hinweis ausblenden",
+            "checkoutError": "Checkout konnte nicht gestartet werden. Versuche es über die Abrechnung."
+        }
     }
 }

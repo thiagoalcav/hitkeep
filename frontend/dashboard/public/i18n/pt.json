@@ -2812,5 +2812,14 @@
             "title": "Sem Web Vitals ainda",
             "description": "Ative o Web Vitals no código de rastreamento para começar a coletar amostras de desempenho dos usuários."
         }
+    },
+    "cloud": {
+        "retentionNotice": {
+            "message": "Os dados do plano gratuito são mantidos por {{count}} dias.",
+            "upgradeAction": "Fazer upgrade para Pro",
+            "compareAction": "Comparar planos",
+            "dismissAction": "Dispensar aviso",
+            "checkoutError": "Não foi possível iniciar o checkout. Tente novamente em faturamento."
+        }
     }
 }

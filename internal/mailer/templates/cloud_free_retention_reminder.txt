@@ -1,0 +1,19 @@
+{{ define "content" -}}
+{{ t "cloud.retention.heading" }}
+===========================
+
+{{ tf "cloud.retention.body" .TeamName .SiteDomain .RetentionDays }}
+
+{{ t "cloud.retention.reason" }}
+
+{{ t "cloud.retention.button" }}: {{ .DashboardURL }}
+
+{{ t "cloud.retention.docs" }}
+{{ t "cloud.welcome.docs_button" }}: {{ .DocsURL }}
+
+{{ t "cloud.welcome.wordpress" }}
+{{ t "cloud.welcome.wordpress_button" }}: {{ .WordPressURL }}
+
+{{ t "cloud.welcome.feedback" }}
+{{ t "cloud.welcome.feedback_button" }}: {{ .FeedbackURL }}
+{{- end }}

@@ -1,0 +1,26 @@
+@if (visible()) {
+<section class="free-plan-retention-notice" data-testid="free-plan-retention-notice" aria-live="polite">
+    <div class="free-plan-retention-notice__copy">
+        <span class="free-plan-retention-notice__icon" aria-hidden="true">
+            <i class="pi pi-clock"></i>
+        </span>
+        <div class="free-plan-retention-notice__text">
+            <p>{{ "cloud.retentionNotice.message" | transloco: { count: retentionDays() } }}</p>
+            @if (checkoutErrorKey(); as errorKey) {
+            <span class="free-plan-retention-notice__error">{{ errorKey | transloco }}</span>
+            }
+        </div>
+    </div>
+
+    <div class="free-plan-retention-notice__actions">
+        <p-button size="small" icon="pi pi-arrow-up-right" iconPos="right" [label]="'cloud.retentionNotice.upgradeAction' | transloco" [loading]="checkoutPending()" [disabled]="checkoutPending()" (onClick)="startUpgrade()" />
+        <a routerLink="/admin/team" class="free-plan-retention-notice__secondary">
+            <i class="pi pi-list" aria-hidden="true"></i>
+            <span>{{ "cloud.retentionNotice.compareAction" | transloco }}</span>
+        </a>
+        <button type="button" class="free-plan-retention-notice__dismiss" [attr.aria-label]="'cloud.retentionNotice.dismissAction' | transloco" (click)="dismiss()">
+            <i class="pi pi-times" aria-hidden="true"></i>
+        </button>
+    </div>
+</section>
+}

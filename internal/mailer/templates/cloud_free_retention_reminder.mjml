@@ -1,0 +1,41 @@
+{{ define "content" }}
+<mj-text font-size="20px" font-weight="600" padding-bottom="10px">
+  {{ t "cloud.retention.heading" }}
+</mj-text>
+
+<mj-text>
+  {{ tf "cloud.retention.body" .TeamName .SiteDomain .RetentionDays }}
+</mj-text>
+
+<mj-text>
+  {{ t "cloud.retention.reason" }}
+</mj-text>
+
+<mj-button href="{{ .DashboardURL }}" padding-top="20px" padding-bottom="20px">
+  {{ t "cloud.retention.button" }}
+</mj-button>
+
+<mj-text>
+  {{ t "cloud.retention.docs" }}
+</mj-text>
+
+<mj-button href="{{ .DocsURL }}" background-color="#475569" padding-top="8px" padding-bottom="16px">
+  {{ t "cloud.welcome.docs_button" }}
+</mj-button>
+
+<mj-text>
+  {{ t "cloud.welcome.wordpress" }}
+</mj-text>
+
+<mj-button href="{{ .WordPressURL }}" background-color="#475569" padding-top="8px" padding-bottom="16px">
+  {{ t "cloud.welcome.wordpress_button" }}
+</mj-button>
+
+<mj-text>
+  {{ t "cloud.welcome.feedback" }}
+</mj-text>
+
+<mj-button href="{{ .FeedbackURL }}" background-color="#475569" padding-top="8px" padding-bottom="20px">
+  {{ t "cloud.welcome.feedback_button" }}
+</mj-button>
+{{ end }}

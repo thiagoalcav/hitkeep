@@ -2940,5 +2940,14 @@
             "archiveTitle": "QR-campagne archiveren",
             "archiveMessage": "{{name}} archiveren? Gedrukte codes blijven doorverwijzen, maar marketeers zien deze campagne niet meer in de actieve lijst."
         }
+    },
+    "cloud": {
+        "retentionNotice": {
+            "message": "Gegevens van het gratis plan worden {{count}} dagen bewaard.",
+            "upgradeAction": "Upgrade naar Pro",
+            "compareAction": "Plannen vergelijken",
+            "dismissAction": "Melding sluiten",
+            "checkoutError": "Checkout kon niet worden gestart. Probeer het via facturering."
+        }
     }
 }

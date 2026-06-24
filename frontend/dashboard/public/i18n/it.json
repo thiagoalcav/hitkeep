@@ -2958,5 +2958,14 @@
             "archiveTitle": "Archivia campagna QR",
             "archiveMessage": "Archiviare {{name}}? I codici stampati continueranno a reindirizzare, ma il marketing non vedrà più questa campagna nell’elenco attivo."
         }
+    },
+    "cloud": {
+        "retentionNotice": {
+            "message": "I dati del piano gratuito sono conservati per {{count}} giorni.",
+            "upgradeAction": "Passa a Pro",
+            "compareAction": "Confronta i piani",
+            "dismissAction": "Chiudi avviso",
+            "checkoutError": "Non è stato possibile avviare il checkout. Riprova dalla fatturazione."
+        }
     }
 }

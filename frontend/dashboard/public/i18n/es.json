@@ -2958,5 +2958,14 @@
             "archiveTitle": "Archivar campaña QR",
             "archiveMessage": "¿Archivar {{name}}? Los códigos impresos seguirán redirigiendo, pero marketing ya no verá esta campaña en la lista activa."
         }
+    },
+    "cloud": {
+        "retentionNotice": {
+            "message": "Los datos del plan gratuito se conservan durante {{count}} días.",
+            "upgradeAction": "Actualizar a Pro",
+            "compareAction": "Comparar planes",
+            "dismissAction": "Descartar aviso",
+            "checkoutError": "No se pudo iniciar el pago. Inténtalo desde facturación."
+        }
     }
 }

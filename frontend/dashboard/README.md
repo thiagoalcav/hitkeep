@@ -61,31 +61,25 @@ This runs Angular's Vitest-backed unit tests in non-watch headless mode. For a f
 For the real seeded end-to-end suite, run:
 
 ```bash
-ng e2e
+npm run e2e
 ```
 
-This workspace wires `ng e2e` to the Playwright suite that CI uses. The launcher:
+This is the same browser contract CI runs. The launcher:
 
 - builds the production dashboard bundle
 - builds the Go binary
 - seeds realistic demo data
-- starts a disposable local HitKeep instance
+- starts disposable local HitKeep instances
 - runs the browser journeys against the real app
+- runs the deployment smoke under `/hitkeep`
 
-If you want to call Playwright directly while iterating on a focused spec, use:
-
-```bash
-npm run test:e2e -- e2e/auth.seeded.spec.js --workers=1
-```
-
-Deployment smoke tests use the same seeded binary launcher:
+Angular 22 still supports `ng e2e`, but HitKeep uses Playwright directly so there is only one maintained E2E entrypoint. For a focused spec while iterating, pass Playwright arguments through `npm run e2e`:
 
 ```bash
-npm run test:e2e:smoke
-npm run test:e2e:smoke:subdirectory
+npm run e2e -- e2e/auth.seeded.spec.js --workers=1
 ```
 
-The subdirectory smoke runs HitKeep with `HITKEEP_E2E_PUBLIC_PATH=/hitkeep` and verifies the dashboard, authenticated route refreshes, app-owned API/resource/static image paths, the API reference iframe, tracker bundles, and ingest preflight under that prefix.
+The full command includes a subdirectory smoke run with `HITKEEP_E2E_PUBLIC_PATH=/hitkeep` and verifies the dashboard, authenticated route refreshes, app-owned API/resource/static image paths, the API reference iframe, tracker bundles, and ingest preflight under that prefix.
 
 On a fresh machine, install the browser dependency first:
 

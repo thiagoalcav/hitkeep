@@ -199,9 +199,9 @@ cd frontend/dashboard && npm run e2e
 
 Notes:
 
-- `npm run e2e` is the preferred entrypoint for browser end-to-end tests. It runs `ng e2e`, which delegates to the seeded Playwright suite used in CI.
-- The e2e launcher builds the dashboard, builds the Go binary, seeds demo data, and starts a disposable local HitKeep instance automatically.
-- `npm run test:e2e` is still available as the lower-level Playwright command, but contributor docs and CI standardize on `ng e2e` / `npm run e2e`.
+- `npm run e2e` is the canonical entrypoint for browser end-to-end tests locally and in CI.
+- The e2e launcher builds the dashboard, builds the Go binary, seeds demo data, starts disposable local HitKeep instances, and also runs the `/hitkeep` subdirectory deployment smoke.
+- Angular 22 still supports `ng e2e`, but HitKeep uses Playwright directly so the documented command matches CI exactly.
 
 If you are making a change that touches frontend behavior, try to run the relevant browser coverage before opening a PR:
 
@@ -210,7 +210,7 @@ If you are making a change that touches frontend behavior, try to run the releva
 cd frontend/dashboard && npm run e2e
 
 # Or a focused spec while iterating
-cd frontend/dashboard && npm run test:e2e -- e2e/auth.seeded.spec.js --workers=1
+cd frontend/dashboard && npm run e2e -- e2e/auth.seeded.spec.js --workers=1
 ```
 
 ### Suggested Verification Before a PR

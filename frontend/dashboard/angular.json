@@ -20,6 +20,7 @@
                         "browser": "src/main.ts",
                         "tsConfig": "tsconfig.app.json",
                         "inlineStyleLanguage": "scss",
+                        "allowedCommonJsDependencies": ["qr-code-styling"],
                         "assets": [
                             {
                                 "glob": "**/*",
@@ -87,13 +88,6 @@
                     "builder": "@angular/build:unit-test",
                     "options": {
                         "browsers": ["chromium"]
-                    }
-                },
-                "e2e": {
-                    "builder": "@hitkeep/ng-e2e-builder:run",
-                    "options": {
-                        "command": "npm run test:e2e",
-                        "cwd": "."
                     }
                 },
                 "lint": {

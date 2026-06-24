@@ -21,6 +21,7 @@ import (
 	"golang.org/x/crypto/argon2"
 
 	"hitkeep/internal/api"
+	"hitkeep/internal/assetstore"
 	"hitkeep/internal/auth"
 	"hitkeep/internal/database"
 	"hitkeep/internal/worker"
@@ -129,6 +130,10 @@ func main() {
 	siteID := siteContext.siteID
 	analyticsStore := siteContext.analyticsStore
 
+	deleteSiteQRCampaignData(ctx, store, analyticsStore, siteID)
+	if err := assetstore.New(tenantBasePath).DeleteQRCodeAssetsForSite(siteID); err != nil {
+		slog.Warn("Failed to remove existing QR campaign assets before seeding", "error", err, "site_id", siteID)
+	}
 	deleteSiteAnalyticsData(ctx, analyticsStore, siteID)
 	deleteSiteGoalsAndFunnels(ctx, analyticsStore, siteID)
 
@@ -141,6 +146,13 @@ func main() {
 		slog.Error("Failed to seed traffic", "error", err)
 		os.Exit(1)
 	}
+	qrStats, err := seedQRCampaigns(ctx, store, analyticsStore, siteID, userID, siteContext.site.Domain, *days, tenantBasePath, rng)
+	if err != nil {
+		slog.Error("Failed to seed QR campaigns", "error", err)
+		os.Exit(1)
+	}
+	stats = mergeQRSeedStats(stats, qrStats)
+
 	webVitals, err := seedWebVitals(ctx, analyticsStore, siteID, *days, rng)
 	if err != nil {
 		slog.Error("Failed to seed Web Vitals", "error", err)
@@ -235,6 +247,8 @@ func printSeedSummary(email, password, domain string, siteID uuid.UUID, tenantBa
 	fmt.Printf("  Pageviews:     %d\n", stats.hits)
 	fmt.Printf("  Sessions:      %d\n", stats.sessions)
 	fmt.Printf("  Events:        %d\n", stats.events)
+	fmt.Printf("  QR Codes:      %d\n", stats.qrCodes)
+	fmt.Printf("  QR Opens:      %d\n", stats.qrOpens)
 	fmt.Printf("  Web Vitals:    %d\n", stats.webVitals)
 	fmt.Printf("  Opportunities: %d\n", stats.opportunities)
 	fmt.Printf("  AI Fetches:    %d\n", stats.aiFetches)

@@ -18,7 +18,7 @@ import (
 
 func deleteSiteAnalyticsData(ctx context.Context, store *database.Store, siteID uuid.UUID) {
 	tables := []string{
-		"hits", "events", "web_vitals", "ai_fetches", "rollup_dirty_buckets",
+		"hits", "events", "web_vitals", "ai_fetches", "qr_code_opens", "rollup_dirty_buckets",
 		"hit_rollups_hourly", "hit_rollups_daily", "hit_rollups_monthly",
 		"session_rollups_hourly", "session_rollups_daily", "session_rollups_monthly",
 		"goal_rollups_hourly", "goal_rollups_daily", "goal_rollups_monthly",
@@ -30,6 +30,21 @@ func deleteSiteAnalyticsData(ctx context.Context, store *database.Store, siteID 
 		}
 	}
 	slog.Info("Cleared existing analytics data", "site_id", siteID)
+}
+
+func deleteSiteQRCampaignData(ctx context.Context, sharedStore, analyticsStore *database.Store, siteID uuid.UUID) {
+	if analyticsStore != nil {
+		if err := analyticsStore.Exec(ctx, "DELETE FROM qr_code_opens WHERE site_id = ?", siteID); err != nil {
+			slog.Warn("Failed to clear QR opens", "error", err)
+		}
+	}
+
+	for _, table := range []string{"qr_code_share_links", "qr_code_assets", "qr_codes"} {
+		if err := sharedStore.Exec(ctx, fmt.Sprintf("DELETE FROM %s WHERE site_id = ?", table), siteID); err != nil {
+			slog.Warn("Failed to clear QR campaign data", "table", table, "error", err)
+		}
+	}
+	slog.Info("Cleared existing QR campaign data", "site_id", siteID)
 }
 
 func deleteSiteGoalsAndFunnels(ctx context.Context, store *database.Store, siteID uuid.UUID) {
@@ -217,9 +232,20 @@ type seedStats struct {
 	hits          int
 	sessions      int
 	events        int
+	qrCodes       int
+	qrOpens       int
 	webVitals     int
 	opportunities int
 	aiFetches     int
+}
+
+func mergeQRSeedStats(stats, qrStats seedStats) seedStats {
+	stats.hits += qrStats.hits
+	stats.sessions += qrStats.sessions
+	stats.events += qrStats.events
+	stats.qrCodes = qrStats.qrCodes
+	stats.qrOpens = qrStats.qrOpens
+	return stats
 }
 
 type aiFetchSeedStats struct {

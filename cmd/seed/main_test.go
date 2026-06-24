@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/argon2"
 
 	"hitkeep/internal/api"
@@ -241,6 +242,136 @@ func TestSeedWebVitalsCreatesReportableSamples(t *testing.T) {
 	}
 }
 
+func TestSeedQRCampaignsCreatesDefinitionsAndAttribution(t *testing.T) {
+	ctx, store, tenantMgr, site, userID, analyticsStore := newSeedQRCampaignTestContext(t)
+	defer store.Close()
+	defer tenantMgr.Close()
+
+	deleteSiteQRCampaignData(ctx, store, analyticsStore, site.ID)
+	stats, err := seedQRCampaigns(ctx, store, analyticsStore, site.ID, userID, site.Domain, 30, t.TempDir(), mrand.New(mrand.NewSource(2112))) // #nosec G404 -- deterministic fixture test.
+	if err != nil {
+		t.Fatalf("seedQRCampaigns: %v", err)
+	}
+	requireSeedQRCampaignStats(t, stats)
+	qrs := requireSeedQRCampaignDefinitions(t, ctx, store, site.ID, stats.qrCodes)
+	requireSeedQRCodeAttribution(t, ctx, analyticsStore, site.ID, qrs)
+}
+
+func newSeedQRCampaignTestContext(t *testing.T) (context.Context, *database.Store, *database.TenantStoreManager, *api.Site, uuid.UUID, *database.Store) {
+	t.Helper()
+	ctx := context.Background()
+	store := database.NewStore(filepath.Join(t.TempDir(), "seed.db"))
+	if err := store.Connect(); err != nil {
+		t.Fatalf("connect store: %v", err)
+	}
+	if err := store.Migrate(ctx); err != nil {
+		t.Fatalf("migrate store: %v", err)
+	}
+	tenantMgr := database.NewTenantStoreManager(store, t.TempDir())
+
+	userID := ensureUser(ctx, store, "demo@example.com", "demo1234")
+	seedTeam(ctx, store, userID)
+	site, err := ensureSiteInActiveTeam(ctx, store, userID, "acme-analytics.io")
+	if err != nil {
+		t.Fatalf("ensure site: %v", err)
+	}
+	if err := tenantMgr.SyncSite(ctx, site.ID); err != nil {
+		t.Fatalf("sync site: %v", err)
+	}
+	analyticsStore, _, err := tenantMgr.ResolveSiteStore(ctx, site.ID)
+	if err != nil {
+		t.Fatalf("resolve tenant store: %v", err)
+	}
+	return ctx, store, tenantMgr, site, userID, analyticsStore
+}
+
+func requireSeedQRCampaignStats(t *testing.T, stats seedStats) {
+	t.Helper()
+	if stats.qrCodes != 3 || stats.qrOpens == 0 || stats.hits == 0 || stats.sessions == 0 || stats.events == 0 {
+		t.Fatalf("expected QR definitions, opens, hits, sessions, and events, got %+v", stats)
+	}
+}
+
+func requireSeedQRCampaignDefinitions(t *testing.T, ctx context.Context, store *database.Store, siteID uuid.UUID, expected int) []api.QRCode {
+	t.Helper()
+	qrs, err := store.ListQRCodes(ctx, siteID, false)
+	if err != nil {
+		t.Fatalf("ListQRCodes: %v", err)
+	}
+	if len(qrs) != expected {
+		t.Fatalf("expected %d QR codes, got %d", expected, len(qrs))
+	}
+
+	conference := requireSeedQRCodeByName(t, qrs, "Conference booth poster")
+	if conference.UTMSource != "conference" || conference.UTMMedium != "qr" || conference.UTMCampaign != "berlin-analytics-summit" {
+		t.Fatalf("expected conference QR UTM attribution, got %+v", conference)
+	}
+	if conference.CustomParams["placement"] != "booth-wall" || conference.CustomParams["segment"] != "enterprise" {
+		t.Fatalf("expected conference QR custom params, got %+v", conference.CustomParams)
+	}
+	asset, err := store.GetQRCodeAsset(ctx, siteID, conference.ID)
+	if err != nil {
+		t.Fatalf("GetQRCodeAsset: %v", err)
+	}
+	if asset == nil || asset.ContentType != "image/png" || asset.ByteSize == 0 || !strings.HasPrefix(asset.Checksum, "sha256:") {
+		t.Fatalf("expected persisted PNG QR asset, got %+v", asset)
+	}
+	shares, err := store.ListQRCodeShareLinks(ctx, siteID, conference.ID)
+	if err != nil {
+		t.Fatalf("ListQRCodeShareLinks: %v", err)
+	}
+	if len(shares) == 0 {
+		t.Fatal("expected seeded QR-only share link")
+	}
+	return qrs
+}
+
+func requireSeedQRCodeAttribution(t *testing.T, ctx context.Context, analyticsStore *database.Store, siteID uuid.UUID, qrs []api.QRCode) {
+	t.Helper()
+	start := time.Now().UTC().AddDate(0, 0, -31)
+	end := time.Now().UTC().AddDate(0, 0, 1)
+	for _, qr := range qrs {
+		opens, err := analyticsStore.CountQRCodeOpens(ctx, siteID, qr.ID, start, end)
+		if err != nil {
+			t.Fatalf("CountQRCodeOpens(%s): %v", qr.Name, err)
+		}
+		if opens == 0 {
+			t.Fatalf("expected QR opens for %s", qr.Name)
+		}
+
+		filter := []api.Filter{{Type: "qr_code_id", Value: qr.ID.String()}}
+		filteredStats, err := analyticsStore.GetSiteStats(ctx, api.AnalyticsParams{
+			SiteID:  siteID,
+			Start:   start,
+			End:     end,
+			Filters: filter,
+		})
+		if err != nil {
+			t.Fatalf("GetSiteStats(%s): %v", qr.Name, err)
+		}
+		if filteredStats.TotalPageviews == 0 || filteredStats.UniqueSessions == 0 {
+			t.Fatalf("expected QR-scoped analytics for %s, got %+v", qr.Name, filteredStats)
+		}
+
+		hits, err := analyticsStore.GetHits(ctx, api.HitQueryParams{
+			SiteID:  siteID,
+			Start:   start,
+			End:     end,
+			Limit:   10,
+			Filters: filter,
+		})
+		if err != nil {
+			t.Fatalf("GetHits(%s): %v", qr.Name, err)
+		}
+		if hits.Total == 0 || len(hits.Data) == 0 {
+			t.Fatalf("expected QR-attributed hits for %s, got %+v", qr.Name, hits)
+		}
+		if hits.Data[0].QRCodeID == nil || *hits.Data[0].QRCodeID != qr.ID {
+			t.Fatalf("expected hit attribution %s, got %+v", qr.ID, hits.Data[0].QRCodeID)
+		}
+	}
+}
+
 func TestSeedOpportunitiesCreatesWebVitalsPerformanceOpportunity(t *testing.T) {
 	ctx := context.Background()
 	store := database.NewStore(filepath.Join(t.TempDir(), "seed.db"))
@@ -292,6 +423,17 @@ func findSeedOpportunity(items []api.Opportunity, typeKey string) *api.Opportuni
 		}
 	}
 	return nil
+}
+
+func requireSeedQRCodeByName(t *testing.T, qrs []api.QRCode, name string) api.QRCode {
+	t.Helper()
+	for _, qr := range qrs {
+		if qr.Name == name {
+			return qr
+		}
+	}
+	t.Fatalf("expected seeded QR code %q, got %+v", name, qrs)
+	return api.QRCode{}
 }
 
 func seedOpportunityHasEvidence(item api.Opportunity, evidenceID string) bool {

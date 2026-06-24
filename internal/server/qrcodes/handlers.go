@@ -423,6 +423,7 @@ func (h *handler) handleRedirect() http.HandlerFunc {
 			return
 		}
 		h.recordOpenBestEffort(r.Context(), r, qr)
+		//nolint:gosec // QR campaigns intentionally redirect to saved absolute http(s) destinations validated by buildDestinationURL.
 		http.Redirect(w, r, destination, http.StatusFound)
 	}
 }

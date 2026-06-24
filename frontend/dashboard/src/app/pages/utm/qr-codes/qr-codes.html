@@ -1,0 +1,509 @@
+<div class="qr-codes-page">
+    <p-confirmdialog />
+
+    <app-page-header>
+        <ng-template appPageHeaderLeft>
+            <app-page-breadcrumb [items]="breadcrumbItems()" />
+        </ng-template>
+    </app-page-header>
+
+    @if (isDetailRoute()) {
+    <app-range-toolbar
+        [timeRanges]="timeRanges()"
+        [selectedRange]="selectedRange()"
+        [customRangeDates]="customRangeDates()"
+        [loading]="isStatsLoading()"
+        (selectedRangeChange)="selectedRange.set($event)"
+        (customRangeDatesChange)="customRangeDates.set($event)"
+        (refresh)="refresh()"
+    >
+        @if (!isShareMode()) {
+        <p-button toolbar-right icon="pi pi-plus" [label]="'qrCodes.actions.create' | transloco" size="small" (onClick)="openCreate()" />
+        }
+    </app-range-toolbar>
+    } @if (siteService.isLoading() || isLoading()) {
+    <div class="qr-codes-loading">
+        <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+        <span>{{ "common.loading" | transloco }}</span>
+    </div>
+    } @else if (!siteService.activeSite()) {
+    <app-page-state titleKey="common.noSiteSelected" messageKey="utm.noSiteDescription" icon="pi pi-globe" />
+    } @else if (errorKey()) {
+    <app-page-state [titleKey]="errorKey()!" messageKey="qrCodes.errors.retry" icon="pi pi-exclamation-triangle" />
+    } @else if (!isDetailRoute()) {
+    <section class="qr-codes-resource">
+        <div class="qr-codes-section-header">
+            <div>
+                <h2>{{ "qrCodes.list.title" | transloco }}</h2>
+                <p>{{ "qrCodes.list.count" | transloco: { count: qrs().length } }}</p>
+            </div>
+            <div class="qr-codes-detail-actions">
+                <p-button icon="pi pi-refresh" [label]="'common.actions.refresh' | transloco" severity="secondary" [text]="true" size="small" (onClick)="refresh()" />
+                @if (!isShareMode()) {
+                <p-button icon="pi pi-plus" [label]="'qrCodes.actions.create' | transloco" size="small" (onClick)="openCreate()" />
+                }
+            </div>
+        </div>
+
+        @if (pageNotice(); as notice) {
+        <div
+            class="hk-feedback-message qr-codes-notice"
+            [class.hk-feedback-message--success]="notice.kind === 'success'"
+            [class.hk-feedback-message--error]="notice.kind === 'error'"
+            [attr.role]="notice.kind === 'error' ? 'alert' : 'status'"
+            [attr.aria-live]="notice.kind === 'error' ? 'assertive' : 'polite'"
+        >
+            <i class="pi" [class.pi-check-circle]="notice.kind === 'success'" [class.pi-exclamation-circle]="notice.kind === 'error'" aria-hidden="true"></i>
+            <span>{{ notice.key | transloco }}</span>
+        </div>
+        } @if (!qrs().length) {
+        <div class="qr-codes-empty">
+            <i class="pi pi-qrcode" aria-hidden="true"></i>
+            <h2>{{ "qrCodes.empty.title" | transloco }}</h2>
+            <p>{{ "qrCodes.empty.description" | transloco }}</p>
+            @if (!isShareMode()) {
+            <p-button icon="pi pi-plus" [label]="'qrCodes.actions.create' | transloco" (onClick)="openCreate()" />
+            }
+        </div>
+        } @else {
+        <div class="hk-crud-table-wrap">
+            <p-table
+                #qrCodesTable
+                [value]="qrs()"
+                dataKey="id"
+                [globalFilterFields]="['name', 'destination_url', 'utm_source', 'utm_medium', 'utm_campaign', 'updated_at']"
+                [sortField]="'updated_at'"
+                [sortOrder]="-1"
+                [paginator]="true"
+                [rows]="10"
+                [rowsPerPageOptions]="[10, 25, 50]"
+                [rowHover]="true"
+                responsiveLayout="scroll"
+                styleClass="hk-crud-table p-datatable-sm"
+                [tableStyle]="{ 'min-width': '980px' }"
+            >
+                <ng-template pTemplate="caption">
+                    <div class="qr-codes-table-caption">
+                        <p-iconfield class="hk-crud-search">
+                            <p-inputicon class="pi pi-search" />
+                            <input pInputText #qrSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="qrCodesTable.filterGlobal($any($event.target).value, 'contains')" class="w-full" />
+                        </p-iconfield>
+                    </div>
+                </ng-template>
+                <ng-template pTemplate="header">
+                    <tr>
+                        <th pSortableColumn="name">
+                            {{ "common.columns.name" | transloco }}
+                            <p-sortIcon field="name" />
+                        </th>
+                        <th pSortableColumn="destination_url">
+                            {{ "qrCodes.fields.destinationUrl" | transloco }}
+                            <p-sortIcon field="destination_url" />
+                        </th>
+                        <th pSortableColumn="utm_campaign">
+                            {{ "utmBuilder.form.campaignLabel" | transloco }}
+                            <p-sortIcon field="utm_campaign" />
+                        </th>
+                        <th>{{ "qrCodes.fields.asset" | transloco }}</th>
+                        <th pSortableColumn="updated_at">
+                            {{ "common.columns.updated" | transloco }}
+                            <p-sortIcon field="updated_at" />
+                        </th>
+                        <th class="hk-actions-column">{{ "common.columns.actions" | transloco }}</th>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="body" let-qr>
+                    <tr>
+                        <td>
+                            <a class="qr-codes-link-button" [routerLink]="qrLink(qr)">{{ qr.name }}</a>
+                            <div class="qr-codes-row-subtext">{{ qr.redirect_url || ("qrCodes.editor.redirectAfterSave" | transloco) }}</div>
+                        </td>
+                        <td><span class="qr-codes-url-cell">{{ qr.destination_url }}</span></td>
+                        <td>
+                            @if (qr.utm_campaign) {
+                            <p-tag [value]="qr.utm_campaign" severity="success" />
+                            } @else {
+                            <span class="text-sm text-[var(--p-text-muted-color)]">-</span>
+                            }
+                        </td>
+                        <td>
+                            @if (qr.has_asset) {
+                            <p-tag icon="pi pi-image" [value]="'qrCodes.asset.present' | transloco" severity="info" />
+                            } @else {
+                            <span class="text-sm text-[var(--p-text-muted-color)]">{{ "qrCodes.asset.none" | transloco }}</span>
+                            }
+                        </td>
+                        <td><app-relative-date-time [value]="qr.updated_at" /></td>
+                        <td class="hk-actions-cell">
+                            <app-table-row-actions [items]="qrActions(qr)" [loading]="archivingQRID() === qr.id" />
+                        </td>
+                    </tr>
+                </ng-template>
+                <ng-template pTemplate="emptymessage">
+                    <tr>
+                        <td colspan="6" class="text-center text-muted-color py-4">{{ "qrCodes.empty.title" | transloco }}</td>
+                    </tr>
+                </ng-template>
+            </p-table>
+        </div>
+        }
+    </section>
+    } @else if (selectedQR(); as qr) {
+    <section class="qr-codes-detail">
+        <div class="qr-codes-detail-header">
+            <div>
+                <h2>{{ qr.name }}</h2>
+                <p>{{ qr.destination_url }}</p>
+            </div>
+            <div class="qr-codes-detail-actions">
+                <p-button icon="pi pi-arrow-left" [label]="'qrCodes.actions.backToList' | transloco" severity="secondary" size="small" [outlined]="true" [routerLink]="shareAwareLink('/utm/qr-codes')" />
+                @if (!isShareMode()) {
+                <p-button icon="pi pi-pencil" [label]="'common.actions.edit' | transloco" severity="secondary" size="small" (onClick)="openEdit(qr)" />
+                <p-button icon="pi pi-share-alt" [label]="'qrCodes.share.create' | transloco" severity="secondary" size="small" (onClick)="openShareDialog(qr)" />
+                <p-button icon="pi pi-trash" [label]="'common.actions.archive' | transloco" severity="danger" size="small" [outlined]="true" [loading]="archivingQRID() === qr.id" (onClick)="confirmArchive(qr)" />
+                }
+            </div>
+        </div>
+
+        @if (pageNotice(); as notice) {
+        <div
+            class="hk-feedback-message qr-codes-notice"
+            [class.hk-feedback-message--success]="notice.kind === 'success'"
+            [class.hk-feedback-message--error]="notice.kind === 'error'"
+            [attr.role]="notice.kind === 'error' ? 'alert' : 'status'"
+            [attr.aria-live]="notice.kind === 'error' ? 'assertive' : 'polite'"
+        >
+            <i class="pi" [class.pi-check-circle]="notice.kind === 'success'" [class.pi-exclamation-circle]="notice.kind === 'error'" aria-hidden="true"></i>
+            <span>{{ notice.key | transloco }}</span>
+        </div>
+        }
+
+        <div class="qr-codes-overview">
+            <section class="qr-codes-preview-panel">
+                <app-qr-code-preview #detailPreview [data]="qr.redirect_url || qr.destination_url" [style]="qr.style" [imageURL]="selectedAssetURL()" [size]="280" />
+                <div class="qr-codes-preview-card__actions">
+                    <p-splitbutton
+                        icon="pi pi-download"
+                        [label]="'qrCodes.actions.exportArtwork' | transloco"
+                        size="small"
+                        severity="secondary"
+                        [model]="printExportMenuItems(detailPreview, qr)"
+                        appendTo="body"
+                        (onClick)="exportQR(detailPreview, qr, 'svg')"
+                    />
+                </div>
+            </section>
+
+            <section class="qr-codes-meta-panel">
+                <div>
+                    <span>{{ "qrCodes.fields.redirectUrl" | transloco }}</span>
+                    <div class="qr-codes-copy-row">
+                        <code>{{ qr.redirect_url || "-" }}</code>
+                        <app-copy-control [value]="qr.redirect_url" [text]="true" [rounded]="true" size="small" />
+                    </div>
+                </div>
+                <div>
+                    <span>{{ "qrCodes.fields.finalUrl" | transloco }}</span>
+                    <div class="qr-codes-copy-row">
+                        <code>{{ finalDestination(qr) }}</code>
+                        <app-copy-control [value]="finalDestination(qr)" [text]="true" [rounded]="true" size="small" />
+                    </div>
+                </div>
+                <div class="qr-codes-param-grid">
+                    <p-tag [value]="qr.utm_source || 'utm_source -'" severity="info" />
+                    <p-tag [value]="qr.utm_medium || 'utm_medium -'" severity="secondary" />
+                    <p-tag [value]="qr.utm_campaign || 'utm_campaign -'" severity="success" />
+                </div>
+            </section>
+        </div>
+
+        <div class="qr-codes-kpis">
+            @for (card of kpis(); track card.label) {
+            <app-kpi-card [label]="card.label" [value]="card.value" [loading]="card.loading" valueClass="text-2xl xl:text-3xl font-bold" />
+            }
+        </div>
+
+        <section class="qr-codes-analytics-panel">
+            <div class="qr-codes-section-header">
+                <div>
+                    <h3>{{ "qrCodes.analytics.opensTitle" | transloco }}</h3>
+                    <p>{{ "qrCodes.analytics.opensDescription" | transloco }}</p>
+                </div>
+                <p-splitbutton icon="pi pi-download" [label]="'qrCodes.actions.takeout' | transloco" severity="secondary" size="small" [model]="takeoutMenuItems(qr)" appendTo="body" (onClick)="exportTakeout(qr, 'xlsx')" />
+            </div>
+            <app-series-chart [data]="openSeries()" [series]="openSeriesConfig()" [isLoading]="isStatsLoading()" [emptyTitle]="'qrCodes.analytics.emptyTitle' | transloco" [emptyDescription]="'qrCodes.analytics.emptyDescription' | transloco" />
+        </section>
+
+        <app-metric-card-group [tabs]="metricTabs()" />
+    </section>
+    } @else {
+    <app-page-state titleKey="qrCodes.errors.notFound" messageKey="qrCodes.errors.retry" icon="pi pi-qrcode" />
+    }
+
+    <p-drawer [visible]="editorVisible()" (visibleChange)="editorVisible.set($event)" position="right" appendTo="body" [style]="{ width: 'min(64rem, 100vw)' }">
+        <ng-template pTemplate="header">
+            <div>
+                <h2>{{ (editingQR() ? "qrCodes.editor.editTitle" : "qrCodes.editor.createTitle") | transloco }}</h2>
+                <p>{{ "qrCodes.editor.subtitle" | transloco }}</p>
+            </div>
+        </ng-template>
+
+        <form [formGroup]="form" class="qr-codes-editor" autocomplete="off">
+            <div class="qr-codes-editor-main">
+                <section class="qr-codes-editor-panel">
+                    <h3>{{ "qrCodes.editor.destination" | transloco }}</h3>
+
+                    @if (siteService.sites().length) {
+                    <div class="qr-codes-field">
+                        <label for="qr-site">{{ "utmBuilder.form.siteSelectLabel" | transloco }}</label>
+                        <p-select
+                            inputId="qr-site"
+                            class="w-full"
+                            styleClass="w-full"
+                            [options]="siteService.sites()"
+                            optionLabel="domain"
+                            [ngModel]="selectedSite()"
+                            [ngModelOptions]="{ standalone: true }"
+                            (ngModelChange)="prefillFromSite($event)"
+                            [placeholder]="'utmBuilder.form.siteSelectPlaceholder' | transloco"
+                            [fluid]="true"
+                            appendTo="body"
+                        >
+                            <ng-template pTemplate="selectedItem" let-site>
+                                <app-site-select-option [site]="site" [selected]="true" />
+                            </ng-template>
+                            <ng-template pTemplate="item" let-site>
+                                <app-site-select-option [site]="site" />
+                            </ng-template>
+                        </p-select>
+                        <small>{{ "utmBuilder.form.siteSelectHint" | transloco }}</small>
+                    </div>
+                    }
+
+                    <div class="qr-codes-field">
+                        <label for="qr-name">{{ "qrCodes.fields.name" | transloco }}</label>
+                        <input pInputText id="qr-name" formControlName="name" />
+                    </div>
+
+                    <div class="qr-codes-field">
+                        <label for="qr-destination">{{ "qrCodes.fields.destinationUrl" | transloco }}</label>
+                        <input pInputText id="qr-destination" formControlName="destination_url" type="url" />
+                        @if (form.controls.destination_url.errors?.["urlInvalid"] && form.controls.destination_url.touched) {
+                        <small class="qr-codes-error">{{ "utmBuilder.validation.urlInvalid" | transloco }}</small>
+                        } @else {
+                        <small>{{ "utmBuilder.form.websiteUrlHint" | transloco }}</small>
+                        }
+                    </div>
+
+                    <div class="qr-codes-editor-grid">
+                        <div class="qr-codes-field">
+                            <label for="qr-source">{{ "utmBuilder.form.sourceLabel" | transloco }}</label>
+                            <input pInputText id="qr-source" formControlName="utm_source" />
+                            <small>{{ "utmBuilder.form.sourceHint" | transloco }}</small>
+                        </div>
+                        <div class="qr-codes-field">
+                            <label for="qr-medium">{{ "utmBuilder.form.mediumLabel" | transloco }}</label>
+                            <input pInputText id="qr-medium" formControlName="utm_medium" />
+                            <small>{{ "utmBuilder.form.mediumHint" | transloco }}</small>
+                        </div>
+                        <div class="qr-codes-field">
+                            <label for="qr-campaign">{{ "utmBuilder.form.campaignLabel" | transloco }}</label>
+                            <input pInputText id="qr-campaign" formControlName="utm_campaign" />
+                            <small>{{ "utmBuilder.form.campaignHint" | transloco }}</small>
+                        </div>
+                        <div class="qr-codes-field">
+                            <label for="qr-content">{{ "utmBuilder.form.contentLabel" | transloco }}</label>
+                            <input pInputText id="qr-content" formControlName="utm_content" />
+                            <small>{{ "utmBuilder.form.contentHint" | transloco }}</small>
+                        </div>
+                    </div>
+
+                    <div class="qr-codes-custom-params">
+                        <div class="qr-codes-section-header qr-codes-section-header--compact">
+                            <div>
+                                <h4>{{ "qrCodes.fields.customParams" | transloco }}</h4>
+                                <p>{{ "qrCodes.editor.customParamsHint" | transloco }}</p>
+                            </div>
+                            <p-button icon="pi pi-plus" [label]="'qrCodes.actions.addParam' | transloco" size="small" severity="secondary" [outlined]="true" (onClick)="addCustomParamRow()" />
+                        </div>
+                        @for (row of customParamRows(); track row.id) {
+                        <div class="qr-codes-param-row">
+                            <input pInputText [value]="row.key" [placeholder]="'qrCodes.fields.paramKey' | transloco" (input)="updateCustomParamRow(row.id, 'key', $any($event.target).value)" />
+                            <input pInputText [value]="row.value" [placeholder]="'qrCodes.fields.paramValue' | transloco" (input)="updateCustomParamRow(row.id, 'value', $any($event.target).value)" />
+                            <p-button icon="pi pi-times" severity="secondary" [text]="true" [rounded]="true" [attr.aria-label]="'common.actions.remove' | transloco" (onClick)="removeCustomParamRow(row.id)" />
+                        </div>
+                        }
+                    </div>
+                </section>
+
+                <section class="qr-codes-editor-panel">
+                    <h3>{{ "qrCodes.editor.style" | transloco }}</h3>
+                    <div class="qr-codes-editor-grid">
+                        <div class="qr-codes-field">
+                            <label for="qr-foreground">{{ "qrCodes.style.foreground" | transloco }}</label>
+                            <p-colorpicker inputId="qr-foreground" formControlName="foreground" />
+                        </div>
+                        <div class="qr-codes-field">
+                            <label for="qr-background">{{ "qrCodes.style.background" | transloco }}</label>
+                            <p-colorpicker inputId="qr-background" formControlName="background" />
+                        </div>
+                        <div class="qr-codes-field">
+                            <label for="qr-dots">{{ "qrCodes.style.dotsLabel" | transloco }}</label>
+                            <p-select inputId="qr-dots" formControlName="dots" [options]="dotOptions()" optionLabel="label" optionValue="value" appendTo="body" />
+                        </div>
+                        <div class="qr-codes-field">
+                            <label for="qr-corners">{{ "qrCodes.style.cornersLabel" | transloco }}</label>
+                            <p-select inputId="qr-corners" formControlName="corners" [options]="cornerOptions()" optionLabel="label" optionValue="value" appendTo="body" />
+                        </div>
+                    </div>
+
+                    <div class="qr-codes-field">
+                        <span class="qr-codes-label">{{ "qrCodes.fields.asset" | transloco }}</span>
+                        <p-fileupload
+                            mode="advanced"
+                            [customUpload]="true"
+                            [multiple]="false"
+                            accept="image/png,image/jpeg,image/webp"
+                            [maxFileSize]="2097152"
+                            [showUploadButton]="false"
+                            [showCancelButton]="false"
+                            chooseIcon="pi pi-image"
+                            [chooseLabel]="'qrCodes.actions.chooseAsset' | transloco"
+                            (onSelect)="onAssetSelected($event)"
+                            (onRemove)="onAssetRemoved()"
+                            (onClear)="onAssetRemoved()"
+                        >
+                            <ng-template pTemplate="empty">
+                                <div class="qr-codes-upload-empty">
+                                    <i class="pi pi-image" aria-hidden="true"></i>
+                                    <span>{{ "qrCodes.editor.assetHint" | transloco }}</span>
+                                </div>
+                            </ng-template>
+                        </p-fileupload>
+                        @if (editingQR()?.has_asset) {
+                        <p-button icon="pi pi-times" [label]="'qrCodes.actions.removeAsset' | transloco" severity="secondary" size="small" [outlined]="true" (onClick)="removeAsset()" [loading]="isUploading()" />
+                        }
+                    </div>
+                </section>
+            </div>
+
+            <aside class="qr-codes-editor-preview">
+                <app-qr-code-preview [data]="editorQRPreviewURL()" [style]="editorStyle()" [imageURL]="editorAssetURL()" [size]="240" />
+                <div class="qr-codes-preview-text">
+                    <span>{{ "qrCodes.fields.redirectUrl" | transloco }}</span>
+                    <code>{{ editingQR()?.redirect_url || ("qrCodes.editor.redirectAfterSave" | transloco) }}</code>
+                    <span>{{ "qrCodes.fields.finalUrl" | transloco }}</span>
+                    <code>{{ editorDestinationPreview() || "-" }}</code>
+                </div>
+                @if (safetyWarnings().length) {
+                <div class="qr-codes-warnings">
+                    @for (warning of safetyWarnings(); track warning) {
+                    <p><i class="pi pi-exclamation-triangle" aria-hidden="true"></i>{{ warning }}</p>
+                    }
+                </div>
+                }
+            </aside>
+
+            @if (saveErrorKey()) {
+            <div class="hk-feedback-message hk-feedback-message--error qr-codes-notice" role="alert">
+                <i class="pi pi-exclamation-circle" aria-hidden="true"></i>
+                <span>{{ saveErrorKey()! | transloco }}</span>
+            </div>
+            }
+
+            <div class="qr-codes-editor-actions">
+                <p-button [label]="'common.actions.cancel' | transloco" severity="secondary" [outlined]="true" (onClick)="editorVisible.set(false)" />
+                <p-button icon="pi pi-save" [label]="'common.actions.save' | transloco" (onClick)="save()" [loading]="isSaving()" />
+            </div>
+        </form>
+    </p-drawer>
+
+    @if (!isShareMode()) {
+    <app-dialog-shell [title]="'qrCodes.share.dialogTitle' | transloco" [visible]="shareDialogVisible()" (visibleChange)="onShareDialogVisibleChange($event)" [secondaryLabel]="'common.actions.close' | transloco" [showPrimary]="false" width="860px">
+        <div class="qr-codes-share-dialog">
+            <div class="qr-codes-share-dialog__header">
+                <p>{{ "qrCodes.share.description" | transloco }}</p>
+                <p-button icon="pi pi-link" [label]="'qrCodes.share.create' | transloco" size="small" [loading]="shareCreating()" (onClick)="createShare()" />
+            </div>
+
+            @if (shareNotice(); as notice) {
+            <div
+                class="hk-feedback-message qr-codes-notice"
+                [class.hk-feedback-message--success]="notice.kind === 'success'"
+                [class.hk-feedback-message--error]="notice.kind === 'error'"
+                [attr.role]="notice.kind === 'error' ? 'alert' : 'status'"
+                [attr.aria-live]="notice.kind === 'error' ? 'assertive' : 'polite'"
+            >
+                <i class="pi" [class.pi-check-circle]="notice.kind === 'success'" [class.pi-exclamation-circle]="notice.kind === 'error'" aria-hidden="true"></i>
+                <span>{{ notice.key | transloco }}</span>
+            </div>
+            }
+
+            <div class="qr-codes-table-caption">
+                <p-iconfield class="hk-crud-search">
+                    <p-inputicon class="pi pi-search" />
+                    <input pInputText #qrShareSearch [placeholder]="'common.searchPlaceholder' | transloco" (input)="qrShareLinksTable.filterGlobal($any($event.target).value, 'contains')" class="w-full" />
+                </p-iconfield>
+            </div>
+
+            <div class="hk-crud-table-wrap">
+                <p-table
+                    #qrShareLinksTable
+                    [value]="shares()"
+                    [loading]="sharesLoading()"
+                    dataKey="id"
+                    [globalFilterFields]="['token_hint', 'created_at', 'url']"
+                    [sortField]="'created_at'"
+                    [sortOrder]="-1"
+                    [paginator]="true"
+                    [rows]="10"
+                    [rowsPerPageOptions]="[10, 25, 50]"
+                    [rowHover]="true"
+                    responsiveLayout="scroll"
+                    styleClass="hk-crud-table p-datatable-sm"
+                    [tableStyle]="{ 'min-width': '760px' }"
+                >
+                    <ng-template pTemplate="header">
+                        <tr>
+                            <th pSortableColumn="token_hint">
+                                {{ "qrCodes.share.tokenHint" | transloco }}
+                                <p-sortIcon field="token_hint" />
+                            </th>
+                            <th pSortableColumn="created_at">
+                                {{ "common.columns.created" | transloco }}
+                                <p-sortIcon field="created_at" />
+                            </th>
+                            <th pSortableColumn="url">
+                                {{ "qrCodes.share.url" | transloco }}
+                                <p-sortIcon field="url" />
+                            </th>
+                            <th class="hk-actions-column">{{ "common.columns.actions" | transloco }}</th>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-link>
+                        <tr>
+                            <td><code class="qr-codes-token">{{ link.token_hint }}</code></td>
+                            <td><app-relative-date-time [value]="link.created_at" /></td>
+                            <td>
+                                @if (link.url) {
+                                <input pInputText readonly [value]="link.url" class="w-full qr-codes-share-url-input" />
+                                } @else {
+                                <span class="text-sm text-[var(--p-text-muted-color)]">{{ "qrCodes.share.urlUnavailable" | transloco }}</span>
+                                }
+                            </td>
+                            <td class="hk-actions-cell">
+                                <app-table-row-actions [items]="shareLinkActions(link)" [loading]="deletingShareID() === link.id" />
+                            </td>
+                        </tr>
+                    </ng-template>
+                    <ng-template pTemplate="emptymessage">
+                        <tr>
+                            <td colspan="4" class="text-center text-muted-color py-4">{{ "qrCodes.share.empty" | transloco }}</td>
+                        </tr>
+                    </ng-template>
+                </p-table>
+            </div>
+        </div>
+    </app-dialog-shell>
+    }
+</div>

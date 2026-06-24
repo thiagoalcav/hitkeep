@@ -1,0 +1,77 @@
+<div class="qr-share-page">
+    @if (loading()) {
+    <div class="qr-share-state">
+        <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+        <span>{{ "common.loading" | transloco }}</span>
+    </div>
+    } @else if (errorKey()) {
+    <div class="qr-share-state">
+        <i class="pi pi-exclamation-triangle" aria-hidden="true"></i>
+        <h1>{{ errorKey()! | transloco }}</h1>
+    </div>
+    } @else if (qr(); as qrCode) {
+    <header class="qr-share-header">
+        <div>
+            <span>{{ "qrCodes.share.readOnlyBadge" | transloco }}</span>
+            <h1>{{ qrCode.name }}</h1>
+            <p>{{ qrCode.destination_url }}</p>
+        </div>
+        <p-tag [value]="'qrCodes.share.sharedStats' | transloco" severity="info" />
+    </header>
+
+    <app-range-toolbar
+        [timeRanges]="timeRanges()"
+        [selectedRange]="selectedRange()"
+        [customRangeDates]="customRangeDates()"
+        [loading]="statsLoading()"
+        (selectedRangeChange)="selectedRange.set($event)"
+        (customRangeDatesChange)="customRangeDates.set($event)"
+        (refresh)="refresh()"
+    />
+
+    <main class="qr-share-grid">
+        <section class="qr-share-preview">
+            <app-qr-code-preview [data]="qrCode.redirect_url || qrCode.destination_url" [style]="qrCode.style" [imageURL]="assetURL()" [size]="280" />
+            <div class="qr-share-preview__meta">
+                <div>
+                    <span>{{ "qrCodes.fields.redirectUrl" | transloco }}</span>
+                    <div class="qr-share-copy-row">
+                        <code>{{ qrCode.redirect_url }}</code>
+                        <app-copy-control [value]="qrCode.redirect_url" [text]="true" [rounded]="true" size="small" />
+                    </div>
+                </div>
+                <div>
+                    <span>{{ "qrCodes.fields.finalUrl" | transloco }}</span>
+                    <div class="qr-share-copy-row">
+                        <code>{{ finalDestination() }}</code>
+                        <app-copy-control [value]="finalDestination()" [text]="true" [rounded]="true" size="small" />
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="qr-share-analytics">
+            <div class="qr-share-kpis">
+                @for (card of kpis(); track card.label) {
+                <app-kpi-card [label]="card.label" [value]="card.value" [loading]="card.loading" valueClass="text-2xl xl:text-3xl font-bold" />
+                }
+            </div>
+
+            <section class="qr-share-panel">
+                <div class="qr-share-card-header">
+                    <div>
+                        <h2>{{ "qrCodes.analytics.opensTitle" | transloco }}</h2>
+                        <p>{{ "qrCodes.analytics.opensDescription" | transloco }}</p>
+                    </div>
+                    <div class="qr-share-actions">
+                        <p-splitbutton icon="pi pi-download" [label]="'qrCodes.actions.takeout' | transloco" size="small" severity="secondary" [model]="takeoutMenuItems()" appendTo="body" (onClick)="exportTakeout('xlsx')" />
+                    </div>
+                </div>
+                <app-series-chart [data]="series()" [series]="seriesConfig()" [isLoading]="statsLoading()" [emptyTitle]="'qrCodes.analytics.emptyTitle' | transloco" [emptyDescription]="'qrCodes.analytics.emptyDescription' | transloco" />
+            </section>
+
+            <app-metric-card-group [tabs]="metricTabs()" />
+        </section>
+    </main>
+    }
+</div>

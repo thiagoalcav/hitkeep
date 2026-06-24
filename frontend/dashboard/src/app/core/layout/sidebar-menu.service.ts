@@ -150,7 +150,10 @@ export class SidebarMenuService {
                         routerLink: '/utm',
                         shareRouterLink: '/utm',
                         exact: true,
-                        items: [{ labelKey: 'nav.utmBuilder', icon: 'pi pi-link', routerLink: '/utm/builder', visible: notShare }]
+                        items: [
+                            { labelKey: 'nav.utmBuilder', icon: 'pi pi-link', routerLink: '/utm/builder', visible: notShare },
+                            { labelKey: 'nav.qrCodes', icon: 'pi pi-qrcode', routerLink: '/utm/qr-codes', shareRouterLink: '/utm/qr-codes' }
+                        ]
                     },
                     { labelKey: 'nav.importExport', icon: 'pi pi-sync', routerLink: '/import-export', visible: notShare }
                 ]

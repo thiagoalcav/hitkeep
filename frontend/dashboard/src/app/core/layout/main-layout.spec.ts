@@ -44,6 +44,7 @@ describe('MainLayout', () => {
                             nav: {
                                 utm: 'UTM',
                                 utmBuilder: 'UTM Builder',
+                                qrCodes: 'QR codes',
                                 importExport: 'Import & Export',
                                 importExportAria: 'Go to import and export',
                                 expandItem: 'Expand {{item}}',

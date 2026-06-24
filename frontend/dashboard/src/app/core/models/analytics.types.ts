@@ -145,6 +145,7 @@ export interface Hit {
     utm_campaign?: string;
     utm_term?: string;
     utm_content?: string;
+    qr_code_id?: string;
     is_unique?: boolean;
 }
 
@@ -353,6 +354,86 @@ export interface EcommerceSourceStat {
 export interface MetricStat {
     name: string;
     value: number;
+}
+
+export interface QRCodeStyle {
+    foreground?: string;
+    background?: string;
+    dots?: 'square' | 'dots' | 'rounded' | 'extra-rounded' | 'classy' | 'classy-rounded';
+    corners?: 'square' | 'dot' | 'extra-rounded';
+    image_margin?: number;
+}
+
+export interface QRCode {
+    id: string;
+    site_id: string;
+    created_by?: string;
+    name: string;
+    destination_url: string;
+    utm_source?: string;
+    utm_medium?: string;
+    utm_campaign?: string;
+    utm_term?: string;
+    utm_content?: string;
+    custom_params?: Record<string, string>;
+    style?: QRCodeStyle;
+    redirect_url?: string;
+    token_hint?: string;
+    has_asset: boolean;
+    created_at: string;
+    updated_at: string;
+    archived_at?: string;
+}
+
+export interface QRCodeRequest {
+    name: string;
+    destination_url: string;
+    utm_source: string;
+    utm_medium: string;
+    utm_campaign: string;
+    utm_term: string;
+    utm_content: string;
+    custom_params: Record<string, string>;
+    style: QRCodeStyle;
+}
+
+export interface QRCodeAsset {
+    qr_code_id: string;
+    site_id: string;
+    filename: string;
+    content_type: string;
+    byte_size: number;
+    width?: number;
+    height?: number;
+    checksum: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface QRCodeSummary {
+    qr_code: QRCode;
+    open_count: number;
+    pageviews: number;
+    visitors: number;
+    top_pages: MetricStat[];
+    top_referrers: MetricStat[];
+    top_devices: MetricStat[];
+    top_countries: MetricStat[];
+}
+
+export interface QRCodeOpenSeriesPoint {
+    time: string;
+    opens: number;
+}
+
+export interface QRCodeShareLink {
+    id: string;
+    site_id: string;
+    qr_code_id: string;
+    token_hint: string;
+    url?: string;
+    token?: string;
+    created_at: string;
 }
 
 export interface ImportExclusionReason {

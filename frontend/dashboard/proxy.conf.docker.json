@@ -10,5 +10,11 @@
         "secure": false,
         "changeOrigin": true,
         "logLevel": "debug"
+    },
+    "/q/": {
+        "target": "http://backend:8080",
+        "secure": false,
+        "changeOrigin": true,
+        "logLevel": "debug"
     }
 }

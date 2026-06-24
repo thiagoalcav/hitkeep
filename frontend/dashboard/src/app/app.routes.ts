@@ -31,6 +31,11 @@ export const routes: Routes = [
         loadComponent: () => import('@pages/password/reset-password').then((m) => m.ResetPassword)
     },
     {
+        path: 'qr-share/:token',
+        loadComponent: () => import('@pages/qr-share/qr-share').then((m) => m.QRSharePage),
+        canActivate: [setupGuard]
+    },
+    {
         path: '',
         loadComponent: () => import('@layout/main-layout').then((m) => m.MainLayout),
         canActivate: [setupGuard, authGuard],
@@ -79,6 +84,14 @@ export const routes: Routes = [
                         path: 'utm',
                         loadComponent: () => import('@pages/utm/utm').then((m) => m.UtmDashboard)
                     },
+                    {
+                        path: 'utm/qr-codes',
+                        loadComponent: () => import('@pages/utm/qr-codes/qr-codes').then((m) => m.QRCodesPage)
+                    },
+                    {
+                        path: 'utm/qr-codes/:qrID',
+                        loadComponent: () => import('@pages/utm/qr-codes/qr-codes').then((m) => m.QRCodesPage)
+                    },
                     { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
                 ]
             },
@@ -125,6 +138,14 @@ export const routes: Routes = [
             {
                 path: 'utm/builder',
                 loadComponent: () => import('@pages/utm/builder/utm-builder').then((m) => m.UtmBuilder)
+            },
+            {
+                path: 'utm/qr-codes',
+                loadComponent: () => import('@pages/utm/qr-codes/qr-codes').then((m) => m.QRCodesPage)
+            },
+            {
+                path: 'utm/qr-codes/:qrID',
+                loadComponent: () => import('@pages/utm/qr-codes/qr-codes').then((m) => m.QRCodesPage)
             },
             {
                 path: 'settings',

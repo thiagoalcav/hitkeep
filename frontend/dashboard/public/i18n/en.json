@@ -62,7 +62,8 @@
         "googleSearchConsole": "Search Console",
         "googleSearchConsoleAria": "Go to Google Search Console integration",
         "webVitals": "Web Vitals",
-        "webVitalsAria": "Open Web Vitals analytics"
+        "webVitalsAria": "Open Web Vitals analytics",
+        "qrCodes": "QR codes"
     },
     "auditTable": {
         "empty": "No audit entries found",
@@ -438,7 +439,11 @@
             "open": "Open",
             "refresh": "Refresh",
             "save": "Save",
-            "more": "More actions"
+            "remove": "Remove",
+            "more": "More actions",
+            "edit": "Edit",
+            "delete": "Delete",
+            "archive": "Archive"
         },
         "yes": "Yes",
         "no": "No",
@@ -467,7 +472,9 @@
             "status": "Status",
             "time": "Time",
             "type": "Type",
-            "value": "Value"
+            "value": "Value",
+            "createdAt": "Created",
+            "updated": "Updated"
         },
         "devices": {
             "desktop": "Desktop",
@@ -526,7 +533,8 @@
             "geoModeAria": "Select audience metric",
             "pageModeAria": "Select page metric",
             "topPages": "Top pages",
-            "topSources": "Top sources"
+            "topSources": "Top sources",
+            "topReferrers": "Top referrers"
         },
         "noActiveFilter": "No active filter",
         "noSiteSelected": "No site selected",
@@ -1616,6 +1624,23 @@
                 "interval": "Every {{interval}}",
                 "stripe": "Stripe configured",
                 "plan": "{{plan}} plan"
+            },
+            "mcp": {
+                "title": "MCP access",
+                "connection": "Connection",
+                "readiness": "MCP readiness",
+                "server": "Server",
+                "docsTools": "Docs tools",
+                "endpoint": "Endpoint",
+                "docsUrl": "Docs URL",
+                "copyEndpoint": "Copy endpoint",
+                "copyDocsUrl": "Copy docs URL",
+                "summary": {
+                    "readyWithDocs": "Server and docs tools are available.",
+                    "ready": "Server is available; docs tools are disabled.",
+                    "disabled": "MCP access is disabled.",
+                    "unknown": "MCP status has not loaded yet."
+                }
             },
             "health": {
                 "title": "Health Check",
@@ -2810,6 +2835,127 @@
         "empty": {
             "title": "No Web Vitals yet",
             "description": "Enable Web Vitals in the tracking snippet to start collecting opt-in performance samples."
+        }
+    },
+    "qrCodes": {
+        "breadcrumb": "QR codes",
+        "actions": {
+            "create": "Create QR code",
+            "exportSvg": "Export SVG",
+            "exportPng": "Export PNG",
+            "removeAsset": "Remove graphic",
+            "viewAnalytics": "View analytics",
+            "backToList": "Back to QR campaigns",
+            "takeout": "Export data",
+            "addParam": "Add parameter",
+            "chooseAsset": "Choose graphic",
+            "exportArtwork": "Export artwork",
+            "exportPngSize": "PNG {{size}} px"
+        },
+        "list": {
+            "title": "QR campaigns",
+            "count": "{{count}} saved codes"
+        },
+        "empty": {
+            "title": "No QR campaigns yet",
+            "description": "Create a dynamic QR code with campaign attribution, print-ready exports, and dedicated analytics."
+        },
+        "fields": {
+            "name": "Name",
+            "destinationUrl": "Destination URL",
+            "redirectUrl": "Redirect URL",
+            "finalUrl": "Final tracked URL",
+            "customParams": "Custom parameters",
+            "asset": "Graphic",
+            "paramKey": "Parameter",
+            "paramValue": "Value"
+        },
+        "asset": {
+            "present": "Graphic",
+            "none": "None"
+        },
+        "kpis": {
+            "opens": "Opens"
+        },
+        "analytics": {
+            "fullAnalytics": "Full analytics",
+            "opensTitle": "QR opens",
+            "opensDescription": "Redirect opens for this code before the visitor reaches the tracked destination.",
+            "emptyTitle": "No QR opens yet",
+            "emptyDescription": "Scans will appear here after this QR code is used."
+        },
+        "share": {
+            "title": "Share QR stats",
+            "description": "Create a read-only link that exposes only this QR code and its exports.",
+            "create": "Create QR share link",
+            "dialogTitle": "QR share links",
+            "created": "Share link created",
+            "createSuccess": "QR share link created.",
+            "deleteSuccess": "QR share link deleted.",
+            "deleteConfirmTitle": "Delete QR share link",
+            "deleteConfirmMessage": "Delete this QR-only share link? Existing visitors will lose access to the shared stats page.",
+            "tokenHint": "Token hint",
+            "url": "Share URL",
+            "urlUnavailable": "URL is only shown when a link is first generated.",
+            "empty": "No QR-only share links yet.",
+            "invalid": "This QR share link is invalid or expired.",
+            "readOnlyBadge": "Read-only QR analytics",
+            "sharedStats": "Shared stats"
+        },
+        "editor": {
+            "createTitle": "Create QR campaign",
+            "editTitle": "Edit QR campaign",
+            "subtitle": "Saved QR codes use a dynamic HitKeep redirect URL so campaign fields can change after print.",
+            "destination": "Destination and campaign",
+            "style": "Style and graphic",
+            "saveError": "QR code could not be saved. Please check the fields and try again.",
+            "assetError": "The QR graphic could not be uploaded.",
+            "assetDeleteError": "The QR graphic could not be removed.",
+            "redirectAfterSave": "Available after save",
+            "customParamsHint": "Add optional query parameters that travel with this printed campaign.",
+            "assetHint": "PNG, JPEG, or WebP. Maximum 2 MB."
+        },
+        "style": {
+            "foreground": "Foreground",
+            "background": "Background",
+            "dotsLabel": "Dot style",
+            "cornersLabel": "Corner style",
+            "dots": {
+                "square": "Square",
+                "dots": "Dots",
+                "rounded": "Rounded",
+                "extra-rounded": "Extra rounded",
+                "classy": "Classy",
+                "classy-rounded": "Classy rounded"
+            },
+            "corners": {
+                "square": "Square",
+                "dot": "Dot",
+                "extra-rounded": "Extra rounded"
+            }
+        },
+        "warnings": {
+            "invalidDestination": "Enter a valid HTTPS or HTTP destination before exporting.",
+            "missingCampaign": "Add a UTM source or campaign so the print asset is easy to reconcile later.",
+            "longUrl": "The final URL is long enough to make dense QR codes harder to scan.",
+            "reservedParam": "hk_qr is reserved for HitKeep attribution and will be overwritten by the redirect."
+        },
+        "errors": {
+            "load": "QR campaigns could not be loaded.",
+            "retry": "Refresh the page or try again in a moment.",
+            "archive": "QR code could not be archived.",
+            "notFound": "QR campaign not found.",
+            "stats": "QR analytics could not be loaded.",
+            "share": "QR share links could not be updated.",
+            "takeout": "QR takeout could not be exported."
+        },
+        "status": {
+            "archiveSuccess": "QR campaign archived.",
+            "takeoutSuccess": "QR data export started."
+        },
+        "confirm": {
+            "archiveTitle": "Archive QR campaign",
+            "archiveMessage": "Archive {{name}}? Printed codes will still redirect, but marketers will no longer see this campaign in the active list."
         }
     }
 }

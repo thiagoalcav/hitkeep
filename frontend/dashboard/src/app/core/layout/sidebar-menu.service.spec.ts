@@ -33,6 +33,7 @@ describe('SidebarMenuService', () => {
                                 ecommerce: 'Ecommerce',
                                 utm: 'UTM',
                                 utmBuilder: 'UTM Builder',
+                                qrCodes: 'QR codes',
                                 importExport: 'Import & Export',
                                 integration: 'Integration',
                                 apiClients: 'API Clients',
@@ -95,6 +96,7 @@ describe('SidebarMenuService', () => {
         const integration = findByLabel(items, 'Integration');
         const utm = findByLabel(items, 'UTM');
         const utmBuilder = findByLabel(utm?.items ?? [], 'UTM Builder');
+        const qrCodes = findByLabel(utm?.items ?? [], 'QR codes');
         const apiClients = findByLabel(items, 'API Clients');
         const apiReference = findByLabel(apiClients?.items ?? [], 'API Reference');
 
@@ -103,6 +105,7 @@ describe('SidebarMenuService', () => {
         expect(utm?.routerLink).toBe('/utm');
         expect(utm?.expanded).toBe(false);
         expect(utmBuilder?.routerLink).toBe('/utm/builder');
+        expect(qrCodes?.routerLink).toBe('/utm/qr-codes');
         expect(apiClients?.routerLink).toBe('/integration/api-clients');
         expect(apiClients?.expanded).toBe(false);
         expect(apiReference?.routerLink).toBe('/integration/api-reference');
@@ -162,11 +165,13 @@ describe('SidebarMenuService', () => {
         const utm = findByLabel(items, 'UTM');
         const webVitals = findByLabel(items, 'Web Vitals');
         const utmBuilder = findByLabel(items, 'UTM Builder');
+        const qrCodes = findByLabel(items, 'QR codes');
 
         expect(dashboard?.routerLink).toBe('/share/share-token/dashboard');
         expect(webVitals?.routerLink).toBe('/share/share-token/web-vitals');
         expect(utm?.routerLink).toBe('/share/share-token/utm');
         expect(utmBuilder).toBeUndefined();
+        expect(qrCodes?.routerLink).toBe('/share/share-token/utm/qr-codes');
 
         dashboard?.command?.({ originalEvent: new Event('click'), item: dashboard });
         expect(closed).toBe(true);

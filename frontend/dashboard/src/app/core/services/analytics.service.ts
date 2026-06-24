@@ -54,6 +54,7 @@ export interface Hit {
     utm_campaign?: string;
     utm_term?: string;
     utm_content?: string;
+    qr_code_id?: string;
     is_unique?: boolean;
 }
 

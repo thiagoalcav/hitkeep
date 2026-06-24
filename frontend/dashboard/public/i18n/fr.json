@@ -62,7 +62,8 @@
         "googleSearchConsole": "Search Console",
         "googleSearchConsoleAria": "Accéder à l'intégration Google Search Console",
         "webVitals": "Web Vitals",
-        "webVitalsAria": "Ouvrir les analyses Web Vitals"
+        "webVitalsAria": "Ouvrir les analyses Web Vitals",
+        "qrCodes": "QR codes"
     },
     "auditTable": {
         "empty": "Aucune entrée d’audit trouvée",
@@ -438,7 +439,11 @@
             "open": "Ouvrir",
             "refresh": "Actualiser",
             "save": "Enregistrer",
-            "more": "Plus d'actions"
+            "more": "Plus d'actions",
+            "edit": "Edit",
+            "delete": "Delete",
+            "archive": "Archive",
+            "remove": "Supprimer"
         },
         "previous": "Précédent",
         "next": "Suivant",
@@ -462,7 +467,9 @@
             "status": "Statut",
             "time": "Heure",
             "type": "Type",
-            "value": "Valeur"
+            "value": "Valeur",
+            "createdAt": "Created",
+            "updated": "Mis à jour"
         },
         "devices": {
             "desktop": "Bureau",
@@ -521,7 +528,8 @@
             "geoModeAria": "Sélectionner la métrique d'audience",
             "pageModeAria": "Sélectionner la métrique des pages",
             "topPages": "Pages principales",
-            "topSources": "Sources principales"
+            "topSources": "Sources principales",
+            "topReferrers": "Top referrers"
         },
         "noActiveFilter": "Aucun filtre actif",
         "noSiteSelected": "Aucun site sélectionné",
@@ -1616,6 +1624,23 @@
                 "interval": "Toutes les {{interval}}",
                 "stripe": "Stripe configuré",
                 "plan": "Forfait {{plan}}"
+            },
+            "mcp": {
+                "title": "Accès MCP",
+                "connection": "Connexion",
+                "readiness": "État MCP",
+                "server": "Serveur",
+                "docsTools": "Outils docs",
+                "endpoint": "Point de terminaison",
+                "docsUrl": "URL docs",
+                "copyEndpoint": "Copier le point de terminaison",
+                "copyDocsUrl": "Copier l'URL docs",
+                "summary": {
+                    "readyWithDocs": "Le serveur et les outils docs sont disponibles.",
+                    "ready": "Le serveur est disponible ; les outils docs sont désactivés.",
+                    "disabled": "L'accès MCP est désactivé.",
+                    "unknown": "L'état MCP n'est pas encore chargé."
+                }
             },
             "health": {
                 "title": "Contrôle de santé",
@@ -2810,6 +2835,127 @@
         "empty": {
             "title": "Aucun Web Vitals pour le moment",
             "description": "Activez Web Vitals dans le snippet de suivi pour collecter des échantillons de performance opt-in."
+        }
+    },
+    "qrCodes": {
+        "breadcrumb": "Codes QR",
+        "actions": {
+            "create": "Créer un code QR",
+            "exportSvg": "Exporter en SVG",
+            "exportPng": "Exporter en PNG",
+            "removeAsset": "Supprimer le visuel",
+            "viewAnalytics": "Voir les analyses",
+            "backToList": "Retour aux campagnes QR",
+            "takeout": "Exporter les données",
+            "addParam": "Ajouter un paramètre",
+            "chooseAsset": "Choisir un visuel",
+            "exportArtwork": "Exporter le visuel",
+            "exportPngSize": "PNG {{size}} px"
+        },
+        "list": {
+            "title": "Campagnes QR",
+            "count": "{{count}} codes enregistrés"
+        },
+        "empty": {
+            "title": "Aucune campagne QR pour l’instant",
+            "description": "Créez un code QR dynamique avec attribution de campagne, exports prêts pour l’impression et analyses dédiées."
+        },
+        "fields": {
+            "name": "Nom",
+            "destinationUrl": "URL de destination",
+            "redirectUrl": "URL de redirection",
+            "finalUrl": "URL finale suivie",
+            "customParams": "Paramètres personnalisés",
+            "asset": "Visuel",
+            "paramKey": "Paramètre",
+            "paramValue": "Valeur"
+        },
+        "asset": {
+            "present": "Visuel",
+            "none": "Aucun"
+        },
+        "kpis": {
+            "opens": "Ouvertures"
+        },
+        "analytics": {
+            "fullAnalytics": "Analyses complètes",
+            "opensTitle": "Ouvertures QR",
+            "opensDescription": "Ouvertures de redirection pour ce code avant que le visiteur atteigne la destination suivie.",
+            "emptyTitle": "Aucune ouverture QR pour l’instant",
+            "emptyDescription": "Les scans apparaîtront ici dès que ce code QR sera utilisé."
+        },
+        "share": {
+            "title": "Partager les stats QR",
+            "description": "Créez un lien en lecture seule qui expose uniquement ce code QR et ses exports.",
+            "create": "Créer un lien de partage QR",
+            "dialogTitle": "Liens de partage QR",
+            "created": "Lien de partage créé",
+            "createSuccess": "Lien de partage QR créé.",
+            "deleteSuccess": "Lien de partage QR supprimé.",
+            "deleteConfirmTitle": "Supprimer le lien de partage QR",
+            "deleteConfirmMessage": "Supprimer ce lien de partage QR en lecture seule ? Les visiteurs existants perdront l’accès à la page de statistiques partagée.",
+            "tokenHint": "Indice du jeton",
+            "url": "URL de partage",
+            "urlUnavailable": "L’URL n’est affichée qu’au moment de la création du lien.",
+            "empty": "Aucun lien QR en lecture seule pour l’instant.",
+            "invalid": "Ce lien de partage QR est invalide ou a expiré.",
+            "readOnlyBadge": "Analyses QR en lecture seule",
+            "sharedStats": "Statistiques partagées"
+        },
+        "editor": {
+            "createTitle": "Créer une campagne QR",
+            "editTitle": "Modifier la campagne QR",
+            "subtitle": "Les codes QR enregistrés utilisent une URL de redirection HitKeep dynamique afin de modifier les champs de campagne après impression.",
+            "destination": "Destination et campagne",
+            "style": "Style et visuel",
+            "saveError": "Le code QR n’a pas pu être enregistré. Vérifiez les champs et réessayez.",
+            "assetError": "Le visuel QR n’a pas pu être téléversé.",
+            "assetDeleteError": "Le visuel QR n’a pas pu être supprimé.",
+            "redirectAfterSave": "Disponible après enregistrement",
+            "customParamsHint": "Ajoutez des paramètres de requête facultatifs transmis avec cette campagne imprimée.",
+            "assetHint": "PNG, JPEG ou WebP. Maximum 2 Mo."
+        },
+        "style": {
+            "foreground": "Premier plan",
+            "background": "Arrière-plan",
+            "dotsLabel": "Style des points",
+            "cornersLabel": "Style des coins",
+            "dots": {
+                "square": "Carré",
+                "dots": "Points",
+                "rounded": "Arrondi",
+                "extra-rounded": "Très arrondi",
+                "classy": "Élégant",
+                "classy-rounded": "Élégant arrondi"
+            },
+            "corners": {
+                "square": "Carré",
+                "dot": "Point",
+                "extra-rounded": "Très arrondi"
+            }
+        },
+        "warnings": {
+            "invalidDestination": "Saisissez une destination HTTPS ou HTTP valide avant l’export.",
+            "missingCampaign": "Ajoutez une source UTM ou une campagne afin de rapprocher facilement le support imprimé plus tard.",
+            "longUrl": "L’URL finale est assez longue pour rendre le code QR plus dense et plus difficile à scanner.",
+            "reservedParam": "hk_qr est réservé à l’attribution HitKeep et sera remplacé par la redirection."
+        },
+        "errors": {
+            "load": "Les campagnes QR n’ont pas pu être chargées.",
+            "retry": "Actualisez la page ou réessayez dans un instant.",
+            "archive": "Le code QR n’a pas pu être archivé.",
+            "notFound": "Campagne QR introuvable.",
+            "stats": "Les analyses QR n’ont pas pu être chargées.",
+            "share": "Les liens de partage QR n’ont pas pu être mis à jour.",
+            "takeout": "Le takeout QR n’a pas pu être exporté."
+        },
+        "status": {
+            "archiveSuccess": "Campagne QR archivée.",
+            "takeoutSuccess": "Export des données QR lancé."
+        },
+        "confirm": {
+            "archiveTitle": "Archiver la campagne QR",
+            "archiveMessage": "Archiver {{name}} ? Les codes imprimés continueront de rediriger, mais l’équipe marketing ne verra plus cette campagne dans la liste active."
         }
     }
 }

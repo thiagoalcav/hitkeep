@@ -62,7 +62,8 @@
         "googleSearchConsole": "Search Console",
         "googleSearchConsoleAria": "Ga naar Google Search Console-integratie",
         "webVitals": "Web Vitals",
-        "webVitalsAria": "Web Vitals-analyse openen"
+        "webVitalsAria": "Web Vitals-analyse openen",
+        "qrCodes": "QR codes"
     },
     "auditTable": {
         "empty": "Geen auditgegevens gevonden",
@@ -438,7 +439,11 @@
             "open": "Openen",
             "refresh": "Vernieuwen",
             "save": "Opslaan",
-            "more": "Meer acties"
+            "more": "Meer acties",
+            "edit": "Edit",
+            "delete": "Delete",
+            "archive": "Archive",
+            "remove": "Verwijderen"
         },
         "yes": "Ja",
         "no": "Nee",
@@ -467,7 +472,9 @@
             "status": "Status",
             "time": "Tijd",
             "type": "Type",
-            "value": "Waarde"
+            "value": "Waarde",
+            "createdAt": "Created",
+            "updated": "Bijgewerkt"
         },
         "devices": {
             "desktop": "Bureaublad",
@@ -526,7 +533,8 @@
             "geoModeAria": "Selecteer doelgroepstatistiek",
             "pageModeAria": "Selecteer paginastatistiek",
             "topPages": "Top pagina's",
-            "topSources": "Top bronnen"
+            "topSources": "Top bronnen",
+            "topReferrers": "Top referrers"
         },
         "noActiveFilter": "Geen actief filter",
         "noSiteSelected": "Geen site geselecteerd",
@@ -1546,7 +1554,7 @@
                 "title": "Systeemoverzicht",
                 "version": "Versie",
                 "uptime": "Uptime",
-                "publicUrl": "OpenbareURL",
+                "publicUrl": "Openbare URL",
                 "runtimeMode": "Modus",
                 "healthStatus": "Gezondheid",
                 "enabledFeatures": "Functieschakelaars",
@@ -1559,7 +1567,7 @@
                     "label": "MCP-server"
                 },
                 "mcp_docs": {
-                    "label": "MCPdocumentatietools"
+                    "label": "MCP-documentatietools"
                 },
                 "automatic_backups": {
                     "label": "Automatische back-ups"
@@ -1591,13 +1599,30 @@
             },
             "featureDetails": {
                 "backup": {
-                    "local": "Lokaal doelwit",
+                    "local": "Lokaal doel",
                     "s3": "S3-doel"
                 },
                 "driver": "{{driver}}-stuurprogramma",
                 "interval": "Elke {{interval}}",
-                "stripe": "Streep geconfigureerd",
+                "stripe": "Stripe geconfigureerd",
                 "plan": "{{plan}}-abonnement"
+            },
+            "mcp": {
+                "title": "MCP-toegang",
+                "connection": "Verbinding",
+                "readiness": "MCP-status",
+                "server": "Server",
+                "docsTools": "Documentatietools",
+                "endpoint": "Endpoint",
+                "docsUrl": "Docs-URL",
+                "copyEndpoint": "Endpoint kopiëren",
+                "copyDocsUrl": "Docs-URL kopiëren",
+                "summary": {
+                    "readyWithDocs": "Server en documentatietools zijn beschikbaar.",
+                    "ready": "Server is beschikbaar; documentatietools zijn uitgeschakeld.",
+                    "disabled": "MCP-toegang is uitgeschakeld.",
+                    "unknown": "MCP-status is nog niet geladen."
+                }
             },
             "health": {
                 "title": "Gezondheidscontrole",
@@ -2792,6 +2817,127 @@
         "empty": {
             "title": "Nog geen Web Vitals",
             "description": "Schakel Web Vitals in de tracking-snippet in om opt-in prestatiesamples te verzamelen."
+        }
+    },
+    "qrCodes": {
+        "breadcrumb": "QR-codes",
+        "actions": {
+            "create": "QR-code maken",
+            "exportSvg": "SVG exporteren",
+            "exportPng": "PNG exporteren",
+            "removeAsset": "Afbeelding verwijderen",
+            "viewAnalytics": "Analytics bekijken",
+            "backToList": "Terug naar QR-campagnes",
+            "takeout": "Gegevens exporteren",
+            "addParam": "Parameter toevoegen",
+            "chooseAsset": "Afbeelding kiezen",
+            "exportArtwork": "Artwork exporteren",
+            "exportPngSize": "PNG {{size}} px"
+        },
+        "list": {
+            "title": "QR-campagnes",
+            "count": "{{count}} opgeslagen codes"
+        },
+        "empty": {
+            "title": "Nog geen QR-campagnes",
+            "description": "Maak een dynamische QR-code met campagne-attributie, printklare exports en eigen analytics."
+        },
+        "fields": {
+            "name": "Naam",
+            "destinationUrl": "Bestemmings-URL",
+            "redirectUrl": "Omleidings-URL",
+            "finalUrl": "Definitieve tracking-URL",
+            "customParams": "Aangepaste parameters",
+            "asset": "Afbeelding",
+            "paramKey": "Parameter",
+            "paramValue": "Waarde"
+        },
+        "asset": {
+            "present": "Afbeelding",
+            "none": "Geen"
+        },
+        "kpis": {
+            "opens": "Openingen"
+        },
+        "analytics": {
+            "fullAnalytics": "Volledige analytics",
+            "opensTitle": "QR-openingen",
+            "opensDescription": "Omleidingsopeningen voor deze code voordat de bezoeker de getrackte bestemming bereikt.",
+            "emptyTitle": "Nog geen QR-openingen",
+            "emptyDescription": "Scans verschijnen hier zodra deze QR-code wordt gebruikt."
+        },
+        "share": {
+            "title": "QR-statistieken delen",
+            "description": "Maak een alleen-lezen link die alleen deze QR-code en de exports beschikbaar maakt.",
+            "create": "QR-deellink maken",
+            "dialogTitle": "QR-deellinks",
+            "created": "Deellink gemaakt",
+            "createSuccess": "QR-deellink gemaakt.",
+            "deleteSuccess": "QR-deellink verwijderd.",
+            "deleteConfirmTitle": "QR-deellink verwijderen",
+            "deleteConfirmMessage": "Deze alleen-lezen QR-deellink verwijderen? Bestaande bezoekers verliezen toegang tot de gedeelde statistiekpagina.",
+            "tokenHint": "Tokenhint",
+            "url": "Deel-URL",
+            "urlUnavailable": "De URL wordt alleen direct na het maken van de link getoond.",
+            "empty": "Nog geen QR-only deellinks.",
+            "invalid": "Deze QR-deellink is ongeldig of verlopen.",
+            "readOnlyBadge": "Alleen-lezen QR-analytics",
+            "sharedStats": "Gedeelde statistieken"
+        },
+        "editor": {
+            "createTitle": "QR-campagne maken",
+            "editTitle": "QR-campagne bewerken",
+            "subtitle": "Opgeslagen QR-codes gebruiken een dynamische HitKeep-omleidings-URL, zodat campagnevelden na het drukken kunnen worden aangepast.",
+            "destination": "Bestemming en campagne",
+            "style": "Stijl en afbeelding",
+            "saveError": "De QR-code kon niet worden opgeslagen. Controleer de velden en probeer het opnieuw.",
+            "assetError": "De QR-afbeelding kon niet worden geüpload.",
+            "assetDeleteError": "De QR-afbeelding kon niet worden verwijderd.",
+            "redirectAfterSave": "Beschikbaar na opslaan",
+            "customParamsHint": "Voeg optionele queryparameters toe die met deze gedrukte campagne meegaan.",
+            "assetHint": "PNG, JPEG of WebP. Maximaal 2 MB."
+        },
+        "style": {
+            "foreground": "Voorgrond",
+            "background": "Achtergrond",
+            "dotsLabel": "Puntstijl",
+            "cornersLabel": "Hoekstijl",
+            "dots": {
+                "square": "Vierkant",
+                "dots": "Punten",
+                "rounded": "Afgerond",
+                "extra-rounded": "Extra afgerond",
+                "classy": "Elegant",
+                "classy-rounded": "Elegant afgerond"
+            },
+            "corners": {
+                "square": "Vierkant",
+                "dot": "Punt",
+                "extra-rounded": "Extra afgerond"
+            }
+        },
+        "warnings": {
+            "invalidDestination": "Voer vóór het exporteren een geldige HTTPS- of HTTP-bestemming in.",
+            "missingCampaign": "Voeg een UTM-bron of campagne toe, zodat het printmateriaal later eenvoudig te herleiden is.",
+            "longUrl": "De definitieve URL is lang genoeg om de QR-code dichter en lastiger scanbaar te maken.",
+            "reservedParam": "hk_qr is gereserveerd voor HitKeep-attributie en wordt door de omleiding overschreven."
+        },
+        "errors": {
+            "load": "QR-campagnes konden niet worden geladen.",
+            "retry": "Vernieuw de pagina of probeer het zo opnieuw.",
+            "archive": "De QR-code kon niet worden gearchiveerd.",
+            "notFound": "QR-campagne niet gevonden.",
+            "stats": "QR-analytics konden niet worden geladen.",
+            "share": "QR-deellinks konden niet worden bijgewerkt.",
+            "takeout": "QR-takeout kon niet worden geëxporteerd."
+        },
+        "status": {
+            "archiveSuccess": "QR-campagne gearchiveerd.",
+            "takeoutSuccess": "QR-data-export gestart."
+        },
+        "confirm": {
+            "archiveTitle": "QR-campagne archiveren",
+            "archiveMessage": "{{name}} archiveren? Gedrukte codes blijven doorverwijzen, maar marketeers zien deze campagne niet meer in de actieve lijst."
         }
     }
 }

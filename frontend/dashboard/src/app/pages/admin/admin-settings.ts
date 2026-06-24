@@ -1142,8 +1142,20 @@ export class AdminSettings implements OnInit {
         this.updateUserRole(user, role, previousRole);
     }
 
-    protected isInstanceOwner(user: User): boolean {
-        return user.instance_role === 'owner';
+    protected isCurrentUser(user: User): boolean {
+        return user.id === this.currentUserId();
+    }
+
+    protected instanceRoleLabel(role: InstanceRole): string {
+        switch (role) {
+            case 'owner':
+                return this.transloco.translate('admin.roles.instanceOwner');
+            case 'admin':
+                return this.transloco.translate('admin.roles.instanceAdmin');
+            case 'user':
+            default:
+                return this.transloco.translate('admin.roles.user');
+        }
     }
 
     protected isDisablingUser(user: User): boolean {

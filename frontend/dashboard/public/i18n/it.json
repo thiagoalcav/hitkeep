@@ -1319,6 +1319,7 @@
         },
         "users": {
             "title": "Utenti",
+            "roleSelfLocked": "Non puoi modificare il tuo ruolo istanza.",
             "disable2faAction": "Disattiva MFA"
         },
         "sites": {

@@ -265,16 +265,45 @@
     width: 100%;
 }
 
-.admin-user-cell {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.5rem;
+.admin-user-email {
+    display: block;
     min-width: 12rem;
+    color: var(--p-text-color);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.admin-role-select-wrap {
+    display: inline-flex;
+    width: 13rem;
+    max-width: 100%;
 }
 
 .admin-role-select {
-    width: 11rem;
+    width: 100%;
+}
+
+.admin-role-readonly {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 13rem;
+    max-width: 100%;
+    min-height: 2.25rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--p-form-field-border-color, var(--p-content-border-color));
+    border-radius: var(--p-form-field-border-radius, 6px);
+    color: var(--p-text-color);
+    background: var(--p-form-field-background, var(--p-content-background));
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.admin-role-readonly i {
+    flex: 0 0 auto;
+    color: var(--p-text-muted-color);
+    font-size: 0.8rem;
 }
 
 .admin-link {

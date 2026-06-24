@@ -83,15 +83,27 @@
                                 <ng-template pTemplate="body" let-user>
                                     <tr>
                                         <td>
-                                            <div class="admin-user-cell">
-                                                <span>{{ user.email }}</span>
-                                                @if (isInstanceOwner(user)) {
-                                                <span class="hk-owner-chip">{{ "admin.roles.instanceOwner" | transloco }}</span>
-                                                }
-                                            </div>
+                                            <span class="admin-user-email">{{ user.email }}</span>
                                         </td>
                                         <td>
-                                            <p-select [options]="roleOptions()" [formControl]="roleControl(user.id)" (onChange)="onRoleChange(user, $event.value)" optionLabel="label" optionValue="value" class="admin-role-select" appendTo="body" />
+                                            @if (isCurrentUser(user)) {
+                                            <span class="admin-role-readonly" [pTooltip]="'admin.users.roleSelfLocked' | transloco" tooltipPosition="top">
+                                                <span>{{ instanceRoleLabel(user.instance_role) }}</span>
+                                                <i class="pi pi-lock" aria-hidden="true"></i>
+                                            </span>
+                                            } @else {
+                                            <span class="admin-role-select-wrap">
+                                                <p-select
+                                                    [options]="roleOptions()"
+                                                    [formControl]="roleControl(user.id)"
+                                                    (onChange)="onRoleChange(user, $event.value)"
+                                                    optionLabel="label"
+                                                    optionValue="value"
+                                                    class="admin-role-select"
+                                                    appendTo="body"
+                                                />
+                                            </span>
+                                            }
                                         </td>
                                         <td><app-relative-date-time [value]="user.created_at" /></td>
                                         <td>

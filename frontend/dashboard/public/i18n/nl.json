@@ -1310,6 +1310,7 @@
         },
         "users": {
             "title": "Gebruikers",
+            "roleSelfLocked": "Je kunt je eigen instantierol niet wijzigen.",
             "disable2faAction": "Schakel MFA uit"
         },
         "sites": {

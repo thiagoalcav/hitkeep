@@ -1319,6 +1319,7 @@
         },
         "users": {
             "title": "Benutzer",
+            "roleSelfLocked": "Du kannst deine eigene Instanzrolle nicht ändern.",
             "disable2faAction": "MFA deaktivieren"
         },
         "sites": {

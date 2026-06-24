@@ -1319,6 +1319,7 @@
         },
         "users": {
             "title": "Users",
+            "roleSelfLocked": "You cannot change your own instance role.",
             "disable2faAction": "Disable MFA"
         },
         "sites": {

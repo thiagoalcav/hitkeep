@@ -1311,6 +1311,7 @@
         },
         "users": {
             "title": "Usuários",
+            "roleSelfLocked": "Você não pode alterar sua própria função da instância.",
             "disable2faAction": "Desativar MFA"
         },
         "sites": {

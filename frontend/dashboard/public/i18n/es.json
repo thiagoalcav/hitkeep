@@ -1319,6 +1319,7 @@
         },
         "users": {
             "title": "Usuarios",
+            "roleSelfLocked": "No puedes cambiar tu propio rol de instancia.",
             "disable2faAction": "Desactivar MFA"
         },
         "sites": {

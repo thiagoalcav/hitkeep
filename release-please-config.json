@@ -3,6 +3,28 @@
     ".": {
       "changelog-path": "CHANGELOG.md",
       "release-type": "go",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "server.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "frontend/dashboard/package.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "frontend/dashboard/package-lock.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "frontend/dashboard/package-lock.json",
+          "jsonpath": "$['packages']['']['version']"
+        }
+      ],
       "bump-minor-pre-major": false,
       "bump-patch-for-minor-pre-major": false,
       "draft": false,

@@ -26,7 +26,7 @@
         "funnels": "Funis",
         "utm": "UTM",
         "apiClients": "Clientes de API",
-        "apiReference": "Referência de API",
+        "apiReference": "API Doc.",
         "expandItem": "Expandir {{item}}",
         "collapseItem": "Recolher {{item}}",
         "imports": "Importações",
@@ -41,11 +41,11 @@
         "supportAria": "Abrir suporte do HitKeep em uma nova guia",
         "settings": "Configurações",
         "settingsAria": "Ir para configurações",
-        "emailReports": "Relatórios por E-mail",
-        "emailReportsAria": "Ir para relatórios por e-mail",
+        "emailReports": "Relatórios",
+        "emailReportsAria": "Ir para relatórios",
         "administration": "Administração",
-        "systemSettings": "Configurações do Sistema",
-        "systemSettingsAria": "Ir para configurações do sistema",
+        "systemSettings": "Configurações",
+        "systemSettingsAria": "Ir para configurações",
         "teamOverview": "Visão Geral da Equipe",
         "teamOverviewAria": "Ir para visão geral da equipe",
         "teamMembers": "Membros da Equipe",
@@ -62,7 +62,8 @@
         "googleSearchConsole": "Search Console",
         "googleSearchConsoleAria": "Ir para integração com o Google Search Console",
         "webVitals": "Web Vitals",
-        "webVitalsAria": "Abrir análises do Web Vitals"
+        "webVitalsAria": "Abrir análises do Web Vitals",
+        "qrCodes": "Códigos QR"
     },
     "auditTable": {
         "empty": "Nenhum registro de auditoria encontrado",
@@ -938,7 +939,7 @@
         },
         "reports": {
             "breadcrumb": "Relatórios por E-mail",
-            "subtitle": "Configure e-mails de análises agendados para seus sites.",
+            "subtitle": "Configure o agendamento de envio de e-mails de análises dos seus sites.",
             "digest": {
                 "title": "Resumo Consolidado",
                 "description": "Receba um e-mail de resumo para todos os seus sites."
@@ -2811,6 +2812,127 @@
         "empty": {
             "title": "Sem Web Vitals ainda",
             "description": "Ative o Web Vitals no código de rastreamento para começar a coletar amostras de desempenho dos usuários."
+        }
+    },
+    "qrCodes": {
+        "breadcrumb": "Códigos QR",
+        "actions": {
+            "create": "Criar código QR",
+            "exportSvg": "Exportar SVG",
+            "exportPng": "Exportar PNG",
+            "removeAsset": "Remover imagem",
+            "viewAnalytics": "Ver estatísticas",
+            "backToList": "Voltar para campanhas QR",
+            "takeout": "Exportar dados",
+            "addParam": "Adicionar parâmetro",
+            "chooseAsset": "Escolher imagem",
+            "exportArtwork": "Exportar arte",
+            "exportPngSize": "PNG {{size}} px"
+        },
+        "list": {
+            "title": "Campanhas QR",
+            "count": "{{count}} códigos salvos"
+        },
+        "empty": {
+            "title": "Nenhuma campanha QR ainda",
+            "description": "Crie um código QR dinâmico com atribuição de campanha, exportações prontas para impressão e estatísticas dedicadas."
+        },
+        "fields": {
+            "name": "Nome",
+            "destinationUrl": "URL de destino",
+            "redirectUrl": "URL de redirecionamento",
+            "finalUrl": "URL final rastreada",
+            "customParams": "Parâmetros personalizados",
+            "asset": "Imagem gráfica",
+            "paramKey": "Parâmetro",
+            "paramValue": "Valor"
+        },
+        "asset": {
+            "present": "Imagem gráfica",
+            "none": "Nenhuma"
+        },
+        "kpis": {
+            "opens": "Aberturas"
+        },
+        "analytics": {
+            "fullAnalytics": "Estatísticas completas",
+            "opensTitle": "Aberturas de QR",
+            "opensDescription": "Redirecionamento de aberturas para este código antes que o visitante chegue ao destino rastreado.",
+            "emptyTitle": "Nenhuma abertura de QR ainda",
+            "emptyDescription": "As leituras aparecerão aqui após este código QR ser utilizado."
+        },
+        "share": {
+            "title": "Compartilhar estatísticas de QR",
+            "description": "Crie um link somente leitura que exponha apenas este código QR e suas exportações.",
+            "create": "Criar link de compartilhamento de QR",
+            "dialogTitle": "Links de compartilhamento de QR",
+            "created": "Link de compartilhamento criado",
+            "createSuccess": "Link de compartilhamento de QR criado.",
+            "deleteSuccess": "Link de compartilhamento de QR excluído.",
+            "deleteConfirmTitle": "Excluir link de compartilhamento de QR",
+            "deleteConfirmMessage": "Excluir este link de compartilhamento apenas de QR? Visitantes existentes perderão o acesso à página de estatísticas compartilhadas.",
+            "tokenHint": "Dica do token",
+            "url": "URL de compartilhamento",
+            "urlUnavailable": "A URL só é exibida quando o link é gerado pela primeira vez.",
+            "empty": "Nenhum link de compartilhamento apenas de QR ainda.",
+            "invalid": "Este link de compartilhamento de QR é inválido ou expirou.",
+            "readOnlyBadge": "Estatísticas de QR somente leitura",
+            "sharedStats": "Estatísticas compartilhadas"
+        },
+        "editor": {
+            "createTitle": "Criar campanha QR",
+            "editTitle": "Editar campanha QR",
+            "subtitle": "Códigos QR salvos usam uma URL dinâmica de redirecionamento do HitKeep para que os campos da campanha possam ser alterados após a impressão.",
+            "destination": "Destino e campanha",
+            "style": "Estilo e imagem gráfica",
+            "saveError": "Não foi possível salvar o código QR. Verifique os campos e tente novamente.",
+            "assetError": "Não foi possível enviar a imagem do QR.",
+            "assetDeleteError": "Não foi possível remover a imagem do QR.",
+            "redirectAfterSave": "Disponível após salvar",
+            "customParamsHint": "Adicione parâmetros de consulta opcionais que acompanham esta campanha impressa.",
+            "assetHint": "PNG, JPEG ou WebP. Máximo de 2 MB."
+        },
+        "style": {
+            "foreground": "Primeiro plano",
+            "background": "Plano de fundo",
+            "dotsLabel": "Estilo dos pontos",
+            "cornersLabel": "Estilo dos cantos",
+            "dots": {
+                "square": "Quadrado",
+                "dots": "Pontos",
+                "rounded": "Arredondado",
+                "extra-rounded": "Super arredondado",
+                "classy": "Elegante",
+                "classy-rounded": "Elegante arredondado"
+            },
+            "corners": {
+                "square": "Quadrado",
+                "dot": "Ponto",
+                "extra-rounded": "Super arredondado"
+            }
+        },
+        "warnings": {
+            "invalidDestination": "Insira um destino HTTPS ou HTTP válido antes de exportar.",
+            "missingCampaign": "Adicione uma origem UTM ou campanha para facilitar a reconciliação do recurso impresso mais tarde.",
+            "longUrl": "A URL final é longa o suficiente para tornar códigos QR densos mais difíceis de escanear.",
+            "reservedParam": "hk_qr é reservado para atribuição do HitKeep e será sobrescrito pelo redirecionamento."
+        },
+        "errors": {
+            "load": "Não foi possível carregar as campanhas QR.",
+            "retry": "Atualize a página ou tente novamente em um momento.",
+            "archive": "Não foi possível arquivar o código QR.",
+            "notFound": "Campanha QR não encontrada.",
+            "stats": "Não foi possível carregar as estatísticas de QR.",
+            "share": "Não foi possível atualizar os links de compartilhamento de QR.",
+            "takeout": "Não foi possível exportar os dados de QR."
+        },
+        "status": {
+            "archiveSuccess": "Campanha QR arquivada.",
+            "takeoutSuccess": "Exportação de dados de QR iniciada."
+        },
+        "confirm": {
+            "archiveTitle": "Arquivar campanha QR",
+            "archiveMessage": "Arquivar {{name}}? Códigos impressos ainda redirecionarão, mas os profissionais de marketing não verão mais esta campanha na lista ativa."
         }
     },
     "cloud": {

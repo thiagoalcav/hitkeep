@@ -68,7 +68,7 @@ export class SettingsSecurity {
 
     protected onSubmit(event?: Event): void {
         event?.preventDefault();
-        if (this.form().invalid()) {
+        if (this.form.currentPassword().invalid() || this.form.newPassword().invalid()) {
             this.form.currentPassword().markAsTouched();
             this.form.newPassword().markAsTouched();
             return;

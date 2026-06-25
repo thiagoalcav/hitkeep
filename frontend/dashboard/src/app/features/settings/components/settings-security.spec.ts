@@ -17,7 +17,8 @@ describe('SettingsSecurity', () => {
     let clickSpy: ReturnType<typeof vi.fn>;
 
     const authServiceMock = {
-        changePassword: vi.fn(() => of(void 0))
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        changePassword: vi.fn((current: string, newPass: string) => of(void 0))
     };
 
     const userSecurityServiceMock = {
@@ -146,5 +147,20 @@ describe('SettingsSecurity', () => {
         expect(clickSpy).toHaveBeenCalledTimes(1);
         expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:recovery-codes');
         expect(component['recoveryCodeSuccess']()).toBe('settings.security.recoveryCodes.downloaded');
+    });
+
+    it('does not submit if password form is invalid', () => {
+        component['form'].currentPassword().control().setValue('');
+        component['form'].newPassword().control().setValue('');
+        component['onSubmit']();
+        expect(authServiceMock.changePassword).not.toHaveBeenCalled();
+    });
+
+    it('submits if password form is valid even if TOTP form is invalid', () => {
+        component['form'].currentPassword().control().setValue('old-password');
+        component['form'].newPassword().control().setValue('new-password-123');
+        // TOTP code is empty and thus invalid, but we only care about password form
+        component['onSubmit']();
+        expect(authServiceMock.changePassword).toHaveBeenCalledWith('old-password', 'new-password-123');
     });
 });

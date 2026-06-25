@@ -560,12 +560,14 @@ export class SearchConsoleDrilldown {
         const start = new Intl.DateTimeFormat(language, {
             month: 'short',
             day: 'numeric',
+            timeZone: 'UTC',
             ...(sameYear ? {} : { year: 'numeric' })
         }).format(from);
         const end = new Intl.DateTimeFormat(language, {
             month: 'short',
             day: 'numeric',
-            year: 'numeric'
+            year: 'numeric',
+            timeZone: 'UTC'
         }).format(to);
         return `${start} - ${end}`;
     }

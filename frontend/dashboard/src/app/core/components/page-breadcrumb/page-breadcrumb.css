@@ -21,3 +21,12 @@
 :host ::ng-deep .p-breadcrumb .p-breadcrumb-chevron {
     line-height: 1;
 }
+
+:host ::ng-deep .p-breadcrumb {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+}
+
+:host ::ng-deep .p-breadcrumb::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Opera */
+}
